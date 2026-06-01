@@ -1,0 +1,1834 @@
+{% extends "website/index.html" %}
+{% load static %}
+{% load widget_tweaks %}
+{% block exstyle %}
+<link href="{% static 'style/general.css' %}" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Ubuntu&display=swap" rel="stylesheet">
+
+<script src="{% static 'css/paytermmodal.css' %}"></script>
+
+<style>
+/* REMOVED: old base-transaction-card styles */
+
+</style>
+
+{% endblock exstyle %}
+{% block page_title %}New Sales Invoice{% endblock page_title %}<!--add title-->
+{% block scripts %}
+
+<script src="{% static 'js/sales_quotation.js' %}?v={{ today|default:'20260518' }}"></script>
+<script src="{% static 'js/cancel_confirm.js' %}"></script>
+
+<script>
+// ✅ Make company_is_india flag available to JavaScript
+const COMPANY_IS_INDIA = {{ company_is_india|lower }};
+const COMPANY_TAX_TYPE = String("{{ company_tax_type|default:'' }}").trim().toUpperCase();
+window.COMPANY_TAX_TYPE = COMPANY_TAX_TYPE;
+const salesCompanyPrefix = (function() {
+  const parts = window.location.pathname.split('/');
+  const first = parts[1] || '';
+  const modules = ['sales', 'purchase', 'inventory', 'PayTerms', 'Items', 'customer', 'vendor', 'user', 'crm', 'hr', 'masters'];
+  return modules.includes(first.toLowerCase()) ? '' : '/' + first;
+})();
+window.initialInvoiceCurrencyId = "{{ selected_currency_id|default:''|escapejs }}";
+window.initialInvoiceFxRate = "{{ fx_rate_to_base|default:''|escapejs }}";
+window.initialInvoiceFxDate = "{% if fx_rate_date %}{{ fx_rate_date|date:'Y-m-d' }}{% endif %}";
+window.initialInvoiceId = "{% if invoice and invoice.pk %}{{ invoice.pk }}{% endif %}";
+window.isExistingInvoiceEdit = !!window.initialInvoiceId;
+window.preserveInitialInvoiceFx = !!(window.initialInvoiceCurrencyId || window.initialInvoiceFxRate || window.initialInvoiceFxDate);
+</script>
+
+<script>
+// Initialize item modal Select2 dropdowns
+function initializeItemModalSelects() {
+  // Unit select
+  $('#item_unit_select').select2({
+    placeholder: 'Choose unit',
+    allowClear: true,
+    minimumInputLength: 0,
+    dropdownParent: $('#addItemModal'),
+    ajax: {
+      url: salesCompanyPrefix + '/Items/unit/',
+      dataType: 'json',
+      delay: 250,
+      data: function(params) {
+        return { q: params.term };
+      },
+        processResults: function(data) {
+        let results = data.map(function(item) {
+          return { id: item.id, text: item.name };
+        });
+        // Add "+New" option at the end
+        results.push({
+          id: 'new',
+          text: '+ New Unit',
+          isNew: true
+        });
+        return { results: results };
+      },
+      cache: true
+    }
+  });
+
+  // Intra Tax select
+  $('#item_intra_tax_select').select2({
+    placeholder: 'Choose Intra State Tax Rate',
+    allowClear: true,
+    dropdownParent: $('#addItemModal'),
+    ajax: {
+      url: salesCompanyPrefix + '/Items/tax-groups/',
+      dataType: 'json',
+      delay: 250,
+      data: function (params) {
+        const scope = COMPANY_TAX_TYPE === 'TURNOVER' ? 'local' : 'default';
+        return { q: params.term, scope: scope };
+      },
+        processResults: function (data) {
+        return data;
+      },
+      cache: true
+    }
+  });
+
+  // Inter Tax select
+  $('#item_inter_tax_select').select2({
+    placeholder: 'Choose Inter State Tax Rate',
+    allowClear: true,
+    dropdownParent: $('#addItemModal'),
+    ajax: {
+      url: salesCompanyPrefix + '/Items/inter-state-taxes/',
+      dataType: 'json',
+      delay: 250,
+      data: function (params) { return { q: params.term, scope: 'inter' }; },
+        processResults: function (data) {
+        return data;
+      },
+      cache: true
+    }
+  });
+  
+  // Default Tax select (for non-India countries)
+  $('#item_default_tax_select').select2({
+    placeholder: 'Choose Tax Rate',
+    allowClear: true,
+    dropdownParent: $('#addItemModal'),
+    ajax: {
+      url: salesCompanyPrefix + '/Items/inter-state-taxes/',
+      dataType: 'json',
+      delay: 250,
+      data: function (params) {
+        const taxType = (typeof COMPANY_TAX_TYPE !== 'undefined' ? COMPANY_TAX_TYPE : window.COMPANY_TAX_TYPE);
+        const scope = String(taxType || '').trim().toUpperCase() === 'TURNOVER' ? 'local' : 'default';
+        return { q: params.term, scope: scope };
+      },
+        processResults: function (data) {
+        console.log('Default tax options:', data);
+        return data;
+      },
+      cache: true
+    }
+  });
+  $('#item_sales_tax_select').select2({
+    placeholder: 'Choose Sales Tax Rate',
+    allowClear: true,
+    dropdownParent: $('#addItemModal'),
+    ajax: {
+      url: salesCompanyPrefix + '/Items/inter-state-taxes/',
+      dataType: 'json',
+      delay: 250,
+      data: function (params) { return { q: params.term, scope: 'sales' }; },
+        processResults: function (data) { return data; },
+      cache: true
+    }
+  });
+  $('#item_purchase_tax_select').select2({
+    placeholder: 'Choose Purchase Tax Rate',
+    allowClear: true,
+    dropdownParent: $('#addItemModal'),
+    ajax: {
+      url: salesCompanyPrefix + '/Items/inter-state-taxes/',
+      dataType: 'json',
+      delay: 250,
+      data: function (params) { return { q: params.term, scope: 'purchase' }; },
+        processResults: function (data) { return data; },
+      cache: true
+    }
+  });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  let currentRowIndex = null;
+  {% comment %} let addItemModal = null; {% endcomment %}
+
+  if ($('#turnover_tax_select').length) {
+    $('#turnover_tax_select').select2({
+      placeholder: 'Choose Turnover Tax',
+      allowClear: true,
+      ajax: {
+        url: salesCompanyPrefix + '/Items/inter-state-taxes/',
+        dataType: 'json',
+        delay: 250,
+        data: function (params) {
+          return { q: params.term, scope: 'turnover' };
+        },
+        processResults: function (data) {
+          window.turnoverTaxRates = window.turnoverTaxRates || {};
+          (data.results || []).forEach(function(item) {
+            if (item.id !== undefined && item.rate !== undefined) {
+              window.turnoverTaxRates[String(item.id)] = item.rate;
+            }
+          });
+          return data;
+        },
+        cache: true
+      }
+    });
+  }
+
+  
+
+
+    // Toggle tax fields based on tax preference AND company country
+  $('#addItemModal').on('change', '#item_tax_pref', function() {
+    updateTaxFieldsVisibility();
+  });
+
+  function updateTaxFieldsVisibility() {
+    const taxPref = $('#item_tax_pref').val();
+    if (COMPANY_TAX_TYPE === 'NONE') {
+      $('#item_tax_pref').val('non_taxable').prop('disabled', true);
+      $('#item_tax_fields, #item_indian_tax_fields, #item_default_tax_fields, #item_sales_purchase_tax_fields').hide();
+      $('#item_intra_tax_select, #item_inter_tax_select, #item_default_tax_select, #item_sales_tax_select, #item_purchase_tax_select').attr('required', false);
+      return;
+    }
+    $('#item_tax_pref').prop('disabled', false);
+    if (taxPref === 'taxable') {
+      $('#item_tax_fields').show();
+      // Show appropriate tax fields based on company tax type
+      if (COMPANY_TAX_TYPE === 'GST') {
+        $('#item_indian_tax_fields').show();
+        $('#item_default_tax_fields').hide();
+        $('#item_sales_purchase_tax_fields').hide();
+        $('#item_intra_tax_select').attr('required', true);
+        $('#item_inter_tax_select').attr('required', true);
+        $('#item_default_tax_select').attr('required', false);
+        $('#item_sales_tax_select, #item_purchase_tax_select').attr('required', false);
+      } else if (COMPANY_TAX_TYPE === 'SALES') {
+        $('#item_indian_tax_fields').hide();
+        $('#item_default_tax_fields').hide();
+        $('#item_sales_purchase_tax_fields').show();
+        $('#item_intra_tax_select, #item_inter_tax_select, #item_default_tax_select').attr('required', false);
+        $('#item_sales_tax_select, #item_purchase_tax_select').attr('required', true);
+      } else {
+        $('#item_indian_tax_fields').hide();
+        $('#item_default_tax_fields').show();
+        $('#item_sales_purchase_tax_fields').hide();
+        $('#item_intra_tax_select').attr('required', false);
+        $('#item_inter_tax_select').attr('required', false);
+        $('#item_default_tax_select').attr('required', true);
+        $('#item_sales_tax_select, #item_purchase_tax_select').attr('required', false);
+      }
+    } else {
+      $('#item_tax_fields').hide();
+      $('#item_intra_tax_select').attr('required', false);
+      $('#item_inter_tax_select').attr('required', false);
+      $('#item_default_tax_select').attr('required', false);
+      $('#item_sales_tax_select, #item_purchase_tax_select').attr('required', false);
+    }
+  }
+
+  // Open modal when +New button is clicked
+  
+
+  // Save new item
+  $('#saveNewItemBtn').on('click', function() {
+    const form = $('#addItemForm')[0];
+
+
+    // ✅ Use native HTML5 validation
+    if (!form.checkValidity()) {
+      form.reportValidity(); // Shows native browser validation messages
+      return;
+    }
+    
+    // Basic validation
+    const itemName = $('#item_name').val().trim();
+    const itemUnit = $('#item_unit_select').val();
+    const costPrice = $('#item_selling_price').val();
+    
+    if (!itemName) {
+      alert('Please enter item name');
+      $('#item_name').focus();
+      return;
+    }
+    
+    if (!itemUnit) {
+
+      $('#item_unit_select').next('.select2-container').addClass('is-invalid');
+      if (!$('#item_unit_select').next().next('.invalid-feedback').length) {
+        $('#item_unit_select').next('.select2-container').after(
+          '<div class="invalid-feedback d-block">Please select a unit</div>'
+        );
+      }
+      return;
+
+    }
+
+    if (!costPrice || parseFloat(costPrice) <= 0) {
+      alert('Please enter a valid selling price');
+      $('#item_selling_price').focus();
+      return;
+    }
+
+
+    // ✅ Validate tax fields when taxable
+    const taxPref = $('#item_tax_pref').val();
+    if (taxPref === 'taxable' && COMPANY_TAX_TYPE !== 'NONE') {
+      if (COMPANY_TAX_TYPE === 'GST') {
+        const intraState = $('#item_intra_tax_select').val();
+        const interState = $('#item_inter_tax_select').val();
+        
+        if (!intraState || !interState) {
+          if (!intraState) {
+            $('#item_intra_tax_select').next('.select2-container').addClass('is-invalid');
+            if (!$('#item_intra_tax_select').next().next('.invalid-feedback').length) {
+              $('#item_intra_tax_select').next('.select2-container').after(
+                '<div class="invalid-feedback d-block">Please select intra state tax rate</div>'
+              );
+            }
+          }
+          if (!interState) {
+            $('#item_inter_tax_select').next('.select2-container').addClass('is-invalid');
+            if (!$('#item_inter_tax_select').next().next('.invalid-feedback').length) {
+              $('#item_inter_tax_select').next('.select2-container').after(
+                '<div class="invalid-feedback d-block">Please select inter state tax rate</div>'
+              );
+            }
+          }
+          return;
+        }
+      } else if (COMPANY_TAX_TYPE === 'SALES') {
+        const salesTax = $('#item_sales_tax_select').val();
+        const purchaseTax = $('#item_purchase_tax_select').val();
+        if (!salesTax || !purchaseTax) {
+          if (!salesTax) {
+            $('#item_sales_tax_select').next('.select2-container').addClass('is-invalid');
+            if (!$('#item_sales_tax_select').next().next('.invalid-feedback').length) {
+              $('#item_sales_tax_select').next('.select2-container').after(
+                '<div class="invalid-feedback d-block">Please select sales tax rate</div>'
+              );
+            }
+          }
+          if (!purchaseTax) {
+            $('#item_purchase_tax_select').next('.select2-container').addClass('is-invalid');
+            if (!$('#item_purchase_tax_select').next().next('.invalid-feedback').length) {
+              $('#item_purchase_tax_select').next('.select2-container').after(
+                '<div class="invalid-feedback d-block">Please select purchase tax rate</div>'
+              );
+            }
+          }
+          return;
+        }
+      } else {
+        const defaultTax = $('#item_default_tax_select').val();
+        
+        if (!defaultTax) {
+          $('#item_default_tax_select').next('.select2-container').addClass('is-invalid');
+          if (!$('#item_default_tax_select').next().next('.invalid-feedback').length) {
+            $('#item_default_tax_select').next('.select2-container').after(
+              '<div class="invalid-feedback d-block">Please select tax rate</div>'
+            );
+          }
+          return;
+        }
+      }
+    }
+
+
+    // Prepare form data
+    //const formData = new FormData(form[0]);
+    const formData = new FormData(form);
+    if (COMPANY_TAX_TYPE === 'NONE') {
+      formData.set('tax_pref', 'non_taxable');
+    }
+
+    
+    // Add CSRF token
+    formData.append('csrfmiddlewaretoken', $('[name=csrfmiddlewaretoken]').first().val());
+
+    // Send AJAX request to save item (company-prefixed URL)
+    var pathParts = window.location.pathname.split('/');
+    var companyCode = pathParts[1] || '';
+    var ajaxUrl = '/' + companyCode + '/Items/create-item-ajax-sales/';
+
+    $.ajax({
+      url: ajaxUrl,
+      method: 'POST',
+      data: formData,
+      processData: false,
+      contentType: false,
+      headers: {
+        'X-Requested-With': 'XMLHttpRequest'
+      },
+      success: function(response) {
+        if (response.success) {
+          const modalSellingPrice = parseFloat($('#item_selling_price').val()) || parseFloat(costPrice) || 0;
+          const closeAddItemModal = function() {
+            const modalEl = document.getElementById('addItemModal');
+            const forceHideIfNeeded = function() {
+              if (!modalEl || !modalEl.classList.contains('show')) return;
+              modalEl.classList.remove('show');
+              modalEl.style.display = 'none';
+              modalEl.setAttribute('aria-hidden', 'true');
+              modalEl.removeAttribute('aria-modal');
+              modalEl.removeAttribute('role');
+              document.body.classList.remove('modal-open');
+              document.body.style.removeProperty('overflow');
+              document.body.style.removeProperty('padding-right');
+              $('.modal-backdrop').remove();
+            };
+
+            if (typeof window.hideSalesItemModal === 'function') {
+              window.hideSalesItemModal();
+            } else if (window.bootstrap && bootstrap.Modal) {
+              bootstrap.Modal.getOrCreateInstance(modalEl).hide();
+            } else {
+              $('#addItemModal').modal('hide');
+            }
+            setTimeout(forceHideIfNeeded, 250);
+          };
+
+          closeAddItemModal();
+          const item = response.item;
+          const productSelect = window.activeItemSelectForNewItem
+            ? $(window.activeItemSelectForNewItem)
+            : $('select[name="form-' + currentRowIndex + '-product"]');
+          const $targetRow = productSelect.closest('tr');
+          
+          if ($targetRow.length) {
+            console.log('Processing newly created item:', item);
+            
+            // Create option with item ID and barcode
+            const itemValue = item.id + '_' + (item.barcode || '');
+            const itemText = item.name + ' ' + (item.unit || '');
+            
+            const newOption = new Option(itemText, itemValue, true, true);
+            
+
+
+            // NEW CODE - USE THIS:
+            // Create complete item data object
+            const gstIncludeValue = item.taxincld_sellingprice ? 'true' : 'false';
+            const taxRateValue = parseFloat(item.tax_rate) || 0;
+
+            // Calculate the tax-exclusive price (o_price) if GST is inclusive
+            let sellingPrice = parseFloat(item.selling_price);
+            if (!Number.isFinite(sellingPrice) || sellingPrice <= 0) {
+              sellingPrice = modalSellingPrice;
+            }
+            let taxExclusivePrice = sellingPrice; // Default to same price
+
+            if (item.taxincld_sellingprice && taxRateValue > 0) {
+              console.log("item.taxincld_sellingprice && taxRateValue > 0");
+              // If price includes GST, calculate the base price without tax
+              // Formula: base_price = inclusive_price / (1 + tax_rate/100)
+              //taxExclusivePrice = sellingPrice / (1 + (taxRateValue / 100));
+              taxExclusivePrice = Math.round((sellingPrice / (1 + (taxRateValue / 100))) * 100) / 100;
+
+              console.log('GST Inclusive - Selling Price:', sellingPrice, 
+                          'Tax Rate:', taxRateValue, 
+                          'Tax-Exclusive Price:', taxExclusivePrice);
+            }
+
+            const completeItemData = {
+              id: itemValue,
+              text: itemText,
+              description: item.hsn_code || item.sac_code || '',
+              price: sellingPrice,           // ✅ GST-inclusive price (as entered)
+              gstinclude: gstIncludeValue,
+              o_price: taxExclusivePrice,    // ✅ GST-exclusive price (calculated)
+              uom: item.unit || '',
+              tax_id: item.tax_id || '',
+              tax_name: item.tax_name || '',
+              tax_rate: taxRateValue,
+              tax_pref: item.tax_pref || 'taxable',
+              isNew: false
+            };
+            
+            console.log('Complete item data:', completeItemData);
+            
+            // Attach data to the option element
+            $(newOption).data(completeItemData).attr({
+              'data-price': completeItemData.price,
+              'data-o_price': completeItemData.o_price,
+              'data-gstinclude': completeItemData.gstinclude,
+              'data-tax_id': completeItemData.tax_id,
+              'data-tax_name': completeItemData.tax_name,
+              'data-tax_rate': completeItemData.tax_rate,
+              'data-tax_pref': completeItemData.tax_pref
+            });
+            
+            // Add option to select and select it
+            productSelect.empty().append(newOption).trigger('change');
+            
+            // ========================================
+            // CRITICAL FIX: Manually populate the row
+            // ========================================
+            productSelect.trigger({
+              type: 'select2:select',
+              params: { data: completeItemData }
+            });
+
+            // 1. Set description
+            $targetRow.find('.desc').val(completeItemData.description || '');
+            
+            // 2. Preserve exact base/document pricing after the shared select2 handler runs.
+            // completeItemData.price and completeItemData.o_price are base-currency values.
+            const fxRate = parseFloat($('#fx_rate_to_base').val()) || 1;
+            const exactBasePrice = parseFloat(completeItemData.price) || 0;
+            const exactBaseOPrice = parseFloat(completeItemData.o_price) || exactBasePrice;
+            const exactDocumentPrice = (fxRate && fxRate !== 1) ? (exactBasePrice / fxRate) : exactBasePrice;
+            const applyCreatedItemPrice = function() {
+              $targetRow.find('.gstinclude').val(completeItemData.gstinclude);
+              $targetRow.find('.o_price').val(exactBaseOPrice.toFixed(2));
+              $targetRow.find('.price').val(exactDocumentPrice.toFixed(2)).trigger('input');
+              $targetRow.find('.qty').val(1);
+              $targetRow.data('price_base', exactBasePrice);
+              $targetRow.data('o_price_base', exactBaseOPrice);
+              if (typeof setBasePriceDisplay === 'function') {
+                setBasePriceDisplay($targetRow, exactBasePrice);
+              }
+            };
+
+            applyCreatedItemPrice();
+            
+            // 4. Store tax_pref as data attribute on the row
+            $targetRow.data('tax-pref', completeItemData.tax_pref || '');
+            
+            // 5. Handle tax select based on tax preference
+            let $taxSelect = $targetRow.find('.tax-select');
+            $taxSelect.empty();
+            
+            console.log('Tax preference:', completeItemData.tax_pref);
+            console.log('Tax ID:', completeItemData.tax_id);
+            console.log('Tax Rate:', completeItemData.tax_rate);
+            
+            if (completeItemData.tax_pref === 'non_taxable') {
+              // For non-taxable items: disable tax select and show "Non-Taxable"
+              let nonTaxOption = new Option('Non-taxable', '', true, true);
+              $(nonTaxOption).data('rate', 0);
+              $taxSelect.append(nonTaxOption);
+              $taxSelect.prop('disabled', true);
+              $taxSelect.addClass('bg-light');
+              $taxSelect.data('rate', 0);
+              
+              // Disable select2 if initialized
+              if ($taxSelect.hasClass('select2-hidden-accessible')) {
+                $taxSelect.select2('destroy');
+              }
+            } else {
+              // For taxable items: enable and populate tax
+              $taxSelect.prop('disabled', false);
+              $taxSelect.removeClass('bg-light');
+              
+              if (completeItemData.tax_id && completeItemData.tax_name) {
+                // Create the tax option with the rate attached
+                let taxOption = new Option(
+                  completeItemData.tax_name, 
+                  completeItemData.tax_id, 
+                  true, 
+                  true
+                );
+                
+                // ✅ CRITICAL: Attach rate to option using jQuery data AND data-rate attribute
+                $(taxOption).data('rate', completeItemData.tax_rate);
+                $(taxOption).attr('data-rate', completeItemData.tax_rate);
+                
+                $taxSelect.append(taxOption);
+                
+                // ✅ CRITICAL: Also set rate on the select itself
+                $taxSelect.data('rate', completeItemData.tax_rate);
+                
+                console.log('Tax option created with rate:', completeItemData.tax_rate);
+                console.log('Tax select data-rate:', $taxSelect.data('rate'));
+              } else {
+                $taxSelect.data('rate', 0);
+              }
+              
+              // Re-initialize select2 if needed
+              if (!$taxSelect.hasClass('select2-hidden-accessible')) {
+                initTaxSelect($taxSelect);
+              } else {
+                $taxSelect.trigger('change');
+              }
+            }
+            
+            // 6. Set discount to 0
+            $targetRow.find('.item-discount').val(0);
+            $targetRow.find('.discount-type').val('flat');
+            
+            // 7. Update HSN if present
+            if (item.hsn_code) {
+              $targetRow.find('.hsn-input').val(item.hsn_code);
+              $targetRow.find('.hsn-display').text(item.hsn_code);
+            }
+            
+            // ========================================
+            // 8. CRITICAL: Update row amount and totals
+            // ========================================
+            console.log('Calling updateRowAmount...');
+            updateRowAmount($targetRow);
+            
+            console.log('Calling calculateTotals...');
+            calculateTotals();
+            
+            console.log('Row amount:', $targetRow.find('.amount').text());
+            setTimeout(function() {
+              applyCreatedItemPrice();
+              updateRowAmount($targetRow);
+              calculateTotals();
+              if (typeof validateForm === 'function') {
+                validateForm();
+              }
+            }, 100);
+          }
+          
+          // ✅ ALWAYS close modal after successful item creation (moved outside the row check)
+          closeAddItemModal();
+          window.activeItemSelectForNewItem = null;
+          
+          // CRITICAL FIX: Trigger validation after item is populated
+          setTimeout(function() {
+            if (typeof validateForm === 'function') {
+              validateForm();
+            }
+          }, 100);
+
+          
+
+          
+          // Show success message
+          //alert('Item created successfully!');
+        } else {
+          alert('Error: ' + (response.error || 'Failed to create item'));
+        }
+      },
+      error: function(xhr) {
+        console.error('Error:', xhr);
+        const errorMsg = xhr.responseJSON?.error || 'An error occurred while saving the item';
+        alert(errorMsg);
+      }
+    });
+  });
+  // Initialize modal when shown
+    $('#addItemModal').on('shown.bs.modal', function() {
+      console.log("addItemModal shown.bs.modal is calling");
+      // Initialize tax field visibility based on country when modal opens
+      updateTaxFieldsVisibility();
+      
+      // Reset Select2 instances to ensure fresh data
+      if ($('#item_intra_tax_select').hasClass('select2-hidden-accessible')) {
+        $('#item_intra_tax_select').val(null).trigger('change');
+      }
+      if ($('#item_inter_tax_select').hasClass('select2-hidden-accessible')) {
+        $('#item_inter_tax_select').val(null).trigger('change');
+      }
+      if ($('#item_default_tax_select').hasClass('select2-hidden-accessible')) {
+        $('#item_default_tax_select').val(null).trigger('change');
+      }
+    });
+  // Close modal cleanup
+    $('#addItemModal').on('hidden.bs.modal', function() {
+      console.log("addItemModal hidden.bs.modal is calling");
+      // Destroy all Select2 instances in the modal
+      $(this).find('.select2-hidden-accessible').each(function() {
+        $(this).select2('destroy');
+      });
+      
+      // ✅ Also reset the form when modal closes
+      document.getElementById('addItemForm').reset();
+    });
+    
+    // ✅ Make currentRowIndex accessible globally for the initItemSelect function
+    window.currentRowIndex = currentRowIndex;
+    window.setCurrentRowIndex = function(index) {
+      currentRowIndex = index;
+    };
+});
+</script>
+
+{% endblock scripts%}
+
+{% block content %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Sales Invoice</title>
+  <style>
+    button {
+    position: relative;
+  }
+
+  .savebtn:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+
+  .savebtn:disabled:hover::after {
+    content: "\26D4"; /* 🚫 block sign */
+    position: absolute;
+    color: red;
+    font-size: 1.5em;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+  }
+
+  .savebtn-wrapper {
+  display: inline-block;
+  position: relative;
+  cursor: not-allowed;
+}
+
+.savebtn:disabled {
+  opacity: 0.6;
+}
+
+    label {
+      display:block;
+     }
+    
+    input, select, textarea {
+      width: 100%;
+      padding: 5px 12px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      margin-bottom: 10px;
+      font-size: 1rem;
+      outline: none;
+    }
+    .totals-row span {
+      color:#7d7cad;
+      font-size: 15px;
+      font-weight:bold;
+    }
+
+     .totals-section {
+      max-width: 380px;
+      float: right;
+      margin-top: 24px;
+      margin-bottom: 36px;
+      padding: 16px;
+      background: #f7f7fa;
+      border-radius: 8px;
+      box-shadow: 0 1px 4px rgba(200,200,255,0.1);
+    }
+    .totals-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 1.01em;
+      margin-bottom: 8px;
+    }
+    .totals-row strong {
+      color: #43425d;
+    }
+    .totals-section select {
+      width: 90px;
+      margin-left: 12px;
+    }
+    .notes-box {
+      margin-top: 30px;
+      font-size: 1rem;
+    }
+    .notes-box textarea {
+      width: 50%;
+      height: 115px;
+      border-radius: 6px;
+      padding: 10px;
+      font-size: 1rem;
+    }
+    @media (max-width: 700px) {
+      .container { padding: 12px; }
+      .grid { gap: 16px; }
+      .totals-section { float: none; max-width: 100%; }
+    }
+    tbody tr:hover .delete-row {
+      display: inline-block !important;
+      cursor: pointer;
+    }
+
+    .amount {
+  font-family: 'Ubuntu', sans-serif !important;
+}
+.rupee-sign
+{
+    font-family: 'Ubuntu', sans-serif !important;
+
+}
+
+  </style>
+</head>
+<body>
+  <div class="container mt-4">
+    </h2>
+    <form id="salesinvoice-form" method="POST" action="{% url 'save_salesinvoice' %}">
+    {% csrf_token %}
+      {{ sales_formset.management_form }}
+
+      <div class="grid">
+          <p class="text-danger"><span >*</span>This field is required</p>
+
+        <div class="row">
+
+            <div class="col-md-6 mb-3">
+                <label for="{{ invoice_form.customer.id_for_label }}">Customer <span class="text-danger">*</span></label>
+                {{ invoice_form.customer|attr:"id:customer_select" }}
+                <script>
+                const csSelect = document.getElementById('customer_select') || document.getElementById('id_customer');
+                if(csSelect && !csSelect.id) csSelect.id = 'customer_select';
+                if (csSelect) csSelect.dataset.excludeInvoice = '';
+                // Ensure global holder exists
+                window.lastCustomerSearchTerm = window.lastCustomerSearchTerm || '';
+                
+                $(function() {
+                  $('#customer_select').select2({
+                    placeholder: 'Choose customer',
+                    allowClear: true,
+                    minimumInputLength: 0,
+                    ajax: {
+                      url: '/sales/customer/',
+                      dataType: 'json',
+                      delay: 250,
+                      data: function(params) {
+                        window.lastCustomerSearchTerm = params.term || '';
+                        return { q: params.term };
+                      },
+                      processResults: function(data) {
+                        let results = data.map(function(item) {
+                          return { id: item.id, text: item.name };
+                        });
+                        results.push({ id: 'new', text: '+ New Customer', isNew: true });
+                        return { results: results };
+                      },
+                      cache: true
+                    }
+                  });
+                });
+                </script>
+                <div id="customer-credit-summary" style="display:none; margin-top:8px; padding:12px; border-radius:8px; border:1px solid #e9ecef; background:#fff8e6;">
+                  <div style="font-weight:600; margin-bottom:4px;">Credit Limit</div>
+                  <div id="customer-credit-text" style="color:#444; font-size:0.95rem;"></div>
+                </div>
+
+                <div class="vendor-info" id="vendor-info" style="display:none; background:rgb(247,247,251); border: 1px solid #e9ecef; padding: 16px; border-radius: 8px; color: #333; margin-top: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.03);">
+                  <div style="display:flex; gap:24px; align-items:flex-start;">
+                    <div id="billing-block" style="width: 60%;">
+                      <strong style="color: #333; font-size: 0.95rem; display: block; margin-bottom: 6px;">BILLING ADDRESS</strong>
+                      <div id="billing-name" style="margin-top:6px; color: #333; font-weight: 700; font-size: 1.02rem;"></div>
+                      <div id="billing-address" style="color:#444; margin-top:6px; white-space: pre-line;"></div>
+                      <div id="billing-contact" style="color:#666; margin-top:6px;"></div>
+                      <div id="billing-gst" style="color:#666; margin-top:6px;"></div>
+                    </div>
+                    <div id="shipping-block" style="width: 40%;">
+                      <div class="shipping-header" style="display:flex; justify-content:space-between; align-items:center;">
+                        <strong style="color: #333; font-size: 0.95rem; display: block; margin-bottom: 6px;">SHIPPING ADDRESS</strong>
+                        <a href="#" id="edit-shipping-btn" title="Edit shipping address" style="color:#333; text-decoration:none;">✎</a>
+                      </div>
+                      <div id="shipping-name" style="margin-top:6px; color:#333; font-weight:700; font-size:1.02rem;">&nbsp;</div>
+                      <div id="shipping-address" style="color:#444; margin-top:6px; white-space:pre-line;">New Address</div>
+                      <div id="shipping-contact" style="color:#666; margin-top:6px;"></div>
+                    </div>
+                  </div>
+                  <div style="margin-top:6px; display:flex; align-items:center; gap:10px;">
+                    <label style="font-weight:600; margin:0;">Place of Supply:</label>
+                    <div id="place-of-supply" style="color:#444;"></div>
+                    <input type="hidden" name="place_of_supply" id="place_of_supply_hidden">
+                  </div>
+                </div>
+                <input type="hidden" name="shipping_attention" id="shipping_attention">
+                <input type="hidden" name="shipping_email" id="shipping_email">
+                <input type="hidden" name="shipping_phone" id="shipping_phone">
+                <input type="hidden" name="shipping_country" id="shipping_country">
+                <input type="hidden" name="shipping_address1" id="shipping_address1">
+                <input type="hidden" name="shipping_address2" id="shipping_address2">
+                <input type="hidden" name="shipping_city" id="shipping_city">
+                <input type="hidden" name="shipping_state" id="shipping_state">
+                <input type="hidden" name="shipping_postal_code" id="shipping_postal_code">
+                <br>
+            </div>
+            
+        </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-4 mb-3">
+                <label for="{{ invoice_form.date.id_for_label }}">Invoice Date <span class="text-danger">*</span></label>
+                {{ invoice_form.date}}
+                
+            </div>
+            <div class="col-md-4 mb-3">
+              <label for="document_currency">Document Currency</label>
+              <select
+                name="document_currency"
+                id="document_currency"
+                class="form-control select2"
+                data-base-symbol="{{ company_base_currency_symbol|default:"₹"|escape }}"
+                data-base-code="{{ company_base_currency_code|default:""|escape }}"
+              >
+                <option value="" data-symbol="{{ company_base_currency_symbol|default:"₹"|escape }}">Choose currency</option>
+                {% for cur in company_currencies %}
+                  {% with cur_symbol=cur.symbol|default:cur.code %}
+                    <option value="{{ cur.id }}" data-symbol="{{ cur_symbol|escape }}" {% if selected_currency_id and selected_currency_id == cur.id %}selected{% endif %}>{{ cur.code }}</option>
+                  {% endwith %}
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-4 mb-3">
+              <label for="fx_rate_to_base">Exchange Rate to Base </label>
+              <input type="text" name="fx_rate_to_base" id="fx_rate_to_base" class="form-control" placeholder="e.g. 83.2500" value="{% if fx_rate_to_base %}{{ fx_rate_to_base }}{% endif %}">
+              <label for="fx_rate_date" style="margin-top:6px;">Exchange Rate Date </label>
+              <input type="date" name="fx_rate_date" id="fx_rate_date" class="form-control" value="{% if fx_rate_date %}{{ fx_rate_date|date:'Y-m-d' }}{% endif %}">
+            </div>
+            <div class="col-md-4 mb-3">
+                <label for="{{ invoice_form.sales_person.id_for_label }}">Sales Person </label>
+                {{ invoice_form.sales_person|attr:"id:sales_person_select" }}
+                <script>
+                const spSelect = document.getElementById('sales_person_select') || document.getElementById('id_sales_person');
+                if(spSelect && !spSelect.id) spSelect.id = 'sales_person_select';
+                
+                $(function() {
+                  $('#sales_person_select').select2({
+                    placeholder: 'Choose sales person',
+                    allowClear: true,
+                    minimumInputLength: 0,
+                    ajax: {
+                      url: '/sales/sale_person/',
+                      dataType: 'json',
+                      delay: 250,
+                      data: function(params) {
+                        return { q: params.term };
+                      },
+                      processResults: function(data) {
+                        let results = data.map(function(item) {
+                          return { id: item.id, text: item.name };
+                        });
+                        results.push({
+                          id: 'new',
+                          text: '+ New Sales Person',
+                          isNew: true
+                        });
+                        return { results: results };
+                      },
+                      cache: true
+                    }
+                  });
+                });
+                </script>
+            </div>
+            <div class="col-md-4 mb-3">
+              <label for="pay-terms">Payment Terms</label>
+              <select id="pay-terms" name="payment_term" style="width:100%;">
+                {% if invoice and invoice.payment_term %}
+                  <option value="{{ invoice.payment_term.id }}" selected>{{ invoice.payment_term.name }} ({{ invoice.payment_term.days }})</option>
+                {% endif %}
+              </select>
+            </div>
+            
+        </div>
+
+      <div class="section-title" style="margin-top:30px;">Item Details<span class="text-danger"> *</span></div>
+      <table class="items-table" id="items-table">
+  <thead>
+    <tr>
+      <th class="col-md-3">Item</th>
+      <th>Description</th>
+      <th>Quantity</th>
+      <th>Price</th>
+      <th>Base Currency Price</th>
+      <th style="display:none;"></th>
+
+      <th class="col-md-2">Tax</th>
+      <th class="col-md-2">Discount</th>
+      <th>Amount</th>
+      <th></th>
+    </tr>
+  </thead>
+<tbody>
+   
+    {% for form in sales_formset %}
+        <tr>
+        <td>
+            {{ form.product }}
+            <div style="margin-top:6px;">
+              <a href="#" class="open-hsn-btn">HSN: <span class="hsn-display">{% if form.instance and form.instance.hsn_code %}{{ form.instance.hsn_code }}{% elif form.instance and form.instance.product and form.instance.product.hsn_code %}{{ form.instance.product.hsn_code }}{% endif %}</span> <small style="color:#3a7bd5;">Update</small></a>
+              <input type="hidden" name="{{ form.prefix }}-hsn_code" class="hsn-input" value="{% if form.instance and form.instance.hsn_code %}{{ form.instance.hsn_code }}{% elif form.instance and form.instance.product and form.instance.product.hsn_code %}{{ form.instance.product.hsn_code }}{% endif %}">
+            </div>
+        </td>
+          <td>{{ form.description }}</td>
+          <td>{{ form.quantity }}</td>
+          <td>{{ form.price }}</td>
+          <td class="base-price">
+            <input type="text" class="form-control form-control-sm o_price_display" name="{{ form.prefix }}-o_price_display" value="{% if form.initial.o_price %}{{ form.initial.o_price|floatformat:2 }}{% else %}{% endif %}" readonly>
+          </td>
+          <td>{{ form.prd_tax|add_class:"tax-select" }}</td>
+          <td class="discount-item" ><div style="display:flex;align-items:center; gap:4px;">{{ form.prd_disvalue }}{{ form.prd_distype }}</div></td>
+          <td style="display:none;">
+            <input type="hidden" name="{{ form.prefix }}-gstinclude" class="gstinclude" value="{{ form.initial.gstinclude|default:'false' }}">
+          </td>
+          <td style="display:none;">
+            <input type="hidden" name="{{ form.prefix }}-o_price" class="o_price" value="{{ form.initial.o_price|default:0 }}">
+          </td>
+          <td class="amount">₹{{ item.amount }}</td>
+          <td><button type="button" class="remove-item-btn">X</button></td>
+        </tr>
+      {% endfor %}
+  
+  </tbody> 
+
+
+
+</table>
+
+      <button type="button" id="add-item-btn" class="add-item-btn">+ Add an Item</button>
+
+     
+  <div class="totals-section">
+      <div class="totals-row">
+        <span>Subtotal</span>
+        <strong id="subtotal" style="font-family:Ubuntu;" name="subtotal" class="amount">₹0.00</strong>
+      </div>
+      {% if company_tax_type|default:''|upper != 'NONE' %}
+      <div class="totals-row">
+      </div>
+      {% if company_tax_type == 'GST' %}
+        <div class="totals-row">
+          <span>Total CGST</span>
+          <strong id="tax-total-cgst" class="amount">₹0.00</strong>
+        </div>
+        <div class="totals-row">
+          <span>Total SGST</span>
+          <strong id="tax-total-sgst" class="amount">₹0.00</strong>
+        </div>
+      {% else %}
+        <div class="totals-row">
+          {% if company_tax_type|default:''|upper == 'VAT' or company_tax_type|default:''|upper == 'SALES' or company_tax_type|default:''|upper == 'TURNOVER' %}
+            <span>Total Tax</span>
+          {% else %}
+            <span>Total VAT</span>
+          {% endif %}
+          <strong id="tax-total-vat" class="amount" style="font-family:'JetBrains Mono',monospace;font-weight:700;">₹0.00</strong>
+        </div>
+      {% endif %}
+      {% endif %}
+      <div class="totals-row">
+        <span>Add Discount</span>
+          <input type="number" id="grand-discount" value="{% if invoice.discount_value %}{{ invoice.discount_value }}{% else %}0{% endif %}" name="grand-discount-value" step="0.01" style="width:70px; margin-left:10px;">
+          <select id="grand-discount-type" name="discount_type" class="rupee-sign" >
+            <option value="percent" {% if invoice.discount_type == 'percent' %}selected{% endif %}>%</option>
+            <option value="flat" class="amount" {% if invoice.discount_type == 'flat' %}selected{% endif %}>&#x20B9;</option>
+          </select>
+          <strong id="grandDiscountValue" class="rupee-sign" style="padding-left:5px;">₹0.00</strong>
+      </div>
+      <div class="totals-row">
+        <span>Total Discount</span>
+        <strong id="discount-amount" class="amount">₹0.00</strong>
+      </div>
+      <hr>
+      {% if company_tax_type|default:''|upper == 'TURNOVER' %}
+      <div class="totals-row" style="align-items:flex-start;">
+        <span style="padding-top:6px;">Turnover Tax</span>
+        <select class="form-select" id="turnover_tax_select" name="turnover_tax" style="width: 55%; min-width: 160px;">
+          <option value="">Choose...</option>
+        </select>
+      </div>
+      <div class="totals-row">
+        <span>Turnover Tax Amount</span>
+        <strong id="turnover-tax-amount" class="amount">â‚¹0.00</strong>
+      </div>
+      {% endif %}
+      <div class="totals-row" style="margin-top:14px;">
+        <span style="font-size:1.2em; font-weight:600;">{% if company_tax_type|default:''|upper == 'TURNOVER' %}Final Total{% else %}Total{% endif %}</span>
+        <strong style="font-size:1.18em; color:#5a5c8a;" id="grand-total" class="amount">₹0.00</strong>
+        <input style="font-size:1.18em; color:#5a5c8a;" type="hidden" class="amount" name="grandTotal" id="grandTotal" value="0.00">
+
+      </div>
+    </div>
+
+    <!-- ===== BASE CURRENCY TRANSACTION - RESTYLED TO MATCH TOTALS SECTION ===== -->
+    <div class="totals-section" id="base-transaction-summary"
+         data-base-symbol="{{ company_base_currency_symbol|default:"&#x20B9;" }}"
+         data-base-code="{{ company_base_currency_code }}"
+         style="clear:both; margin-top:12px;">
+
+      <!-- Clickable header row with toggle arrow -->
+      <div class="totals-row"
+           id="base-transaction-toggle"
+           style="cursor:pointer; user-select:none;"
+           onclick="
+             var body = document.getElementById('base-transaction-body');
+             var arrow = document.getElementById('base-transaction-arrow');
+             if (body.style.display === 'none') {
+               body.style.display = 'block';
+               arrow.textContent = '▲';
+             } else {
+               body.style.display = 'none';
+               arrow.textContent = '▼';
+             }
+           ">
+        <span style="font-size:1.05em; font-weight:600;">
+          Base Currency Transaction{% if company_base_currency_code %} ({{ company_base_currency_code }}){% endif %}
+        </span>
+        <span id="base-transaction-arrow" style="color:#7d7cad; font-size:0.9em;">▲</span>
+      </div>
+
+      <!-- Collapsible body -->
+      <div id="base-transaction-body">
+        <div class="totals-row">
+          <span>Subtotal</span>
+          <strong id="base-subtotal" class="amount">{{ company_base_currency_symbol|default:"&#x20B9;" }}0.00</strong>
+        </div>
+        {% if company_tax_type|default:''|upper != 'NONE' %}
+        {% if company_tax_type == 'GST' %}
+          <div class="totals-row">
+            <span>CGST</span>
+            <strong id="base-tax-cgst" class="amount">{{ company_base_currency_symbol|default:"&#x20B9;" }}0.00</strong>
+          </div>
+          <div class="totals-row">
+            <span>SGST</span>
+            <strong id="base-tax-sgst" class="amount">{{ company_base_currency_symbol|default:"&#x20B9;" }}0.00</strong>
+          </div>
+        {% else %}
+          <div class="totals-row">
+            {% if company_tax_type|default:''|upper == 'VAT' or company_tax_type|default:''|upper == 'SALES' or company_tax_type|default:''|upper == 'TURNOVER' %}
+              <span>Tax</span>
+            {% else %}
+              <span>VAT</span>
+            {% endif %}
+            <strong id="base-tax-vat" class="amount">{{ company_base_currency_symbol|default:"&#x20B9;" }}0.00</strong>
+          </div>
+        {% endif %}
+        {% endif %}
+        <div class="totals-row">
+          <span>Total Discount</span>
+          <strong id="base-total-discount" class="amount">{{ company_base_currency_symbol|default:"&#x20B9;" }}0.00</strong>
+        </div>
+        <hr>
+        <div class="totals-row" style="margin-top:14px;">
+          <span style="font-size:1.2em; font-weight:600;">Grand Total</span>
+          <strong id="base-grand-total" class="amount" style="font-size:1.18em; color:#5a5c8a;">
+            {{ company_base_currency_symbol|default:"&#x20B9;" }}0.00
+          </strong>
+        </div>
+      </div>
+
+    </div>
+    <!-- ===== END BASE CURRENCY TRANSACTION ===== -->
+
+    <div class="notes-box">
+      <label for="notes">Notes</label>
+      <textarea name="notes" id="notes" placeholder="Enter Notes">{% if invoice.notes %}{{ invoice.notes }}{% endif %}</textarea>
+    </div>
+
+    <div class="mt-3 savebtn-wrapper" title="Please fill all the required fields">
+          <button type="submit" class="savebtn btn btn-primary">Save Invoice</button>
+        <button type="button" class="btn btn-secondary" id="cancel-button">Cancel</button>
+    </div>
+  </form>
+</div>
+
+{% comment %} Pay terms list modal {% endcomment %}
+<div class="modal fade" id="paymentTermsModal" tabindex="-1" aria-labelledby="paymentTermsLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="paymentTermsLabel">Configure Payment Terms</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <table class="items-table" style="width:100%;">
+          <thead>
+            <tr>
+              <th>TERM NAME</th>
+              <th>NUMBER OF DAYS</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- rows injected by JS -->
+          </tbody>
+        </table>
+        <div style="margin-top:12px;">
+          <button class="btn add-item-btn" id="addNew">+ Add New</button>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-primary" type="button">Save</button>
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+      <!-- Add Customer Modal (used by Select2 '+ New') -->
+      <div class="modal fade" id="addCustomerModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog ">
+          <div class="modal-content custom-modal-content">
+            <div id="addCustomerContainer">
+              <div class="modal-header border-0 pb-1">
+                <h5 class="modal-title fw-semibold">Add New Customer</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+              </div>
+              <div class="modal-body">
+                <!-- Form loaded dynamically via AJAX -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Shipping Address Modal -->
+      <div class="modal fade" id="shippingAddressModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title">Shipping Address</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <p><a href="#" id="copy-billing-btn" class="text-primary"><i class="bi bi-arrow-down"></i> Copy billing address</a></p>
+              <form id="shippingAddressForm">
+                <div class="mb-2">
+                  <label>Attention</label>
+                  <input type="text" id="sa_attention" class="form-control" placeholder="Attention">
+                </div>
+                <div class="mb-2">
+                  <label>Email</label>
+                  <input type="email" id="sa_email" class="form-control" placeholder="Email">
+                </div>
+                <div class="mb-2">
+                  <label>Phone</label>
+                  <input type="text" id="sa_phone" class="form-control" placeholder="Phone">
+                </div>
+                <div class="mb-2">
+                  <label>Country/Region</label>
+                  <select id="sa_country" class="form-control select2 location-country-select" data-current-value="{{ shipping_country|default:'' }}">
+                    <option value="">Select Country</option>
+                    {% if shipping_country %}<option value="{{ shipping_country }}" selected>{{ shipping_country }}</option>{% endif %}
+                  </select>
+                </div>
+                <div class="mb-2">
+                  <label>Address Line 1</label>
+                  <textarea id="sa_address1" class="form-control" rows="2" placeholder="Address Line 1"></textarea>
+                </div>
+                <div class="mb-2">
+                  <label>Address Line 2</label>
+                  <textarea id="sa_address2" class="form-control" rows="2" placeholder="Address Line 2"></textarea>
+                </div>
+                <div class="row">
+                  <div class="col-md-4 mb-2">
+                    <label>State</label>
+                    <select id="sa_state" class="form-control select2 location-state-select" data-country-field="sa_country" data-city-field="sa_city" data-current-value="{{ shipping_state|default:'' }}">
+                      <option value="">Select State</option>
+                      {% if shipping_state %}<option value="{{ shipping_state }}" selected>{{ shipping_state }}</option>{% endif %}
+                    </select>
+                  </div>
+                  <div class="col-md-6 mb-2">
+                    <label>City</label>
+                    <select id="sa_city" class="form-control select2 location-city-select" data-country-field="sa_country" data-state-field="sa_state" data-current-value="{{ shipping_city|default:'' }}" data-initial-value="{{ shipping_city|default:'' }}">
+                      <option value="">Select City</option>
+                      {% if shipping_city %}<option value="{{ shipping_city }}" selected>{{ shipping_city }}</option>{% endif %}
+                    </select>
+                  </div>
+                  <div class="col-md-2 mb-2">
+                    <label>Pin Code</label>
+                    <input type="text" id="sa_postal" class="form-control">
+                  </div>
+                </div>
+              </form>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+              <button type="button" class="btn btn-primary" id="saveShippingBtn">Save</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+        <script>
+      document.addEventListener('DOMContentLoaded', function () {
+        // Customer Contact Add/Remove (delegated for modal + page forms)
+        document.addEventListener('click', function(e) {
+          if (e.target && (e.target.id === 'add-customer-contact' || e.target.id === 'add-contact')) {
+            let container = document.getElementById('customer-contact-persons-container') || document.getElementById('contact-persons-container') || document.getElementById('vendor-contact-persons-container');
+            if (!container) return;
+            const row = document.createElement('div');
+            row.className = 'row contact-row mb-2';
+            row.innerHTML = `
+              <div class="col-md-4">
+                <input type="text" name="contact_name" class="form-control" placeholder="Name">
+              </div>
+              <div class="col-md-4">
+                <input type="email" name="contact_email" class="form-control" placeholder="Email">
+              </div>
+              <div class="col-md-3">
+                <input type="text" name="contact_phone" class="form-control" placeholder="Phone">
+              </div>
+              <div class="col-md-1">
+                <button type="button" class="btn btn-danger remove-contact">Delete</button>
+              </div>
+            `;
+            container.appendChild(row);
+          }
+          if (e.target && e.target.classList && e.target.classList.contains('remove-contact')) {
+            const row = e.target.closest('.contact-row');
+            if (row) row.remove();
+          }
+        });
+      });
+      </script>
+
+
+<!-- Add Unit Modal -->
+<div class="modal fade" id="addUnitModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Add New Unit</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="addUnitForm">
+          <div class="mb-3">
+            <label for="unit_name" class="form-label">Unit Name <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" id="unit_name" name="name" required>
+          </div>
+         
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="saveUnitBtn">Save Unit</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="salepersonCreateModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog ">
+    <div class="modal-content custom-modal-content">
+      <form id="salepersonCreateForm" method="post" autocomplete="off">
+        <div class="modal-header border-0 pb-1">
+          <h5 class="modal-title fw-semibold">New Sales Person</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <!-- Form loaded dynamically via AJAX -->
+        </div>
+        <div class="modal-footer border-0 pt-1 d-flex">
+          <button type="submit" class="btn btn-primary">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+<!-- Invoice Action Modal - Shows after successful save added on 16-2-26 -->
+<div class="modal fade" id="invoiceActionModal" tabindex="-1" role="dialog" aria-labelledby="invoiceActionModalLabel" aria-hidden="true" data-backdrop="static" data-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header text-green justify-content-center">
+                <h5 class="modal-title" id="invoiceActionModalLabel" style="color: #28a745 !important;width: 95% !important;
+    text-align: center;">
+                    <i class="fas fa-check-circle"></i> Invoice Saved Successfully!
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center py-4">
+                <p class="mb-3" style="color: #55588b !important;">Invoice <strong id="invoiceNumber" style="color: #28a745; font-size: 1.1em;"></strong> has been created.</p>
+                <p class="text-muted mb-2" style="color: #55588b !important;">Customer: <span id="customerName" style="font-weight: 600;"></span></p>
+                <p class="text-muted mb-2" style="color: #55588b !important;">Amount: <strong id="invoiceAmount" style="color: #333; font-size: 1.1em;"></strong></p>
+                <hr class="my-3">
+                <p class="text-muted mt-3" style="color: #55588b !important;">What would you like to do next?</p>
+            </div>
+            <div class="modal-footer justify-content-center border-0 pb-4">
+                <button type="button" class="btn btn-primary btn-lg mx-2" id="printInvoiceBtn">
+                    <i class="fas fa-print"></i> Print Invoice
+                </button>
+                <button type="button" class="btn btn-success btn-lg mx-2" id="payInvoiceBtn">
+                    <i class="fas fa-credit-card"></i> Record Payment
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+  <script>
+document.addEventListener('DOMContentLoaded', function () {
+    const toastContainer = document.getElementById('toastContainer');
+    {% if messages %}
+      {% for message in messages %}
+        const toastEl = document.createElement('div');
+        toastEl.className = 'toast align-items-center text-bg-{{ message.tags }} border-0';
+        toastEl.setAttribute('role', 'alert');
+        toastEl.setAttribute('aria-live', 'assertive');
+        toastEl.setAttribute('aria-atomic', 'true');
+        toastEl.innerHTML = `
+          <div class="d-flex">
+            <div class="toast-body">
+              {{ message|escapejs }}
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+          </div>
+        `;
+        toastContainer.appendChild(toastEl);
+
+        const toast = new bootstrap.Toast(toastEl, { delay: 3000 });
+        toast.show();
+      {% endfor %}
+    {% endif %}
+  });
+
+</script>
+<script>
+  window.customerCreditData = null;
+  window.renderCustomerCreditSummary = function(creditData) {
+    window.customerCreditData = creditData || null;
+    const summary = document.getElementById('customer-credit-summary');
+    const text = document.getElementById('customer-credit-text');
+    if (!summary || !text) {
+      return;
+    }
+    if (!creditData || creditData.credit_limit === null) {
+      summary.style.display = 'none';
+      text.textContent = '';
+      return;
+    }
+
+    const invoiceAmount = parseFloat(document.getElementById('grandTotal')?.value || '0') || 0;
+    const outstanding = parseFloat(creditData.outstanding_amount || '0') || 0;
+    const limit = parseFloat(creditData.credit_limit || '0') || 0;
+    const projected = outstanding + invoiceAmount;
+    const exceeded = projected > limit;
+
+    summary.style.display = 'block';
+    summary.style.background = exceeded ? '#fdeaea' : '#fff8e6';
+    summary.style.borderColor = exceeded ? '#e5a4a4' : '#e9ecef';
+    text.textContent = `Credit Limit: Rs. ${limit.toFixed(2)} | Outstanding: Rs. ${outstanding.toFixed(2)} | This Invoice: Rs. ${invoiceAmount.toFixed(2)} | Projected: Rs. ${projected.toFixed(2)}${exceeded ? ` | Exceeded By: Rs. ${(projected - limit).toFixed(2)}` : ''}`;
+  };
+  window.refreshCustomerCreditSummary = function() {
+    window.renderCustomerCreditSummary(window.customerCreditData);
+  };
+</script>
+<script>
+  //added on 16-2-26 to handle invoice action modal after save by neha
+$(document).ready(function() {
+    console.log('Invoice Action Modal Script Loaded');
+    
+    let savedInvoiceId = null;
+    let savedInvoiceNumber = null;
+
+    if ($('#salesinvoice-form').length === 0) {
+        console.error('ERROR: Form with id="salesinvoice-form" not found!');
+    } else {
+        console.log('✓ Form found');
+    }
+
+    if ($('#invoiceActionModal').length === 0) {
+        console.error('ERROR: Modal with id="invoiceActionModal" not found!');
+    } else {
+        console.log('✓ Modal found');
+    }
+
+    // Intercept form submission
+    $('#salesinvoice-form').on('submit', function(e) {
+        e.preventDefault();
+        console.log('=== Form Submitted ===');
+        
+        var csrftoken = $('[name=csrfmiddlewaretoken]').val();
+        console.log('CSRF Token:', csrftoken ? '✓ Found' : '✗ NOT FOUND');
+        
+        var formData = new FormData(this);
+
+        var lineItems = [];
+        $('#items-table tbody tr').each(function() {
+            var $row = $(this);
+            if ($row.is(':hidden')) {
+                return;
+            }
+
+            var productValue = ($row.find('.item_select').val() || '').toString().trim();
+            if (!productValue) {
+                return;
+            }
+
+            lineItems.push({
+                product_id: productValue,
+                prd_brcd: (($row.find('input[name$="-prd_brcd"], input[name*="[prd_brcd]"]').val()) || '').toString().trim(),
+                hsn_code: (($row.find('.hsn-input').val()) || '').toString().trim(),
+                discount: (($row.find('.item-discount').val()) || '0').toString().trim(),
+                discount_type: (($row.find('.discount-type').val()) || 'flat').toString().trim(),
+                quantity: (($row.find('.qty').val()) || '0').toString().trim(),
+                price: (($row.find('.price').val()) || '0').toString().trim(),
+                o_price: (($row.find('.o_price').val()) || '0').toString().trim(),
+                tax_token: (($row.find('.tax-select').val()) || '').toString().trim()
+            });
+        });
+
+        formData.set('line_items_json', JSON.stringify(lineItems));
+        
+        var $saveBtn = $('.savebtn');
+        var originalBtnText = $saveBtn.html();
+        $saveBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Saving...');
+        
+        console.log('Sending AJAX request...');
+        
+        $.ajax({
+            url: $(this).attr('action'),
+            type: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': csrftoken
+            },
+            success: function(response) {
+                console.log('=== AJAX Success ===');
+                console.log('Response:', response);
+                
+                if (response.success) {
+                    savedInvoiceId = response.invoice_id;
+                    savedInvoiceNumber = response.invoice_number;
+                    
+                    console.log('✓ Invoice ID:', savedInvoiceId);
+                    console.log('✓ Invoice Number:', savedInvoiceNumber);
+                    console.log('✓ Customer:', response.customer_name);
+                    console.log('✓ Amount:', response.total_amount);
+                    
+                    $('#invoiceNumber').text(response.invoice_number);
+                    $('#customerName').text(response.customer_name || 'N/A');
+                    
+                    var currSym = '₹';
+                    var currSelect = document.getElementById('document_currency');
+                    if (currSelect && currSelect.options[currSelect.selectedIndex]) {
+                        currSym = currSelect.options[currSelect.selectedIndex].getAttribute('data-symbol') || '₹';
+                    }
+                    $('#invoiceAmount').text(currSym + ' ' + parseFloat(response.total_amount).toFixed(2));
+                    
+                    $saveBtn.prop('disabled', false).html(originalBtnText);
+                    
+                    console.log('✓ Showing modal...');
+                    $('#invoiceActionModal').modal('show');
+                } else {
+                    console.error('✗ Response success is false');
+                    var errorMsg = response.error || 'Unknown error';
+                    const errorBodyElement = document.getElementById('errorModalBody');
+                    if (errorBodyElement) {
+                        errorBodyElement.innerHTML = errorMsg.replace(/\n/g, '<br>');
+                        const errorModal = new bootstrap.Modal(document.getElementById('errorModal'));
+                        errorModal.show();
+                    } else {
+                        alert('Error: ' + errorMsg);
+                    }
+                    $saveBtn.prop('disabled', false).html(originalBtnText);
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('=== AJAX Error ===');
+                console.error('Status:', status);
+                console.error('Error:', error);
+                console.error('Status Code:', xhr.status);
+                console.error('Response Text:', xhr.responseText);
+                
+                $saveBtn.prop('disabled', false).html(originalBtnText);
+                
+                try {
+                    var errorResponse = JSON.parse(xhr.responseText);
+                    var errorMsg = errorResponse.error || 'An error occurred while saving the invoice';
+                    const errorBodyElement = document.getElementById('errorModalBody');
+                    if (errorBodyElement) {
+                        errorBodyElement.innerHTML = errorMsg.replace(/\n/g, '<br>');
+                        const errorModal = new bootstrap.Modal(document.getElementById('errorModal'));
+                        errorModal.show();
+                    } else {
+                        alert('Error: ' + errorMsg);
+                    }
+                } catch(e) {
+                    var errorMsg = 'An error occurred while saving the invoice. Check console for details.';
+                    const errorBodyElement = document.getElementById('errorModalBody');
+                    if (errorBodyElement) {
+                        errorBodyElement.innerHTML = errorMsg;
+                        const errorModal = new bootstrap.Modal(document.getElementById('errorModal'));
+                        errorModal.show();
+                    } else {
+                        alert(errorMsg);
+                    }
+                }
+            }
+        });
+        
+        return false;
+    });
+
+    // Print Invoice Button
+    $('#printInvoiceBtn').on('click', function() {
+        console.log('Print button clicked, Invoice ID:', savedInvoiceId);
+        if (savedInvoiceId) {
+            window.open('/sales/sales/invoice/' + savedInvoiceId + '/print/?print=1', '_blank');
+            new bootstrap.Tab(document.querySelector('#new-invoice-tab')).show();
+        } else {
+            console.error('No invoice ID saved!');
+            alert('Error: Invoice ID not found');
+        }
+    });
+
+    // Pay Invoice Button
+    $('#payInvoiceBtn').on('click', function() {
+        console.log('Pay button clicked, Invoice ID:', savedInvoiceId);
+        if (savedInvoiceId) {
+            window.location.href = '/sales/sales/payment_recieved/' + savedInvoiceId + '/';
+        } else {
+            console.error('No invoice ID saved!');
+            alert('Error: Invoice ID not found');
+        }
+    });
+
+    // Close Button
+    $('#closeModalBtn').on('click', function() {
+        console.log('Close button clicked');
+        $('#invoiceActionModal').modal('hide');
+        window.location.href = "{% url 'sales_inv_list' %}";
+    });
+
+    $('#invoiceActionModal').on('shown.bs.modal', function() {
+        console.log('✓ Modal is now visible');
+    });
+
+    $('#invoiceActionModal').on('hidden.bs.modal', function() {
+        console.log('Modal closed - redirecting to list');
+        window.location.href = "{% url 'sales_inv_list' %}";
+    });
+});
+</script>
+</body>
+
+
+<!-- Simplified Add New Item Modal - Only Essential Fields -->
+<div class="modal fade" id="addItemModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Add New Item</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="addItemForm" novalidate>
+          
+         <!-- Type Selection -->
+          <div class="row mb-3">
+            <div class="col-md-12">
+              <label class="form-label">Type<span class="text-danger">*</span></label>
+              <div class="d-flex gap-3" style="align-items: center;">
+                <div style="display: flex; align-items: center;">
+                  <input type="radio" name="type" value="goods" checked id="type_goods" style="margin: 0; margin-right: 8px;">
+                  <label for="type_goods" style="margin: 0; line-height: 1; cursor: pointer;">Goods</label>
+                </div>
+                <div style="display: flex; align-items: center;">
+                  <input type="radio" name="type" value="service" id="type_service" style="margin: 0; margin-right: 8px;">
+                  <label for="type_service" style="margin: 0; line-height: 1; cursor: pointer;">Service</label>
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- Basic Information -->
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <label for="item_name" class="form-label">Name<span class="text-danger">*</span></label>
+              <input type="text" class="form-control" name="name" id="item_name" required>
+            </div>
+            <div class="col-md-6">
+              <label for="item_unit_select" class="form-label">Default Unit<span class="text-danger">*</span></label>
+              <select class="form-select" name="unit" id="item_unit_select" style="width: 100%;" required>
+                <option value="">Choose...</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <label for="item_barcode" class="form-label">Barcode</label>
+              <input type="text" class="form-control" name="barcode" id="item_barcode">
+            </div>
+            <div class="col-md-6">
+              <label for="item_tax_pref" class="form-label">Tax Preference<span class="text-danger">*</span></label>
+              <select class="form-select" name="tax_pref" id="item_tax_pref">
+                <option value="taxable">Taxable</option>
+                <option value="non_taxable">Non-Taxable</option>
+              </select>
+            </div>
+          </div>
+
+          <hr>
+
+          <!-- Purchase Information Section -->
+          <div class="card p-3 mb-3">
+            <div class="row mb-2">
+              <div class="col-md-5">
+                <label class="form-label">Selling Price<span class="text-danger">*</span></label>
+                <div class="input-group">
+                  <span class="input-group-text">INR</span>
+                  <input type="number" class="form-control" name="selling_price" id="item_selling_price" min="0.01" step="0.01" required>
+                </div>
+              </div>
+              <div class="col-md-6" id="item_tax_fields">
+                <div class="row mb-2" id="item_indian_tax_fields">
+                  <div class="col-md-6">
+                    <label for="item_intra_tax_select" class="form-label">Intra State Tax Rate</label>
+                    <select class="form-select" name="intra_tax" id="item_intra_tax_select" style="width: 100%;">
+                      <option value="">Choose...</option>
+                    </select>
+                  </div>
+                  <div class="col-md-6">
+                    <label for="item_inter_tax_select" class="form-label">Inter State Tax Rate</label>
+                    <select class="form-select" name="inter_tax_group" id="item_inter_tax_select" style="width: 100%;">
+                      <option value="">Choose...</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="row mb-2" id="item_default_tax_fields" style="display: none;">
+                  <div class="col-md-12">
+                    <label for="item_default_tax_select" class="form-label">Tax Rate</label>
+                    <select class="form-select" name="tax" id="item_default_tax_select" style="width: 100%;">
+                      <option value="">Choose...</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="row mb-2" id="item_sales_purchase_tax_fields" style="display: none;">
+                  <div class="col-md-6">
+                    <label for="item_sales_tax_select" class="form-label">Sales Tax Rate</label>
+                    <select class="form-select" name="sales_tax" id="item_sales_tax_select" style="width: 100%;">
+                      <option value="">Choose...</option>
+                    </select>
+                  </div>
+                  <div class="col-md-6">
+                    <label for="item_purchase_tax_select" class="form-label">Purchase Tax Rate</label>
+                    <select class="form-select" name="purchase_tax" id="item_purchase_tax_select" style="width: 100%;">
+                      <option value="">Choose...</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="row mb-2" id="item_gst_inclusive_row">
+              <div class="col-md-12">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" id="item_taxincld_sellingprice" name="taxincld_sellingprice">
+                  <label class="form-check-label" for="item_taxincld_sellingprice">
+                    Price is inclusive of Tax
+                  </label>
+                </div>
+              </div>
+            </div>
+            
+          </div>
+
+          <!-- Hidden fields to satisfy backend validation -->
+          <input type="hidden" name="sales_info" value="on">
+          <input type="hidden" name="purchase_info" value="on">
+
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" id="saveNewItemBtn" class="btn btn-primary">Save Item</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- HSN Modal for items (bottom of template) -->
+<div class="modal fade" id="hsnModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">HSN Code</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <label for="hsn_select">HSN Code</label>
+        <select id="hsn_select" style="width:100%"></select>
+      </div>
+      <div class="modal-footer">
+        <button type="button" id="hsn_save_btn" class="btn btn-primary">Save</button>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ERROR MODAL FOR PERIOD LOCK AND OTHER ERRORS -->
+<div class="modal fade" id="errorModal" tabindex="-1" aria-labelledby="errorModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="border: 2px solid #d9534f; border-radius: 8px;">
+      <div class="modal-header" style="background-color: #f8d7da; border-bottom: 2px solid #d9534f;">
+        <h5 class="modal-title" id="errorModalLabel" style="color: #721c24;">
+          <i class="bi bi-exclamation-circle" style="color: #d9534f;"></i> Error
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="errorModalBody" style="color: #721c24; padding: 20px; line-height: 1.6;">
+        <!-- Error message will be inserted here -->
+      </div>
+      <div class="modal-footer" style="border-top: 1px solid #dee2e6;">
+        <button type="button" class="btn btn-primary" data-bs-dismiss="modal">OK</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Show error modal if there's an error message
+document.addEventListener('DOMContentLoaded', function() {
+  const showErrorModal = {{ show_error_modal|lower|default:"false" }};
+  const errorMessage = `{{ error_message|escapejs }}`;
+  
+  if (showErrorModal && errorMessage) {
+    const errorBodyElement = document.getElementById('errorModalBody');
+    errorBodyElement.innerHTML = errorMessage.replace(/\n/g, '<br>');
+    
+    const errorModal = new bootstrap.Modal(document.getElementById('errorModal'));
+    errorModal.show();
+  }
+});
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  function allowSubUnitPrices(scope) {
+    (scope || document).querySelectorAll('input.price').forEach(function (input) {
+      input.setAttribute('min', '0.01');
+      input.setAttribute('step', '0.01');
+    });
+  }
+
+  allowSubUnitPrices(document);
+
+  const itemsTable = document.getElementById('items-table');
+  if (itemsTable) {
+    new MutationObserver(function (mutations) {
+      mutations.forEach(function (mutation) {
+        mutation.addedNodes.forEach(function (node) {
+          if (node.nodeType === 1) {
+            allowSubUnitPrices(node);
+          }
+        });
+      });
+    }).observe(itemsTable, { childList: true, subtree: true });
+  }
+});
+</script>
+
+</html>
+
+{% endblock %}

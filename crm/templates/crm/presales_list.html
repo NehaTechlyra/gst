@@ -1,0 +1,292 @@
+{% extends 'website/index.html' %}
+{% load static %}
+{% block exstyle %}
+<link href="{% static 'style/general.css' %}" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.9.1/font/bootstrap-icons.css" rel="stylesheet">
+{% endblock exstyle %}
+{% block page_title %}Pre-Sales{% endblock page_title %}
+{% block content %}
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+
+        <!-- Left side: Add New button -->
+        {% if request.user.is_superuser or can_create_crm_presales %}
+        <a href="{% url 'presales_create' %}" class="btn btn-success">+ Add New</a>
+        {% else %}
+        <div></div>
+        {% endif %}
+
+        <!-- Right side: Search Box -->
+        <form method="get" class="d-flex mb-3" id="presalesSearchForm">
+            <input type="text" name="q" id="presalesSearchInput" class="form-control me-2"
+                   placeholder="&#x1F50D;&#xFE0E; Search pre-sales..."
+                   value="{{ search_query }}">
+        </form>
+
+    </div>
+
+    {% if presales %}
+    <table class="items-table" id="presalesTableContainer">
+        <thead>
+            <tr>
+                <th scope="col" class="si-no">No.</th>
+                <th>Customer Name</th>
+                <th>Interaction Type</th>
+                <th>Product</th>
+                <th>Contact</th>
+                <th>Assigned Employee</th>
+                <th>Created At</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for presale in presales %}
+            <tr>
+                <td class="si-no">{{ presales.start_index|add:forloop.counter0 }}</td>
+                <td>
+                    <a href="{% url 'presales_detail' presale.pk %}" class="primary-link">
+                        {{ presale.customer_name }}
+                    </a>
+                </td>
+                <td>
+                    <span class="badge bg-info">{{ presale.get_type_display }}</span>
+                </td>
+                <td>{{ presale.product|default:"-" }}</td>
+                <td>{{ presale.contact|default:"-" }}</td>
+                <td>{% if presale.assigned_employee %}{{ presale.assigned_employee }}{% else %}-{% endif %}</td>
+                <td>{{ presale.created_at|date:"Y-m-d" }}</td>
+                <td>
+                    <div class="presales-actions" style="margin-top: 5px;">
+                        <a href="{% url 'presales_detail' presale.pk %}" class="btn add-item-btn">View</a>
+                        {% if request.user.is_superuser or can_edit_crm_presales %}
+                        <a href="{% url 'presales_edit' presale.pk %}" class="btn add-item-btn">Edit</a>
+                        {% endif %}
+                        {% if request.user.is_superuser or can_delete_crm_presales %}
+                        <button
+                            type="button"
+                            class="btn btn-sm delete-btn delete-presale-btn"
+                            data-presale-id="{{ presale.pk }}">
+                            <span class="bi bi-trash"></span>
+                        </button>
+                        {% endif %}
+                        <a href="{% url 'model_object_activity_log_list' 'PreSales' presale.id %}">
+                            <span class="bi bi-clock-history"></span>
+                        </a>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="alert alert-info text-center">
+        No pre-sales records found.
+        {% if request.user.is_superuser or can_create_crm_presales %}
+            <a href="{% url 'presales_create' %}" class="alert-link">Add your first Pre-Sales record</a>.
+        {% endif %}
+    </div>
+    {% endif %}
+
+</div>
+
+<!-- Pagination -->
+{% if presales.paginator.num_pages > 1 %}
+<nav aria-label="Page navigation" class="mt-3 Page-navigation">
+    <ul class="pagination">
+        {% if presales.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?q={{ search_query }}&page={{ presales.previous_page_number }}">&laquo;</a>
+            </li>
+        {% else %}
+            <li class="page-item disabled"><span class="page-link">&laquo;</span></li>
+        {% endif %}
+
+        {% for num in presales.paginator.page_range %}
+            {% if num <= 1 %}
+                {% if num == presales.number %}
+                    <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                {% else %}
+                    <li class="page-item"><a class="page-link" href="?q={{ search_query }}&page={{ num }}">{{ num }}</a></li>
+                {% endif %}
+            {% elif num >= presales.number|add:'-1' and num <= presales.number|add:'1' %}
+                {% if num == presales.number %}
+                    <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                {% else %}
+                    <li class="page-item"><a class="page-link" href="?q={{ search_query }}&page={{ num }}">{{ num }}</a></li>
+                {% endif %}
+            {% elif num > presales.paginator.num_pages|add:'-1' %}
+                {% if num == presales.number %}
+                    <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                {% else %}
+                    <li class="page-item"><a class="page-link" href="?q={{ search_query }}&page={{ num }}">{{ num }}</a></li>
+                {% endif %}
+            {% elif num == 2 and presales.number > 2 %}
+                <li class="page-item disabled"><span class="page-link">...</span></li>
+            {% elif num == presales.paginator.num_pages|add:'-1' and presales.number < presales.paginator.num_pages|add:'-1' %}
+                <li class="page-item disabled"><span class="page-link">...</span></li>
+            {% endif %}
+        {% endfor %}
+
+        {% if presales.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?q={{ search_query }}&page={{ presales.next_page_number }}">&raquo;</a>
+            </li>
+        {% else %}
+            <li class="page-item disabled"><span class="page-link">&raquo;</span></li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+
+<!-- Delete Prompt Modal -->
+<div id="deletePromptPresale" class="prompt-modal">
+    <div class="prompt-modal-content">
+        <p>Are you sure you want to delete this pre-sales record?</p>
+        <div class="prompt-buttons">
+            <button id="confirmDeletePresale" class="prompt-btn prompt-ok-btn">OK</button>
+            <button id="cancelDeletePresale" class="prompt-btn prompt-cancel-btn">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<script>
+function submitDeletePresale(presaleId, rowToRemove) {
+    const csrfToken = document.querySelector('input[name="csrfmiddlewaretoken"]')?.value;
+
+    const pathParts = window.location.pathname.split('/').filter(p => p);
+    const companyCode = pathParts[0];
+    const deleteUrl = '/' + companyCode + '/crm/presales/delete/' + presaleId + '/';
+
+    const formData = new FormData();
+    if (csrfToken) formData.append('csrfmiddlewaretoken', csrfToken);
+
+    return fetch(deleteUrl, {
+        method: 'POST',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        body: formData
+    })
+    .then(function(response) {
+        if (!response.ok) throw new Error('Error deleting record. Status: ' + response.status);
+        if (rowToRemove) {
+            rowToRemove.remove();
+        } else {
+            location.reload();
+        }
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const toastContainer = document.getElementById('toastContainer');
+
+    {% if messages %}
+    {% for message in messages %}
+    (function() {
+        const toastEl = document.createElement('div');
+        toastEl.className = 'toast align-items-center text-bg-{{ message.tags }} border-0';
+        toastEl.setAttribute('role', 'alert');
+        toastEl.setAttribute('aria-live', 'assertive');
+        toastEl.setAttribute('aria-atomic', 'true');
+        toastEl.innerHTML = `
+            <div class="d-flex">
+                <div class="toast-body">{{ message|escapejs }}</div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>`;
+        toastContainer.appendChild(toastEl);
+        const toast = new bootstrap.Toast(toastEl, { delay: 3000 });
+        toast.show();
+    })();
+    {% endfor %}
+    {% endif %}
+
+    let pendingDelete = { presaleId: null, row: null };
+
+    function showDeleteModal(presaleId, row) {
+        pendingDelete.presaleId = presaleId;
+        pendingDelete.row = row || null;
+        const modal = document.getElementById('deletePromptPresale');
+        if (modal) modal.style.display = 'flex';
+    }
+
+    function hideDeleteModal() {
+        const modal = document.getElementById('deletePromptPresale');
+        if (modal) modal.style.display = 'none';
+        pendingDelete.presaleId = null;
+        pendingDelete.row = null;
+    }
+
+    function showToast(message, type) {
+        try {
+            if (typeof bootstrap !== 'undefined' && bootstrap.Toast && toastContainer) {
+                const toastEl = document.createElement('div');
+                toastEl.className = 'toast align-items-center text-bg-' + (type || 'success') + ' border-0';
+                toastEl.setAttribute('role', 'alert');
+                toastEl.setAttribute('aria-live', 'assertive');
+                toastEl.setAttribute('aria-atomic', 'true');
+                toastEl.innerHTML = '<div class="d-flex"><div class="toast-body">' + message + '</div><button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button></div>';
+                toastContainer.appendChild(toastEl);
+                const toast = new bootstrap.Toast(toastEl, { delay: 3000 });
+                toast.show();
+                toastEl.addEventListener('hidden.bs.toast', function() { try { toastEl.remove(); } catch(e){} });
+                return;
+            }
+        } catch(e) {}
+        const el = document.createElement('div');
+        el.textContent = message;
+        el.style.cssText = 'position:fixed;right:20px;bottom:20px;background:' + (type === 'danger' ? '#d9534f' : '#28a745') + ';color:#fff;padding:10px 14px;border-radius:6px;z-index:20000;box-shadow:0 4px 10px rgba(0,0,0,0.12)';
+        document.body.appendChild(el);
+        setTimeout(function() { try { el.remove(); } catch(e){} }, 3500);
+    }
+
+    document.addEventListener('click', function(e) {
+        const btn = e.target.closest('.delete-presale-btn');
+        if (!btn) return;
+        e.preventDefault();
+        e.stopPropagation();
+        const presaleId = btn.getAttribute('data-presale-id');
+        if (!presaleId) return;
+        showDeleteModal(presaleId, btn.closest('tr'));
+    });
+
+    const confirmBtn = document.getElementById('confirmDeletePresale');
+    const cancelBtn = document.getElementById('cancelDeletePresale');
+
+    if (confirmBtn) {
+        confirmBtn.addEventListener('click', function() {
+            if (!pendingDelete.presaleId) { hideDeleteModal(); return; }
+            submitDeletePresale(pendingDelete.presaleId, pendingDelete.row)
+                .then(function() { showToast('Record deleted successfully.', 'success'); })
+                .catch(function(error) { showToast(error.message || 'Error deleting record.', 'danger'); })
+                .finally(function() { hideDeleteModal(); });
+        });
+    }
+
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', function() { hideDeleteModal(); });
+    }
+
+    // Live search
+    const searchInput = document.getElementById('presalesSearchInput');
+    const tableContainer = document.getElementById('presalesTableContainer');
+    if (searchInput && tableContainer) {
+        let timeout = null;
+        searchInput.addEventListener('keyup', function() {
+            clearTimeout(timeout);
+            timeout = setTimeout(function() {
+                fetch('?q=' + encodeURIComponent(searchInput.value), {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                })
+                .then(function(r) { return r.text(); })
+                .then(function(html) {
+                    const tempDiv = document.createElement('div');
+                    tempDiv.innerHTML = html;
+                    const newTable = tempDiv.querySelector('#presalesTableContainer');
+                    if (newTable) tableContainer.innerHTML = newTable.innerHTML;
+                });
+            }, 300);
+        });
+    }
+});
+</script>
+
+{% endblock %}

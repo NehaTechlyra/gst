@@ -1,0 +1,35 @@
+{% extends 'website/index.html' %}
+
+{% block page_title %}Designations{% endblock %}
+
+{% block content %}
+<div class="container mt-3">
+  <h3>Designations <a href="{% url 'designation_add' %}" class="btn btn-sm btn-primary">Add</a></h3>
+  <table class="table table-sm">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Name</th>
+        <th>Department</th>
+        <th>Status</th>
+        <th>Created</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for it in items %}
+      <tr>
+        <td>{{ it.id }}</td>
+        <td>{{ it.designation_name }}</td>
+        <td>{{ it.departments.department_name }}</td>
+        <td>{% if it.status %}<span class="badge bg-success">Active</span>{% else %}<span class="badge bg-secondary">Inactive</span>{% endif %}</td>
+        <td>{{ it.created_at|date:"Y-m-d H:i" }}</td>
+        <td><a href="/admin/designation/designations/{{ it.id }}/change/" class="btn btn-sm btn-outline-primary">Edit</a></td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="6">No designations</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

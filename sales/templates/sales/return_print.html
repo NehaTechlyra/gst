@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sales Return {{ sales_return.return_number }}</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Epilogue:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink:      #0f1117;
+    --ink-mid:  #3d4052;
+    --ink-soft: #7b7f96;
+    --rule:     #dde0ea;
+    --accent:   #1a3a5c;
+    --accent2:  #c8a84b;
+    --bg-alt:   #f7f8fb;
+    --green:    #1a6645;
+    --green-bg: #e6f4ed;
+    --amber:    #92480c;
+    --amber-bg: #fef3e2;
+    --red:      #991b1b;
+    --red-bg:   #fee2e2;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #e8eaf0;
+    font-family: 'Epilogue', sans-serif;
+    color: var(--ink);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 32px 16px 60px;
+  }
+
+  .paper {
+    width: 794px;
+    max-width: 100%;
+    background: #fff;
+    box-shadow: 0 8px 48px rgba(0,0,0,0.13), 0 1px 4px rgba(0,0,0,0.07);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .accent-bar { height: 6px; background: linear-gradient(90deg, var(--accent) 0%, var(--accent2) 100%); }
+  .sheet-body { padding: 36px 44px 40px; }
+
+  .dn-header { display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:22px;border-bottom:1.5px solid var(--rule);margin-bottom:24px }
+  .company-name { font-family: 'Playfair Display', serif; font-size:26px; font-weight:700; color:var(--accent); }
+  .company-meta { font-size:10px; color:var(--ink-mid); line-height:1.6; margin-top:6px }
+  .dn-doc-title { font-family: 'Playfair Display', serif; font-size:22px; color:var(--ink); }
+  .dn-number { font-size:13px; font-weight:600; color:var(--accent); margin-top:4px }
+
+  .meta-grid { display:grid; grid-template-columns: 1fr 1fr 1fr; gap:14px; margin-bottom:22px }
+  .meta-card { border:1px solid var(--rule); border-radius:8px; padding:12px 14px; background:var(--bg-alt) }
+  .meta-card-title { font-size:8.5px; font-weight:700; text-transform:uppercase; color:var(--ink-soft); padding-bottom:7px; margin-bottom:9px; border-bottom:1px solid var(--rule) }
+  .meta-row { display:flex; justify-content:space-between; gap:8px; margin-bottom:5px }
+  .meta-label { font-size:10px; color:var(--ink-soft) }
+  .meta-value { font-size:11px; font-weight:600; color:var(--ink); text-align:right }
+
+  .notes-block { display:flex; gap:12px; background:#fffbf0; border:1px solid #f0e0b0; border-left:4px solid var(--accent2); border-radius:0 6px 6px 0; padding:10px 14px; margin-bottom:20px; font-size:11px; color:#5a4a1a }
+
+  .section-title { display:flex; align-items:center; gap:10px; font-size:9px; font-weight:700; text-transform:uppercase; color:var(--ink-soft); margin-bottom:10px }
+
+  .items-table { width:100%; border-collapse:collapse; margin-bottom:16px; font-size:11.5px }
+  .items-table thead tr { background: var(--accent); color:#fff }
+  .items-table thead th { padding:9px 11px; font-weight:600; font-size:9.5px; text-align:left }
+  .items-table tbody tr { border-bottom:1px solid #eef0f5 }
+  .items-table tbody tr:nth-child(even) td { background: var(--bg-alt) }
+  .items-table tbody td { padding:9px 11px; color:var(--ink-mid) }
+
+  .td-name { font-weight:600; color:var(--ink); font-size:12px }
+
+  .bottom-row { width:100%; margin-top:20px; border-spacing:0; border-collapse:collapse }
+  .notes-box { border:1px solid var(--rule); border-radius:6px; padding:6px; background:var(--bg-alt) }
+  .notes-header { font-size:9px; font-weight:700; text-transform:uppercase; color:var(--ink-soft); padding-bottom:2px; margin-bottom:2px; border-bottom:1px solid var(--rule) }
+  .notes-body { font-size:8.5px; color:var(--ink-mid); line-height:1.3; white-space:pre-wrap; word-wrap:break-word }
+  .signature-box { text-align:center; padding:6px; border:1px solid var(--rule); border-radius:6px; background:var(--bg-alt) }
+  .signature-line { border-bottom:1px solid var(--ink); height:24px; margin-bottom:4px }
+  .signature-label { font-size:8px; font-weight:600; color:var(--ink-soft) }
+
+  .doc-footer { margin-top:24px; padding-top:12px; border-top:1px solid var(--rule); display:flex; justify-content:space-between; font-size:9px; color:#bbb }
+
+  @media print { body { background:#fff; padding:0; display:block } .paper { width:100%; box-shadow:none; border-radius:0 } .sheet-body { padding:20px 28px 24px } @page { size:A4 portrait; margin: 10mm 12mm; } }
+</style>
+</head>
+<body>
+
+<div class="paper">
+  <div class="accent-bar"></div>
+  <div class="sheet-body">
+
+    <div class="dn-header">
+      <div>
+        {% if show_logo_in_print and company and company.logo %}
+        <div style="margin-bottom: 6px;">
+          <img src="{{ company.logo.url }}" alt="Company Logo" style="max-height: 52px; max-width: 220px;">
+        </div>
+        {% else %}
+        <div class="company-name">
+          {% if company and company.legal_name %}
+            {{ company.legal_name }}
+          {% elif company and company.name %}
+            {{ company.name }}
+          {% else %}
+            LyraERP
+          {% endif %}
+        </div>
+        {% endif %}
+        {% if company %}
+        <div class="company-meta">
+          {% if company.address_line1 %}{{ company.address_line1 }}<br>{% endif %}
+          {% if company.address_line2 %}{{ company.address_line2 }}<br>{% endif %}
+          {% if company.city %}{{ company.city }}{% if company.state %}, {{ company.state }}{% endif %} - {% if company.postal_code %}{{ company.postal_code }}{% endif %}<br>{% endif %}
+          {% if company.email %}{{ company.email }}{% endif %}
+        </div>
+        {% endif %}
+      </div>
+      <div class="dn-title-block">
+        <div class="dn-doc-title">Sales Return</div>
+        <div class="dn-number">{{ sales_return.return_number }}</div>
+      </div>
+    </div>
+
+    <div class="meta-grid">
+      <div class="meta-card">
+        <div class="meta-card-title">Return Information</div>
+        <div class="meta-row"><span class="meta-label">Return Number</span><span class="meta-value">{{ sales_return.return_number }}</span></div>
+        <div class="meta-row"><span class="meta-label">Date</span><span class="meta-value">{{ sales_return.date|date:"M d, Y" }}</span></div>
+      </div>
+      <div class="meta-card">
+        <div class="meta-card-title">Invoice Information</div>
+        <div class="meta-row"><span class="meta-label">Invoice No.</span><span class="meta-value">{{ sales_return.sales_invoice.inv_number }}</span></div>
+        <div class="meta-row"><span class="meta-label">Customer</span><span class="meta-value">{{ sales_return.customer.company_name|default:sales_return.customer.first_name|default:"—" }}</span></div>
+      </div>
+      <div class="meta-card">
+        <div class="meta-card-title">Additional Details</div>
+        <div class="meta-row"><span class="meta-label">Status</span><span class="meta-value">{{ sales_return.status|default:"—"|title }}</span></div>
+      </div>
+    </div>
+
+    <div class="notes-block">
+      <span style="font-size:14px;flex-shrink:0;margin-top:1px">📌</span>
+      <span>Products must be checked upon receipt. Any discrepancy should be reported within 24 hours of receipt. Please refer to the notes for specific handling instructions.</span>
+    </div>
+
+    <div class="section-title">Returned Items</div>
+    <table class="items-table">
+      <thead>
+        <tr><th>Product</th><th>Invoice Qty</th><th>Qty Returned</th><th>Notes</th></tr>
+      </thead>
+      <tbody>
+        {% for item in items %}
+        <tr>
+          <td><span class="td-name">{{ item.invoice_item.product.name }}</span></td>
+          <td>{{ item.invoice_item.quantity }}</td>
+          <td>{{ item.quantity_returned }}</td>
+          <td>{{ item.notes|default:"—" }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="4" style="text-align:center; color:var(--ink-soft);">No items returned</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <table class="bottom-row">
+      <tr>
+        <td style="width:55%; padding-right:8px">
+          <div class="notes-box">
+            <div class="notes-header">Notes / Terms &amp; Conditions</div>
+            <div class="notes-body">
+              <strong>Terms &amp; Conditions</strong><br>
+              {% if company and company.terms_and_conditions %}
+                {{ company.terms_and_conditions|linebreaksbr }}
+              {% else %}
+                -
+              {% endif %}
+              <br><br>
+              <strong>Additional Information</strong><br>
+              {% if company and company.additional_information %}
+                {{ company.additional_information|linebreaksbr }}
+              {% else %}
+                -
+              {% endif %}
+            </div>
+          </div>
+        </td>
+        <td style="width:45%; padding-left:8px">
+          <div class="signature-box"><div class="signature-line"></div><div class="signature-label">Authorized Signatory</div><div style="margin-top:4px; font-weight:600">For {% if company and company.legal_name %}{{ company.legal_name }}{% elif company and company.name %}{{ company.name }}{% else %}Company{% endif %}</div></div>
+        </td>
+      </tr>
+    </table>
+
+    <div class="doc-footer">
+      <span>{{ sales_return.created_at|date:"M d, Y H:i" }} &nbsp;·&nbsp; {{ sales_return.return_number }} &nbsp;·&nbsp; This is a computer generated document.</span>
+      <span class="doc-footer-brand">LYRAERP</span>
+    </div>
+
+  </div>
+</div>
+
+<script>window.onload = function(){ window.print(); }</script>
+</body>
+</html>

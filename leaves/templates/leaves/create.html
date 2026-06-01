@@ -1,0 +1,98 @@
+{% extends 'website/index.html' %}
+
+{% block page_title %}{% if obj %}Edit Leave{% else %}Add Leave{% endif %}{% endblock %}
+
+{% block content %}
+<div class="container mt-3">
+  <h3>Add Leave</h3>
+  <form method="post">
+    {% csrf_token %}
+    {% if next %}
+      <input type="hidden" name="next" value="{{ next }}" />
+    {% endif %}
+    <div class="mb-3">
+      <label class="form-label">Leave name</label>
+  <input name="leaves_name" class="form-control" required value="{% if obj %}{{ obj.leaves_name }}{% endif %}" />
+    </div>
+    <div class="form-check mb-3">
+      <input type="checkbox" name="status" class="form-check-input" id="id_status" checked />
+      <label class="form-check-label" for="id_status">Active</label>
+    </div>
+  <button class="btn btn-primary">{% if obj %}Update{% else %}Save{% endif %}</button>
+  <a href="{% if next %}{% url 'admin_dashboard' %}#{{ next }}{% else %}{% url 'admin_dashboard' %}{% endif %}" class="btn btn-secondary ms-2">Cancel</a>
+  </form>
+</div>
+
+<!-- Navigation confirmation modal -->
+<div class="modal fade" id="unsavedChangesModal" tabindex="-1" aria-labelledby="unsavedChangesLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="unsavedChangesLabel">Unsaved Changes</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        You have unsaved changes. Do you want to leave without saving?
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" id="confirmNavigation" class="btn btn-primary">Leave</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+    // Track form changes - Global variable
+    let formChanged = false;
+    const form = document.querySelector('form');
+
+    if (form) {
+        form.addEventListener('change', () => { formChanged = true; });
+        form.addEventListener('input', () => { formChanged = true; });
+    }
+    
+    // Track Select2 changes using jQuery delegation (works regardless of initialization timing)
+    if (window.$ && window.jQuery) {
+        $(document).on('change', 'select.select2, .select2-hidden-accessible', function() {
+            formChanged = true;
+            console.log('Form changed via Select2 change event (delegation)');
+        });
+    }
+    
+    // Direct select element change listeners as fallback
+    document.addEventListener('change', function(e) {
+        if (e.target.tagName === 'SELECT') {
+            formChanged = true;
+            console.log('Form changed via direct select change event');
+        }
+    }, true);
+
+    // Global click interceptor for all links
+    document.addEventListener('click', function(e) {
+        let link = e.target.closest('a');
+        if (link && formChanged) {
+            const href = link.getAttribute('href');
+            if (href && !href.startsWith('#') && !link.getAttribute('data-bs-toggle') && !href.startsWith('javascript:')) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                const modal = new bootstrap.Modal(document.getElementById('unsavedChangesModal'));
+                const confirmBtn = document.getElementById('confirmNavigation');
+                
+                // Remove previous click handlers
+                const newConfirmBtn = confirmBtn.cloneNode(true);
+                confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+                
+                // Add new click handler
+                newConfirmBtn.addEventListener('click', () => {
+                    formChanged = false;
+                    window.location.href = href;
+                });
+                
+                modal.show();
+            }
+        }
+    }, true);
+</script>
+{% endblock %}

@@ -1,0 +1,391 @@
+{% extends 'website/index.html' %}
+{% load static %}
+
+{% block exstyle %}
+<link href="{% static 'style/general.css' %}" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+
+<style>
+/* === PAGE CONTAINER === */
+.notif-page {
+  background: #f8f9fc;
+  padding: 25px;
+  border-radius: 15px;
+}
+
+/* === HEADER === */
+.notif-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 25px;
+}
+.notif-actions-bar {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+/* === BUTTONS === */
+.btn-markall, .btn-back {
+  border: none;
+  padding: 8px 15px;
+  border-radius: 8px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+.btn-markall {
+  background-color: #0d6efd;
+  color: white;
+}
+.btn-markall:hover {
+  background-color: #0b5ed7;
+}
+.btn-back {
+  background-color: #6c757d;
+  color: white;
+}
+.btn-back:hover {
+  background-color: #5c636a;
+}
+
+/* === NOTIFICATION CARD === */
+.notif-card {
+  background: white;
+  display: flex;
+  align-items: center;
+  border-radius: 12px;
+  padding: 15px 20px;
+  margin-bottom: 15px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  transition: all 0.3s ease;
+}
+.notif-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+
+/* Left icon */
+.notif-left {
+  font-size: 24px;
+  margin-right: 15px;
+}
+
+/* === BODY === */
+.notif-body {
+  flex-grow: 1;
+}
+.notif-body h5 {
+  margin: 0;
+  font-weight: 600;
+  font-size: 15px;
+  color: #2c3e50;
+}
+.notif-body p {
+  margin: 4px 0 6px;
+  color: #495057;
+  font-size: 14px;
+}
+.notif-date {
+  font-size: 12px;
+  color: #888;
+}
+
+/* === RIGHT SIDE === */
+.notif-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 15px;
+  flex-wrap: nowrap;
+}
+
+/* === DROPDOWN === */
+.send-message-dropdown {
+  position: relative;
+  display: inline-block;
+}
+.dropdown-menu {
+  min-width: 130px;
+  padding: 6px 0;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  position: absolute;
+  top: 110%;
+  right: 0;
+  z-index: 1000;
+  display: none;
+}
+.dropdown-item {
+  display: block;
+  padding: 8px 14px;
+  color: #212529;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.2s;
+}
+.dropdown-item:hover {
+  background: #f1f3f7;
+  color: #0d6efd;
+}
+
+/* === MISC === */
+.text-danger { color: #dc3545 !important; }
+</style>
+{% endblock exstyle %}
+
+{% block page_title %}Notifications{% endblock page_title %}
+
+{% block content %}
+<div class="notif-page">
+  <div class="notif-header">
+    <h2>Notifications</h2>
+    <div class="notif-actions-bar">
+      <button id="markAllReadBtn" class="btn-markall">Clear All</button>
+      <button id="backBtn" class="btn-back">⬅ Back</button>
+    </div>
+  </div>
+
+  {% if notifications %}
+    <div class="notif-list">
+      {% for n in notifications %}
+      <div class="notif-card" data-doc="{{ n.document.id }}">
+        <div class="notif-left">
+          {% if n.is_expired %}
+            <i class="bi bi-x-circle text-danger"></i>
+          {% else %}
+            <i class="bi bi-exclamation-triangle text-warning"></i>
+          {% endif %}
+        </div>
+
+        <div class="notif-body">
+          <h5>{{ n.employee.first_name }} {{ n.employee.last_name }}</h5>
+          <p>
+            <strong>{{ n.document.document_type.name }}</strong>
+            {% if n.is_expired %}
+              <span class="text-danger">expired on</span>
+            {% else %}
+              expires on
+            {% endif %}
+            <strong>{{ n.document.expiry_date|date:"d M Y" }}</strong>
+          </p>
+          
+          <span class="notif-date" style="color:#1cc88a;">
+            Email reminder: 
+            {% if n.last_sent_email %}
+              {{ n.last_sent_email|date:"M d, Y H:i" }}
+            {% else %}
+              Not sent
+            {% endif %}
+          </span><br>
+          <span class="notif-date" style="color:#1cc88a;">
+            SMS reminder: 
+            {% if n.last_sent_sms %}
+              {{ n.last_sent_sms|date:"M d, Y H:i" }}
+            {% else %}
+              Not sent
+            {% endif %}
+          </span>
+        </div>
+
+        <div class="notif-right">
+          <div class="send-message-dropdown">
+            <a href="#" class="btn btn-sm btn-success send-message-btn" data-doc="{{ n.document.id }}">
+              <i class="bi bi-send"></i> Send Reminder
+            </a>
+            <div class="dropdown-menu">
+              <a href="#" class="dropdown-item send-msg-option" data-method="sms" data-doc="{{ n.document.id }}">
+                <i class="bi bi-chat-dots me-2 text-success"></i> SMS
+              </a>
+              <a href="#" class="dropdown-item send-msg-option" data-method="email" data-doc="{{ n.document.id }}">
+                <i class="bi bi-envelope-fill me-2 text-primary"></i> Email
+              </a>
+            </div>
+          </div>
+
+          <!-- ✅ Your requested delete button -->
+          <button type="button" 
+                  class="btn btn-danger btn-sm cancel-row delete-notif-btn" 
+                  data-doc="{{ n.id }}" 
+                  title="Remove this notification">
+            &times;
+          </button>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="text-center mt-5"> No expiring documents at the moment!</p>
+  {% endif %}
+</div>
+
+<script>
+const csrfToken = '{{ csrf_token }}';
+
+/* === DELETE NOTIFICATION === */
+document.querySelectorAll('.delete-notif-btn').forEach(btn => {
+  btn.addEventListener('click', e => {
+    e.preventDefault();
+    const docId = btn.dataset.doc;
+
+    fetch(`/HR/notifications/delete/${docId}/`, {
+      method: 'POST',
+      headers: {'X-CSRFToken': csrfToken}
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        const card = btn.closest('.notif-card');
+        card.style.transition = "opacity 0.4s, transform 0.4s";
+        card.style.opacity = "0";
+        card.style.transform = "translateX(20px)";
+        setTimeout(() => card.remove(), 400);
+        showToast("Notification removed", true);
+      } else {
+        showToast("Error removing notification", false);
+      }
+    })
+    .catch(err => console.error('Delete Notification Error:', err));
+  });
+});
+
+/* === MARK ALL READ === */
+document.getElementById('markAllReadBtn').addEventListener('click', () => {
+  fetch(`/HR/notifications/mark-all-read/`, {
+    method: 'POST',
+    headers: {'X-CSRFToken': csrfToken}
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.success) {
+      document.querySelectorAll('.notif-card').forEach(card => {
+        card.style.transition = "opacity 0.4s, transform 0.4s";
+        card.style.opacity = "0";
+        card.style.transform = "translateX(20px)";
+        setTimeout(() => card.remove(), 400);
+      });
+      showToast('All notifications cleared', true);
+    } else {
+      showToast('Error clearing notifications', false);
+    }
+  });
+});
+
+/* === TOAST === */
+function showToast(message, isSuccess) {
+  const toast = document.createElement('div');
+  toast.textContent = message;
+  toast.style.position = 'fixed';
+  toast.style.bottom = '20px';
+  toast.style.right = '20px';
+  toast.style.padding = '12px 18px';
+  toast.style.borderRadius = '8px';
+  toast.style.color = 'white';
+  toast.style.backgroundColor = isSuccess ? '#1cc88a' : '#e74c3c';
+  toast.style.boxShadow = '0 2px 10px rgba(0,0,0,0.15)';
+  toast.style.zIndex = '9999';
+  toast.style.fontSize = '14px';
+  document.body.appendChild(toast);
+  setTimeout(() => {
+    toast.style.transition = 'opacity 0.5s';
+    toast.style.opacity = '0';
+    setTimeout(() => toast.remove(), 500);
+  }, 2500);
+}
+
+/* === BACK === */
+document.getElementById('backBtn').addEventListener('click', () => {
+  window.location.href = "{% url 'hr_dashboard' %}";
+});
+
+/* === DROPDOWN === */
+document.querySelectorAll('.send-message-btn').forEach(btn => {
+  btn.addEventListener('click', e => {
+    e.preventDefault();
+    const dropdown = btn.nextElementSibling;
+    document.querySelectorAll('.dropdown-menu').forEach(menu => {
+      if (menu !== dropdown) menu.style.display = 'none';
+    });
+    dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
+  });
+});
+document.addEventListener('click', e => {
+  if (!e.target.closest('.send-message-dropdown')) {
+    document.querySelectorAll('.dropdown-menu').forEach(menu => menu.style.display = 'none');
+  }
+});
+
+/* === SEND MESSAGE === */
+document.querySelectorAll('.send-msg-option').forEach(option => {
+  option.addEventListener('click', e => {
+    e.preventDefault();
+    const docId = option.dataset.doc;
+    const method = option.dataset.method;
+    const companyCode = "{{ company_code }}";
+    const url = companyCode ? `/${companyCode}/HR/notifications/send-message/${docId}/` : `/HR/notifications/send-message/${docId}/`;
+    fetch(url + `?method=${method}`, {
+      method: 'POST',
+      headers: {'X-CSRFToken': csrfToken}
+    })
+    .then(res => res.json())
+    .then(data => {
+      showToast(data.message, data.success);
+      option.closest('.dropdown-menu').style.display = 'none';
+    })
+    .catch(err => console.error('Send Message Error:', err));
+  });
+});
+
+
+
+function initSendMessageHandlers() {
+  document.querySelectorAll('.send-msg-option').forEach(option => {
+    // Remove previous click listeners
+    option.replaceWith(option.cloneNode(true));
+  });
+
+  document.querySelectorAll('.send-msg-option').forEach(option => {
+    option.addEventListener('click', e => {
+      e.preventDefault();
+      const docId = option.dataset.doc;
+      const method = option.dataset.method;
+
+      // Show immediate "sending" message
+      showToast(`Sending ${method.toUpperCase()}...`, true);
+
+      // Disable the option to prevent double clicks
+      option.style.pointerEvents = 'none';
+      option.style.opacity = '0.6';
+
+      const companyCode = "{{ company_code }}";
+      const url = companyCode ? `/${companyCode}/HR/notifications/send-message/${docId}/` : `/HR/notifications/send-message/${docId}/`;
+      fetch(url + `?method=${method}`, {
+        method: 'POST',
+        headers: {'X-CSRFToken': csrfToken}
+      })
+      .then(res => res.json())
+      .then(data => {
+        showToast(data.message, data.success);
+        option.closest('.dropdown-menu').style.display = 'none';
+      })
+      .catch(err => {
+        showToast(`Failed to send ${method.toUpperCase()}`, false);
+        console.error('Send Message Error:', err);
+      })
+      .finally(() => {
+        // Re-enable the button
+        option.style.pointerEvents = '';
+        option.style.opacity = '';
+      });
+    });
+  });
+}
+
+// Initialize once
+initSendMessageHandlers();
+
+</script>
+{% endblock content %}

@@ -1,0 +1,817 @@
+{% extends 'website/index.html' %}
+{% load static lyra_tags %}
+{% block exstyle %}
+<link href="{% static 'style/general.css' %}" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.9.1/font/bootstrap-icons.css" rel="stylesheet">
+
+<!-- updated by sree on 16-02-2026 Added these two lines for select2-->
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+
+{% endblock exstyle %}
+{% block page_title %}{% if form.instance.pk %}Edit{% else %}Create{% endif %} Delivery Note{% endblock page_title %}
+{% block content %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    {% comment %} <title>{% if form.instance.pk %}Edit{% else %}Create{% endif %} Delivery Note</title> {% endcomment %}
+    <style>
+        {% comment %} * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: #f5f7fa;
+            color: #2c3e50;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        } {% endcomment %}
+        
+        .header {
+            background: white;
+            padding: 20px 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .header h1 {
+            color: #2c3e50;
+            font-size: 28px;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-secondary {
+            background: #95a5a6;
+            color: white;
+        }
+        
+        .btn-primary {
+            background: #3498db;
+            color: white;
+        }
+        
+        .btn-success {
+            background: #27ae60;
+            color: white;
+        }
+        
+        {% comment %} .form-container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+         {% endcomment %}
+        .form-section {
+            margin-bottom: 30px;
+            {% comment %} padding-bottom: 30px; {% endcomment %}
+            {% comment %} border-bottom: 2px solid #ecf0f1; {% endcomment %}
+        }
+        
+        .form-section:last-child {
+            border-bottom: none;
+        }
+        
+        .form-section h2 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 20px;
+        }
+        
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #555;
+        }
+        
+        .form-group .required::after {
+            content: " *";
+            color: #e74c3c;
+        }
+        
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: inherit;
+            transition: border-color 0.3s ease;
+        }
+        
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+        
+        .form-group textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+        
+        .items-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        
+        .items-table thead {
+            background: #34495e;
+            color: white;
+        }
+        
+        .items-table th,
+        .items-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ecf0f1;
+        }
+        
+        .items-table th {
+            font-weight: 600;
+            font-size: 13px;
+        }
+        
+        .items-table input[type="number"] {
+            width: 100px;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        
+        .items-table input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+        
+        .alert {
+            padding: 15px 20px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+        
+        .alert-info {
+            background: #d1ecf1;
+            border-left: 4px solid #17a2b8;
+            color: #0c5460;
+        }
+        
+        .alert-warning {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            color: #856404;
+        }
+        
+        .alert-danger {
+            background: #f8d7da;
+            border-left: 4px solid #dc3545;
+            color: #721c24;
+        }
+        
+        .errorlist {
+            list-style: none;
+            color: #e74c3c;
+            font-size: 13px;
+            margin-top: 5px;
+        }
+        
+        .form-actions {
+            display: flex;
+            gap: 15px;
+            justify-content: flex-end;
+            margin-top: 30px;
+            padding-top: 30px;
+            border-top: 2px solid #ecf0f1;
+        }
+        
+        .help-text {
+            font-size: 12px;
+            color: #7f8c8d;
+            margin-top: 5px;
+        }
+        
+        .qty-badge {
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-weight: 600;
+        }
+        
+        .qty-ordered {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+        
+        .qty-delivered {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .qty-remaining {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        /* Added this new CSS block */
+        .select2-container--bootstrap-5 .select2-selection {
+            min-height: 48px;
+            padding: 6px 12px;
+            font-size: 14px;
+        }
+
+        .select2-container--bootstrap-5 .select2-selection--single .select2-selection__rendered {
+            line-height: 36px;
+        }
+
+        .select2-container--bootstrap-5 .select2-selection--single .select2-selection__arrow {
+            height: 46px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-4">
+        {% comment %} <div class="header">
+            <h1>{% if form.instance.pk %}Edit{% else %}Create New{% endif %} Delivery Note</h1>
+            <a href="{% url 'delivery_note_list' %}" class="btn btn-secondary">← Cancel</a>
+        </div> {% endcomment %}
+        
+        {% if messages %}
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }}">
+            {{ message }}
+        </div>
+        {% endfor %}
+        {% endif %}
+        
+        {% if form.errors %}
+        <div class="alert alert-danger">
+            <strong>Please correct the following errors:</strong>
+            <ul style="margin-top: 10px;">
+                {% for field, errors in form.errors.items %}
+                    {% for error in errors %}
+                    <li>{{ field }}: {{ error }}</li>
+                    {% endfor %}
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+        
+        <div class="form-container">
+            {% if period_locked %}
+            <div class="alert alert-warning" style="background:#fff3cd; border-left:4px solid #ffc107; color:#856404; padding:15px; margin-bottom:20px; border-radius:6px">
+                <strong><i class="bi bi-lock-fill"></i> Period Locked:</strong> Purchase deliveries are locked for the fiscal year <strong>{{ fiscal_year_name }}</strong>. 
+                Only users with exemption can create or edit purchase deliveries in this period.
+            </div>
+            {% endif %}
+
+            <form method="post" id="deliveryNoteForm">
+                {% csrf_token %}
+                
+                <div class="form-section">
+                    <h2>Bill & Warehouse Information</h2>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label class="required">Bill</label>
+                            {{ form.bill }}
+                            {% if form.bill.errors %}
+                            <ul class="errorlist">
+                                {% for error in form.bill.errors %}
+                                <li>{{ error }}</li>
+                                {% endfor %}
+                            </ul>
+                            {% endif %}
+                            <div class="help-text">Select the bill for this delivery</div>
+                        </div>
+                        <div class="form-group">
+                            <label class="required">Warehouse</label>
+                            {{ form.warehouse }}
+                            {% if form.warehouse.errors %}
+                            <ul class="errorlist">
+                                {% for error in form.warehouse.errors %}
+                                <li>{{ error }}</li>
+                                {% endfor %}
+                            </ul>
+                            {% endif %}
+                            <div class="help-text">Warehouse from which items will be shipped</div>
+                        </div>
+                    </div>
+
+                    
+                    
+                    <div id="billInfo" style="display: none; margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 6px;">
+                        <strong>Bill Details:</strong>
+                        <div style="margin-top: 10px;">
+                            <div><strong>Vendor:</strong> <span id="vendorName"></span></div>
+                            {% comment %} <div><strong>Warehouse:</strong> <span id="warehouseName"></span></div>
+                            <div><strong>Order Number:</strong> <span id="orderNumber"></span></div> {% endcomment %}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-section">
+                    <h2>Delivery Details</h2>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label class="required">Delivery Date</label>
+                            {{ form.delivery_date }}
+                            {% if form.delivery_date.errors %}
+                            <ul class="errorlist">
+                                {% for error in form.delivery_date.errors %}
+                                <li>{{ error }}</li>
+                                {% endfor %}
+                            </ul>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="required">Status</label>
+                            {{ form.status }}
+                            {% if form.status.errors %}
+                            <ul class="errorlist">
+                                {% for error in form.status.errors %}
+                                <li>{{ error }}</li>
+                                {% endfor %}
+                            </ul>
+                            {% endif %}
+                            <div class="help-text">Set to "Delivered" to automatically update stock</div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Received By</label>
+                            {{ form.received_by }}
+                            {% if form.received_by.errors %}
+                            <ul class="errorlist">
+                                {% for error in form.received_by.errors %}
+                                <li>{{ error }}</li>
+                                {% endfor %}
+                            </ul>
+                            {% endif %}
+                            <div class="help-text">Name of person who received the delivery</div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Notes</label>
+                        {{ form.notes }}
+                        {% if form.notes.errors %}
+                        <ul class="errorlist">
+                            {% for error in form.notes.errors %}
+                            <li>{{ error }}</li>
+                            {% endfor %}
+                        </ul>
+                        {% endif %}
+                        <div class="help-text">Additional information about this delivery</div>
+                    </div>
+                </div>
+                
+                <div class="form-section">
+                    <h2>Items to Deliver</h2>
+                    <div class="alert alert-info">
+                        <strong>ℹ Info:</strong> Select items and enter quantities to include in this delivery note.
+                    </div>
+                    
+                    <div id="itemsContainer">
+                        <!-- Items will be loaded here via JavaScript when bill is selected -->
+                        <p style="text-align: center; color: #7f8c8d; padding: 40px;">
+
+                            Please select a bill to load items
+                    </p>
+                </div>
+            </div>
+            
+            {{ formset.management_form }}
+            
+            <div class="form-actions">
+                <a href="{% url 'delivery_note_list' %}" class="btn btn-secondary">Cancel</a>
+                <button type="submit" class="btn btn-success">
+                    {% if form.instance.pk %}Update{% else %}Create{% endif %} Delivery Note
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+    <div class="modal fade" id="periodLockErrorModal" tabindex="-1" aria-labelledby="periodLockErrorLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content" style="border: 2px solid #d9534f; border-radius: 8px;">
+                <div class="modal-header" style="background-color: #f8d7da; border-bottom: 2px solid #d9534f;">
+                    <h5 class="modal-title" id="periodLockErrorLabel" style="color: #721c24;">
+                        <i class="bi bi-exclamation-circle" style="color: #d9534f;"></i> Period Locked
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="periodLockErrorBody" style="color: #721c24; padding: 20px; line-height: 1.6;">
+                    <!-- Error message will be inserted here -->
+                </div>
+                <div class="modal-footer" style="border-top: 1px solid #dee2e6;">
+                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal">OK</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="warehouseCreateModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content custom-modal-content">
+                <form id="warehouseCreateForm" method="post" autocomplete="off">
+                    <div class="modal-header border-0 pb-1">
+                        <h5 class="modal-title fw-semibold">New Warehouse</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body"></div>
+                    <div class="modal-footer border-0 pt-1 d-flex">
+                        <button type="submit" class="btn btn-primary">Save</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+<script>
+    {% comment %} document.addEventListener('DOMContentLoaded', function() {
+        const billSelect = document.querySelector('select[name="bill"]'); {% endcomment %}
+    $(document).ready(function() {
+        const billSelect = $('select[name="bill"]');
+        let lastWarehouseSearchTerm = '';
+
+        // Initialize Select2
+        billSelect.select2({
+                    theme: 'bootstrap-5',
+                    placeholder: 'Select a Bill',
+                    allowClear: true,
+                    width: '100%'
+        });
+        $('select[name="warehouse"]').select2({
+                    placeholder: 'Select a warehouse',
+                    allowClear: true,
+                    width: '100%',
+                    minimumInputLength: 1,
+                    templateResult: function(data) {
+                        if (data.isNew) {
+                            return $(
+                                '<span style="display:block; margin:-6px -12px; padding:6px 12px; background:#5897fb; color:#fff; font-weight:500;">+ New</span>'
+                            );
+                        }
+                        return data.text;
+                    },
+                    ajax: {
+                        url: "{% company_path '/Items/warehouse/' %}",
+                        dataType: 'json',
+                        delay: 250,
+                        data: function(params) {
+                            lastWarehouseSearchTerm = params.term || '';
+                            return { q: params.term };
+                        },
+                        processResults: function(data) {
+                            const results = data.map(function(item) {
+                                return { id: item.id, text: item.name };
+                            });
+                            results.push({
+                                id: 'new',
+                                text: '+ New',
+                                isNew: true
+                            });
+                            return { results: results };
+                        },
+                        cache: true
+                    }
+        });
+
+        $('select[name="status"]').select2({
+                    theme: 'bootstrap-5',
+                    placeholder: 'Select status',
+                    allowClear: false,
+                    width: '100%',
+                    minimumResultsForSearch: -1
+        });
+        
+        const itemsContainer = document.getElementById('itemsContainer');
+        const billInfo = document.getElementById('billInfo');
+
+        // Global event handler for all Select2 dropdowns to auto-focus search
+        $(document).on('select2:open', function(e) {
+                    const selectId = e.target.id;
+                    const searchField = document.querySelector(
+                        `.select2-search__field[aria-controls="select2-${selectId}-results"]`
+                    );
+                    if (searchField) {
+                        searchField.focus();
+                    }
+        });
+
+        $('select[name="warehouse"]').on('select2:selecting', function(e) {
+            const data = (e.params && e.params.args && e.params.args.data) ? e.params.args.data : e.params.data;
+            if (data && data.isNew) {
+                e.preventDefault();
+                $('select[name="warehouse"]').select2('close');
+                $.get("{% company_path '/Items/warehouse_createform/' %}", function(formHtml) {
+                    $('#warehouseCreateModal .modal-body').html(formHtml);
+                    var modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('warehouseCreateModal'));
+                    modal.show();
+                    $('#warehouseCreateModal').find('input[name="warehouse_name"]').val(lastWarehouseSearchTerm);
+                });
+                $('select[name="warehouse"]').val(null).trigger('change');
+            }
+        });
+        
+        
+        billSelect.on('select2:select', function (e) {
+
+                //const billId = this.value;
+                const billId = e.params.data.id;
+
+                if (billId) {
+                    loadBillItems(billId);
+                    loadBillInfo(billId);
+                } else {
+                    itemsContainer.innerHTML = '<p style="text-align: center; color: #7f8c8d; padding: 40px;">Please select a bill to load items</p>';
+                    billInfo.style.display = 'none';
+                }
+        });
+        // Handle bill clear (when X button is clicked)
+        billSelect.on('select2:clear', function () {
+                    $('#itemsContainer').html('<p style="text-align: center; color: #7f8c8d; padding: 40px;">Please select an invoice to load items</p>');
+                    $('#billInfo').hide();
+        });
+            
+            // Load items if bill is already selected
+            const selectedBill = billSelect.val();
+            if (selectedBill) {
+                loadBillItems(selectedBill);
+                loadBillInfo(selectedBill);
+            }
+
+            $(document).on('submit', '#warehouseCreateForm', function(e) {
+                e.preventDefault();
+                var $form = $(this);
+
+                $.ajax({
+                    method: 'POST',
+                    url: "{% company_path '/Items/add_warehouse/' %}",
+                    data: $form.serialize(),
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                    success: function(response) {
+                        if (response.success) {
+                            var modalEl = document.getElementById('warehouseCreateModal');
+                            var modal = bootstrap.Modal.getInstance(modalEl);
+                            if (modal) modal.hide();
+
+                            var newOption = new Option(response.name, response.id, true, true);
+                            $('select[name="warehouse"]').append(newOption).trigger('change');
+                            return;
+                        }
+
+                        $('.field-error').remove();
+                        $.each(response.errors || {}, function(field, messages) {
+                            var $input = $('#warehouseCreateModal').find('#id_' + field);
+                            $.each(messages, function(_, msg) {
+                                $input.after(
+                                    '<div class="text-danger small field-error">' + msg + '</div>'
+                                );
+                            });
+                        });
+                    },
+                    error: function(xhr) {
+                        $('.field-error').remove();
+                        $('#warehouseCreateModal .alert').remove();
+
+                        var errors = xhr.responseJSON && xhr.responseJSON.errors
+                            ? xhr.responseJSON.errors
+                            : {};
+
+                        $.each(errors, function(field, messages) {
+                            var $input = $('#warehouseCreateModal').find('#id_' + field);
+                            $.each(messages, function(_, msg) {
+                                $input.after(
+                                    '<div class="text-danger small field-error">' + msg + '</div>'
+                                );
+                            });
+                        });
+
+                        if (!Object.keys(errors).length) {
+                            $('#warehouseCreateModal .modal-body').prepend(
+                                '<div class="alert alert-danger">Error creating warehouse.</div>'
+                            );
+                        }
+                    }
+                });
+            });
+    });
+    
+    function loadBillItems(billId) {
+        fetch(`/purchase/api/bills/${billId}/items/`)
+            .then(response => response.json())
+            .then(data => {
+                renderItemsTable(data);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                document.getElementById('itemsContainer').innerHTML = 
+                    '<div class="alert alert-danger">Error loading bill items. Please try again.</div>';
+            });
+    }
+    
+    function loadBillInfo(billId) {
+        fetch(`/purchase/api/bills/${billId}/`)
+            .then(response => response.json())
+            .then(data => {
+                const vendorName = document.getElementById('vendorName');
+                const warehouseName = document.getElementById('warehouseName');
+                const orderNumber = document.getElementById('orderNumber');
+                const billInfoBox = document.getElementById('billInfo');
+
+                if (vendorName) vendorName.textContent = data.vendor_name || 'N/A';
+                if (warehouseName) warehouseName.textContent = data.warehouse_name || 'N/A';
+                if (orderNumber) orderNumber.textContent = data.order_number || 'N/A';
+                if (billInfoBox) billInfoBox.style.display = 'block';
+            })
+            .catch(error => console.error('Error:', error));
+    }
+    
+    function renderItemsTable(items) {
+        if (items.length === 0) {
+            document.getElementById('itemsContainer').innerHTML = 
+                '<div class="alert alert-warning">No items found for this bill.</div>';
+            return;
+        }
+        
+        let html = `
+            <table class="items-table">
+                <thead>
+                    <tr>
+                        <th>Select</th>
+                        <th>Product</th>
+                        <th>HSN Code</th>
+                        <th>Ordered Qty</th>
+                        <th>Already Delivered</th>
+                        <th>Remaining</th>
+                        <th>Deliver Qty</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+        
+        items.forEach((item, index) => {
+            const remaining = item.quantity - (item.delivered_quantity || 0);
+            html += `
+                <tr>
+                    <td>
+                        <input type="checkbox" 
+                               name="items[${index}][selected]" 
+                               id="item_${item.id}" 
+                               data-item-id="${item.id}"
+                               onchange="toggleQuantityInput(this, ${index})">
+                    </td>
+                    <td>
+                        <strong>${item.product_name}</strong>
+                        <input type="hidden" name="items[${index}][bill_item]" value="${item.id}">
+                    </td>
+                    <td>${item.hsn_code || '—'}</td>
+                    <td>
+                        <span class="qty-badge qty-ordered">${item.quantity}</span>
+                    </td>
+                    <td>
+                        <span class="qty-badge qty-delivered">${item.delivered_quantity || 0}</span>
+                    </td>
+                    <td>
+                        <span class="qty-badge qty-remaining">${remaining}</span>
+                    </td>
+                    <td>
+                        <input type="number" 
+                               name="items[${index}][quantity_delivered]" 
+                               id="qty_${index}"
+                               min="1" 
+                               max="${remaining}" 
+                               value="${remaining}"
+                               disabled
+                               required>
+                    </td>
+                </tr>
+            `;
+        });
+        
+        html += `
+                </tbody>
+            </table>
+        `;
+        
+        document.getElementById('itemsContainer').innerHTML = html;
+    }
+    
+    function toggleQuantityInput(checkbox, index) {
+        const qtyInput = document.getElementById(`qty_${index}`);
+        qtyInput.disabled = !checkbox.checked;
+        if (!checkbox.checked) {
+            qtyInput.value = '';
+        }
+    }
+    
+    // Form validation before submit
+    document.getElementById('deliveryNoteForm').addEventListener('submit', function(e) {
+        const checkboxes = document.querySelectorAll('input[type="checkbox"][name^="items"]');
+        const anyChecked = Array.from(checkboxes).some(cb => cb.checked);
+        
+        if (!anyChecked) {
+            e.preventDefault();
+            alert('Please select at least one item to deliver');
+            return false;
+        }
+        // Check if warehouse is selected
+            //const warehouse = document.querySelector('select[name="warehouse"]').value;
+            const warehouse = $('select[name="warehouse"]').val();  // Changed this line
+
+            if (!warehouse) {
+                e.preventDefault();
+                alert('Please select a warehouse');
+                return false;
+            }
+        
+        // return true; // Original return removed to support AJAX below
+        
+        e.preventDefault();
+        const form = this;
+        const formData = new FormData(form);
+        
+        fetch(window.location.href, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => {
+            if (response.ok) {
+                window.location.href = "{% url 'delivery_note_list' %}";
+                return;
+            }
+            return response.json().then(errData => { throw errData; });
+        })
+        .catch(error => {
+            console.error('AJAX Error:', error);
+            if (error.period_lock_error) {
+                const lockError = error.period_lock_error;
+                const errorMsg = `❌ Period Locked: The fiscal year is locked for editing (purchase_delivery).<br><br>` +
+                    `<i class='bi bi-lock-fill'></i> <strong>Locked by:</strong> ${lockError.locked_by}<br>` +
+                    `<i class='bi bi-calendar'></i> <strong>Lock Date:</strong> ${lockError.lock_date}<br>` +
+                    `<i class='bi bi-info-circle'></i> <strong>Locked areas:</strong> ${lockError.locked_areas}<br><br>` +
+                    ` Contact your administrator to unlock this period if needed.`;
+                document.getElementById('periodLockErrorBody').innerHTML = errorMsg;
+                const periodLockModal = new bootstrap.Modal(document.getElementById('periodLockErrorModal'));
+                periodLockModal.show();
+            } else {
+                if (error.message) {
+                    alert(error.message);
+                } else {
+                    form.submit();
+                }
+            }
+        });
+    });
+</script>
+
+<!-- Added these two script tags -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    {% endblock %}
+

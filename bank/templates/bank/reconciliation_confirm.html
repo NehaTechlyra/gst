@@ -1,0 +1,268 @@
+{% extends 'website/index.html' %}
+{% load static %}
+
+{% block page_title %}Confirm Reconciliation{% endblock %}
+
+{% block exstyle %}
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+{% endblock %}
+
+{% block content %}
+<style>
+  :root {
+    --bg:           #f5f6fa;
+    --surface:      #ffffff;
+    --border:       #e4e8f0;
+    --text-primary: #111827;
+    --text-muted:   #6b7280;
+    --accent:       #4f46e5;
+    --accent-light: #eef2ff;
+    --green:        #059669;
+    --green-light:  #ecfdf5;
+    --green-border: #a7f3d0;
+    --red:          #dc2626;
+    --red-light:    #fef2f2;
+    --radius:       12px;
+    --shadow:       0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.05);
+  }
+
+  body { background: var(--bg); font-family: 'DM Sans', sans-serif; color: var(--text-primary); margin: 0; }
+
+  /* ── Topbar ── */
+  .hr-topbar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    display: flex; align-items: stretch;
+    min-height: 52px;
+  }
+  .hr-breadcrumb {
+    display: flex; align-items: center;
+    font-size: 13px; gap: 4px; color: var(--text-muted);
+  }
+  .hr-breadcrumb a {
+    color: var(--accent); text-decoration: none;
+    padding: 16px 8px; display: block;
+  }
+  .hr-breadcrumb a:hover { text-decoration: underline; }
+  .hr-breadcrumb .sep { color: #d1d5db; }
+  .hr-breadcrumb .current {
+    color: var(--text-primary); font-weight: 600;
+    padding: 16px 8px;
+    border-bottom: 2px solid var(--accent);
+  }
+
+  /* ── Content ── */
+  .hr-content { padding: 28px 24px; display: flex; justify-content: center; }
+
+  /* ── Card ── */
+  .hr-card {
+    background: var(--surface);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+    max-width: 600px; width: 100%;
+    overflow: hidden;
+  }
+
+  /* ── Card header variants ── */
+  .hr-card-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 12px;
+  }
+  .hr-card-header.success { background: linear-gradient(135deg, #059669, #047857); color: #fff; }
+  .hr-card-header.error   { background: linear-gradient(135deg, #dc2626, #b91c1c); color: #fff; }
+  .hr-card-header.error .header-sub { color: rgba(255,255,255,0.8); }
+  .hr-card-header.success .header-sub { color: rgba(255,255,255,0.8); }
+  .hr-card-header-icon { font-size: 28px; }
+  .hr-card-header h4 { font-size: 17px; font-weight: 700; margin: 0 0 3px; }
+  .header-sub { font-size: 12px; }
+  .hr-card-body { padding: 24px; }
+
+  /* ── Error banner ── */
+  .hr-error-box {
+    background: var(--red-light); border: 1px solid #fecaca;
+    border-radius: 8px; padding: 14px 18px;
+    margin-bottom: 20px;
+  }
+  .hr-error-box h6 { font-size: 14px; font-weight: 700; color: var(--red); margin: 0 0 5px; display: flex; align-items: center; gap: 7px; }
+  .hr-error-box p  { font-size: 13px; color: var(--red); margin: 0; }
+
+  /* ── Summary stats ── */
+  .hr-summary-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 12px; margin-bottom: 22px;
+  }
+  .hr-stat-cell {
+    background: #f9fafb; border: 1px solid var(--border);
+    border-radius: 10px; padding: 14px 16px; text-align: center;
+  }
+  .hr-stat-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 6px; }
+  .hr-stat-value { font-size: 18px; font-weight: 700; font-family: 'DM Mono', monospace; }
+  .hr-stat-value.blue  { color: var(--accent); }
+  .hr-stat-value.green { color: var(--green); }
+
+  /* ── What-happens box ── */
+  .hr-what-happens {
+    background: #fafafa; border: 1px solid var(--border);
+    border-radius: 8px; padding: 16px 20px; margin-bottom: 22px;
+  }
+  .hr-what-happens h6 { font-size: 13px; font-weight: 700; color: var(--text-primary); margin: 0 0 12px; }
+  .hr-what-happens ul { padding: 0; margin: 0; list-style: none; }
+  .hr-what-happens li {
+    display: flex; align-items: flex-start; gap: 8px;
+    font-size: 13px; color: var(--text-primary);
+    margin-bottom: 8px; line-height: 1.4;
+  }
+  .hr-what-happens li:last-child { margin-bottom: 0; }
+  .hr-what-happens li i { color: var(--accent); flex-shrink: 0; margin-top: 2px; }
+
+  /* ── Checkboxes ── */
+  .hr-confirm-check {
+    display: flex; align-items: flex-start; gap: 12px;
+    padding: 14px 16px;
+    background: #f9fafb; border: 1.5px solid var(--border);
+    border-radius: 8px; margin-bottom: 12px;
+    cursor: pointer; transition: border-color 0.15s;
+  }
+  .hr-confirm-check:hover { border-color: var(--accent); }
+  .hr-confirm-check input[type="checkbox"] {
+    width: 16px; height: 16px; accent-color: var(--accent);
+    cursor: pointer; flex-shrink: 0; margin-top: 2px;
+  }
+  .hr-confirm-check-text { font-size: 13px; font-weight: 600; color: var(--text-primary); line-height: 1.4; }
+
+  /* ── Divider ── */
+  .hr-divider { height: 1px; background: var(--border); margin: 22px 0; }
+
+  /* ── Buttons ── */
+  .btn-row { display: flex; gap: 10px; flex-wrap: wrap; }
+  .btn-hr {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 10px 20px; border-radius: 8px;
+    font-size: 13px; font-weight: 600; cursor: pointer;
+    border: none; text-decoration: none;
+    transition: background 0.15s, box-shadow 0.15s; line-height: 1;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .btn-hr-green { background: var(--green); color: #fff; }
+  .btn-hr-green:hover { background: #047857; color: #fff; text-decoration: none; box-shadow: 0 4px 12px rgba(5,150,105,0.2); }
+  .btn-hr-ghost { background: var(--surface); color: var(--text-muted); border: 1.5px solid var(--border); }
+  .btn-hr-ghost:hover { background: var(--bg); color: var(--text-primary); text-decoration: none; }
+  .btn-hr-primary { background: var(--accent); color: #fff; }
+  .btn-hr-primary:hover { background: #4338ca; color: #fff; text-decoration: none; }
+</style>
+
+<div>
+  <!-- Topbar -->
+  <div class="hr-topbar">
+    <nav class="hr-breadcrumb">
+      <a href="{% url 'reconciliation_list' reconciliation.bank_account.id %}">{{ reconciliation.bank_account.account_number }}</a>
+      <span class="sep">&rsaquo;</span>
+      <span class="current">Confirm &amp; Lock</span>
+    </nav>
+  </div>
+
+  <div class="hr-content">
+    <div class="hr-card">
+
+      <!-- Header -->
+      <div class="hr-card-header {% if error %}error{% else %}success{% endif %}">
+        <div class="hr-card-header-icon">
+          <i class="bi bi-{% if error %}x-circle-fill{% else %}lock-fill{% endif %}"></i>
+        </div>
+        <div>
+          <h4>Confirm &amp; Lock Reconciliation</h4>
+          <div class="header-sub">
+            {{ reconciliation.bank_account.bank.bank_name }} — {{ reconciliation.bank_account.account_number }}
+          </div>
+        </div>
+      </div>
+
+      <div class="hr-card-body">
+
+        {% if error %}
+        <!-- Error state -->
+        <div class="hr-error-box">
+          <h6><i class="bi bi-exclamation-circle-fill"></i> Cannot Confirm</h6>
+          <p>{{ error }}</p>
+        </div>
+        <a href="{% url 'reconciliation_detail' reconciliation.id %}" class="btn-hr btn-hr-primary">
+          <i class="bi bi-arrow-left"></i> Back to Matching
+        </a>
+
+        {% else %}
+        <!-- Success state -->
+        <div style="background:var(--green-light);border:1px solid var(--green-border);border-radius:8px;padding:14px 18px;margin-bottom:22px;font-size:13px;color:var(--green);display:flex;align-items:flex-start;gap:9px;">
+          <i class="bi bi-check-circle-fill" style="margin-top:1px;flex-shrink:0;"></i>
+          <span>
+            <strong>All entries are reconciled!</strong> The reconciliation gap is zero.
+            You can now confirm and lock this period to prevent future changes.
+          </span>
+        </div>
+
+        <!-- Summary -->
+        <div class="hr-summary-grid">
+          <div class="hr-stat-cell">
+            <div class="hr-stat-label">Statement Balance</div>
+            <div class="hr-stat-value blue">{{ reconciliation.statement_balance|floatformat:2 }}</div>
+          </div>
+          <div class="hr-stat-cell">
+            <div class="hr-stat-label">System Balance</div>
+            <div class="hr-stat-value green">{{ reconciliation.system_balance|floatformat:2 }}</div>
+          </div>
+          <div class="hr-stat-cell">
+            <div class="hr-stat-label">Gap</div>
+            <div class="hr-stat-value green">{{ reconciliation.reconciliation_gap|floatformat:2 }}</div>
+          </div>
+        </div>
+
+        <!-- What will happen -->
+        <div class="hr-what-happens">
+          <h6>What will happen:</h6>
+          <ul>
+            <li><i class="bi bi-check-circle-fill"></i> This reconciliation will be marked as <strong>COMPLETE</strong></li>
+            <li><i class="bi bi-lock-fill"></i> The period from <strong>{{ reconciliation.statement_start_date|date:"d/m/Y" }}</strong> to <strong>{{ reconciliation.statement_end_date|date:"d/m/Y" }}</strong> will be <strong>LOCKED</strong></li>
+            <li><i class="bi bi-slash-circle-fill"></i> No further changes can be made to this reconciliation</li>
+            <li><i class="bi bi-journal-x"></i> Journal entries for this period cannot be modified</li>
+          </ul>
+        </div>
+
+        <!-- Confirm form -->
+        <form method="post" novalidate>
+          {% csrf_token %}
+
+          <label class="hr-confirm-check">
+            <input type="checkbox" name="confirm" value="on" required>
+            <span class="hr-confirm-check-text">
+              I confirm that all entries are properly matched and the reconciliation is complete.
+            </span>
+          </label>
+
+          <label class="hr-confirm-check">
+            <input type="checkbox" name="lock_period" value="on" required>
+            <span class="hr-confirm-check-text">
+              I understand that this period will be locked and no changes can be made.
+            </span>
+          </label>
+
+          <div class="hr-divider"></div>
+
+          <div class="btn-row">
+            <button type="submit" class="btn-hr btn-hr-green">
+              <i class="bi bi-lock-fill"></i> Confirm &amp; Lock Reconciliation
+            </button>
+            <a href="{% url 'reconciliation_detail' reconciliation.id %}" class="btn-hr btn-hr-ghost">
+              <i class="bi bi-x-lg"></i> Cancel
+            </a>
+          </div>
+        </form>
+        {% endif %}
+
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

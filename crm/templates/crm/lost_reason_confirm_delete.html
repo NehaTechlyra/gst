@@ -1,0 +1,19 @@
+{% extends 'website/index.html' %}
+
+{% block title %}Delete Lost Reason - Lyra CRM{% endblock %}
+{% block page_title %}Delete Lost Reason{% endblock %}
+
+{% block content %}
+<div class="container crm-page">
+    <div class="card">
+        <div class="card-body">
+            <p>Are you sure you want to delete the reason: <strong>{{ reason.reason }}</strong>?</p>
+            <form method="post">
+                {% csrf_token %}
+                <a href="{% url 'lost_reason_list' %}" class="btn btn-secondary">Cancel</a>
+                <button type="submit" class="btn btn-danger">Delete</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

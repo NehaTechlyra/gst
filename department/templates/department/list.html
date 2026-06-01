@@ -1,0 +1,21 @@
+{% extends 'website/index.html' %}
+
+{% block page_title %}Departments{% endblock %}
+
+{% block content %}
+<div class="container mt-3">
+  <h3>Departments <a href="{% url 'department_add' %}" class="btn btn-sm btn-primary">Add</a></h3>
+  <table class="table table-sm">
+    <thead><tr><th>Name</th></tr></thead>
+    <tbody>
+      {% for it in items %}
+      <tr>
+        <td>{{ it.department_name }}</td>
+      </tr>
+      {% empty %}
+      <tr><td>No departments</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

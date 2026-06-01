@@ -1,0 +1,25 @@
+<div class="modal-header">
+    <h5 class="modal-title">Add Currency</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+</div>
+<div class="modal-body">
+    <form id="currencyForm">
+        {% csrf_token %}
+        <div class="mb-3">
+            <label for="id_currency_code" class="form-label">Code</label>
+            <input type="text" name="code" id="id_currency_code" class="form-control" required maxlength="3" placeholder="INR">
+        </div>
+        <div class="mb-3">
+            <label for="id_currency_symbol" class="form-label">Symbol</label>
+            <input type="text" name="symbol" id="id_currency_symbol" class="form-control" maxlength="8" placeholder="₹">
+        </div>
+        <div class="mb-3">
+            <label for="id_currency_name" class="form-label">Name</label>
+            <input type="text" name="name" id="id_currency_name" class="form-control" required maxlength="50" placeholder="Indian Rupee">
+        </div>
+    </form>
+</div>
+<div class="modal-footer">
+    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+    <button type="button" class="btn btn-primary" id="currencySaveBtn">Save Currency</button>
+</div>

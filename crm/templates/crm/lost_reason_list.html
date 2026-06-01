@@ -1,0 +1,146 @@
+{% extends 'website/index.html' %}
+{% load static %}
+
+{% block title %}Manage Lost Reasons - Lyra CRM{% endblock %}
+{% block page_title %}Manage Lost Reasons{% endblock %}
+{% block exstyle %}
+<link href="{% static 'style/general.css' %}" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.9.1/font/bootstrap-icons.css" rel="stylesheet">
+{% endblock exstyle %}
+
+{% block content %}
+<div class="container mt-4">
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
+
+        <!-- Left side: Add New button -->
+        {% if request.user.is_superuser or can_manage_crm_lostreasons %}
+        <a href="{% url 'lost_reason_create' %}?next={% url 'lost_reason_list' %}" class="btn btn-success">+ Add New</a>
+        {% else %}
+        <div></div>
+        {% endif %}
+
+        <!-- Right side: Search -->
+        <form method="get" class="d-flex mb-0" id="lostReasonSearchForm">
+            <input type="text" name="q" id="lostReasonSearchInput" class="form-control me-2"
+                   placeholder="&#x1F50D;&#xFE0E; Search lost reasons..."
+                   value="{{ request.GET.q }}">
+        </form>
+
+    </div>
+
+    {% if reasons %}
+    <table class="items-table" id="lostReasonTableContainer">
+        <thead>
+            <tr>
+                <th>Reason</th>
+                <th>Used In</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in reasons %}
+            <tr>
+                <td>{{ item.reason.reason }}</td>
+                <td>{{ item.count }}</td>
+                <td>
+                    <div class="lost-reason-actions" style="margin-top: 5px;">
+                        {% if request.user.is_superuser or can_edit_crm_lostreasons %}
+                        <a href="{% url 'lost_reason_edit' item.reason.pk %}?next={% url 'lost_reason_list' %}" class="btn add-item-btn">Edit</a>
+                        {% endif %}
+                        {% if request.user.is_superuser or can_delete_crm_lostreasons %}
+                        <form method="post" action="{% url 'lost_reason_delete' item.reason.pk %}" style="display:inline-block;" class="delete-lost-reason-form">
+                            {% csrf_token %}
+                            <input type="hidden" name="next" value="{% url 'lost_reason_list' %}" />
+                            <button type="button" class="btn btn-sm delete-btn btn-delete-lost-reason" data-name="{{ item.reason.reason|escapejs }}">
+                                <span class="bi bi-trash"></span>
+                            </button>
+                        </form>
+                        {% endif %}
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="alert alert-info text-center">
+        No lost reasons found.
+        {% if request.user.is_superuser or can_manage_crm_lostreasons %}
+            <a href="{% url 'lost_reason_create' %}?next={% url 'lost_reason_list' %}" class="alert-link">Add your first Lost Reason</a>.
+        {% endif %}
+    </div>
+    {% endif %}
+
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div id="deleteLostReasonModal" class="prompt-modal">
+    <div class="prompt-modal-content">
+        <p id="deleteLostReasonMessage">Are you sure?</p>
+        <div class="prompt-buttons">
+            <button type="button" id="confirmDeleteLostReason" class="prompt-btn prompt-ok-btn">OK</button>
+            <button type="button" id="cancelDeleteLostReason" class="prompt-btn prompt-cancel-btn">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<script>
+(function(){
+    var modal = document.getElementById('deleteLostReasonModal');
+    var msg = document.getElementById('deleteLostReasonMessage');
+    var confirmBtn = document.getElementById('confirmDeleteLostReason');
+    var cancelBtn = document.getElementById('cancelDeleteLostReason');
+    var pendingForm = null;
+
+    function showPrompt(){ if (modal) modal.style.display = 'flex'; }
+    function hidePrompt(){ if (modal) modal.style.display = 'none'; pendingForm = null; }
+
+    document.addEventListener('click', function(e){
+        var btn = e.target.closest('.btn-delete-lost-reason');
+        if (!btn) return;
+        e.preventDefault();
+        var form = btn.closest('form.delete-lost-reason-form');
+        if (!form) return;
+        pendingForm = form;
+        var name = btn.getAttribute('data-name') || 'this reason';
+        msg.textContent = 'Are you sure you want to delete "' + name + '"?';
+        showPrompt();
+    });
+
+    confirmBtn.addEventListener('click', function(){
+        if (!pendingForm) return hidePrompt();
+        pendingForm.submit();
+    });
+
+    cancelBtn.addEventListener('click', hidePrompt);
+    modal.addEventListener('click', function(e){ if (e.target === modal) hidePrompt(); });
+    document.addEventListener('keydown', function(e){ if (e.key === 'Escape' && modal.style.display === 'flex') hidePrompt(); });
+})();
+
+// Live search
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('lostReasonSearchInput');
+    const tableContainer = document.getElementById('lostReasonTableContainer');
+    if (!searchInput || !tableContainer) return;
+
+    let timeout = null;
+    searchInput.addEventListener('keyup', function() {
+        clearTimeout(timeout);
+        timeout = setTimeout(function() {
+            fetch('?q=' + encodeURIComponent(searchInput.value), {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(function(r) { return r.text(); })
+            .then(function(html) {
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = html;
+                const newTable = tempDiv.querySelector('#lostReasonTableContainer');
+                if (newTable) tableContainer.innerHTML = newTable.innerHTML;
+            });
+        }, 300);
+    });
+});
+</script>
+
+{% endblock %}

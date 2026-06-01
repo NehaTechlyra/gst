@@ -1,0 +1,90 @@
+{% extends 'website/index.html' %}
+
+{% block title %}Quotations - Lyra CRM{% endblock %}
+{% block page_title %}Quotations{% endblock %}
+
+{% block content %}
+<div class="container crm-page">
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <a href="{% url 'quotation_create' %}" class="btn btn-primary"><i class="bi bi-plus-circle"></i> Create Quotation</a>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            <div class="col-md-4">
+                <select name="status" class="form-control">
+                    <option value="">All Status</option>
+                    <option value="Draft" {% if request.GET.status == 'Draft' %}selected{% endif %}>Draft</option>
+                    <option value="Sent" {% if request.GET.status == 'Sent' %}selected{% endif %}>Sent</option>
+                    <option value="Viewed" {% if request.GET.status == 'Viewed' %}selected{% endif %}>Viewed</option>
+                    <option value="Accepted" {% if request.GET.status == 'Accepted' %}selected{% endif %}>Accepted</option>
+                    <option value="Rejected" {% if request.GET.status == 'Rejected' %}selected{% endif %}>Rejected</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-secondary">Filter</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>Quotation #</th>
+                    <th>Lead/Opportunity</th>
+                    <th>Total</th>
+                    <th>Status</th>
+                    <th>Validity Date</th>
+                    <th>Created</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for quotation in quotations %}
+                <tr>
+                    <td><a href="{% url 'quotation_detail' quotation.pk %}">{{ quotation.quote_number }}</a></td>
+                    <td>
+                        {% if quotation.lead %}
+                            <a href="{% url 'lead_detail' quotation.lead.pk %}">{{ quotation.lead.customer_name }}</a>
+                        {% elif quotation.opportunity %}
+                            <a href="{% url 'opportunity_detail' quotation.opportunity.pk %}">{{ quotation.opportunity.lead.customer_name }}</a>
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+                    <td>${{ quotation.total }}</td>
+                    <td>
+                        {% if quotation.status == 'Accepted' %}
+                            <span class="badge bg-success">{{ quotation.status }}</span>
+                        {% elif quotation.status == 'Rejected' %}
+                            <span class="badge bg-danger">{{ quotation.status }}</span>
+                        {% elif quotation.status == 'Sent' %}
+                            <span class="badge bg-info">{{ quotation.status }}</span>
+                        {% else %}
+                            <span class="badge bg-secondary">{{ quotation.status }}</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ quotation.validity_date }}</td>
+                    <td>{{ quotation.created_at|date:"Y-m-d" }}</td>
+                    <td>
+                        <a href="{% url 'quotation_detail' quotation.pk %}" class="btn btn-sm btn-info">View</a>
+                        <a href="{% url 'quotation_edit' quotation.pk %}" class="btn btn-sm btn-warning">Edit</a>
+                        <a href="{% url 'quotation_print' quotation.pk %}" class="btn btn-sm btn-primary" target="_blank">Print</a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7" class="text-center">No quotations found.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+</div>
+{% endblock %}
+

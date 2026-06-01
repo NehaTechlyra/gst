@@ -1,0 +1,285 @@
+{% extends 'website/index.html' %}
+{% load static %}
+{% block exstyle %}
+<link href="{% static 'style/general.css' %}" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.9.1/font/bootstrap-icons.css" rel="stylesheet">
+{% endblock exstyle %}
+{% block page_title %}Candidates{% endblock page_title %}
+{% block content %}
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+
+        <div style="display:flex; gap:10px; align-items:center;">
+            <a href="{% url 'recruiter_dashboard' %}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left"></i> Back to Recruitment</a>
+            <a href="{% url 'candidate_create' %}" class="btn btn-success">+ Add Candidate</a>
+        </div>
+
+        <!-- Search Box -->
+        <form method="get" class="d-flex mb-3" id="candidateSearchForm">
+            <input type="hidden" name="status" value="{{ selected_status }}">
+            <input type="hidden" name="job" value="{{ selected_job }}">
+            <input type="text" name="q" id="candidateSearchInput" class="form-control me-2"
+                   placeholder="&#x1F50D;&#xFE0E; Search candidates..."
+                   value="{{ search_query }}">
+        </form>
+    </div>
+
+    <!-- Filters -->
+    <form method="get" class="mb-3" id="candidateFilterForm">
+        <input type="hidden" name="q" value="{{ search_query }}">
+        <div class="d-flex align-items-center gap-2" style="flex-wrap:wrap;">
+            <label for="status" style="margin-bottom:0; white-space:nowrap;">Status:</label>
+            <select id="status" name="status" class="form-select" style="width:auto; min-width:160px;" onchange="this.form.submit()">
+                <option value="">All statuses</option>
+                {% for value, label in status_choices %}
+                <option value="{{ value }}" {% if selected_status == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+
+            <label for="job" style="margin-bottom:0; white-space:nowrap; margin-left:8px;">Job:</label>
+            <select id="job" name="job" class="form-select" style="width:auto; min-width:180px;" onchange="this.form.submit()">
+                <option value="">All jobs</option>
+                {% for job in jobs %}
+                <option value="{{ job.id }}" {% if selected_job == job.id|stringformat:"s" %}selected{% endif %}>{{ job.title }}</option>
+                {% endfor %}
+            </select>
+
+            {% if selected_status or selected_job %}
+                <a href="{% url 'candidate_list' %}{% if search_query %}?q={{ search_query }}{% endif %}" class="btn commmombtn">Reset</a>
+            {% endif %}
+        </div>
+    </form>
+
+    {% if candidates %}
+    <table class="items-table" id="candidateTableContainer">
+        <thead>
+            <tr>
+                <th class="si-no">No.</th>
+                <th>Candidate</th>
+                <th>Job</th>
+                <th>Source</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for candidate in candidates %}
+            <tr>
+                <td class="si-no">{{ forloop.counter }}</td>
+                <td>
+                    {{ candidate.full_name }}<br>
+                    <span style="color:#7c7ca0; font-size:12px;">{{ candidate.email|default:"-" }}</span><br>
+                    <span style="color:#7c7ca0; font-size:12px;">{{ candidate.phone|default:"-" }}</span>
+                </td>
+                <td>{{ candidate.job_opening.title }}</td>
+                <td>{{ candidate.get_source_display }}</td>
+                <td>
+                    <span class="badge
+                        {% if candidate.current_status == 'selected' or candidate.current_status == 'offer_accepted' or candidate.current_status == 'joined' %}bg-success
+                        {% elif candidate.current_status == 'rejected' or candidate.current_status == 'offer_declined' or candidate.current_status == 'offer_cancelled' %}bg-danger
+                        {% elif candidate.current_status == 'interview_scheduled' %}bg-primary
+                        {% elif candidate.current_status == 'shortlisted' %}bg-info
+                        {% else %}bg-secondary{% endif %}">
+                        {{ candidate.get_current_status_display }}
+                    </span>
+                </td>
+                <td>
+                    <div class="sale-actions" style="margin-top:5px;">
+                        <a href="{% url 'candidate_detail' candidate.pk %}" class="btn add-item-btn">View</a>
+                        <a href="{% url 'candidate_edit' candidate.pk %}" class="btn add-item-btn ms-2">Edit</a>
+                        {% if candidate.employee %}
+                        <a href="{% url 'employee_edit' candidate.employee.pk %}" class="btn add-item-btn ms-2">Employee</a>
+                        {% endif %}
+                        <form style="display:inline;">
+                            {% csrf_token %}
+                            <button
+                                type="button"
+                                class="btn btn-sm delete-btn delete-candidate-btn"
+                                data-candidate-id="{{ candidate.pk }}"
+                                data-delete-url="{% url 'candidate_delete' candidate.pk %}">
+                                <span class="bi bi-trash"></span>
+                            </button>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="alert alert-info text-center">
+        No candidates found.
+        <a href="{% url 'candidate_create' %}" class="alert-link">Add your first candidate</a>.
+    </div>
+    {% endif %}
+</div>
+
+<!-- Pagination -->
+{% if candidates.paginator.num_pages > 1 %}
+<nav aria-label="Page navigation" class="mt-3 Page-navigation">
+    <ul class="pagination">
+        {% if candidates.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?q={{ search_query }}&status={{ selected_status }}&job={{ selected_job }}&page={{ candidates.previous_page_number }}">&laquo;</a>
+            </li>
+        {% else %}
+            <li class="page-item disabled"><span class="page-link">&laquo;</span></li>
+        {% endif %}
+
+        {% for num in candidates.paginator.page_range %}
+            {% if num <= 1 %}
+                {% if num == candidates.number %}
+                    <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                {% else %}
+                    <li class="page-item"><a class="page-link" href="?q={{ search_query }}&status={{ selected_status }}&job={{ selected_job }}&page={{ num }}">{{ num }}</a></li>
+                {% endif %}
+            {% elif num >= candidates.number|add:'-1' and num <= candidates.number|add:'1' %}
+                {% if num == candidates.number %}
+                    <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                {% else %}
+                    <li class="page-item"><a class="page-link" href="?q={{ search_query }}&status={{ selected_status }}&job={{ selected_job }}&page={{ num }}">{{ num }}</a></li>
+                {% endif %}
+            {% elif num > candidates.paginator.num_pages|add:'-1' %}
+                {% if num == candidates.number %}
+                    <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                {% else %}
+                    <li class="page-item"><a class="page-link" href="?q={{ search_query }}&status={{ selected_status }}&job={{ selected_job }}&page={{ num }}">{{ num }}</a></li>
+                {% endif %}
+            {% elif num == 2 and candidates.number > 2 %}
+                <li class="page-item disabled"><span class="page-link">...</span></li>
+            {% elif num == candidates.paginator.num_pages|add:'-1' and candidates.number < candidates.paginator.num_pages|add:'-1' %}
+                <li class="page-item disabled"><span class="page-link">...</span></li>
+            {% endif %}
+        {% endfor %}
+
+        {% if candidates.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?q={{ search_query }}&status={{ selected_status }}&job={{ selected_job }}&page={{ candidates.next_page_number }}">&raquo;</a>
+            </li>
+        {% else %}
+            <li class="page-item disabled"><span class="page-link">&raquo;</span></li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+
+<!-- Delete confirmation modal -->
+<div id="deletePromptCandidate" class="prompt-modal">
+    <div class="prompt-modal-content">
+        <p>Are you sure you want to delete this candidate?</p>
+        <div class="prompt-buttons">
+            <button id="confirmDeleteCandidate" class="prompt-btn prompt-ok-btn">OK</button>
+            <button id="cancelDeleteCandidate" class="prompt-btn prompt-cancel-btn">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<script>
+function submitDeleteCandidate(candidateId, rowToRemove, deleteUrl) {
+    const csrfToken = document.querySelector('input[name="csrfmiddlewaretoken"]')?.value;
+    const pathParts = window.location.pathname.split('/').filter(p => p);
+    const companyCode = pathParts[0];
+    let url = deleteUrl;
+    if (!url) {
+        url = `/${companyCode}/HR/candidates/${candidateId}/delete/`;
+    }
+
+    const formData = new FormData();
+    if (csrfToken) formData.append('csrfmiddlewaretoken', csrfToken);
+
+    return fetch(url, {
+        method: 'POST',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        body: formData
+    }).then(function(response) {
+        if (!response.ok) throw new Error('Error deleting candidate. Status: ' + response.status);
+        if (rowToRemove) rowToRemove.remove();
+        else location.reload();
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    const toastContainer = document.getElementById('toastContainer');
+    let pendingDelete = { candidateId: null, row: null, deleteUrl: null };
+
+    function showDeleteModal(candidateId, row, deleteUrl) {
+        pendingDelete = { candidateId, row: row || null, deleteUrl: deleteUrl || null };
+        const modal = document.getElementById('deletePromptCandidate');
+        if (modal) modal.style.display = 'flex';
+    }
+    function hideDeleteModal() {
+        const modal = document.getElementById('deletePromptCandidate');
+        if (modal) modal.style.display = 'none';
+        pendingDelete = { candidateId: null, row: null, deleteUrl: null };
+    }
+    function showToast(message, type) {
+        try {
+            if (typeof bootstrap !== 'undefined' && bootstrap.Toast && toastContainer) {
+                const toastEl = document.createElement('div');
+                toastEl.className = `toast align-items-center text-bg-${type || 'success'} border-0`;
+                toastEl.setAttribute('role', 'alert');
+                toastEl.setAttribute('aria-live', 'assertive');
+                toastEl.setAttribute('aria-atomic', 'true');
+                toastEl.innerHTML = `<div class="d-flex"><div class="toast-body">${message}</div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button></div>`;
+                toastContainer.appendChild(toastEl);
+                const toast = new bootstrap.Toast(toastEl, { delay: 3000 });
+                toast.show();
+                toastEl.addEventListener('hidden.bs.toast', () => { try { toastEl.remove(); } catch(e){} });
+                return;
+            }
+        } catch(e) {}
+        const el = document.createElement('div');
+        el.textContent = message;
+        Object.assign(el.style, { position:'fixed', right:'20px', bottom:'20px', background: type==='danger'?'#d9534f':'#28a745', color:'#fff', padding:'10px 14px', borderRadius:'6px', zIndex:20000, boxShadow:'0 4px 10px rgba(0,0,0,0.12)' });
+        document.body.appendChild(el);
+        setTimeout(() => { try { el.remove(); } catch(e){} }, 3500);
+    }
+
+    document.addEventListener('click', function(e) {
+        const btn = e.target.closest('.delete-candidate-btn');
+        if (!btn) return;
+        e.preventDefault(); e.stopPropagation();
+        const candidateId = btn.getAttribute('data-candidate-id');
+        if (!candidateId) return;
+        showDeleteModal(candidateId, btn.closest('tr'), btn.dataset.deleteUrl);
+    });
+
+    document.getElementById('confirmDeleteCandidate')?.addEventListener('click', function() {
+        if (!pendingDelete.candidateId) { hideDeleteModal(); return; }
+        submitDeleteCandidate(pendingDelete.candidateId, pendingDelete.row, pendingDelete.deleteUrl)
+            .then(() => showToast('Candidate deleted successfully.', 'success'))
+            .catch(err => showToast(err.message || 'Error deleting candidate.', 'danger'))
+            .finally(hideDeleteModal);
+    });
+    document.getElementById('cancelDeleteCandidate')?.addEventListener('click', hideDeleteModal);
+
+    /* Live search */
+    const searchInput = document.getElementById('candidateSearchInput');
+    const tableContainer = document.getElementById('candidateTableContainer');
+    let timeout = null;
+    if (searchInput && tableContainer) {
+        searchInput.addEventListener('keyup', function() {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => {
+                const q = searchInput.value;
+                const status = document.getElementById('status')?.value || '';
+                const job = document.getElementById('job')?.value || '';
+                fetch(`?q=${encodeURIComponent(q)}&status=${encodeURIComponent(status)}&job=${encodeURIComponent(job)}`, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                })
+                .then(r => r.text())
+                .then(html => {
+                    const tmp = document.createElement('div');
+                    tmp.innerHTML = html;
+                    const newTable = tmp.querySelector('#candidateTableContainer');
+                    if (newTable) tableContainer.innerHTML = newTable.innerHTML;
+                });
+            }, 300);
+        });
+    }
+});
+</script>
+
+{% endblock %}

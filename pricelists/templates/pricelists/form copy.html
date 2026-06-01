@@ -1,0 +1,236 @@
+{% load pricelist_tags %}
+{% block title %}{{ action }} Price List{% endblock %}
+
+{% block content %}
+<div class="topbar">
+  <div>
+    <div class="breadcrumb">
+      <a href="{% url 'pricelists:index' company_code=request.resolver_match.kwargs.company_code %}">Price Lists</a>
+      {% if price_list %} / <a href="{% url 'pricelists:detail' company_code=request.resolver_match.kwargs.company_code pk=price_list.pk %}">{{ price_list.name }}</a>{% endif %}
+      / <span>{{ action }}</span>
+    </div>
+    <h1 class="page-title">{{ action }} Price List</h1>
+  </div>
+</div>
+
+<div style="max-width:720px;">
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">
+        {% if action == 'Create' %}
+          <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="vertical-align:middle;margin-right:6px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+          New Price List
+        {% else %}
+          <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="vertical-align:middle;margin-right:6px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+          Edit Price List
+        {% endif %}
+      </div>
+    </div>
+
+    <form method="post" novalidate>
+      {% csrf_token %}
+
+      {% if form.non_field_errors %}
+        <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+      {% endif %}
+
+      <!-- Section: Basic Info -->
+      <div style="margin-bottom:6px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);">Basic Information</div>
+      <div class="form-grid" style="margin-bottom:24px;">
+        <div class="form-group">
+          <label class="form-label">Price List Name *</label>
+          {{ form.name }}
+          {% if form.name.errors %}<div style="color:var(--danger);font-size:12px;margin-top:4px;">{{ form.name.errors.0 }}</div>{% endif %}
+        </div>
+        <div class="form-group">
+          <label class="form-label">Price Type *</label>
+          {{ form.price_type }}
+          <div style="font-size:11.5px;color:var(--text-muted);margin-top:4px;">Sales = applies to customers. Purchase = applies to vendors.</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Currency</label>
+          {{ form.currency }}
+        </div>
+        <div class="form-group">
+          <label class="form-label">Rounding</label>
+          {{ form.rounding }}
+        </div>
+        <div class="form-group full">
+          <label class="form-label" style="display:block;margin-bottom:8px;font-weight:600;">Pricing Scheme (Item Rate) *</label>
+          <div class="radio-scheme-group" style="display:flex;flex-direction:column;gap:10px;">
+            {% for radio in form.pricing_scheme %}
+              <label class="radio-label" style="cursor:pointer;display:flex;align-items:center;padding:8px;border:1px solid var(--border);border-radius:4px;">
+                {{ radio.tag }}
+                <span style="margin-left:8px;font-size:14px;color:var(--text-primary);">{{ radio.choice_label }}</span>
+              </label>
+            {% endfor %}
+          </div>
+        </div>
+        <div class="form-group" id="percentageValueGroup" style="display:none;">
+          <label class="form-label">Percentage Value *</label>
+          {{ form.percentage_value }}
+          {% if form.percentage_value.errors %}<div style="color:var(--danger);font-size:12px;margin-top:4px;">{{ form.percentage_value.errors.0 }}</div>{% endif %}
+        </div>
+        <div class="form-group" id="percentageTypeGroup" style="display:none;">
+          <label class="form-label">Markup / Markdown *</label>
+          {{ form.percentage_type }}
+          {% if form.percentage_type.errors %}<div style="color:var(--danger);font-size:12px;margin-top:4px;">{{ form.percentage_type.errors.0 }}</div>{% endif %}
+        </div>
+        <div class="form-group full">
+          <label class="form-label">Description</label>
+          {{ form.description }}
+        </div>
+      </div>
+
+      <!-- Section: Individual Items Table -->
+      <div id="individualItemsSection" style="display:none; margin-bottom: 24px;">
+        <div style="margin-bottom:12px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);">Individual Item Rates</div>
+        <div class="card" style="padding:0; overflow:hidden;">
+          <table class="table" style="width:100%; border-collapse:collapse; font-size:13px;">
+            <thead>
+              <tr style="background:var(--bg-light); border-bottom:1px solid var(--border);">
+                <th style="padding:10px; text-align:left;">Item Name</th>
+                <th style="padding:10px; text-align:left;">SKU / Barcode</th>
+                <th style="padding:10px; text-align:right;">Standard Rate</th>
+                <th style="padding:10px; text-align:right; width:150px;">Custom Rate</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in items %}
+              <tr style="border-bottom:1px solid var(--border-light);">
+                <td style="padding:10px;">{{ item.name }}</td>
+                <td style="padding:10px; color:var(--text-muted);">{{ item.barcode|default:"-" }}</td>
+                <td style="padding:10px; text-align:right;" class="base-price-cell" 
+                    data-sales="{{ item.selling_price|default:0 }}" 
+                    data-purchase="{{ item.cost_price|default:0 }}">
+                  0.00
+                </td>
+                <td style="padding:10px; text-align:right;">
+                  <input type="number" step="0.01" name="item_rate_{{ item.id }}" 
+                         class="form-control item-rate-input" 
+                         style="text-align:right; width:120px; display:inline-block; padding:4px 8px; height:30px;"
+                         value="{% with sku=item.barcode|default:item.name %}{{ existing_items|get_item:sku|default:'' }}{% endwith %}">
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <hr class="divider">
+
+      <!-- Section: Validity -->
+      <div style="margin-bottom:6px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);">Validity Period (Optional)</div>
+      <div class="form-grid" style="margin-bottom:24px;">
+        <div class="form-group">
+          <label class="form-label">Valid From</label>
+          {{ form.valid_from }}
+          <div style="font-size:11.5px;color:var(--text-muted);margin-top:4px;">Leave blank for no start restriction.</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Valid To</label>
+          {{ form.valid_to }}
+          <div style="font-size:11.5px;color:var(--text-muted);margin-top:4px;">Leave blank for no end restriction.</div>
+        </div>
+      </div>
+
+      <hr class="divider">
+
+      <!-- Section: Status -->
+      <div class="form-group" style="margin-bottom:24px;">
+        <div class="form-check">
+          {{ form.is_active }}
+          <label class="form-label" style="cursor:pointer;margin:0;">Enable this price list (Active)</label>
+        </div>
+        <div style="font-size:11.5px;color:var(--text-muted);margin-top:6px;margin-left:24px;">
+          When active, this price list can be applied to contacts and transactions.
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div style="display:flex;gap:10px;justify-content:flex-end;padding-top:16px;border-top:1px solid var(--border);">
+        <a href="{% if price_list %}{% url 'pricelists:detail' company_code=request.resolver_match.kwargs.company_code pk=price_list.pk %}{% else %}{% url 'pricelists:index' company_code=request.resolver_match.kwargs.company_code %}{% endif %}" class="btn btn-secondary">
+          Cancel
+        </a>
+        <button type="submit" class="btn btn-primary">
+          <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            {% if action == 'Create' %}
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+            {% else %}
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+            {% endif %}
+          </svg>
+          {% if action == 'Create' %}Create Price List{% else %}Save Changes{% endif %}
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const schemeRadios = document.querySelectorAll('input[name="pricing_scheme"]');
+    const valGroup = document.getElementById('percentageValueGroup');
+    const typeGroup = document.getElementById('percentageTypeGroup');
+    const individualSection = document.getElementById('individualItemsSection');
+    const priceTypeSelect = document.querySelector('select[name="price_type"]');
+    const basePriceCells = document.querySelectorAll('.base-price-cell');
+    const radioLabels = document.querySelectorAll('.radio-label');
+
+    function toggleFields() {
+        let selectedScheme = null;
+        schemeRadios.forEach(r => {
+            if (r.checked) selectedScheme = r.value;
+        });
+
+        if (selectedScheme === 'percentage') {
+            valGroup.style.display = 'block';
+            typeGroup.style.display = 'block';
+            individualSection.style.display = 'none';
+        } else if (selectedScheme === 'individual') {
+            valGroup.style.display = 'none';
+            typeGroup.style.display = 'none';
+            individualSection.style.display = 'block';
+            updateBasePrices();
+        } else {
+            valGroup.style.display = 'none';
+            typeGroup.style.display = 'none';
+            individualSection.style.display = 'none';
+        }
+
+        // Highlight selected radio
+        radioLabels.forEach(label => {
+            const input = label.querySelector('input');
+            if (input.checked) {
+                label.style.borderColor = 'var(--primary)';
+                label.style.backgroundColor = 'var(--bg-light)';
+            } else {
+                label.style.borderColor = 'var(--border)';
+                label.style.backgroundColor = 'transparent';
+            }
+        });
+    }
+
+    function updateBasePrices() {
+        const type = priceTypeSelect.value; // 'sales' or 'purchase'
+        basePriceCells.forEach(cell => {
+            const price = type === 'sales' ? cell.dataset.sales : cell.dataset.purchase;
+            cell.textContent = parseFloat(price).toFixed(2);
+        });
+    }
+
+    schemeRadios.forEach(r => {
+        r.addEventListener('change', toggleFields);
+    });
+
+    if (priceTypeSelect) {
+        priceTypeSelect.addEventListener('change', updateBasePrices);
+    }
+
+    toggleFields();
+});
+</script>
+{% endblock %}

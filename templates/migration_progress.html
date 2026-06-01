@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Setting Up Your Workspace — Lyra ERP</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(85, 88, 139, 0.97);
+      font-family: 'Poppins', sans-serif;
+    }
+
+    .migration-card {
+      background: white;
+      padding: 50px;
+      border-radius: 12px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+      text-align: center;
+      max-width: 550px;
+      width: 90%;
+      animation: fadeInUp 0.5s ease;
+    }
+
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(30px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .migration-logo-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 30px;
+    }
+
+    .migration-logo-icon {
+      width: 50px;
+      height: 50px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 24px;
+      font-weight: 700;
+    }
+
+    .migration-logo-text {
+      font-size: 28px;
+      font-weight: 600;
+      color: #55588b;
+      letter-spacing: -0.5px;
+    }
+
+    .migration-spinner {
+      width: 60px;
+      height: 60px;
+      border: 4px solid #f0f0f0;
+      border-top: 4px solid #55588b;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 25px;
+    }
+
+    @keyframes spin {
+      0%   { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .migration-title {
+      font-size: 24px;
+      font-weight: 600;
+      color: #55588b;
+      margin-bottom: 15px;
+    }
+
+    .migration-progress-text {
+      font-size: 15px;
+      color: #7d7cad;
+      margin-bottom: 10px;
+      line-height: 1.6;
+      min-height: 24px;
+    }
+
+    .migration-progress-bar-container {
+      width: 100%;
+      height: 6px;
+      background: #f0f0f5;
+      border-radius: 10px;
+      overflow: hidden;
+      margin: 20px 0;
+    }
+
+    .migration-progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+      border-radius: 10px;
+      animation: progressAnimation 2s ease-in-out infinite;
+    }
+
+    @keyframes progressAnimation {
+      0%   { width: 30%; }
+      50%  { width: 70%; }
+      100% { width: 30%; }
+    }
+
+    .migration-note {
+      font-size: 13px;
+      color: #a0a0b8;
+      margin-top: 20px;
+      padding-top: 20px;
+      border-top: 1px solid #e8e8f0;
+    }
+  </style>
+</head>
+<body>
+
+<div class="migration-card">
+
+  <div class="migration-logo-container">
+    <div class="migration-logo-icon">L</div>
+    <div class="migration-logo-text">Lyra ERP</div>
+  </div>
+
+  <div class="migration-spinner"></div>
+
+  <h2 class="migration-title">Setting Up Your Workspace</h2>
+
+  <p class="migration-progress-text" id="migration-progress-text">
+    {{ migration_progress|default:"Initializing database and configuring modules..." }}
+  </p>
+
+  <div class="migration-progress-bar-container">
+    <div class="migration-progress-bar"></div>
+  </div>
+
+  <p class="migration-note">
+    This usually takes 30–60 seconds. Please don't close this window.
+  </p>
+
+  <script>
+  (function () {
+    var DB_NAME  = "{{ db_name }}";
+    var DEST_URL = "{{ destination_url }}";
+    // prefix includes "?db=" but not the actual database so we can append
+    // encodeURIComponent(DB_NAME) safely.  This prevents the doubled-DB
+    // problem seen in the logs.
+    var POLL_URL = "{{ poll_url_prefix|default:"/_migration_status/?db=" }}" + encodeURIComponent(DB_NAME);
+
+    // sanity check: if we somehow rendered without required values, reload
+    if (!DB_NAME || !DEST_URL) {
+      setTimeout(function () { location.reload(); }, 3000);
+      return;
+    }
+
+    // POLL_URL already contains the company prefix when available, so
+    // requests hit the correct namespace and avoid a 302 redirect on every
+    // poll.  See middleware for details.
+    var delay    = 2500;
+    var timer    = null;
+    var textEl   = document.getElementById('migration-progress-text');
+
+    function poll() {
+      fetch(POLL_URL, { credentials: 'same-origin' })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          if (data.status === 'completed') {
+            if (textEl) textEl.textContent = 'Done! Redirecting…';
+            clearTimeout(timer);
+            setTimeout(function () { window.location.href = DEST_URL; }, 700);
+            return;
+          }
+          /* still running or failed — keep showing the same page, keep polling */
+          if (data.status === 'running' && delay > 500) { delay = 500; }
+          timer = setTimeout(poll, delay);
+        })
+        .catch(function () {
+          timer = setTimeout(poll, Math.min(delay * 2, 8000));
+        });
+    }
+
+    timer = setTimeout(poll, delay);
+  })();
+  </script>
+
+</div>
+
+</body>
+</html>

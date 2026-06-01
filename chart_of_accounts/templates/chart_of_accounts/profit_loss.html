@@ -1,0 +1,316 @@
+{% extends 'website/index.html' %}
+{% load static %}
+
+{% block exstyle %}
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  /* Use system font for amounts — guaranteed ₹ glyph support */
+  .amt { font-family: 'Poppins', sans-serif, cursive !important; font-size: 13px; color: #1f2937; font-weight: 600; }
+
+  .pl-wrap {
+    font-family: 'Poppins', sans-serif, cursive !important;
+    background: #ffffff;
+    min-height: 100vh;
+    padding: 0 32px 60px;
+    margin-top: -30px;
+    color: #1a1d23;
+  }
+
+  .pl-topbar { display: flex; align-items: center; justify-content: space-between; padding-top: 20px; margin-bottom: 24px; flex-wrap: wrap; gap: 12px; }
+  .pl-back-btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; background: #fff; border: 1px solid #d1d5db; border-radius: 6px; color: #374151; font-size: 13px; font-weight: 500; text-decoration: none; transition: all .15s; }
+  .pl-back-btn:hover { background: #f9fafb; border-color: #9ca3af; color: #111; text-decoration: none; }
+  .pl-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .pl-btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 6px; font-size: 13px; font-weight: 500; text-decoration: none; cursor: pointer; transition: all .15s; }
+  .pl-btn-outline { background: #fff; border: 1px solid #d1d5db; color: #374151; }
+  .pl-btn-outline:hover { background: #f3f4f6; color: #111; text-decoration: none; }
+  .pl-btn-primary { background: #1c64f2; color: #fff; border: 1px solid #1c64f2; }
+  .pl-btn-primary:hover { background: #1a56db; color: #fff; text-decoration: none; }
+  .pl-btn-pdf { background: #fff; border: 1px solid #d1d5db; color: #374151; }
+  .pl-btn-pdf:hover { background: #fef2f2; border-color: #f87171; color: #b91c1c; text-decoration: none; }
+
+  .pl-heading { margin-bottom: 20px; }
+  .pl-heading h1 { font-size: 22px; font-weight: 700; color: #111827; letter-spacing: -.3px; }
+  .pl-heading .pl-date-label { font-size: 13px; color: #6b7280; margin-top: 3px; }
+
+  .pl-filter-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 18px 22px; margin-bottom: 24px; box-shadow: 0 1px 3px rgba(0,0,0,.04); }
+  .pl-quick-filters { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; align-items: center; }
+  .pl-quick-label { font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: .5px; margin-right: 4px; }
+  .pl-qf-btn { padding: 4px 10px; font-size: 11px; font-weight: 500; background: #f3f4f6; border: 1px solid #e5e7eb; border-radius: 5px; color: #374151; text-decoration: none; transition: all .12s; }
+  .pl-qf-btn:hover { background: #e0e7ff; border-color: #818cf8; color: #3730a3; text-decoration: none; }
+  .pl-qf-reset { background: #fff; color: #6b7280; }
+  .pl-date-row { display: flex; gap: 14px; align-items: flex-end; flex-wrap: wrap; }
+  .pl-date-group { display: flex; flex-direction: column; gap: 5px; }
+  .pl-date-group label { font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: .4px; }
+  .pl-date-group input[type="date"] { padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; color: #1f2937; font-family: 'Poppins', sans-serif, cursive !important; outline: none; transition: border-color .15s; min-width: 180px; }
+  .pl-date-group input[type="date"]:focus { border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,.12); }
+  .pl-filter-actions { display: flex; gap: 8px; align-items: flex-end; }
+
+  .pl-panel { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,.05); margin-bottom: 20px; }
+  .pl-panel-header { display: flex; align-items: center; justify-content: space-between; padding: 11px 20px; background: #f8fafc; border-bottom: 1px solid #e5e7eb; border-left: 3px solid #cbd5e1; }
+  .pl-panel-header h2 { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .8px; color: #475569; }
+
+  .pl-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 20px; border-bottom: 1px solid #f3f4f6; font-size: 13.5px; transition: background .12s; }
+  .pl-row:last-child { border-bottom: none; }
+  .pl-row:hover { background: #fafbff; }
+  .pl-row a { color: #374151; text-decoration: none; }
+  .pl-row a:hover { color: #1c64f2; text-decoration: underline; }
+  .pl-row-name { color: #374151; font-weight: 500; }
+  .pl-row-neg { color: #dc2626 !important; }
+
+  .pl-subtotal-row { display: flex; justify-content: space-between; align-items: center; padding: 11px 20px; background: #f1f5f9; border-top: 2px solid #cbd5e1; font-size: 13px; font-weight: 700; color: #1e293b; }
+
+  .pl-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; border: 1px solid #e5e7eb; border-radius: 10px; overflow: hidden; background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,.05); margin-bottom: 20px; }
+  .pl-col { display: flex; flex-direction: column; }
+  .pl-col-left { border-right: 1px solid #e5e7eb; }
+  .pl-col-header { padding: 11px 20px; background: #f8fafc; border-bottom: 1px solid #e5e7eb; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .8px; color: #475569; }
+  .pl-section-label { padding: 10px 20px 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; color: #94a3b8; border-bottom: 1px solid #f3f4f6; background: #fafafa; }
+  .pl-item { display: flex; justify-content: space-between; align-items: center; padding: 9px 20px; font-size: 13px; border-bottom: 1px solid #f3f4f6; transition: background .12s; }
+  .pl-item:hover { background: #fafbff; }
+  .pl-item-indent { padding-left: 36px; }
+  .pl-item-indent2 { padding-left: 52px; }
+  .pl-item a { color: #374151; text-decoration: none; font-weight: 500; }
+  .pl-item a:hover { color: #1c64f2; text-decoration: underline; }
+  .pl-item-name { color: #374151; font-weight: 500; }
+  .pl-item-child { color: #6b7280; font-weight: 400; }
+  .pl-section-total { display: flex; justify-content: flex-end; gap: 16px; align-items: center; padding: 9px 20px; font-size: 12px; font-weight: 700; color: #475569; background: #f8fafc; border-top: 1px solid #e5e7eb; border-bottom: 1px solid #e5e7eb; }
+  .pl-col-total { display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; font-size: 13px; font-weight: 700; color: #1e293b; background: #f1f5f9; border-top: 2px solid #cbd5e1; margin-top: auto; }
+  .pl-net-row { display: flex; justify-content: space-between; padding: 10px 20px; font-size: 13px; font-weight: 700; color: #1e293b; background: #f1f5f9; border-top: 2px solid #cbd5e1; border-bottom: 1px solid #f3f4f6; }
+  .pl-result-bar { border-radius: 10px; padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; font-size: 14px; font-weight: 700; margin-bottom: 20px; }
+  .pl-result-profit { background: #ecfdf5; border: 1px solid #6ee7b7; color: #065f46; }
+  .pl-result-loss   { background: #fef2f2; border: 1px solid #fca5a5; color: #991b1b; }
+
+  @media (max-width: 900px) { .pl-grid { grid-template-columns: 1fr; } .pl-col-left { border-right: none; border-bottom: 1px solid #e5e7eb; } }
+</style>
+{% endblock exstyle %}
+
+{% block page_title %}Profit & Loss{% endblock page_title %}
+
+{% block content %}
+<div class="pl-wrap">
+
+  <div class="pl-topbar">
+    <a href="{% url 'accounts-list' %}" class="pl-back-btn">← Back to Accounts</a>
+    <div class="pl-actions">
+      {% if request.user.is_superuser or 'Reports Balance Sheet' in visible_modules %}
+        <a href="{% url 'balance_sheet' %}" class="pl-btn pl-btn-outline">Balance Sheet</a>
+      {% endif %}
+      {% if request.user.is_superuser or 'Reports Trial Balance' in visible_modules %}
+        <a href="{% url 'trial_balance' %}" class="pl-btn pl-btn-outline">Trial Balance</a>
+      {% endif %}
+      <a href="{{ download_url }}" class="pl-btn pl-btn-primary">📄 Download PDF</a>
+    </div>
+  </div>
+
+  <div class="pl-heading">
+    <h1>Profit &amp; Loss</h1>
+    <p class="pl-date-label">{{ from_date|default:"Beginning" }} — {{ to_date|default:"Today" }}</p>
+  </div>
+
+  <!-- Fiscal Year Selector -->
+  {% include "chart_of_accounts/_fy_selector.html" %}
+
+  <div class="pl-filter-card">
+    <div class="pl-quick-filters">
+      <span class="pl-quick-label">Quick:</span>
+      <a href="?filter_preset=today" class="pl-qf-btn">Today</a>
+      <a href="?filter_preset=yesterday" class="pl-qf-btn">Yesterday</a>
+      <a href="?filter_preset=this_week" class="pl-qf-btn">This Week</a>
+      <a href="?filter_preset=previous_week" class="pl-qf-btn">Prev Week</a>
+      <a href="?filter_preset=this_month" class="pl-qf-btn">This Month</a>
+      <a href="?filter_preset=previous_month" class="pl-qf-btn">Prev Month</a>
+      <a href="?filter_preset=this_quarter" class="pl-qf-btn">This Quarter</a>
+      <a href="?filter_preset=previous_quarter" class="pl-qf-btn">Prev Quarter</a>
+      <a href="?filter_preset=this_year" class="pl-qf-btn">This Year</a>
+      <a href="?filter_preset=previous_year" class="pl-qf-btn">Prev Year</a>
+      <a href="{% url 'profit_loss' %}" class="pl-qf-btn pl-qf-reset">Reset</a>
+    </div>
+    <form method="get">
+      <div class="pl-date-row">
+        <div class="pl-date-group">
+          <label for="from_date">From Date</label>
+          <input type="date" id="from_date" name="from_date" value="{{ from_date }}">
+        </div>
+        <div class="pl-date-group">
+          <label for="to_date">To Date</label>
+          <input type="date" id="to_date" name="to_date" value="{{ to_date }}">
+        </div>
+        <div class="pl-filter-actions">
+          <button type="submit" class="pl-btn pl-btn-primary">Apply Filter</button>
+          <a href="{% url 'profit_loss' %}" class="pl-btn pl-btn-outline">Clear</a>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <!-- Trading Account Summary -->
+  <div class="pl-panel">
+    <div class="pl-panel-header"><h2>Trading Account Summary</h2></div>
+    <div class="pl-row">
+      <a href="{% url 'inventory_valuation_summary' %}?view_type=opening{% if fy_id %}&fy_id={{ fy_id }}{% endif %}" class="pl-row-name">Opening Stock</a>
+      <span class="amt">&#8377; {{ pl_data.opening_stock|floatformat:2 }}</span>
+    </div>
+    <div class="pl-row">
+      <span class="pl-row-name">Add: Purchases</span>
+      <span class="amt">&#8377; {{ pl_data.purchases|floatformat:2 }}</span>
+    </div>
+    <div class="pl-row">
+      <span class="pl-row-name">Add: Stock Adjustments</span>
+      <span class="amt">&#8377; {{ pl_data.stock_adjustments|floatformat:2 }}</span>
+    </div>
+    <div class="pl-row">
+      <a href="{% url 'inventory_valuation_summary' %}?view_type=closing{% if fy_id %}&fy_id={{ fy_id }}{% endif %}" class="pl-row-name">Less: Closing Stock</a>
+      <span class="amt pl-row-neg">(&#8377; {{ pl_data.closing_stock|floatformat:2 }})</span>
+    </div>
+    <div class="pl-subtotal-row">
+      <span>Cost of Goods Sold</span>
+      <span class="amt">&#8377; {{ pl_data.cogs|floatformat:2 }}</span>
+    </div>
+  </div>
+
+  <!-- Expense / Income Two-Column -->
+  <div class="pl-grid">
+    <!-- LEFT: EXPENSE -->
+    <div class="pl-col pl-col-left">
+      <div class="pl-col-header">Expense</div>
+
+      <div class="pl-section-label">Cost of Goods Sold</div>
+      {% if pl_data.expenses %}
+        {% for expense in pl_data.expenses %}
+          {% if 'Direct' in expense.name %}
+            {% if expense.children %}
+              {% for child in expense.children %}
+                <div class="pl-item pl-item-indent">
+                  <a href="{% url 'account_detail' child.id %}" class="pl-item-child">• {{ child.name }}</a>
+                  <span class="amt">&#8377; {{ child.balance|floatformat:2 }}</span>
+                </div>
+                {% if child.children %}
+                  {% for grandchild in child.children %}
+                    <div class="pl-item pl-item-indent2">
+                      <a href="{% url 'account_detail' grandchild.id %}" class="pl-item-child">{{ grandchild.name }}</a>
+                      <span class="amt">&#8377; {{ grandchild.balance|floatformat:2 }}</span>
+                    </div>
+                  {% endfor %}
+                {% endif %}
+              {% endfor %}
+            {% endif %}
+          {% endif %}
+        {% endfor %}
+      {% endif %}
+      <div class="pl-section-total">
+        <span>Total Cost of Goods Sold</span>
+        <span class="amt">&#8377; {{ pl_data.cogs|floatformat:2 }}</span>
+      </div>
+
+      <div class="pl-section-label">Operating Expense</div>
+      {% if pl_data.operating_expenses %}
+        {% for item in pl_data.operating_expenses %}
+          <div class="pl-item pl-item-indent">
+            <a href="{% url 'account_detail' item.id %}" class="pl-item-child">{{ item.name }}</a>
+            <span class="amt">&#8377; {{ item.balance|floatformat:2 }}</span>
+          </div>
+          {% if item.children %}
+            {% for child in item.children %}
+              <div class="pl-item pl-item-indent2">
+                <a href="{% url 'account_detail' child.id %}" class="pl-item-child">{{ child.name }}</a>
+                <span class="amt">&#8377; {{ child.balance|floatformat:2 }}</span>
+              </div>
+            {% endfor %}
+          {% endif %}
+        {% endfor %}
+      {% endif %}
+      <div class="pl-section-total">
+        <span>Total Operating Expense</span>
+        <span class="amt">&#8377; {{ pl_data.operating_expenses_total|floatformat:2 }}</span>
+      </div>
+
+      <div class="pl-net-row">
+        <span>Net Profit / Loss</span>
+        <span class="amt">&#8377; {{ pl_data.net_profit_loss|floatformat:2 }}</span>
+      </div>
+      {% if pl_data.net_profit_loss >= 0 %}
+      <div class="pl-item">
+        <span class="pl-item-name">Net Profit</span>
+        <span class="amt">&#8377; {{ pl_data.net_profit_loss|floatformat:2 }}</span>
+      </div>
+      {% endif %}
+
+      <div class="pl-col-total">
+        <span>Total</span>
+        <span class="amt">&#8377; {{ total_expense|default:"0.00"|floatformat:2 }}</span>
+      </div>
+    </div>
+
+    <!-- RIGHT: INCOME -->
+    <div class="pl-col">
+      <div class="pl-col-header" style="font-style:italic;">Income</div>
+
+      <div class="pl-section-label">Operating Income</div>
+      {% if pl_data.income %}
+        {% for item in pl_data.income %}
+          {% if 'Direct' in item.name %}
+            {% if item.children %}
+              {% for child in item.children %}
+                <div class="pl-item pl-item-indent">
+                  <a href="{% url 'account_detail' child.id %}" class="pl-item-child">• {{ child.name }}</a>
+                  <span class="amt">&#8377; {{ child.balance|floatformat:2 }}</span>
+                </div>
+              {% endfor %}
+            {% endif %}
+          {% endif %}
+        {% endfor %}
+      {% else %}
+        <div class="pl-item pl-item-indent">
+          <span class="pl-item-child">• Sales</span>
+          <span class="amt">&#8377; {{ pl_data.sales|floatformat:2 }}</span>
+        </div>
+      {% endif %}
+      <div class="pl-section-total">
+        <span>Total Operating Income</span>
+        <span class="amt">&#8377; {{ pl_data.sales|floatformat:2 }}</span>
+      </div>
+
+      <div class="pl-section-label">Non-Operating Income</div>
+      {% if pl_data.income %}
+        {% for item in pl_data.income %}
+          {% if 'Indirect' in item.name %}
+            {% if item.children %}
+              {% for child in item.children %}
+                <div class="pl-item pl-item-indent">
+                  <a href="{% url 'account_detail' child.id %}" class="pl-item-child">• {{ child.name }}</a>
+                  <span class="amt">&#8377; {{ child.balance|floatformat:2 }}</span>
+                </div>
+              {% endfor %}
+            {% endif %}
+          {% endif %}
+        {% endfor %}
+      {% endif %}
+      <div class="pl-section-total">
+        <span>Total Non-Operating Income</span>
+        <span class="amt">&#8377; 0.00</span>
+      </div>
+
+      {% if pl_data.net_profit_loss < 0 %}
+      <div class="pl-item">
+        <span class="pl-item-name">Net Loss</span>
+        <span class="amt">&#8377; {{ pl_data.net_profit_loss|floatformat:2|cut:"-" }}</span>
+      </div>
+      {% endif %}
+
+      <div class="pl-col-total" style="margin-top:auto;">
+        <span>Total</span>
+        <span class="amt">&#8377; {{ total_income|default:"0.00"|floatformat:2 }}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Net Result -->
+  <div class="pl-result-bar {% if pl_data.net_profit_loss >= 0 %}pl-result-profit{% else %}pl-result-loss{% endif %}">
+    <span>{% if pl_data.net_profit_loss >= 0 %}Net Profit{% else %}Net Loss{% endif %}</span>
+    <span class="amt">&#8377; {{ pl_data.net_profit_loss|floatformat:2 }}</span>
+  </div>
+
+</div>
+
+{% endblock %}

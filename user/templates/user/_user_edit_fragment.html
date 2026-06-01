@@ -1,0 +1,46 @@
+{% comment %} Server-side fragment returned for AJAX modal requests. Uses plain field rendering (forms add classes in Python) {% endcomment %}
+
+{% if form %}
+<form method="post" action="{% url 'user_edit' app_user.id %}" enctype="multipart/form-data">
+    {% csrf_token %}
+    <input type="hidden" name="next" value="profile">
+    <div class="row">
+        {% for field in form %}
+            <div class="col-md-12 mb-3">
+                <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}{% if field.field.required %}<span class="required-asterisk">*</span>{% endif %}</label>
+                {{ field }}
+                {% for error in field.errors %}
+                    <div class="text-danger small">{{ error }}</div>
+                {% endfor %}
+            </div>
+        {% endfor %}
+    </div>
+    <div class="modal-footer">
+        <button type="submit" name="update_profile" class="btn btn-primary">Update User</button>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+    </div>
+</form>
+<hr>
+<form method="post" action="{% url 'user_edit' app_user.id %}" id="password-section">
+    {% csrf_token %}
+    <input type="hidden" name="next" value="profile">
+    <h5>Update Password</h5>
+    <div class="row">
+        {% for field in password_form %}
+            <div class="col-md-12 mb-3">
+                <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+                {{ field }}
+                {% for error in field.errors %}
+                    <div class="text-danger small">{{ error }}</div>
+                {% endfor %}
+            </div>
+        {% endfor %}
+    </div>
+    <div class="modal-footer">
+        <button type="submit" name="update_password" class="btn btn-warning">Change Password</button>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+    </div>
+</form>
+{% else %}
+<div class="p-3">Form not available.</div>
+{% endif %}

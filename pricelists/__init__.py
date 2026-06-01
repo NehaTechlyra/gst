@@ -1,0 +1,1 @@
+# pricelists Django app

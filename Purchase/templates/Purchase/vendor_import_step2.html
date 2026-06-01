@@ -1,0 +1,195 @@
+{% extends "website/index.html" %}
+{% block title %}Map Columns – Import Vendors{% endblock %}
+
+{% block content %}
+{% load dict_filters %}
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap');
+:root {
+  --ink:#0f0f0f;--ink2:#3a3a3a;--muted:#888;--border:#e2e2e2;
+  --bg:#f7f6f3;--white:#ffffff;--accent:#1a56db;--accent-light:#e8effc;
+  --danger:#dc2626;--success:#16a34a;
+  --mono:'DM Mono',monospace;--sans:'DM Sans',sans-serif;
+}
+.imp-shell { margin:40px auto 80px; font-family:var(--sans); color:var(--ink); padding:0 16px; }
+.imp-breadcrumb { font-size:12px; color:var(--muted); font-family:var(--mono); letter-spacing:.04em; margin-bottom:10px; }
+.imp-breadcrumb a { color:var(--accent); text-decoration:none; }
+.imp-title { font-size:26px; font-weight:600; letter-spacing:-.02em; margin:0 0 4px; }
+.imp-subtitle { font-size:14px; color:var(--muted); font-weight:300; margin-bottom:28px; }
+.imp-steps { display:flex; align-items:center; margin-bottom:32px; background:var(--white); border:1px solid var(--border); border-radius:10px; overflow:hidden; }
+.imp-step { flex:1; display:flex; align-items:center; gap:10px; padding:14px 20px; font-size:13px; font-weight:500; color:var(--muted); border-right:1px solid var(--border); }
+.imp-step:last-child { border-right:none; }
+.imp-step.active { background:var(--accent); color:#fff; }
+.imp-step.done { color:var(--success); background:#f0fdf4; }
+.step-n { width:22px; height:22px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; background:rgba(0,0,0,.08); flex-shrink:0; }
+.imp-step.active .step-n { background:rgba(255,255,255,.25); }
+.imp-step.done .step-n { background:#dcfce7; color:var(--success); }
+
+.file-bar { display:flex; align-items:center; gap:12px; background:var(--white); border:1px solid var(--border); border-radius:10px; padding:14px 20px; margin-bottom:24px; }
+.file-icon { color:var(--accent); }
+.file-name { font-size:14px; font-weight:600; }
+.file-rows { font-size:12px; color:var(--muted); font-family:var(--mono); margin-top:2px; }
+.badge-auto-count { font-size:11px; font-weight:600; font-family:var(--mono); background:#dcfce7; color:var(--success); border-radius:20px; padding:4px 10px; }
+
+.imp-alert { background:#fff5f5; border-left:3px solid var(--danger); border-radius:6px; padding:12px 16px; font-size:13px; color:var(--danger); margin-bottom:20px; }
+
+.map-section { margin-bottom:24px; }
+.map-section-head { display:flex; align-items:center; gap:10px; padding:12px 20px; background:var(--bg); border:1px solid var(--border); border-bottom:none; border-radius:10px 10px 0 0; font-size:12px; font-weight:600; color:var(--ink2); text-transform:uppercase; letter-spacing:.07em; font-family:var(--mono); cursor:pointer; user-select:none; }
+.section-toggle { margin-left:auto; color:var(--muted); transition:transform .2s; }
+.section-toggle.open { transform:rotate(180deg); }
+.map-table-wrap { border:1px solid var(--border); border-radius:0 0 10px 10px; overflow:hidden; }
+.map-table { width:100%; border-collapse:collapse; }
+.map-table thead th { background:var(--white); padding:10px 18px; font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.07em; color:var(--muted); border-bottom:1px solid var(--border); text-align:left; font-family:var(--mono); }
+.map-table tbody td { padding:11px 18px; font-size:13.5px; border-bottom:1px solid #f3f4f6; vertical-align:middle; }
+.map-table tbody tr:last-child td { border-bottom:none; }
+.map-table tbody tr:hover { background:#fafafa; }
+.field-req-badge { font-size:10px; font-weight:700; background:#fef2f2; color:var(--danger); border-radius:4px; padding:1px 6px; margin-left:6px; font-family:var(--mono); }
+.field-note { font-size:11px; color:var(--muted); font-family:var(--mono); margin-top:2px; }
+
+.sel-cell { display:flex; align-items:center; gap:8px; }
+.map-sel { flex:1; max-width:280px; border:1px solid var(--border); border-radius:7px; padding:7px 12px; font-size:13px; color:var(--ink); background:var(--white); cursor:pointer; font-family:var(--sans); transition:border-color .15s; appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 10px center; padding-right:30px; }
+.map-sel:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(26,86,219,.1); }
+.map-sel.mapped { border-color:#86efac; background-color:#f0fdf4; }
+.badge-auto { font-size:10px; font-weight:700; font-family:var(--mono); background:#dcfce7; color:var(--success); border-radius:4px; padding:2px 6px; white-space:nowrap; }
+.btn-clear-sel { background:none; border:none; cursor:pointer; color:var(--muted); padding:2px 4px; font-size:16px; line-height:1; }
+.btn-clear-sel:hover { color:var(--danger); }
+
+.imp-bottom { display:flex; justify-content:space-between; align-items:center; margin-top:24px; }
+.act-left { display:flex; gap:10px; align-items:center; }
+.btn-next { display:inline-flex; align-items:center; gap:6px; background:var(--accent); color:#fff; border:none; border-radius:8px; padding:11px 26px; font-size:14px; font-weight:600; cursor:pointer; font-family:var(--sans); }
+.btn-next:hover { background:#1648c4; }
+.btn-back { display:inline-flex; align-items:center; gap:6px; background:var(--white); color:var(--ink2); border:1px solid var(--border); border-radius:8px; padding:11px 22px; font-size:14px; font-weight:500; text-decoration:none; font-family:var(--sans); }
+.btn-back:hover { background:var(--bg); }
+.btn-cancel { font-size:13.5px; color:var(--muted); text-decoration:none; padding:8px 12px; border-radius:6px; }
+.btn-cancel:hover { color:var(--ink); background:var(--bg); }
+</style>
+
+<div class="imp-shell">
+  <div class="imp-breadcrumb">
+    <a href="{% url 'vendor_list' company_code=company_code %}">Vendors</a> /
+    <a href="{% url 'import_vendors_step1' company_code=company_code %}">Import</a> /
+    Map Columns
+  </div>
+  <h1 class="imp-title">Map Columns</h1>
+  <p class="imp-subtitle">Match your file's columns to the correct vendor fields</p>
+
+  <div class="imp-steps">
+    <div class="imp-step done"><div class="step-n">✓</div>Upload File</div>
+    <div class="imp-step active"><div class="step-n">2</div>Map Columns</div>
+    <div class="imp-step"><div class="step-n">3</div>Preview &amp; Import</div>
+  </div>
+
+  {% for message in messages %}
+    <div class="imp-alert">⚠ {{ message }}</div>
+  {% endfor %}
+
+  <div class="file-bar">
+    <div class="file-icon">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+        <polyline points="14 2 14 8 20 8"/>
+      </svg>
+    </div>
+    <div>
+      <div class="file-name">{{ filename }}</div>
+      <div class="file-rows">{{ row_count }} data row{{ row_count|pluralize }} · {{ headers|length }} column{{ headers|length|pluralize }}</div>
+    </div>
+    <div style="margin-left:auto;">
+      <span class="badge-auto-count" id="auto-count-badge"></span>
+    </div>
+  </div>
+
+  <form method="post" id="map-form">
+    {% csrf_token %}
+
+    {% for section_key in sections_order %}
+      {% with section_fields=fields_by_section|get_item:section_key label=section_labels|get_item:section_key %}
+      {% if section_fields %}
+      <div class="map-section">
+        <div class="map-section-head" onclick="toggleSection('s-{{ section_key }}', this)">
+          {{ label }}
+          <svg class="section-toggle open" id="tog-{{ section_key }}" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+        </div>
+        <div class="map-table-wrap" id="s-{{ section_key }}">
+          <table class="map-table">
+            <thead>
+              <tr>
+                <th style="width:44%">Vendor Field</th>
+                <th>Your CSV Column</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for key, label, required, notes in section_fields %}
+              <tr>
+                <td>
+                  {{ label }}
+                  {% if required %}<span class="field-req-badge">required</span>{% endif %}
+                  {% if notes %}<div class="field-note">{{ notes }}</div>{% endif %}
+                </td>
+                <td>
+                  <div class="sel-cell" id="cell-{{ key }}">
+                    <select name="map_{{ key }}" class="map-sel {% if auto_map_inv|get_item:key %}mapped{% endif %}"
+                            id="sel-{{ key }}" onchange="onSelChange('{{ key }}')">
+                      <option value="">— not mapped —</option>
+                      {% for h in headers %}
+                        <option value="{{ h }}" {% if auto_map_inv|get_item:key == h %}selected{% endif %}>{{ h }}</option>
+                      {% endfor %}
+                    </select>
+                    <span class="badge-auto" id="auto-{{ key }}" {% if not auto_map_inv|get_item:key %}style="display:none"{% endif %}>auto</span>
+                    <button type="button" class="btn-clear-sel" onclick="clearSel('{{ key }}')" title="Clear">×</button>
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      {% endif %}
+      {% endwith %}
+    {% endfor %}
+
+    <div class="imp-bottom">
+      <div class="act-left">
+        <a href="{% url 'import_vendors_step1' company_code=company_code %}" class="btn-back">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+          Back
+        </a>
+        <button type="submit" class="btn-next">
+          Preview Import
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </button>
+      </div>
+      <a href="{% url 'vendor_list' company_code=company_code %}" class="btn-cancel">Cancel</a>
+    </div>
+  </form>
+</div>
+
+<script>
+function onSelChange(key) {
+  var sel = document.getElementById('sel-' + key);
+  var auto = document.getElementById('auto-' + key);
+  if (sel.value) { sel.classList.add('mapped'); if (auto) auto.style.display = ''; }
+  else { sel.classList.remove('mapped'); if (auto) auto.style.display = 'none'; }
+  updateAutoCount();
+}
+function clearSel(key) {
+  var sel = document.getElementById('sel-' + key);
+  if (sel) { sel.value = ''; onSelChange(key); }
+}
+function toggleSection(id, header) {
+  var el = document.getElementById(id);
+  var tog = header.querySelector('.section-toggle');
+  var open = el.style.display !== 'none';
+  el.style.display = open ? 'none' : '';
+  tog.classList.toggle('open', !open);
+}
+function updateAutoCount() {
+  var mapped = document.querySelectorAll('.map-sel.mapped').length;
+  var total  = document.querySelectorAll('.map-sel').length;
+  var badge  = document.getElementById('auto-count-badge');
+  if (badge) badge.textContent = mapped + ' / ' + total + ' mapped';
+}
+document.addEventListener('DOMContentLoaded', updateAutoCount);
+</script>
+{% endblock %}

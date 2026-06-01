@@ -1,0 +1,212 @@
+{% extends 'website/index.html' %}
+
+{% block title %}{{ title }} - Lyra CRM{% endblock %}
+{% block page_title %}{{ title }}{% endblock %}
+
+{% block exstyle %}
+<style>
+  /* Apply #55588b color to all text inside .container.crm-page except buttons */
+  .container.crm-page,
+  .container.crm-page label,
+  .container.crm-page h2,
+  .container.crm-page p,
+  .container.crm-page span,
+  .container.crm-page div,
+  .container.crm-page form,
+  .container.crm-page .form-label,
+  .container.crm-page .form-control,
+  .container.crm-page select,
+  .container.crm-page textarea {
+    color: #55588b !important;
+  }
+
+  /* Match sales quotation form field styling */
+  .container.crm-page input,
+  .container.crm-page select,
+  .container.crm-page textarea {
+    width: 100%;
+    padding: 5px 12px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    margin-bottom: 10px;
+    font-size: 1rem;
+    outline: none;
+  }
+
+  .container.crm-page label.form-label {
+    display: block;
+    font-size: 0.92em;
+    margin-bottom: 6px;
+    margin-top: 4px;
+    color: #55588b !important;
+    font-weight: 500;
+  }
+
+  /* Ensure red asterisks are not overridden by the global span color */
+  .container.crm-page .text-danger,
+  .container.crm-page span.text-danger {
+    color: #dc3545 !important;
+  }
+
+  /* Card styling to match quotation container */
+  .container.crm-page .card {
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+    border: none;
+  }
+
+  .container.crm-page .card-body {
+    padding: 24px;
+  }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    (function(){
+        function startsWithMatcher(params, data) {
+            if ($.trim(params.term) === '') { return data; }
+            if (data.text && data.text.toLowerCase().startsWith(params.term.toLowerCase())) { return data; }
+            return null;
+        }
+        $(function(){
+            try{
+                $('.container.crm-page .select2').each(function(){
+                    var $el = $(this);
+                    if ($el.hasClass('select2-hidden-accessible')) return;
+                    $el.select2({placeholder: $el.data('placeholder') || 'Search...', allowClear: true, matcher: startsWithMatcher, width: '100%'});
+                });
+            }catch(e){console.debug('crm select2 init',e);}
+        });
+    })();
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="container crm-page">
+
+<div class="card">
+    <div class="card-body">
+        <form method="post">
+            {% csrf_token %}
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Lead</label>
+                    {{ form.lead }}
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Opportunity</label>
+                    {{ form.opportunity }}
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Quotation</label>
+                    {{ form.quotation }}
+                </div>
+                <div class="col-md-12 mb-3">
+                    <label class="form-label">Description <span class="text-danger">*</span></label>
+                    {{ form.description }}
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Follow-up Date & Time <span class="text-danger">*</span></label>
+                    {{ form.followup_date }}
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label class="form-label">Reminder Interval</label>
+                    {{ form.reminder_interval }}
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label class="form-label">Assigned Employee</label>
+                    {{ form.assigned_employee }}
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary">Save</button>
+            <a href="{% url 'followup_list' %}" class="btn btn-secondary">Cancel</a>
+        </form>
+    </div>
+</div>
+</div>
+
+<script>
+    // Track form changes - Global variable
+    let formChanged = false;
+    const followupForm = document.querySelector('form');
+
+    if (followupForm) {
+        followupForm.addEventListener('change', function(e) {
+            formChanged = true;
+            console.log('Form changed via change event');
+        });
+        followupForm.addEventListener('input', function(e) {
+            formChanged = true;
+            console.log('Form changed via input event');
+        });
+    }
+
+    if (window.$ && window.jQuery) {
+        $(document).on('change', 'select.select2, .select2-hidden-accessible', function() {
+            formChanged = true;
+            console.log('Form changed via Select2 change event (delegation)');
+        });
+    }
+
+    document.addEventListener('change', function(e) {
+        if (e.target.tagName === 'SELECT') {
+            formChanged = true;
+            console.log('Form changed via direct select change event');
+        }
+    }, true);
+
+    document.addEventListener('click', function(e) {
+        let link = e.target.closest('a');
+
+        if (link && formChanged) {
+            const href = link.getAttribute('href');
+
+            if (href && !href.startsWith('#') && !link.getAttribute('data-bs-toggle') && !href.startsWith('javascript:')) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                const navModalHtml = `
+                    <div class="modal fade" id="navConfirmationModal" tabindex="-1" role="dialog" aria-labelledby="navConfirmationLabel" aria-hidden="true">
+                        <div class="modal-dialog" role="document">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title" id="navConfirmationLabel">Confirm Navigation</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <p>Are you sure you want to leave this page? All unsaved data will be lost.</p>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                    <button type="button" class="btn btn-primary" id="confirm-nav">OK</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                const existingModal = document.getElementById('navConfirmationModal');
+                if (existingModal) existingModal.remove();
+
+                document.body.insertAdjacentHTML('beforeend', navModalHtml);
+
+                const navModal = new bootstrap.Modal(document.getElementById('navConfirmationModal'));
+                navModal.show();
+
+                const targetUrl = href;
+
+                document.getElementById('confirm-nav').addEventListener('click', function() {
+                    formChanged = false;
+                    window.location.href = targetUrl;
+                });
+
+                document.getElementById('navConfirmationModal').addEventListener('hidden.bs.modal', function () {
+                    document.getElementById('navConfirmationModal').remove();
+                });
+            }
+        }
+    }, true);
+</script>
+{% endblock %}

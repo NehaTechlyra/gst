@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Lyra ERP</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Poppins', sans-serif !important;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif !important;
+            background-color: #f5f6fa;
+            overflow: auto;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            padding: 40px 20px;
+        }
+
+        .container {
+            margin: 0 auto;
+            padding: 0;
+            max-width: 1000px !important;
+            width: 100%;
+        }
+
+        .account-content {
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            overflow: hidden;
+            display: flex;
+            min-height: 500px;
+        }
+
+        .left-section {
+            flex: 0 0 40%;
+            background: #55588b;
+            padding: 60px 40px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            color: white;
+        }
+
+        .logo-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 30px;
+        }
+
+        .logo-icon {
+            width: 50px;
+            height: 50px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        .logo-text {
+            font-size: 32px;
+            font-weight: 600;
+            color: white;
+            letter-spacing: -0.5px;
+        }
+
+        .left-section h1 {
+            font-size: 28px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            line-height: 1.3;
+        }
+
+        .left-section p {
+            font-size: 14px;
+            opacity: 0.9;
+            line-height: 1.6;
+        }
+
+        .right-section {
+            flex: 1;
+            padding: 40px 50px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .form-header {
+            margin-bottom: 30px;
+        }
+
+        .form-header h2 {
+            font-size: 22px;
+            font-weight: 600;
+            color: #55588b;
+            margin: 0 0 8px 0;
+        }
+
+        .form-header p {
+            font-size: 13px;
+            color: #7d7cad;
+            margin: 0;
+        }
+
+        .form-label {
+            font-weight: 400;
+            color: #55588b;
+            margin-bottom: 6px;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .form-label i {
+            font-size: 14px;
+            color: #7d7cad;
+        }
+
+        .required::after {
+            content: " *";
+            color: #e74c3c;
+            font-weight: bold;
+        }
+
+        .form-control {
+            border-radius: 5px;
+            border: 1px solid #dde0f2;
+            padding: 10px 12px;
+            font-size: 14px;
+            background: white;
+            transition: all 0.2s;
+        }
+
+        /* Keep the password toggle (eye) on the right even when input is valid */
+        .password-input-wrapper .form-control.is-valid ~ .password-toggle {
+            right: 12px !important;
+            left: auto !important;
+        }
+
+        .password-input-wrapper .form-control.is-valid {
+            padding-right: 40px !important;
+            padding-left: 12px !important;
+        }
+
+        .form-control:focus {
+            border-color: #55588b;
+            box-shadow: 0 0 0 3px rgba(85, 88, 139, 0.1);
+            outline: none;
+        }
+
+        .is-invalid {
+            border-color: #e74c3c !important;
+            background-color: #ffe6e6 !important;
+        }
+
+        .is-valid {
+            border-color: #198754 !important;
+            background-color: #e8f5e9 !important;
+            background-image: none !important;
+            box-shadow: none !important;
+            padding-right: 12px !important;
+        }
+
+        /* Hide Bootstrap's green check icon for valid inputs */
+        .form-control.is-valid,
+        .was-validated .form-control:valid {
+            background-image: none !important;
+        }
+
+        .invalid-feedback {
+            font-size: 12px;
+            margin-top: 4px;
+            color: #e74c3c;
+            display: none;
+        }
+
+        .is-invalid ~ .invalid-feedback {
+            display: block;
+        }
+
+        .password-input-wrapper {
+            position: relative;
+        }
+
+        .password-toggle {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: #7d7cad;
+            cursor: pointer;
+            padding: 4px;
+            font-size: 16px;
+            z-index: 10;
+            transition: right 0.3s ease, left 0.3s ease;
+        }
+
+        .password-toggle:hover {
+            color: #55588b;
+        }
+
+        /* Override any JS-added class that tries to move the eye to the left */
+        .password-toggle.eye-left {
+            right: 12px !important;
+            left: auto !important;
+        }
+
+        .alert {
+            border-radius: 5px;
+            padding: 12px 16px;
+            margin-bottom: 20px;
+            font-size: 13px;
+            border: 1px solid #dce2f9;
+        }
+
+        .alert-danger {
+            background: #ffe6e6;
+            border-color: #ffcccc;
+            color: #c0392b;
+        }
+
+        .alert i {
+            margin-right: 8px;
+        }
+
+        .form-options {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 16px 0 20px 0;
+        }
+
+        .form-options label {
+            font-size: 13px;
+            color: #55588b;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 0;
+            cursor: pointer;
+        }
+
+        .form-options input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+        }
+
+        .form-options a {
+            font-size: 13px;
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .form-options a:hover {
+            text-decoration: underline;
+        }
+
+        .commmombtn {
+            background: #55588b;
+            border: 1px solid #55588b;
+            color: white;
+            border-radius: 5px;
+            padding: 12px 24px;
+            cursor: pointer;
+            transition: background 0.2s;
+            font-size: 14px;
+            font-weight: 500;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .commmombtn:hover {
+            background: #44456e;
+            border: 1px solid #44456e;
+            color: white;
+        }
+
+        .commmombtn:disabled {
+            background: #dde0f2;
+            border-color: #dde0f2;
+            color: #7d7cad;
+            cursor: not-allowed;
+        }
+
+        .text-center-section {
+            text-align: center;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #dde0f2;
+        }
+
+        .text-center-section p {
+            font-size: 13px;
+            color: #7d7cad;
+            margin: 0;
+        }
+
+        .text-center-section a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .text-center-section a:hover {
+            text-decoration: underline;
+        }
+
+        .mb-2 {
+            margin-bottom: 16px;
+        }
+
+        .spinner-border-sm {
+            width: 1rem;
+            height: 1rem;
+            border-width: 0.15em;
+        }
+
+        .toast {
+            visibility: hidden;
+            min-width: 250px;
+            max-width: 600px;
+            width: auto;
+            background-color: #198754;
+            color: white;
+            text-align: center;
+            border-radius: 5px;
+            padding: 16px 24px;
+            position: fixed;
+            z-index: 20000;
+            left: 50%;
+            top: 30px;
+            transform: translateX(-50%);
+            font-size: 13px;
+            box-shadow: 0px 4px 6px rgba(0,0,0,0.2);
+            transition: opacity 0.5s linear;
+            opacity: 0;
+        }
+
+        .toast.show {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        @media (max-width: 992px) {
+            .account-content {
+                flex-direction: column;
+            }
+
+            .left-section {
+                flex: none;
+                padding: 40px 30px;
+            }
+
+            .right-section {
+                padding: 30px;
+            }
+
+            .left-section h1 {
+                font-size: 24px;
+            }
+        }
+
+        @media (max-width: 576px) {
+            .container {
+                max-width: 100% !important;
+            }
+            
+            .left-section, .right-section {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="account-content">
+            <div class="left-section">
+                <div class="logo-container">
+                    <div class="logo-icon">L</div>
+                    <div class="logo-text">Lyra ERP</div>
+                </div>
+                <h1>Welcome back to Lyra ERP</h1>
+                <p>Sign in to access your dashboard and continue managing your business operations efficiently.</p>
+            </div>
+
+            <div class="right-section">
+                <div class="form-header">
+                    <h2>Login to your account</h2>
+                    <p>Enter your credentials to continue</p>
+                </div>
+                
+                <form id="loginForm" method="POST" novalidate action="{% if company_code %}{% url 'login_with_code' company_code %}{% else %}{% url 'login' %}{% endif %}">
+                    {% csrf_token %}
+                    {% if company_code %}
+                        <input type="hidden" name="company_code" value="{{ company_code }}" />
+                    {% endif %}
+                    
+                    {% if messages %}
+                        {% for message in messages %}
+                            <div class="alert alert-{{ message.tags }}">
+                                <i class="bi bi-exclamation-triangle"></i>
+                                {{ message }}
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+
+                    <div class="mb-2">
+                        <label class="form-label required">
+                            <i class="bi bi-person"></i>
+                            Username
+                        </label>
+                        <input type="text" class="form-control" id="username" name="username" 
+                               placeholder="Enter your username" required>
+                        <div class="invalid-feedback">Please enter your username</div>
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="form-label required">
+                            <i class="bi bi-lock"></i>
+                            Password
+                        </label>
+                        <div class="password-input-wrapper">
+                            <input type="password" class="form-control" id="password" name="password" 
+                                   placeholder="Enter your password" required>
+                            <button type="button" class="password-toggle" id="togglePassword">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                        </div>
+                        <div class="invalid-feedback">Please enter your password</div>
+                    </div>
+
+                    <div class="form-options">
+                        <label>
+                            <input type="checkbox" id="rememberMe" name="remember_me">
+                            Remember Me
+                        </label>
+                        <a id="forgotPasswordLink" href="{% if company_code %}/{{ company_code }}/password-reset/{% else %}/password-reset/{% endif %}">Forgot password?</a>
+                    </div>
+
+                    <button type="submit" class="commmombtn" id="loginBtn">
+                        <span id="btnText">Login</span>
+                        <span id="btnSpinner" class="spinner-border spinner-border-sm" style="display: none;"></span>
+                    </button>
+                    <div class="text-center-section">
+                        <p>Don't have an account? <a href="{% url 'signup' %}">Create account</a></p>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast"></div>
+
+    <!-- Setup Progress Modal -->
+    <div id="setupModal" class="setup-modal">
+        <div class="setup-modal-content">
+            <div class="spinner-border mb-4" id="setupSpinner" style="width: 3rem; height: 3rem; color: #55588b;"></div>
+            <h3 id="setupTitle" style="color: #55588b; font-weight: 600; margin-bottom: 16px;">Setting up your workspace...</h3>
+            <p id="setupProgress" style="color: #7d7cad; font-size: 14px; margin-bottom: 16px;">Initializing database...</p>
+            <div style="background: #f5f6fa; border-radius: 5px; padding: 16px;">
+                <div style="text-align: left; font-size: 13px; color: #7d7cad;">
+                    <div id="setupSteps">
+                        <div class="setup-step">Creating database...</div>
+                        <div class="setup-step">Running migrations...</div>
+                        <div class="setup-step">Setting up permissions...</div>
+                        <div class="setup-step">Configuring modules...</div>
+                        <div class="setup-step">Syncing data...</div>
+                    </div>
+                </div>
+            </div>
+            <p style="color: #999; font-size: 12px; margin-top: 16px;">This may take a minute...</p>
+        </div>
+    </div>
+
+    <style>
+        .setup-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .setup-modal.show {
+            display: flex !important;
+        }
+
+        .setup-modal-content {
+            background: white;
+            border-radius: 8px;
+            padding: 40px;
+            text-align: center;
+            max-width: 400px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+
+        .setup-step {
+            padding: 6px 0;
+            border-bottom: 1px solid #dde0f2;
+        }
+
+        .setup-step:last-child {
+            border-bottom: none;
+        }
+
+        .setup-step.completed {
+            color: #198754;
+        }
+
+        .setup-step.completed::before {
+            content: "✓ ";
+            font-weight: bold;
+            color: #198754;
+        }
+    </style>
+    <script>
+        function showToast(message, bgColor = '#198754') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.style.backgroundColor = bgColor;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        document.getElementById('togglePassword').addEventListener('click', function() {
+            const passwordInput = document.getElementById('password');
+            const icon = this.querySelector('i');
+            
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                icon.classList.remove('bi-eye');
+                icon.classList.add('bi-eye-slash');
+            } else {
+                passwordInput.type = 'password';
+                icon.classList.remove('bi-eye-slash');
+                icon.classList.add('bi-eye');
+            }
+        });
+
+
+
+        function validateField(field) {
+            if (field.value.trim() !== '') {
+                field.classList.remove('is-invalid');
+                field.classList.add('is-valid');
+                return true;
+            } else {
+                field.classList.remove('is-valid');
+                field.classList.add('is-invalid');
+                return false;
+            }
+        }
+
+        document.querySelectorAll('input[required]').forEach(field => {
+            field.addEventListener('blur', function() {
+                validateField(this);
+            });
+        });
+
+        // ===== SETUP PROGRESS MONITORING =====
+        let CURRENT_DB_NAME = localStorage.getItem('current_db_name');
+        
+        // Monitor setup progress
+        function monitorSetupProgress(dbName) {
+            if (!dbName) {
+                console.log('No db_name provided, skipping setup monitoring');
+                return;
+            }
+
+            const setupModal = document.getElementById('setupModal');
+            const setupProgress = document.getElementById('setupProgress');
+            const setupSteps = document.getElementById('setupSteps');
+            
+            setupModal.classList.add('show');
+
+            const pollInterval = setInterval(async () => {
+                try {
+                    const response = await fetch(`/api/migration-status/?db_name=${encodeURIComponent(dbName)}`);
+                    const status = await response.json();
+
+                    console.log('Setup status:', status);
+
+                    if (status.status === 'completed') {
+                        clearInterval(pollInterval);
+                        setupProgress.textContent = '✓ All systems ready! Redirecting...';
+                        setupProgress.style.color = '#198754';
+                        
+                        // Mark all steps as complete
+                        const steps = setupSteps.querySelectorAll('.setup-step');
+                        steps.forEach(step => step.classList.add('completed'));
+                        
+                        // Redirect after a brief delay
+                        setTimeout(() => {
+                            window.location.href = '/';
+                        }, 1500);
+                    } else if (status.status === 'failed') {
+                        clearInterval(pollInterval);
+                        setupProgress.textContent = '✗ Setup failed: ' + (status.error || 'Unknown error');
+                        setupProgress.style.color = '#e74c3c';
+                        document.getElementById('setupTitle').textContent = 'Setup Failed';
+                        document.getElementById('setupSpinner').style.display = 'none';
+                    } else if (status.status === 'running') {
+                        setupProgress.textContent = status.progress || 'Setting up...';
+                        
+                        // Update step indicators based on progress
+                        const steps = setupSteps.querySelectorAll('.setup-step');
+                        const progressNum = parseInt(status.progress?.match(/\d+/)?.[0]) || 0;
+                        steps.forEach((step, index) => {
+                            if (index + 1 < progressNum) {
+                                step.classList.add('completed');
+                            } else {
+                                step.classList.remove('completed');
+                            }
+                        });
+                    }
+                } catch (error) {
+                    console.error('Error checking setup status:', error);
+                }
+            }, 1000); // Poll every second
+        }
+
+        // Intercept form submission to monitor setup
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+            const loginBtn = document.getElementById('loginBtn');
+            const btnSpinner = document.getElementById('btnSpinner');
+            const btnText = document.getElementById('btnText');
+            
+            btnText.textContent = 'Logging in...';
+            btnSpinner.style.display = 'block';
+            loginBtn.disabled = true;
+
+            // After form submission, check if we need to monitor setup
+            setTimeout(() => {
+                // Check if there are any success messages about setup
+                const messages = document.querySelectorAll('.alert-success');
+                let isFirstLogin = false;
+                
+                messages.forEach(msg => {
+                    if (msg.textContent.includes('workspace is being set up')) {
+                        isFirstLogin = true;
+                    }
+                });
+
+                // Get db_name from the form or hidden field
+                const dbNameField = document.querySelector('input[name="db_name"]');
+                if (dbNameField && dbNameField.value) {
+                    monitorSetupProgress(dbNameField.value);
+                } else if (isFirstLogin) {
+                    console.log('First login detected but no db_name in form');
+                }
+            }, 100);
+        });
+        // Ensure Forgot password link navigates even if some other script prevents default
+        (function(){
+            try{
+                var forgot = document.getElementById('forgotPasswordLink');
+                if(!forgot) return;
+                forgot.addEventListener('click', function(ev){
+                    var href = this.getAttribute('href');
+                    if(href && href !== '#'){
+                        window.location.href = href;
+                    } else {
+                        ev.preventDefault();
+                        var company = '{{ company_code|default:"" }}';
+                        if(company){ window.location.href = '/' + company + '/password-reset/'; }
+                        else { window.location.href = '/password-reset/'; }
+                    }
+                });
+            }catch(e){ console && console.warn && console.warn('forgot link handler error', e); }
+        })();
+    </script>
+</body>
+</html>

@@ -1,0 +1,430 @@
+<!--updt by neha on 2-2-26-->
+<style>
+    #vendor-form .form-control,
+    #vendor-form select.form-control {
+        {% comment %} width: 100% !important;
+        max-width: 100% !important; {% endcomment %}
+    }
+    
+    #vendor-form .select2-container {
+        width: 100% !important;
+    }
+</style>
+{% load widget_tweaks %}
+{% load static %}
+<div
+    data-location-load-states-url="{% url 'load_states' %}"
+    data-location-load-cities-url="{% url 'load_cities' %}"
+    data-location-load-cities-url="{% url 'load_cities' %}"
+
+    hidden
+></div>
+
+<form method="POST" action="/purchase/add_vendor/" novalidate id="vendor-form">
+    {% csrf_token %}
+    <div class="row">
+        <!-- Customer Code -->
+        <div class="col-md-6 mb-3 field-wrapper" data-field-name="vendor_code">
+            <label for="{{ vendor_form.vendor_code.id_for_label }}" class="form-label">
+                {{ vendor_form.vendor_code.label }}
+                {% if vendor_form.vendor_code.field.required %}
+                    <span class="required-asterisk" style="color:#dc3545 !important;">*</span>
+                {% endif %}
+            </label>
+            {{ vendor_form.vendor_code|add_class:"form-control" }}
+            {% for error in vendor_form.vendor_code.errors %}
+                <div class="text-danger small">{{ error }}</div>
+            {% endfor %}
+        </div>
+
+        <!-- Customer Type -->
+        <div class="col-md-6 mb-3 field-wrapper" data-field-name="vendor_type">
+            <label for="{{ vendor_form.vendor_type.id_for_label }}" class="form-label">
+                {{ vendor_form.vendor_type.label }}
+                {% if vendor_form.vendor_type.field.required %}
+                    <span class="required-asterisk" style="color:#dc3545 !important;">*</span>
+                {% endif %}
+            </label>
+            {{ vendor_form.vendor_type|add_class:"form-control" }}
+            {% for error in vendor_form.vendor_type.errors %}
+                <div class="text-danger small">{{ error }}</div>
+            {% endfor %}
+        </div>
+    </div>
+    <div class="row">
+        <!-- First Name -->
+        <div class="col-md-6 mb-3 field-wrapper" data-field-name="first_name">
+            <label for="{{ vendor_form.first_name.id_for_label }}" class="form-label">
+                {{ vendor_form.first_name.label }}
+                {% comment %} {% if vendor_form.first_name.field.required %} {% endcomment %}
+                    <span class="required-asterisk" style="color:#dc3545 !important;">*</span>
+                {% comment %} {% endif %} {% endcomment %}
+            </label>
+            {{ vendor_form.first_name|add_class:"form-control" }}
+            {% for error in vendor_form.first_name.errors %}
+                <div class="text-danger small">{{ error }}</div>
+            {% endfor %}
+        </div>
+
+        <!-- Last Name -->
+        <div class="col-md-6 mb-3 field-wrapper" data-field-name="last_name">
+            <label for="{{ vendor_form.last_name.id_for_label }}" class="form-label">
+                {{ vendor_form.last_name.label }}
+                {% if vendor_form.last_name.field.required %}
+                    <span class="required-asterisk" style="color:#dc3545 !important;">*</span>
+                {% endif %}
+            </label>
+            {{ vendor_form.last_name|add_class:"form-control" }}
+            {% for error in vendor_form.last_name.errors %}
+                <div class="text-danger small">{{ error }}</div>
+            {% endfor %}
+        </div>
+    </div>
+    <div class="row">
+        <!-- Company Name -->
+        <div class="col-md-6 mb-3 field-wrapper" data-field-name="company_name">
+            <label for="{{ vendor_form.company_name.id_for_label }}" class="form-label">
+                {{ vendor_form.company_name.label }}
+                {% if vendor_form.company_name.field.required %}
+                    <span class="required-asterisk" style="color:#dc3545 !important;">*</span>
+                {% endif %}
+            </label>
+            {{ vendor_form.company_name|add_class:"form-control" }}
+            {% for error in vendor_form.company_name.errors %}
+                <div class="text-danger small">{{ error }}</div>
+            {% endfor %}
+        </div>
+
+        <!-- Email -->
+        <div class="col-md-6 mb-3 field-wrapper" data-field-name="email">
+            <label for="{{ vendor_form.email.id_for_label }}" class="form-label">
+                {{ vendor_form.email.label }}
+                {% if vendor_form.email.field.required %}
+                    <span class="required-asterisk" style="color:#dc3545 !important;">*</span>
+                {% endif %}
+            </label>
+            {{ vendor_form.email|add_class:"form-control" }}
+            {% for error in vendor_form.email.errors %}
+                <div class="text-danger small">{{ error }}</div>
+            {% endfor %}
+        </div>
+        <!-- Phone -->
+        <div class="col-md-6 mb-3 field-wrapper" data-field-name="phone">
+            <label for="{{ vendor_form.phone.id_for_label }}" class="form-label">
+                {{ vendor_form.phone.label }}
+                {% if vendor_form.phone.field.required %}
+                    <span class="required-asterisk" style="color:#dc3545 !important;">*</span>
+                {% endif %}
+            </label>
+             {{ vendor_form.phone|add_class:"form-control"|attr:"type:tel"|attr:"pattern:[0-9]{10}"|attr:"maxlength:10"|attr:"title:Please enter a valid 10-digit phone number" }}
+            {% for error in vendor_form.phone.errors %}
+                <div class="text-danger small">{{ error }}</div>
+            {% endfor %}
+        </div>
+    </div>
+    <div class="row">
+        
+
+        <!-- Address Line 1 -->
+        <div class="col-md-6 mb-3 field-wrapper" data-field-name="address_line_1">
+            <label for="{{ vendor_form.address_line_1.id_for_label }}" class="form-label">
+                {{ vendor_form.address_line_1.label }}
+                {% if vendor_form.address_line_1.field.required %}
+                    <span class="required-asterisk" style="color:#dc3545 !important;">*</span>
+                {% endif %}
+            </label>
+            {{ vendor_form.address_line_1|add_class:"form-control" }}
+            {% for error in vendor_form.address_line_1.errors %}
+                <div class="text-danger small">{{ error }}</div>
+            {% endfor %}
+        </div>
+        <div class="col-md-6 mb-3 field-wrapper" data-field-name="country">
+            <label for="{{ vendor_form.country.id_for_label }}" class="form-label">
+                {{ vendor_form.country.label }}
+                {% if vendor_form.country.field.required %}
+                    <span class="required-asterisk" style="color:#dc3545 !important;">*</span>
+                {% endif %}
+            </label>
+            {{ vendor_form.country|add_class:"form-control" }}
+            {% for error in vendor_form.country.errors %}
+                <div class="text-danger small">{{ error }}</div>
+            {% endfor %}
+        </div>
+    </div>
+    <div class="row">
+        
+        <div class="col-md-6 mb-3 field-wrapper" data-field-name="state">
+            <label for="{{ vendor_form.state.id_for_label }}" class="form-label">
+                {{ vendor_form.state.label }}
+                {% if vendor_form.state.field.required %}
+                    <span class="required-asterisk" style="color:#dc3545 !important;">*</span>
+                {% endif %}
+            </label>
+            {{ vendor_form.state|add_class:"form-control" }}
+            {% for error in vendor_form.state.errors %}
+                <div class="text-danger small">{{ error }}</div>
+            {% endfor %}
+        </div>
+        <div class="col-md-6 mb-3 field-wrapper" data-field-name="city">
+            <label for="{{ vendor_form.city.id_for_label }}" class="form-label">
+                {{ vendor_form.city.label }}
+                {% if vendor_form.city.field.required %}
+                    <span class="required-asterisk" style="color:#dc3545 !important;">*</span>
+                {% endif %}
+            </label>
+            {{ vendor_form.city|add_class:"form-control" }}
+            {% for error in vendor_form.city.errors %}
+                <div class="text-danger small">{{ error }}</div>
+            {% endfor %}
+        </div>
+    </div>
+    <div class="row">
+        <!-- Currency -->
+        <div class="col-md-6 mb-3 field-wrapper" data-field-name="currency">
+            <label for="{{ vendor_form.currency.id_for_label }}" class="form-label">
+                {{ vendor_form.currency.label }}
+                {% if vendor_form.currency.field.required %}
+                    <span class="required-asterisk" style="color:#dc3545 !important;">*</span>
+                {% endif %}
+            </label>
+            {{ vendor_form.currency|add_class:"form-control" }}
+            {% for error in vendor_form.currency.errors %}
+                <div class="text-danger small">{{ error }}</div>
+            {% endfor %}
+        </div>
+    </div>
+    
+
+    <div class="mt-3">
+        <button type="submit" class="btn btn-primary">Save Vendor</button>
+        <button type="button" class="btn btn-outline-secondary ms-2" data-bs-dismiss="modal">Cancel</button>
+    </div>
+</form>
+
+<script src="{% static 'js/location_selects.js' %}"></script>
+
+<script>
+(function() {
+    console.log("Customer form script loaded");
+    
+    const vendorTypeField = document.querySelector('#vendor-form [name="vendor_type"]');
+    
+    function toggleFields() {
+        console.log("toggleFields is called");
+        const vendorType = vendorTypeField ? vendorTypeField.value : '';
+        console.log("Customer type:", vendorType);
+        
+        // Get field wrappers
+        const firstNameWrapper = document.querySelector('#vendor-form .field-wrapper[data-field-name="first_name"]');
+        const lastNameWrapper = document.querySelector('#vendor-form .field-wrapper[data-field-name="last_name"]');
+        const companyNameWrapper = document.querySelector('#vendor-form .field-wrapper[data-field-name="company_name"]');
+        
+        // Get inputs
+        const firstNameInput = document.querySelector('#vendor-form [name="first_name"]');
+        const lastNameInput = document.querySelector('#vendor-form [name="last_name"]');
+        const companyNameInput = document.querySelector('#vendor-form [name="company_name"]');
+        
+        if (vendorType === 'individual') {
+            console.log("Showing individual fields");
+            // Show individual fields
+            if (firstNameWrapper) firstNameWrapper.style.display = 'block';
+            if (lastNameWrapper) lastNameWrapper.style.display = 'block';
+            if (companyNameWrapper) companyNameWrapper.style.display = 'none';
+            
+            // Update required
+            if (firstNameInput) firstNameInput.required = true;
+            if (lastNameInput) lastNameInput.required = true;
+            if (companyNameInput) {
+                companyNameInput.required = false;
+                companyNameInput.value = ''; // Clear value
+            }
+            
+        } else if (vendorType === 'company') {
+            console.log("Showing company field");
+            // Show company field
+            if (firstNameWrapper) firstNameWrapper.style.display = 'none';
+            if (lastNameWrapper) lastNameWrapper.style.display = 'none';
+            if (companyNameWrapper) companyNameWrapper.style.display = 'block';
+            
+            // Update required
+            if (firstNameInput) {
+                firstNameInput.required = false;
+                firstNameInput.value = ''; // Clear value
+            }
+            if (lastNameInput) {
+                lastNameInput.required = false;
+                lastNameInput.value = ''; // Clear value
+            }
+            if (companyNameInput) companyNameInput.required = true;
+            
+        } else {
+            console.log("No vendor type - hiding all name fields");
+            // No vendor type selected - hide all name fields
+            if (firstNameWrapper) firstNameWrapper.style.display = 'none';
+            if (lastNameWrapper) lastNameWrapper.style.display = 'none';
+            if (companyNameWrapper) companyNameWrapper.style.display = 'none';
+        }
+    }
+    
+    // Run immediately since modal is already loaded
+    if (vendorTypeField) {
+        console.log("Customer type field found, setting up listener");
+        toggleFields();
+        
+        // Run when vendor_type changes
+        vendorTypeField.addEventListener('change', toggleFields);
+    } else {
+        console.log("Customer type field NOT found");
+    }
+})();
+</script>
+
+<style>
+    /* Highlight required fields with red border to match error styling */
+    #vendor-form .required-field-highlight {
+        border-color: #dc3545 !important;
+        box-shadow: none !important;
+    }
+    /* Select2 specific: highlight the selection box */
+    #vendor-form .select2-container.required-field-highlight .select2-selection--single {
+        border-color: #dc3545 !important;
+    }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    // Add highlight class to all required controls inside the vendor form
+    const form = document.getElementById('vendor-form');
+    if (!form) return;
+    // 1) Mark native controls that have `required` attribute
+    const requiredControls = form.querySelectorAll('input[required], select[required], textarea[required]');
+    requiredControls.forEach(function (el) {
+        el.classList.add('required-field-highlight');
+        // mark Select2 container if present
+        try {
+            if (window.jQuery && window.jQuery.fn && window.jQuery.fn.select2) {
+                const $el = window.jQuery(el);
+                const $container = $el.next('.select2-container');
+                if ($container && $container.length) {
+                    $container.addClass('required-field-highlight');
+                    $container.find('.select2-selection--single').addClass('required-field-highlight');
+                }
+            } else {
+                const sib = el.parentElement && el.parentElement.querySelector('.select2-container');
+                if (sib) sib.classList.add('required-field-highlight');
+            }
+        } catch (e) {}
+    });
+
+    // 2) Some fields are not rendered with HTML `required` attribute. Detect required fields
+    //    by the rendered asterisk in labels and mark their inputs/selects.
+    form.querySelectorAll('.field-wrapper').forEach(function (wrapper) {
+        if (wrapper.querySelector('.required-asterisk')) {
+            const control = wrapper.querySelector('input, select, textarea');
+            if (control) {
+                                control.classList.add('required-field-highlight');
+                                // ensure browser validation recognizes these as required
+                                try {
+                                        if (!control.hasAttribute('required')) control.setAttribute('required', 'required');
+                                } catch (e) {}
+                try {
+                    if (window.jQuery && window.jQuery.fn && window.jQuery.fn.select2) {
+                        const $c = window.jQuery(control);
+                        const $cont = $c.next('.select2-container');
+                        if ($cont && $cont.length) {
+                            $cont.addClass('required-field-highlight');
+                            $cont.find('.select2-selection--single').addClass('required-field-highlight');
+                        }
+                    } else {
+                        const sib = control.parentElement && control.parentElement.querySelector('.select2-container');
+                        if (sib) sib.classList.add('required-field-highlight');
+                    }
+                } catch (e) {}
+            }
+        }
+    });
+});
+</script>
+
+<script>
+// Mark invalid native controls and Select2 containers with Bootstrap invalid styling
+document.addEventListener('DOMContentLoaded', function () {
+    const form = document.getElementById('vendor-form');
+    if (!form) return;
+
+    function markInvalids() {
+        // clear previous markers
+        form.querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid'));
+
+        const invalids = form.querySelectorAll(':invalid');
+        invalids.forEach(function (el) {
+            try {
+                if (el.classList && el.classList.contains('select2-hidden-accessible')) {
+                    // mark select2 container
+                    const $el = window.jQuery ? window.jQuery(el) : null;
+                    if ($el && $el.next) {
+                        const $container = $el.next('.select2-container');
+                        if ($container && $container.length) {
+                            $container.addClass('is-invalid');
+                            $container.find('.select2-selection--single').addClass('is-invalid');
+                        }
+                    } else {
+                        const container = el.parentElement && el.parentElement.querySelector('.select2-container');
+                        if (container) container.classList.add('is-invalid');
+                    }
+                } else if (el.classList) {
+                    el.classList.add('is-invalid');
+                }
+            } catch (e) {}
+        });
+    }
+
+    form.addEventListener('submit', function (e) {
+        setTimeout(function () {
+            if (!form.checkValidity()) {
+                markInvalids();
+            }
+        }, 10);
+    });
+
+    // Remove invalid marker when user corrects the field
+    form.addEventListener('input', function (e) {
+        const t = e.target;
+        if (!t) return;
+        if (t.classList && t.classList.contains('is-invalid') && t.checkValidity()) t.classList.remove('is-invalid');
+        if (t.tagName === 'SELECT' && t.classList.contains('select2-hidden-accessible')) {
+            try {
+                const $t = window.jQuery ? window.jQuery(t) : null;
+                if ($t && $t.next) {
+                    const $container = $t.next('.select2-container');
+                    if ($container && $container.length) {
+                        $container.removeClass('is-invalid');
+                        $container.find('.select2-selection--single').removeClass('is-invalid');
+                    }
+                } else {
+                    const container = t.parentElement && t.parentElement.querySelector('.select2-container');
+                    if (container) container.classList.remove('is-invalid');
+                }
+            } catch (e) {}
+        }
+    }, true);
+
+    form.addEventListener('change', function (e) {
+        const t = e.target;
+        if (!t) return;
+        if (t.classList && t.classList.contains('is-invalid') && t.checkValidity()) t.classList.remove('is-invalid');
+        if (t.tagName === 'SELECT') {
+            try {
+                const $t = window.jQuery ? window.jQuery(t) : null;
+                if ($t && $t.next) {
+                    const $container = $t.next('.select2-container');
+                    if ($container && $container.length) {
+                        $container.removeClass('is-invalid');
+                        $container.find('.select2-selection--single').removeClass('is-invalid');
+                    }
+                }
+            } catch (e) {}
+        }
+    }, true);
+});
+</script>

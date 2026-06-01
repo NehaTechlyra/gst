@@ -1,0 +1,11 @@
+{% extends "sidebar.html" %}
+{% load static %}
+
+{#
+  This file is a small shim so templates that extend 'HR/sidebar.html'
+  still work while the project's main sidebar is at 'sidebar.html'.
+#}
+
+{% block exstyle %}{% endblock %}
+{% block page_title %}{% endblock %}
+{% block content %}{% endblock %}

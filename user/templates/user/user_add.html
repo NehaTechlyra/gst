@@ -1,0 +1,434 @@
+{% extends 'website/index.html' %}
+{% load widget_tweaks %}
+{% load static %}
+{% block exstyle %}
+<link href="{% static 'style/general.css' %}" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.9.1/font/bootstrap-icons.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<style>
+    .password-input-wrapper { position: relative; }
+
+    .password-toggle {
+        position: absolute;
+        right: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        background: none;
+        border: none;
+        color: #7d7cad;
+        cursor: pointer;
+        padding: 4px;
+        font-size: 16px;
+        z-index: 10;
+        transition: right 0.3s ease, left 0.3s ease;
+    }
+
+    .password-toggle:hover { color: #55588b; }
+    /* Prevent scripts from moving the eye to left; keep on right */
+    .password-toggle.eye-left { right: 12px !important; left: auto !important; }
+
+    /* Hide bootstrap validation check icon and keep spacing for the toggle */
+    .form-control.is-valid { background-image: none !important; padding-right: 44px !important; }
+    .password-input-wrapper .form-control.is-valid ~ .password-toggle { right: 12px !important; left: auto !important; }
+</style>
+{% endblock exstyle %}
+{% block page_title %}Add New User{% endblock page_title %}
+{% block content %}
+
+    <div class="container mt-4">
+    
+    <div class="card p-4 shadow-sm border-0">
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+
+            <!-- Vendor Fields: Two Column Layout -->
+           <div class="row">
+    <div class="col-md-4 mb-3">
+        <label for="{{ form.usr_name.id_for_label }}" class="form-label">{{ form.usr_name.label }}<span class="required-asterisk">*</span></label>
+        {{ form.usr_name|add_class:"form-control" }}
+        {% for error in form.usr_name.errors %}
+            <div class="text-danger small">{{ error }}</div>
+        {% endfor %}
+    </div>
+
+    <div class="col-md-4 mb-3">
+        <label for="{{ form.usr_pwd.id_for_label }}" class="form-label">{{ form.usr_pwd.label }}<span class="required-asterisk">*</span></label>
+        {{ form.usr_pwd|add_class:"form-control" }}
+        {% for error in form.usr_pwd.errors %}
+            <div class="text-danger small">{{ error }}</div>
+        {% endfor %}
+    </div>
+
+    <div class="col-md-4 mb-3">
+        <label for="{{ form.confirm_pwd.id_for_label }}" class="form-label">{{ form.confirm_pwd.label }}<span class="required-asterisk">*</span></label>
+        {{ form.confirm_pwd|add_class:"form-control" }}
+        {% for error in form.confirm_pwd.errors %}
+            <div class="text-danger small">{{ error }}</div>
+        {% endfor %}
+    </div>
+
+    <!-- Render remaining fields -->
+
+    <div class="col-md-4 mb-3">
+        <label for="{{ form.usr_fname.id_for_label }}" class="form-label">{{ form.usr_fname.label }}</label>
+        {{ form.usr_fname }}
+        {% for error in form.usr_fname.errors %}
+            <div class="text-danger small">{{ error }}</div>
+        {% endfor %}
+    </div>
+    {% comment %} <div class="col-md-4 mb-3">
+        <label for="{{ form.usr_mail.id_for_label }}" class="form-label">{{ form.usr_mail.label }}<span class="required-asterisk">*</span></label>
+        {{ form.usr_mail|add_class:"form-control" }}
+        {% for error in form.usr_mail.errors %}
+            <div class="text-danger small">{{ error }}</div>
+        {% endfor %}
+    </div>
+    <div class="col-md-4 mb-3">
+        <label for="{{ form.usr_phn.id_for_label }}" class="form-label">{{ form.usr_phn.label }}<span class="required-asterisk">*</span></label>
+        {{ form.usr_phn|add_class:"form-control" }}
+        {% for error in form.usr_phn.errors %}
+            <div class="text-danger small">{{ error }}</div>
+        {% endfor %}
+    </div> {% endcomment %}
+    <div class="col-md-4 mb-3">
+        <label for="{{ form.usr_mail.id_for_label }}" class="form-label">{{ form.usr_mail.label }}<span class="required-asterisk">*</span></label>
+        {{ form.usr_mail|add_class:"form-control"|attr:"type:email"|attr:"autocomplete:email"|attr:"title:Please enter a valid email address" }}
+        {% for error in form.usr_mail.errors %}
+            <div class="text-danger small">{{ error }}</div>
+        {% endfor %}
+    </div>
+    <div class="col-md-4 mb-3">
+        <label for="{{ form.usr_phn.id_for_label }}" class="form-label">{{ form.usr_phn.label }}<span class="required-asterisk">*</span></label>
+                {{ form.usr_phn|add_class:"form-control"|attr:"pattern:[0-9]+"|attr:"inputmode:numeric"|attr:"title:Phone number should only contain digits" }}
+
+        {% for error in form.usr_phn.errors %}
+            <div class="text-danger small">{{ error }}</div>
+        {% endfor %}
+    </div>
+    <div class="col-md-4 mb-3">
+        <label for="{{ form.usr_rmrks.id_for_label }}" class="form-label">{{ form.usr_rmrks.label }}</label>
+        {{ form.usr_rmrks|add_class:"form-control" }}
+        {% for error in form.usr_rmrks.errors %}
+            <div class="text-danger small">{{ error }}</div>
+        {% endfor %}
+    </div>
+    <div class="col-md-4 mb-3">
+        <label for="{{ form.usr_roleid.id_for_label }}" class="form-label">{{ form.usr_roleid.label }}<span class="required-asterisk">*</span></label>
+        {{ form.usr_roleid|add_class:"form-control" }}
+        {% for error in form.usr_roleid.errors %}
+            <div class="text-danger small">{{ error }}</div>
+        {% endfor %}
+    </div>
+    <!-- Repeat the above block for each remaining form field similarly: usr_mail, usr_phn, usr_rmrks, usr_roleid -->
+</div>
+
+
+            
+
+            <!-- Buttons -->
+            <div class="mt-3">
+                <button type="submit" class="btn btn-primary">Save User</button>
+                <a href="{% company_url 'user_list' %}" class="btn btn-outline-secondary ms-2">Cancel</a>
+            </div>
+        </form>
+
+    <!-- <a href="{% company_url 'user_list' %}">Back to List</a> -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script>
+     document.addEventListener('DOMContentLoaded', function () {
+    const toastContainer = document.getElementById('toastContainer');
+    {% if messages %}
+      {% for message in messages %}
+        const toastEl = document.createElement('div');
+        toastEl.className = 'toast align-items-center text-bg-{{ message.tags }} border-0';
+        toastEl.setAttribute('role', 'alert');
+        toastEl.setAttribute('aria-live', 'assertive');
+        toastEl.setAttribute('aria-atomic', 'true');
+        toastEl.innerHTML = `
+          <div class="d-flex">
+            <div class="toast-body">
+              {{ message|escapejs }}
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+          </div>
+        `;
+        toastContainer.appendChild(toastEl);
+
+        const toast = new bootstrap.Toast(toastEl, { delay: 5000 });
+        toast.show();
+      {% endfor %}
+    {% endif %}
+  });
+
+  
+  $(document).ready(function() {
+    $('.select2').select2({
+        placeholder: "Search employee...",
+        allowClear: true,
+        matcher: function(params, data) {
+            // If there are no search terms, return all results
+            if ($.trim(params.term) === '') {
+                return data;
+            }
+
+            // Compare start of text with search term (case-insensitive)
+            if (data.text.toLowerCase().startsWith(params.term.toLowerCase())) {
+                return data;
+            }
+
+            // Return null to exclude this option
+            return null;
+        }
+    });
+  });
+
+    // Track form changes - Global variable
+    let formChanged = false;
+    const form = document.querySelector('form');
+    
+    if (form) {
+        // Track all form input changes
+        form.addEventListener('change', function(e) {
+            formChanged = true;
+            console.log('Form changed via change event');
+        });
+        
+        form.addEventListener('input', function(e) {
+            formChanged = true;
+            console.log('Form changed via input event');
+        });
+        
+    }
+    
+    // Track Select2 changes using jQuery delegation (works regardless of initialization timing)
+    if (window.$ && window.jQuery) {
+        $(document).on('change', 'select.select2, .select2-hidden-accessible', function() {
+            formChanged = true;
+            console.log('Form changed via Select2 change event (delegation)');
+        });
+    }
+    
+    // Direct select element change listeners as fallback
+    document.addEventListener('change', function(e) {
+        if (e.target.tagName === 'SELECT') {
+            formChanged = true;
+            console.log('Form changed via direct select change event');
+        }
+    }, true);
+    
+    // Global click interceptor for all links - Outside of form check
+    document.addEventListener('click', function(e) {
+        // Check if clicked element is a link
+        let link = e.target.closest('a');
+        
+        console.log('Link clicked:', link ? link.href : 'not a link');
+        
+        if (link && formChanged) {
+            // Get the href
+            const href = link.getAttribute('href');
+            
+            console.log('Checking href:', href, 'formChanged:', formChanged);
+            
+            // Check if it's a navigation link (not modal, not anchor, not javascript)
+            if (href && !href.startsWith('#') && !link.getAttribute('data-bs-toggle') && !href.startsWith('javascript:')) {
+                console.log('Preventing navigation to:', href);
+                e.preventDefault();
+                e.stopPropagation();
+                
+                // Show confirmation modal
+                const navModalHtml = `
+                    <div class="modal fade" id="navConfirmationModal" tabindex="-1" role="dialog" aria-labelledby="navConfirmationLabel" aria-hidden="true">
+                        <div class="modal-dialog" role="document">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title" id="navConfirmationLabel">Confirm Navigation</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <p>Are you sure you want to leave this page? All unsaved data will be lost.</p>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                    <button type="button" class="btn btn-primary" id="confirm-nav">OK</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                // Remove any existing modal
+                const existingModal = document.getElementById('navConfirmationModal');
+                if (existingModal) existingModal.remove();
+                
+                // Add new modal to body
+                document.body.insertAdjacentHTML('beforeend', navModalHtml);
+                
+                // Show the modal
+                const navModal = new bootstrap.Modal(document.getElementById('navConfirmationModal'));
+                navModal.show();
+                
+                // Store the target URL
+                const targetUrl = href;
+                
+                // Handle the confirmation
+                document.getElementById('confirm-nav').addEventListener('click', function() {
+                    formChanged = false; // Reset to allow navigation
+                    window.location.href = targetUrl;
+                });
+                
+                // Clean up modal when it's hidden
+                document.getElementById('navConfirmationModal').addEventListener('hidden.bs.modal', function () {
+                    document.getElementById('navConfirmationModal').remove();
+                });
+            }
+        }
+    }, true); // Use capture phase for better event handling
+
+    // Real-time uniqueness validation for username and email
+function debounce(fn, delay) {
+    let timer;
+    return function(...args) {
+        clearTimeout(timer);
+        timer = setTimeout(() => fn.apply(this, args), delay);
+    };
+}
+
+function ensureFeedback(el) {
+    if (!el) return { invalid: null, valid: null };
+    let invalid = el.parentNode.querySelector('.invalid-feedback');
+    let valid = el.parentNode.querySelector('.valid-feedback');
+    // Remove old realtime-error if present
+    const old = el.parentElement.querySelector('.realtime-error'); if (old) old.remove();
+    if (!invalid) {
+        invalid = document.createElement('div'); invalid.className = 'invalid-feedback'; invalid.style.display = 'none'; el.parentNode.appendChild(invalid);
+    }
+    if (!valid) {
+        valid = document.createElement('div'); valid.className = 'valid-feedback'; valid.style.display = 'none'; el.parentNode.appendChild(valid);
+    }
+    return { invalid: invalid, valid: valid };
+}
+
+function showFieldError(inputEl, message) {
+    const fb = ensureFeedback(inputEl);
+    if (message) {
+        fb.invalid.textContent = message;
+        fb.invalid.style.display = 'block';
+        if (fb.valid) fb.valid.style.display = 'none';
+        inputEl.classList.remove('is-valid'); inputEl.classList.add('is-invalid');
+    } else {
+        if (fb.invalid) fb.invalid.style.display = 'none';
+        inputEl.classList.remove('is-invalid'); inputEl.classList.add('is-valid');
+    }
+}
+
+function checkFieldUniqueness(fieldName, inputEl) {
+    const value = inputEl.value.trim();
+    if (!value) {
+        showFieldError(inputEl, '');
+        inputEl.classList.remove('is-valid', 'is-invalid');
+        return;
+    }
+
+    fetch(`{% url 'validate_user_field' %}?field=${fieldName}&value=${encodeURIComponent(value)}`)
+        .then(res => res.json())
+        .then(data => {
+            if (!data.available) {
+                showFieldError(inputEl, data.message);
+            } else {
+                showFieldError(inputEl, '');
+            }
+        })
+        .catch(() => {}); // silently ignore network errors
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    const usernameInput = document.getElementById('{{ form.usr_name.id_for_label }}');
+    const emailInput = document.getElementById('{{ form.usr_mail.id_for_label }}');
+
+    // password fields
+    const pwdInput = document.getElementById('{{ form.usr_pwd.id_for_label }}');
+    const confirmInput = document.getElementById('{{ form.confirm_pwd.id_for_label }}');
+
+    if (usernameInput) {
+        usernameInput.addEventListener('input', debounce(function () {
+            checkFieldUniqueness('usr_name', usernameInput);
+        }, 500));
+        usernameInput.addEventListener('blur', function () {
+            checkFieldUniqueness('usr_name', usernameInput);
+        });
+    }
+
+    if (emailInput) {
+        emailInput.addEventListener('input', debounce(function () {
+            checkFieldUniqueness('usr_mail', emailInput);
+        }, 500));
+        emailInput.addEventListener('blur', function () {
+            checkFieldUniqueness('usr_mail', emailInput);
+        });
+    }
+
+        // Add show/hide toggle to password fields
+        function addToggle(el) {
+            if (!el) return;
+            if (el.parentNode && el.parentNode.classList && el.parentNode.classList.contains('password-input-wrapper')) return;
+            const wrapper = document.createElement('div'); wrapper.className = 'password-input-wrapper';
+            const parent = el.parentNode; parent.replaceChild(wrapper, el); wrapper.appendChild(el);
+            const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'password-toggle'; btn.innerHTML = '<i class="bi bi-eye"></i>'; btn.style.cursor = 'pointer';
+            wrapper.style.position = 'relative';
+            try { const existing = window.getComputedStyle ? window.getComputedStyle(el).paddingRight : null; el.style.paddingRight = (existing && existing !== '0px' ? existing : '0px'); el.style.paddingRight = Math.max(parseInt(el.style.paddingRight || '0'), 44) + 'px'; } catch(e){}
+            wrapper.appendChild(btn);
+            btn.addEventListener('click', function(){ if (el.type === 'password') { el.type = 'text'; this.querySelector('i').classList.remove('bi-eye'); this.querySelector('i').classList.add('bi-eye-slash'); } else { el.type = 'password'; this.querySelector('i').classList.remove('bi-eye-slash'); this.querySelector('i').classList.add('bi-eye'); } });
+        }
+
+        addToggle(pwdInput);
+        addToggle(confirmInput);
+
+        // Validation functions
+        const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/;
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        const phoneRegex = /^[0-9]{8,15}$/;
+
+        function validateUsername() { if (!usernameInput) return true; const v = usernameInput.value.trim(); if (usernameRegex.test(v)) { showFieldError(usernameInput, ''); return true; } showFieldError(usernameInput, '3-20 chars: letters, numbers or underscore'); return false; }
+        function validateEmail() { if (!emailInput) return true; const v = emailInput.value.trim(); if (emailRegex.test(v)) { showFieldError(emailInput, ''); return true; } showFieldError(emailInput, 'Enter a valid email'); return false; }
+        function validatePhone() { const phoneInput = document.getElementById('{{ form.usr_phn.id_for_label }}'); if (!phoneInput) return true; const v = phoneInput.value.replace(/\D/g,''); if (phoneRegex.test(v)) { showFieldError(phoneInput, ''); return true; } showFieldError(phoneInput, 'Enter a valid phone (8-15 digits)'); return false; }
+        function validatePwd() { if (!pwdInput) return true; const v = pwdInput.value || ''; if (v.length >= 8) { showFieldError(pwdInput, ''); return true; } showFieldError(pwdInput, 'Password must be at least 8 characters'); return false; }
+        function validateConfirm() { if (!confirmInput || !pwdInput) return true; if (confirmInput.value === pwdInput.value && confirmInput.value !== '') { showFieldError(confirmInput, ''); return true; } showFieldError(confirmInput, 'Passwords do not match'); return false; }
+
+        [usernameInput, emailInput, pwdInput, confirmInput, document.getElementById('{{ form.usr_phn.id_for_label }}')].forEach(f => { if (!f) return; f.addEventListener('input', function(){ if (f === usernameInput) validateUsername(); else if (f === emailInput) validateEmail(); else if (f === pwdInput) { validatePwd(); validateConfirm(); } else if (f === confirmInput) validateConfirm(); else if (f.id === '{{ form.usr_phn.id_for_label }}') validatePhone(); }); f.addEventListener('blur', function(){ if (f === usernameInput) validateUsername(); else if (f === emailInput) validateEmail(); else if (f === pwdInput) { validatePwd(); validateConfirm(); } else if (f === confirmInput) validateConfirm(); else if (f.id === '{{ form.usr_phn.id_for_label }}') validatePhone(); }); });
+
+        // integrate uniqueness check result into feedback
+        const originalCheck = checkFieldUniqueness;
+        window.checkFieldUniqueness = function(fieldName, inputEl) {
+            const value = inputEl.value.trim();
+            if (!value) { showFieldError(inputEl, ''); inputEl.classList.remove('is-valid','is-invalid'); return; }
+            fetch(`{% url 'validate_user_field' %}?field=${fieldName}&value=${encodeURIComponent(value)}`)
+                .then(res => res.json())
+                .then(data => { if (!data.available) { showFieldError(inputEl, data.message); } else { showFieldError(inputEl, ''); } })
+                .catch(() => {});
+        };
+
+        // Block form submission if any validation fails
+        const addForm = document.querySelector('form');
+        if (addForm) addForm.addEventListener('submit', function(e){
+            const ok = validateUsername() & validateEmail() & validatePhone() & validatePwd() & validateConfirm();
+            if (!ok) { e.preventDefault(); e.stopPropagation(); const first = addForm.querySelector('.is-invalid'); if (first) { first.focus(); if (typeof first.scrollIntoView === 'function') first.scrollIntoView({ block: 'center', behavior: 'smooth' }); } }
+        });
+
+    // Block form submission if real-time errors exist
+    const form = document.querySelector('form');
+    if (form) {
+        form.addEventListener('submit', function (e) {
+            const realtimeErrors = form.querySelectorAll('.realtime-error');
+            if (realtimeErrors.length > 0) {
+                e.preventDefault();
+                realtimeErrors[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        });
+    }
+});
+
+</script>
+</body>
+</html>
+{% endblock %}

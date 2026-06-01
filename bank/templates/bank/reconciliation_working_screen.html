@@ -1,0 +1,1171 @@
+{% extends 'website/index.html' %}
+{% load static %}
+
+{% block title %}Reconciliation — {{ reconciliation.bank_account.account_number }}{% endblock %}
+
+{% block exstyle %}
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+{% endblock %}
+
+{% block content %}
+<style>
+  :root {
+    --bg:           #f5f6fa;
+    --surface:      #ffffff;
+    --border:       #e4e8f0;
+    --text-primary: #111827;
+    --text-muted:   #6b7280;
+    --accent:       #4f46e5;
+    --accent-light: #eef2ff;
+    --green:        #059669;
+    --green-light:  #ecfdf5;
+    --orange:       #d97706;
+    --orange-light: #fffbeb;
+    --red:          #dc2626;
+    --radius:       12px;
+    --shadow:       0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.05);
+  }
+
+  body { background: var(--bg); font-family: 'DM Sans', sans-serif; color: var(--text-primary); margin: 0; }
+
+  /* ── Topbar ── */
+  .hr-topbar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    display: flex; align-items: stretch; justify-content: space-between;
+    min-height: 52px;
+  }
+  .hr-breadcrumb {
+    display: flex; align-items: center;
+    font-size: 13px; gap: 4px; color: var(--text-muted);
+  }
+  .hr-breadcrumb a {
+    color: var(--accent); text-decoration: none;
+    padding: 16px 8px; display: block;
+  }
+  .hr-breadcrumb a:hover { text-decoration: underline; }
+  .hr-breadcrumb .sep { color: #d1d5db; }
+  .hr-breadcrumb .current {
+    color: var(--text-primary); font-weight: 600;
+    padding: 16px 8px;
+    border-bottom: 2px solid var(--accent);
+  }
+  .hr-topbar-right { display: flex; align-items: center; gap: 8px; }
+
+  /* ── PDF/Print button — scoped to match sales invoice exactly ── */
+  .recon-pdf-btn {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 5px !important;
+    font-family: 'DM Sans', sans-serif !important;
+    font-weight: 500 !important;
+    font-size: 0.85rem !important;
+    line-height: 1.5 !important;
+    padding: 0.375rem 0.75rem !important;
+    border-radius: 5px !important;
+    border: 1px solid #eaeaef !important;
+    background: #ffffff !important;
+    color: #6b6d96 !important;
+    cursor: pointer !important;
+    text-decoration: none !important;
+    transition: all .15s ease !important;
+    white-space: nowrap !important;
+    user-select: none !important;
+    box-shadow: 0 1px 2px rgba(85,88,139,.06) !important;
+  }
+  .recon-pdf-btn:hover, .recon-pdf-btn:focus {
+    background: #f5f5fb !important;
+    border-color: #dcddf0 !important;
+    color: #55588b !important;
+    text-decoration: none !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 2px 8px rgba(85,88,139,.08) !important;
+  }
+  .recon-pdf-btn:active {
+    transform: translateY(0) !important;
+    box-shadow: none !important;
+  }
+  .recon-pdf-btn::after {
+    display: inline-block;
+    margin-left: 0.3em;
+    vertical-align: 0.18em;
+    content: "";
+    border-top: 0.3em solid currentColor;
+    border-right: 0.3em solid transparent;
+    border-bottom: 0;
+    border-left: 0.3em solid transparent;
+    opacity: 0.75;
+  }
+
+  /* ── PDF/Print dropdown menu — scoped, match sales invoice ── */
+  .recon-pdf-menu {
+    border: 1px solid #eaeaef !important;
+    border-radius: 8px !important;
+    box-shadow: 0 4px 16px rgba(85,88,139,.10) !important;
+    padding: 5px !important;
+    background: #ffffff !important;
+    font-family: 'DM Sans', sans-serif !important;
+    font-size: 0.855rem !important;
+    min-width: 150px !important;
+  }
+  .recon-pdf-menu .dropdown-item {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    border-radius: 4px !important;
+    padding: 7px 12px !important;
+    color: #2c2d4a !important;
+    font-weight: 400 !important;
+    background: transparent !important;
+    transition: background .1s !important;
+    text-decoration: none !important;
+    font-size: 0.855rem !important;
+  }
+  .recon-pdf-menu .dropdown-item:hover {
+    background: #f0f0f8 !important;
+    color: #55588b !important;
+    text-decoration: none !important;
+  }
+  .recon-pdf-menu .dropdown-item i {
+    font-size: 0.9rem !important;
+    color: #8486b8 !important;
+  }
+
+  /* ── Content ── */
+  .hr-content { padding: 20px 24px; }
+
+  /* ── Locked banner ── */
+  .hr-locked-banner {
+    background: var(--green-light);
+    border: 1px solid #a7f3d0;
+    border-radius: 8px; padding: 11px 18px;
+    font-size: 13px; color: var(--green);
+    margin-bottom: 16px;
+    display: flex; align-items: center; gap: 8px;
+  }
+
+  /* ── Summary bar ── */
+  .hr-summary-bar {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    display: flex; overflow: hidden;
+    margin-bottom: 16px;
+  }
+  .hr-summary-cell {
+    flex: 1; padding: 14px 20px;
+    border-right: 1px solid var(--border);
+    text-align: center;
+  }
+  .hr-summary-cell:last-child { border-right: none; }
+  .hr-summary-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 5px; }
+  .hr-summary-value { font-size: 18px; font-weight: 700; font-family: 'DM Mono', monospace; color: var(--text-primary); }
+  .hr-summary-value.blue   { color: var(--accent); }
+  .hr-summary-value.green  { color: var(--green); }
+  .hr-summary-value.red    { color: var(--red); }
+  .hr-summary-value.orange { color: var(--orange); }
+
+  /* ── Section card ── */
+  .hr-section {
+    background: var(--surface);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    margin-bottom: 16px;
+  }
+  .hr-section-header {
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--border);
+    background: #fafafa;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .hr-section-title {
+    font-size: 13px; font-weight: 700; color: var(--text-primary);
+    display: flex; align-items: center; gap: 7px; margin: 0;
+  }
+  .hr-section-title i { color: var(--accent); }
+  .hr-cleared-badge { font-size: 12px; color: var(--text-muted); }
+  .hr-cleared-badge span { font-weight: 700; color: var(--accent); }
+
+  /* ── Warn card (unmatched) ── */
+  .hr-warn-section {
+    background: var(--surface);
+    border: 1px solid #fde68a;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    margin-bottom: 16px;
+  }
+  .hr-warn-section-header {
+    background: var(--orange-light);
+    padding: 12px 20px;
+    border-bottom: 1px solid #fde68a;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .hr-warn-section-title { font-size: 13px; font-weight: 700; color: var(--orange); margin: 0; }
+  .hr-warn-note {
+    padding: 10px 20px; font-size: 12px; color: var(--text-muted);
+    border-bottom: 1px solid #fef3c7;
+  }
+
+  /* ── Table ── */
+  .items-table { width: 100%; border-collapse: collapse; }
+  .items-table thead tr { background: #f9fafb; border-bottom: 1px solid var(--border); }
+  .items-table .select-all-row th {
+    background: var(--accent-light) !important;
+    font-size: 12px; color: var(--accent) !important;
+    text-transform: none; letter-spacing: 0;
+  }
+  .items-table thead th {
+    padding: 10px 14px;
+    font-size: 11px; font-weight: 600;
+    color: var(--text-muted); text-transform: uppercase;
+    letter-spacing: 0.04em; white-space: nowrap; text-align: left;
+  }
+  .items-table thead th.text-end { text-align: right; }
+  .items-table tbody td {
+    padding: 11px 14px;
+    font-size: 13px; color: var(--text-primary);
+    border-bottom: 1px solid #f3f4f6;
+    vertical-align: middle;
+  }
+  .items-table tbody tr:last-child td { border-bottom: none; }
+  .items-table tbody tr:hover { background: #fafbfc; }
+  .items-table tbody tr.row-cleared { background: var(--green-light); }
+  .text-end { text-align: right; }
+
+  /* ── Checkbox ── */
+  .zf-check {
+    width: 16px; height: 16px;
+    accent-color: var(--accent); cursor: pointer;
+  }
+  .zf-check:disabled { cursor: not-allowed; }
+
+  /* ── Amount cols ── */
+  .amt-debit  { color: var(--red);   font-family: 'DM Mono', monospace; }
+  .amt-credit { color: var(--green); font-family: 'DM Mono', monospace; }
+  .amt-dash   { color: #d1d5db; }
+  .amt-num    { font-family: 'DM Mono', monospace; }
+
+  /* ── Type badge ── */
+  .hr-type-badge {
+    display: inline-block;
+    background: #f3f4f6; color: var(--text-muted);
+    border-radius: 4px; padding: 2px 7px; font-size: 11px;
+  }
+  .hr-source-badge,
+  .hr-match-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    border-radius: 999px;
+    padding: 3px 9px;
+    font-size: 11px;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+  .source-in { background: #ecfdf5; color: #047857; }
+  .source-out { background: #fef2f2; color: #b91c1c; }
+  .source-fee { background: #fffbeb; color: #b45309; }
+  .source-transfer { background: #eef2ff; color: #4338ca; }
+  .source-opening { background: #f0fdf4; color: #166534; }
+  .source-manual { background: #faf5ff; color: #7e22ce; }
+  .source-journal { background: #f3f4f6; color: #4b5563; }
+  .match-auto { background: #ecfdf5; color: #047857; }
+  .match-manual { background: #eef2ff; color: #4338ca; }
+  .match-cleared { background: #f0fdf4; color: #166534; }
+  .match-unmatched { background: #fff7ed; color: #c2410c; }
+  .txn-title { font-weight: 700; color: var(--text-primary); margin-bottom: 3px; }
+  .txn-sub { font-size: 11px; color: var(--text-muted); line-height: 1.45; }
+  .matched-line { font-size: 11px; color: var(--text-muted); max-width: 260px; line-height: 1.45; }
+  .matched-line strong { color: var(--text-primary); font-weight: 700; }
+
+  /* ── Add-entry btn ── */
+  .hr-add-entry-btn {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 4px 10px; border-radius: 6px;
+    font-size: 12px; font-weight: 600;
+    background: var(--orange-light); color: var(--orange);
+    border: 1px solid #fde68a; cursor: pointer;
+    transition: background 0.15s; font-family: 'DM Sans', sans-serif;
+  }
+  .hr-add-entry-btn:hover { background: #fef3c7; }
+
+  /* ── Actions bar ── */
+  .hr-actions-bar {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 16px 0 24px;
+  }
+  .hr-actions-right { display: flex; gap: 8px; align-items: center; }
+
+  /* ── Buttons ── */
+  .btn-hr {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 8px 18px; border-radius: 8px;
+    font-size: 13px; font-weight: 600; cursor: pointer;
+    border: none; text-decoration: none;
+    transition: background 0.15s, box-shadow 0.15s; line-height: 1;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .btn-hr-sm { padding: 6px 12px; font-size: 12px; }
+  .btn-hr-primary  { background: var(--accent); color: #fff; }
+  .btn-hr-primary:hover  { background: #4338ca; color: #fff; text-decoration: none; }
+  .btn-hr-primary:disabled { background: #9ca3af; cursor: not-allowed; }
+  .btn-hr-green  { background: var(--green); color: #fff; }
+  .btn-hr-green:hover  { background: #047857; color: #fff; text-decoration: none; }
+  .btn-hr-green:disabled { background: #9ca3af; cursor: not-allowed; }
+  .btn-hr-outline { background: var(--surface); color: var(--accent); border: 1.5px solid var(--accent); }
+  .btn-hr-outline:hover { background: var(--accent-light); color: var(--accent); text-decoration: none; }
+  .btn-hr-ghost  { background: var(--surface); color: var(--text-muted); border: 1.5px solid var(--border); }
+  .btn-hr-ghost:hover  { background: var(--bg); color: var(--text-primary); text-decoration: none; }
+  .btn-hr-warn   { background: var(--orange-light); color: var(--orange); border: 1.5px solid #fde68a; }
+  .btn-hr-warn:hover   { background: #fef3c7; color: var(--orange); text-decoration: none; }
+
+  /* ── Empty ── */
+  .hr-table-empty { text-align: center; padding: 40px 20px; color: var(--text-muted); font-size: 13px; }
+  .hr-table-empty i { font-size: 32px; color: #d1d5db; display: block; margin-bottom: 10px; }
+
+  /* ── Diff pulse ── */
+  @keyframes diffGlow {
+    0%   { box-shadow: 0 0 0 0 rgba(5,150,105,0.35); }
+    70%  { box-shadow: 0 0 0 8px rgba(5,150,105,0); }
+    100% { box-shadow: 0 0 0 0 rgba(5,150,105,0); }
+  }
+  .diff-zero-pulse { animation: diffGlow 1s ease-out; }
+
+  /* ── Toast ── */
+  .hr-toast {
+    position: fixed; bottom: 24px; right: 24px;
+    background: #1f2937; color: #fff;
+    border-radius: 10px; padding: 13px 18px;
+    font-size: 13px; font-weight: 600; z-index: 9999;
+    display: none; align-items: center; gap: 8px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+    max-width: 380px;
+  }
+  .hr-toast.show    { display: flex; animation: toastIn 0.2s ease; }
+  .hr-toast.success { background: var(--green); }
+  .hr-toast.error   { background: var(--red); }
+  .hr-toast.warning { background: var(--orange); }
+  @keyframes toastIn {
+    from { transform: translateY(8px); opacity: 0; }
+    to   { transform: translateY(0);   opacity: 1; }
+  }
+
+  /* ── Diagnostic Panel ── */
+  .hr-diag-panel {
+    background: var(--surface);
+    border: 1px solid #fca5a5;
+    border-radius: var(--radius);
+    box-shadow: 0 2px 10px rgba(220,38,38,0.07);
+    margin-bottom: 16px;
+    overflow: hidden;
+    transition: border-color 0.3s, box-shadow 0.3s;
+  }
+  .hr-diag-header {
+    padding: 14px 20px;
+    background: #fff5f5;
+    border-bottom: 1px solid #fecaca;
+    display: flex; justify-content: space-between; align-items: center;
+    cursor: pointer; user-select: none;
+    gap: 10px;
+    transition: background 0.3s, border-color 0.3s;
+  }
+  .hr-diag-header:hover { filter: brightness(0.97); }
+  .hr-diag-icon-wrap {
+    width: 34px; height: 34px; border-radius: 8px;
+    background: #fef2f2; color: var(--red);
+    border: 1px solid #fecaca;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 17px; flex-shrink: 0;
+    transition: background 0.3s, color 0.3s, border-color 0.3s;
+  }
+  .hr-diag-title { font-size: 14px; font-weight: 800; color: var(--red); letter-spacing: -0.01em; transition: color 0.3s; }
+  .hr-diag-sub   { font-size: 13px; color: #b91c1c; font-weight: 600; transition: color 0.3s; }
+  .hr-diag-chevron { color: var(--red); font-size: 13px; transition: transform 0.2s, color 0.3s; flex-shrink: 0; }
+  .hr-diag-chevron.open { transform: rotate(180deg); }
+  .hr-diag-body { padding: 4px 0; display: block; }
+  .hr-diag-body.collapsed { display: none; }
+
+  .hr-diag-item {
+    display: flex; gap: 14px; padding: 16px 20px;
+    border-bottom: 1px solid #f3f4f6;
+    transition: background 0.3s;
+  }
+  .hr-diag-item:last-child { border-bottom: none; }
+  .hr-diag-item-icon {
+    width: 32px; height: 32px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; flex-shrink: 0; margin-top: 1px;
+    transition: background 0.3s;
+  }
+  .hr-diag-error { background: #fff; }
+  .hr-diag-error .hr-diag-item-icon { background: #fef2f2; color: var(--red); }
+  .hr-diag-warn  { background: #fffdf5; }
+  .hr-diag-warn  .hr-diag-item-icon { background: #fffbeb; color: var(--orange); }
+  .hr-diag-info  { background: #f9fafb; }
+  .hr-diag-info  .hr-diag-item-icon { background: var(--accent-light); color: var(--accent); }
+  .hr-diag-success { background: var(--green-light); }
+  .hr-diag-success .hr-diag-item-icon { background: #d1fae5; color: var(--green); }
+
+  .hr-diag-item-title { font-size: 13px; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; }
+  .hr-diag-item-desc  { font-size: 12px; color: var(--text-muted); line-height: 1.6; margin-bottom: 8px; }
+  .hr-diag-action {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 12px; font-weight: 600; color: var(--accent);
+    text-decoration: none; margin-top: 4px;
+  }
+  .hr-diag-action:hover { text-decoration: underline; }
+
+  /* Unmatched list */
+  .hr-diag-unmatched-list {
+    background: #fafafa; border: 1px solid var(--border);
+    border-radius: 6px; overflow: hidden; margin-top: 8px;
+  }
+  .hr-diag-unmatched-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 7px 12px; font-size: 12px;
+    border-bottom: 1px solid #f3f4f6;
+  }
+  .hr-diag-unmatched-row:last-child { border-bottom: none; }
+
+  /* Breakdown table */
+  .hr-diag-breakdown { width: 100%; margin-top: 8px; }
+  .hr-diag-breakdown-row {
+    display: flex; justify-content: space-between;
+    font-size: 12px; color: var(--text-muted);
+    padding: 5px 0;
+  }
+  .hr-diag-breakdown-row .amt-num { font-family: 'DM Mono', monospace; font-weight: 600; color: var(--text-primary); }
+  .hr-diag-breakdown-divider { height: 1px; background: var(--border); margin: 6px 0; }
+  .hr-diag-breakdown-total { font-weight: 700; font-size: 13px; }
+  .hr-diag-breakdown-total span:first-child { color: var(--text-primary); }
+
+</style>
+
+<div>
+  <!-- Topbar -->
+    <div class="hr-topbar">
+      <nav class="hr-breadcrumb">
+        <a href="{% company_url 'reconciliation_list' reconciliation.bank_account.id %}">{{ reconciliation.bank_account.account_number }}</a>
+        <span class="sep">&rsaquo;</span>
+        <span class="current">Reconcile Account</span>
+      </nav>
+      <div class="hr-topbar-right">
+        <!-- PDF / Print — scoped to match sales invoice exactly -->
+        <div class="dropdown">
+          <button class="recon-pdf-btn dropdown-toggle" type="button" id="recon_pdf_dropdown"
+                  data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="bi bi-file-earmark-pdf"></i> PDF / Print
+          </button>
+          <ul class="dropdown-menu recon-pdf-menu" aria-labelledby="recon_pdf_dropdown">
+            <li>
+              <a class="dropdown-item" href="{{ reconciliation_pdf_url }}?download=1" target="_blank" rel="noopener">
+                <i class="bi bi-file-earmark-pdf"></i> PDF
+              </a>
+            </li>
+            <li>
+              <a class="dropdown-item" href="javascript:;" onclick="handleReconciliationPrint(event)">
+                <i class="bi bi-printer"></i> Print
+              </a>
+            </li>
+          </ul>
+        </div>
+
+        {% if not reconciliation.is_reconciled and can_create_reconciliation %}
+        <a href="{{ upload_url }}" class="btn-hr btn-hr-outline btn-hr-sm">
+          <i class="bi bi-upload"></i> Upload statement (CSV/XLSX)
+        </a>
+        {% endif %}
+        {% if unmatched_statements %}
+        <button type="button" id="toggle_unmatched_btn" class="btn-hr btn-hr-outline btn-hr-sm" onclick="toggleUnmatchedPanel()">
+          <i class="bi bi-eye-slash"></i> Hide unmatched lines
+        </button>
+        {% endif %}
+        <a href="{% company_url 'reconciliation_list' reconciliation.bank_account.id %}" class="btn-hr btn-hr-ghost btn-hr-sm">
+          <i class="bi bi-x-lg"></i> Close
+        </a>
+      </div>
+    </div>
+
+  <div class="hr-content">
+
+    {% if reconciliation.is_reconciled %}
+    <div class="hr-locked-banner">
+      <i class="bi bi-lock-fill"></i>
+      <span>
+        <strong>Reconciled on {{ reconciliation.reconciled_date|date:"d/m/Y" }}.</strong>
+        This period is locked. To make changes, click "Undo Reconciliation" below.
+      </span>
+    </div>
+    {% endif %}
+
+    <!-- Summary Bar -->
+    <div class="hr-summary-bar">
+      <div class="hr-summary-cell">
+        <div class="hr-summary-label">Closing Balance</div>
+        <div class="hr-summary-value blue">{{ base_currency_symbol }}{{ reconciliation.closing_balance|floatformat:2 }}</div>
+      </div>
+      <div class="hr-summary-cell">
+        <div class="hr-summary-label">Cleared Amount</div>
+        <div class="hr-summary-value" id="cleared_amount_display">{{ base_currency_symbol }}{{ reconciliation.cleared_amount|floatformat:2 }}</div>
+      </div>
+      <div class="hr-summary-cell">
+        <div class="hr-summary-label">Difference</div>
+        <div class="hr-summary-value {% if reconciliation.difference == 0 %}green{% else %}red{% endif %}"
+             id="difference_display">
+          {{ base_currency_symbol }}{{ reconciliation.difference|floatformat:2 }}
+        </div>
+      </div>
+      <div class="hr-summary-cell">
+        <div class="hr-summary-label">Status</div>
+        <div class="hr-summary-value {% if reconciliation.is_reconciled %}green{% else %}orange{% endif %}" style="font-size:14px;font-family:'DM Sans',sans-serif;">
+          {{ reconciliation.status }}
+        </div>
+      </div>
+      <div class="hr-summary-cell">
+        <div class="hr-summary-label">Period</div>
+        <div style="font-size:13px;font-weight:600;margin-top:4px;color:var(--text-primary);">
+          {{ reconciliation.start_date|date:"d/m/Y" }}<br>
+          <span style="color:var(--text-muted);font-size:11px;font-weight:400;">to {{ reconciliation.end_date|date:"d/m/Y" }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Transactions Table -->
+    <div class="hr-section">
+      <div class="hr-section-header">
+        <div class="hr-section-title">
+          <i class="bi bi-list-check"></i> System Transactions
+        </div>
+        <span class="hr-cleared-badge">
+          <span id="cleared_count">{{ cleared_count }}</span> of {{ total_count }} cleared
+        </span>
+      </div>
+
+      {% if lines %}
+      <div style="overflow-x:auto;">
+        <table class="items-table">
+          <thead>
+            {% if not reconciliation.is_reconciled %}
+            <tr class="select-all-row">
+              <th colspan="9" style="padding:8px 14px;">
+                <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-weight:600;font-size:12px;">
+                  <input type="checkbox" class="zf-check" id="select_all">
+                  Select / Deselect All
+                </label>
+              </th>
+            </tr>
+            {% endif %}
+            <tr>
+              <th style="width:44px;"></th>
+              <th>Date</th>
+              <th>Transaction</th>
+              <th>Reference</th>
+              <th>Bank Statement Match</th>
+              <th class="text-end">Debit (Out)</th>
+              <th class="text-end">Credit (In)</th>
+              <th>Source</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for line in lines %}
+            <tr id="tr_{{ line.id }}"
+                class="{% if line.is_cleared %}row-cleared{% endif %}">
+              <td class="text-center">
+                <input type="checkbox"
+                       class="zf-check txn-cb"
+                       data-line-id="{{ line.id }}"
+                       {% if line.is_cleared %}checked{% endif %}
+                       {% if reconciliation.is_reconciled %}disabled{% endif %}
+                       onchange="toggleTransaction({{ line.id }}, this.checked)">
+              </td>
+              <td style="white-space:nowrap;">{{ line.transaction_date|date:"d/m/Y" }}</td>
+              <td>
+                <div class="txn-title">{{ line.display_description|default:"-" }}</div>
+                <div class="txn-sub">{{ line.match_reason }}</div>
+              </td>
+              <td style="color:var(--text-muted);">{{ line.reference|default:"—" }}</td>
+              <td>
+                {% if line.matched_statement %}
+                  <div class="matched-line">
+                    <strong>{{ line.matched_statement.statement_date|date:"d/m/Y" }}</strong>
+                    &middot; {{ line.matched_statement.description|default:"Bank statement line" }}
+                    {% if line.matched_statement.reference %}
+                    <br>Ref: {{ line.matched_statement.reference }}
+                    {% endif %}
+                  </div>
+                {% else %}
+                  <span class="txn-sub">No linked statement line</span>
+                {% endif %}
+              </td>
+              <td class="text-end">
+                {% if line.debit_amount > 0 %}
+                  <span class="amt-debit">{{ base_currency_symbol }}{{ line.debit_amount|floatformat:2 }}</span>
+                {% else %}
+                  <span class="amt-dash">—</span>
+                {% endif %}
+              </td>
+              <td class="text-end">
+                {% if line.credit_amount > 0 %}
+                  <span class="amt-credit">{{ base_currency_symbol }}{{ line.credit_amount|floatformat:2 }}</span>
+                {% else %}
+                  <span class="amt-dash">—</span>
+                {% endif %}
+              </td>
+              <td>
+                <span class="hr-source-badge {{ line.display_source_class }}">
+                  <i class="bi {{ line.display_source_icon }}"></i>{{ line.display_source_label }}
+                </span>
+              </td>
+              <td>
+                <span class="hr-match-badge {{ line.match_badge_class }}">{{ line.match_badge_label }}</span>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="hr-table-empty">
+        <i class="bi bi-receipt"></i>
+        No transactions found for this period.<br>
+          <a href="{% url 'bank_statement_csv_upload' reconciliation.id %}"
+           style="color:var(--accent);font-size:13px;margin-top:6px;display:inline-block;font-weight:600;">
+          Upload a bank statement file (CSV/XLSX) &rarr;
+        </a>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Unmatched Bank Entries -->
+    <div class="hr-warn-section" id="unmatched_panel">
+      <div class="hr-warn-section-header">
+        <i class="bi bi-exclamation-triangle-fill" style="color:var(--orange);"></i>
+        <h6 class="hr-warn-section-title">Unmatched Bank Statement Entries</h6>
+        <span style="margin-left:auto;font-size:12px;color:var(--orange);font-weight:600;"
+              id="unmatched_count_label">{{ unmatched_statements|length }} unmatched</span>
+      </div>
+      <div class="hr-warn-note">
+        {% if has_unmatched|default:unmatched_statements|length %}
+        These bank statement lines could not be automatically matched to system transactions.
+        Click <strong>Add Entry</strong> to post a journal (shown under System Transactions) and mark it cleared.
+        {% else %}
+        Upload a bank statement file (CSV/XLSX) and the system will try to auto-match every line.
+        Any rows it cannot match appear here, and you can use <strong>Add Entry</strong> to adjust them manually.
+        {% endif %}
+      </div>
+      <div style="overflow-x:auto;">
+      {% if unmatched_statements %}
+      <table class="items-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Description</th>
+              <th>Reference</th>
+              <th class="text-end">Debit (Out)</th>
+              <th class="text-end">Credit (In)</th>
+              {% if not reconciliation.is_reconciled %}<th></th>{% endif %}
+            </tr>
+          </thead>
+        <tbody id="unmatched_tbody">
+          {% for stmt in unmatched_statements %}
+            <tr id="stmt_{{ stmt.id }}">
+              <td style="white-space:nowrap;">{{ stmt.statement_date|date:"d/m/Y" }}</td>
+              <td>{{ stmt.description }}</td>
+              <td style="color:var(--text-muted);">{{ stmt.reference|default:"—" }}</td>
+              <td class="text-end">
+                {% if stmt.debit_amount > 0 %}<span class="amt-debit">{{ base_currency_symbol }}{{ stmt.debit_amount|floatformat:2 }}</span>
+                {% else %}<span class="amt-dash">—</span>{% endif %}
+              </td>
+              <td class="text-end">
+                {% if stmt.credit_amount > 0 %}<span class="amt-credit">{{ base_currency_symbol }}{{ stmt.credit_amount|floatformat:2 }}</span>
+                {% else %}<span class="amt-dash">—</span>{% endif %}
+              </td>
+              {% if not reconciliation.is_reconciled %}
+              <td>
+                {% if stmt.match_status == 'unmatched' %}
+                  {% if can_create_reconciliation %}
+                  <button class="hr-add-entry-btn" onclick="createManualEntry({{ stmt.id }})">
+                    <i class="bi bi-plus-lg"></i> Add Entry
+                  </button>
+                  <a class="hr-add-entry-btn" href="{% company_url 'bank_rule_create' reconciliation.bank_account.id %}" style="margin-left:6px;text-decoration:none;">
+                    <i class="bi bi-lightning-charge"></i> Rule
+                  </a>
+                  {% endif %}
+                {% else %}
+                <span class="hr-auto-badge" style="background:#fef3c7;color:#b45309;">
+                  {{ stmt.get_match_status_display }}
+                </span>
+                {% endif %}
+              </td>
+              {% endif %}
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <div class="hr-warn-note" style="font-size:12px;">
+          The unmatched list will appear after the auto-matcher processes your uploaded CSV lines.
+          You can also uncheck a matched transaction to mark it as unmatched and then treat it manually.
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+
+    <!-- ── Diagnostic Panel ── -->
+    {% if not reconciliation.is_reconciled and reconciliation.difference != 0 %}
+    <div class="hr-diag-panel" id="diag_panel">
+      <div class="hr-diag-header" onclick="toggleDiag()">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div class="hr-diag-icon-wrap"><i class="bi bi-exclamation-triangle-fill"></i></div>
+          <div>
+            <div class="hr-diag-title" id="diag_main_title">Why can't I reconcile?</div>
+            <div class="hr-diag-sub" id="diag_header_sub">{{ base_currency_symbol }}{{ reconciliation.difference|floatformat:2 }} difference remaining — fix the issues below to enable reconciliation</div>
+          </div>
+        </div>
+        <i class="bi bi-chevron-up hr-diag-chevron open" id="diag_chevron"></i>
+      </div>
+
+      <div class="hr-diag-body" id="diag_body">
+
+        {% if total_count == 0 %}
+        <div class="hr-diag-item hr-diag-error">
+          <div class="hr-diag-item-icon"><i class="bi bi-database-x"></i></div>
+          <div>
+            <div class="hr-diag-item-title">No system transactions loaded</div>
+            <div class="hr-diag-item-desc">
+              No journal entries were found for the period
+              <strong>{{ reconciliation.start_date|date:"d/m/Y" }} – {{ reconciliation.end_date|date:"d/m/Y" }}</strong>.
+              Make sure journal entries exist for this date range, or upload a bank statement file (CSV/XLSX) to import transactions manually.
+            </div>
+            {% if can_create_reconciliation %}
+            <a href="{{ upload_url }}" class="hr-diag-action">
+              <i class="bi bi-upload"></i> Upload Bank Statement file (CSV/XLSX)
+            </a>
+            {% endif %}
+          </div>
+        </div>
+        {% endif %}
+
+        {% if lines %}
+        <div class="hr-diag-item hr-diag-warn" id="diag_cleared_item">
+          <div class="hr-diag-item-icon" id="diag_cleared_icon"><i class="bi bi-check2-square"></i></div>
+          <div style="width:100%;">
+            <div class="hr-diag-item-title" id="diag_cleared_title">
+              {{ total_count }} transaction{{ total_count|pluralize }} loaded, only {{ cleared_count }} ticked
+            </div>
+            <div class="hr-diag-item-desc" id="diag_cleared_desc">
+              <strong id="diag_cleared_strong">{{ cleared_count }}</strong> of <strong>{{ total_count }}</strong> system transactions are marked as cleared.
+              Tick every transaction that appears on your bank statement. Un-ticked transactions are not counted in the cleared amount.
+            </div>
+          </div>
+        </div>
+        {% endif %}
+
+        {% if unmatched_statements %}
+        <div class="hr-diag-item hr-diag-warn">
+          <div class="hr-diag-item-icon"><i class="bi bi-file-earmark-x"></i></div>
+          <div style="width:100%;">
+            <div class="hr-diag-item-title">{{ unmatched_statements|length }} bank statement line{{ unmatched_statements|length|pluralize }} could not be auto-matched</div>
+            <div class="hr-diag-item-desc">
+              These lines from your uploaded bank statement have no corresponding system transaction.
+              Either the journal entry is missing, the date or amount doesn't match, or the description pattern didn't match a bank rule.
+              Use <strong>Add Entry</strong> in the panel below to post a matching journal entry.
+            </div>
+            <div class="hr-diag-unmatched-list">
+              {% for stmt in unmatched_statements %}
+              <div class="hr-diag-unmatched-row">
+                <span style="color:var(--text-muted);white-space:nowrap;">{{ stmt.statement_date|date:"d/m/Y" }}</span>
+                <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ stmt.description }}</span>
+                {% if stmt.debit_amount > 0 %}
+                  <span style="font-family:'DM Mono',monospace;font-weight:700;color:var(--red);">-{{ base_currency_symbol }}{{ stmt.debit_amount|floatformat:2 }}</span>
+                {% else %}
+                  <span style="font-family:'DM Mono',monospace;font-weight:700;color:var(--green);">+{{ base_currency_symbol }}{{ stmt.credit_amount|floatformat:2 }}</span>
+                {% endif %}
+                <span style="font-size:11px;background:#fee2e2;color:var(--red);padding:2px 7px;border-radius:10px;font-weight:600;">No match</span>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+        {% endif %}
+
+        <div class="hr-diag-item hr-diag-info">
+          <div class="hr-diag-item-icon"><i class="bi bi-calculator"></i></div>
+          <div style="width:100%;">
+            <div class="hr-diag-item-title">Balance breakdown</div>
+            <div class="hr-diag-breakdown">
+              <div class="hr-diag-breakdown-row">
+                <span>Closing balance (from bank statement)</span>
+                <span class="amt-num">{{ base_currency_symbol }}{{ reconciliation.closing_balance|floatformat:2 }}</span>
+              </div>
+              <div class="hr-diag-breakdown-row">
+                <span>Cleared amount (ticked transactions net)</span>
+                <span class="amt-num" id="diag_cleared_amt">{{ base_currency_symbol }}{{ reconciliation.cleared_amount|floatformat:2 }}</span>
+              </div>
+              <div class="hr-diag-breakdown-divider"></div>
+              <div class="hr-diag-breakdown-row hr-diag-breakdown-total">
+                <span>Remaining difference — must reach {{ base_currency_symbol }}0.00</span>
+                <span class="{% if reconciliation.difference == 0 %}amt-credit{% else %}amt-debit{% endif %}"
+                      id="diag_diff">{{ base_currency_symbol }}{{ reconciliation.difference|floatformat:2 }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Actions -->
+    <div class="hr-actions-bar">
+      <div>
+        {% if reconciliation.is_reconciled and can_edit_reconciliation %}
+        <button class="btn-hr btn-hr-warn" onclick="undoReconciliation()">
+          <i class="bi bi-arrow-counterclockwise"></i> Undo Reconciliation
+        </button>
+        {% endif %}
+      </div>
+      <div class="hr-actions-right">
+        {% if not reconciliation.is_reconciled and can_edit_reconciliation %}
+        <div id="reconcile_hint_wrap" style="display:flex;align-items:center;gap:10px;">
+          <span style="font-size:12px;color:var(--text-muted);" id="reconcile_hint">
+            {% if reconciliation.difference != 0 %}
+            <span style="background:#fef2f2;border:1px solid #fecaca;color:var(--red);padding:5px 12px;border-radius:6px;font-weight:600;font-size:12px;">
+              <i class="bi bi-x-circle-fill"></i> Difference must be {{ base_currency_symbol }}0.00 to reconcile
+            </span>
+            {% endif %}
+          </span>
+        </div>
+        <button class="btn-hr btn-hr-green"
+                id="reconcile_btn"
+                onclick="completeReconciliation()"
+                {% if reconciliation.difference != 0 %}disabled{% endif %}>
+          <i class="bi bi-check-circle-fill"></i> Reconcile
+        </button>
+        {% endif %}
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="hr-toast" id="hr_toast"></div>
+
+<script>
+const RECON_ID    = {{ reconciliation.id }};
+const CSRF        = '{{ csrf_token }}';
+const IS_LOCKED   = {{ reconciliation.is_reconciled|yesno:"true,false" }};
+const TOTAL_COUNT = {{ total_count }};
+const COMPANY_PREFIX = window.location.pathname.split('/bank/reconciliation/')[0];
+const RECONCILE_BASE = `${COMPANY_PREFIX}/bank/reconciliation`;
+const BANK_BASE_CURRENCY_SYMBOL = '{{ base_currency_symbol|escapejs }}';
+
+function showToast(msg, type = 'success') {
+  const t = document.getElementById('hr_toast');
+  t.textContent = msg;
+  t.className = 'hr-toast show ' + type;
+  setTimeout(() => t.className = 'hr-toast', 3500);
+}
+
+function fmt(val) {
+  return BANK_BASE_CURRENCY_SYMBOL + parseFloat(val).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
+function pluralize(count) {
+  return count !== 1 ? 's' : '';
+}
+
+function updateSummaryUI(data) {
+  // ── Summary bar ──
+  document.getElementById('cleared_amount_display').textContent = fmt(data.cleared_amount);
+
+  const diffEl = document.getElementById('difference_display');
+  diffEl.textContent = fmt(data.difference);
+  diffEl.className = 'hr-summary-value ' + (data.can_reconcile ? 'green' : 'red');
+  if (data.can_reconcile) diffEl.classList.add('diff-zero-pulse');
+
+  const ccEl = document.getElementById('cleared_count');
+  if (ccEl) ccEl.textContent = data.cleared_count;
+
+  // ── Reconcile button & hint ──
+  const btn  = document.getElementById('reconcile_btn');
+  const hint = document.getElementById('reconcile_hint');
+  if (btn) {
+    btn.disabled = !data.can_reconcile;
+  }
+  if (hint) {
+    hint.innerHTML = data.can_reconcile
+      ? ''
+      : '<span style="background:#fef2f2;border:1px solid #fecaca;color:var(--red);padding:5px 12px;border-radius:6px;font-weight:600;font-size:12px;"><i class="bi bi-x-circle-fill"></i> Difference must be ' + BANK_BASE_CURRENCY_SYMBOL + '0.00 to reconcile</span>';
+  }
+
+  // ── Diagnostic panel — balance breakdown numbers ──
+  const diagClearedAmt = document.getElementById('diag_cleared_amt');
+  const diagDiff       = document.getElementById('diag_diff');
+
+  if (diagClearedAmt) diagClearedAmt.textContent = fmt(data.cleared_amount);
+  if (diagDiff) {
+    diagDiff.textContent = fmt(data.difference);
+    diagDiff.className   = data.can_reconcile ? 'amt-credit' : 'amt-debit';
+  }
+
+  // ── Diagnostic panel — header sub-text + full panel style ──
+  const diagHeaderSub = document.getElementById('diag_header_sub');
+  if (diagHeaderSub) {
+    diagHeaderSub.textContent = data.can_reconcile
+      ? BANK_BASE_CURRENCY_SYMBOL + '0.00 difference — ready to reconcile!'
+      : fmt(data.difference) + ' difference remaining — fix the issues below to enable reconciliation';
+  }
+
+  // Flip entire diagnostic panel to green when ready
+  const diagPanel     = document.getElementById('diag_panel');
+  const diagHeader    = diagPanel ? diagPanel.querySelector('.hr-diag-header') : null;
+  const diagIconWrap  = diagPanel ? diagPanel.querySelector('.hr-diag-icon-wrap') : null;
+  const diagTitleEl   = document.getElementById('diag_main_title');
+  const diagSubEl     = document.getElementById('diag_header_sub');
+  const diagChevronEl = document.getElementById('diag_chevron');
+
+  if (diagPanel) {
+    if (data.can_reconcile) {
+      diagPanel.style.border    = '1px solid #6ee7b7';
+      diagPanel.style.boxShadow = '0 2px 10px rgba(5,150,105,0.10)';
+      if (diagHeader) {
+        diagHeader.style.background   = 'var(--green-light)';
+        diagHeader.style.borderBottom = '1px solid #a7f3d0';
+      }
+      if (diagIconWrap) {
+        diagIconWrap.style.background  = '#d1fae5';
+        diagIconWrap.style.color       = 'var(--green)';
+        diagIconWrap.style.borderColor = '#6ee7b7';
+        diagIconWrap.innerHTML         = '<i class="bi bi-check-circle-fill"></i>';
+      }
+      if (diagTitleEl) {
+        diagTitleEl.textContent = 'Reconciliation Breakdown';
+        diagTitleEl.style.color = 'var(--green)';
+      }
+      if (diagSubEl)     diagSubEl.style.color     = '#065f46';
+      if (diagChevronEl) diagChevronEl.style.color = 'var(--green)';
+    } else {
+      diagPanel.style.border    = '1px solid #fca5a5';
+      diagPanel.style.boxShadow = '0 2px 10px rgba(220,38,38,0.07)';
+      if (diagHeader) {
+        diagHeader.style.background   = '#fff5f5';
+        diagHeader.style.borderBottom = '1px solid #fecaca';
+      }
+      if (diagIconWrap) {
+        diagIconWrap.style.background  = '#fef2f2';
+        diagIconWrap.style.color       = 'var(--red)';
+        diagIconWrap.style.borderColor = '#fecaca';
+        diagIconWrap.innerHTML         = '<i class="bi bi-exclamation-triangle-fill"></i>';
+      }
+      if (diagTitleEl) {
+        diagTitleEl.textContent = "Why can't I reconcile?";
+        diagTitleEl.style.color = 'var(--red)';
+      }
+      if (diagSubEl)     diagSubEl.style.color     = '#b91c1c';
+      if (diagChevronEl) diagChevronEl.style.color = 'var(--red)';
+    }
+  }
+
+  // ── Diagnostic panel — cleared-count warning row ──
+  const diagItem   = document.getElementById('diag_cleared_item');
+  const diagTitle  = document.getElementById('diag_cleared_title');
+  const diagDesc   = document.getElementById('diag_cleared_desc');
+  const diagIcon   = document.getElementById('diag_cleared_icon');
+
+  if (diagItem) {
+    if (data.can_reconcile) {
+      // All cleared — turn row green
+      diagItem.className = 'hr-diag-item hr-diag-success';
+      if (diagIcon)  diagIcon.innerHTML = '<i class="bi bi-check-circle-fill" style="color:var(--green);font-size:16px;"></i>';
+      if (diagTitle) {
+        diagTitle.textContent  = 'All ' + data.total_count + ' transaction' + pluralize(data.total_count) + ' cleared';
+        diagTitle.style.color  = 'var(--green)';
+      }
+      if (diagDesc) {
+        diagDesc.innerHTML =
+          '<span style="color:var(--green);font-weight:600;">' +
+          '✓ Cleared amount matches the closing balance.</span> ' +
+          'You\'re ready to reconcile.';
+      }
+      // Pulse the zero-difference value
+      if (diagDiff) {
+        diagDiff.classList.remove('diff-zero-pulse');
+        void diagDiff.offsetWidth; // reflow to restart animation
+        diagDiff.classList.add('diff-zero-pulse');
+        setTimeout(() => diagDiff && diagDiff.classList.remove('diff-zero-pulse'), 1200);
+      }
+
+    } else {
+      // Still some uncleared — keep amber warning
+      diagItem.className = 'hr-diag-item hr-diag-warn';
+      if (diagIcon)  diagIcon.innerHTML = '<i class="bi bi-check2-square"></i>';
+      if (diagTitle) {
+        diagTitle.textContent = data.total_count + ' transaction' + pluralize(data.total_count) + ' loaded, only ' + data.cleared_count + ' ticked';
+        diagTitle.style.color = '';
+      }
+      if (diagDesc) {
+        diagDesc.innerHTML =
+          '<strong>' + data.cleared_count + '</strong> of <strong>' + data.total_count + '</strong> ' +
+          'system transactions are marked as cleared. ' +
+          'Tick every transaction that appears on your bank statement. ' +
+          'Un-ticked transactions are not counted in the cleared amount.';
+      }
+    }
+  }
+}
+
+function toggleTransaction(lineId, isCleared) {
+  if (IS_LOCKED) return;
+  fetch(`${RECONCILE_BASE}/${RECON_ID}/toggle-transaction/`, {
+    method: 'POST',
+    headers: { 'X-CSRFToken': CSRF, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ line_id: lineId, is_cleared: isCleared }),
+  })
+    .then(async r => {
+      if (!r.ok) {
+        const text = await r.text();
+        throw new Error(text || r.statusText);
+      }
+      return r.json();
+    })
+    .then(data => {
+        if (data.success) {
+        const tr = document.getElementById(`tr_${lineId}`);
+        if (tr) tr.classList.toggle('row-cleared', isCleared);
+        updateSummaryUI(data);
+      } else {
+        showToast(data.error, 'error');
+        const cb = document.querySelector(`input[data-line-id="${lineId}"]`);
+        if (cb) cb.checked = !isCleared;
+      }
+    })
+    .catch(err => {
+      showToast(err.message || 'Network error. Please try again.', 'error');
+      const cb = document.querySelector(`input[data-line-id="${lineId}"]`);
+      if (cb) cb.checked = !isCleared;
+    });
+}
+
+const selectAllCb = document.getElementById('select_all');
+if (selectAllCb) {
+  selectAllCb.addEventListener('change', function () {
+    document.querySelectorAll('.txn-cb:not(:disabled)').forEach(cb => {
+      if (cb.checked !== this.checked) {
+        cb.checked = this.checked;
+        toggleTransaction(parseInt(cb.dataset.lineId), this.checked);
+      }
+    });
+  });
+}
+
+function createManualEntry(stmtId) {
+  if (!confirm('Post a journal entry for this bank line (bank ledger + offset account), add it to System Transactions, and mark it cleared?')) return;
+  fetch(`${RECONCILE_BASE}/${RECON_ID}/create-manual-entry/`, {
+    method: 'POST',
+    headers: { 'X-CSRFToken': CSRF, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ statement_line_id: stmtId }),
+  }).then(r => r.json()).then(data => {
+    if (data.success) {
+      const row = document.getElementById(`stmt_${stmtId}`);
+      if (row) row.remove();
+      const tbody     = document.getElementById('unmatched_tbody');
+      const remaining = tbody ? tbody.querySelectorAll('tr').length : 0;
+      const lbl       = document.getElementById('unmatched_count_label');
+      if (lbl) lbl.textContent = remaining + ' unmatched';
+      if (remaining === 0) document.getElementById('unmatched_panel')?.remove();
+      updateSummaryUI(data);
+      showToast(data.message || 'Journal entry posted and cleared.', 'success');
+      setTimeout(() => location.reload(), 1200);
+    } else {
+      showToast(data.error, 'error');
+    }
+  }).catch(() => showToast('Network error. Please try again.', 'error'));
+}
+
+
+function completeReconciliation() {
+  if (!confirm('Complete this reconciliation?\n\nThe period will be locked and cannot be modified.')) return;
+  fetch(`${RECONCILE_BASE}/${RECON_ID}/complete/`, {
+    method: 'POST',
+    headers: { 'X-CSRFToken': CSRF, 'Content-Type': 'application/json' },
+  }).then(r => r.json()).then(data => {
+    if (data.success) {
+      showToast('Reconciliation completed!', 'success');
+      setTimeout(() => window.location.href = data.redirect_url, 1200);
+    } else {
+      showToast(data.error, 'error');
+    }
+  }).catch(() => showToast('Network error. Please try again.', 'error'));
+}
+
+function undoReconciliation() {
+  if (!confirm('Undo this reconciliation?\n\nAll ticked transactions will be reset and the period will be unlocked.')) return;
+  fetch(`${RECONCILE_BASE}/${RECON_ID}/undo/`, {
+    method: 'POST',
+    headers: { 'X-CSRFToken': CSRF, 'Content-Type': 'application/json' },
+  }).then(r => r.json()).then(data => {
+    if (data.success) {
+      showToast('Reconciliation undone.', 'warning');
+      setTimeout(() => window.location.href = data.redirect_url, 1000);
+    } else {
+      showToast(data.error, 'error');
+    }
+  }).catch(() => showToast('Network error. Please try again.', 'error'));
+}
+
+function toggleDiag() {
+  const body    = document.getElementById('diag_body');
+  const chevron = document.getElementById('diag_chevron');
+  if (!body) return;
+  body.classList.toggle('collapsed');
+  chevron.classList.toggle('open');
+}
+
+function setUnmatchedButtonLabel(isVisible) {
+  const btn = document.getElementById('toggle_unmatched_btn');
+  if (!btn) return;
+  btn.innerHTML = isVisible
+    ? '<i class="bi bi-eye-slash"></i> Hide unmatched lines'
+    : '<i class="bi bi-eye"></i> Show unmatched lines';
+}
+
+function toggleUnmatchedPanel(forceState) {
+  const panel = document.getElementById('unmatched_panel');
+  if (!panel) return;
+  const currentlyVisible = panel.style.display !== 'none';
+  const shouldShow       = typeof forceState === 'boolean' ? forceState : !currentlyVisible;
+  panel.style.display    = shouldShow ? '' : 'none';
+  setUnmatchedButtonLabel(shouldShow);
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const panel = document.getElementById('unmatched_panel');
+  if (panel && panel.style.display !== 'none') {
+    setUnmatchedButtonLabel(true);
+  }
+});
+
+const RECON_PDF_URL = "{{ reconciliation_pdf_url }}";
+
+function handleReconciliationPrint(event) {
+  event.preventDefault();
+  const win = window.open(RECON_PDF_URL, '_blank');
+  if (!win) return;
+  if (win.focus) win.focus();
+  if (win.addEventListener) {
+    win.addEventListener('load', () => win.print());
+  }
+  setTimeout(() => { if (!win.closed) win.print(); }, 1100);
+}
+</script>
+{% endblock %}

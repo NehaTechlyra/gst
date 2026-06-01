@@ -1,0 +1,484 @@
+{% extends 'website/index.html' %}
+{% load static %}
+
+{% block page_title %}Prepare Fiscal Year Closing{% endblock %}
+
+{% block exstyle %}
+<link href="{% static 'style/general.css' %}" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+
+<style>
+:root {
+  --brand:        #55588b;
+  --brand-dark:   #3f4266;
+  --brand-deeper: #2e3055;
+  --brand-light:  #eeeef6;
+  --brand-muted:  #8385ae;
+  --white:        #ffffff;
+  --surface:      #f4f5fb;
+  --border:       #dde0f2;
+  --text-main:    #2e3055;
+  --text-sub:     #6b6e9a;
+  --text-light:   #9699bf;
+  --success:      #2e7d32;
+  --success-bg:   #e8f5e9;
+  --success-bd:   #c3e6cb;
+  --danger:       #c62828;
+  --danger-bg:    #ffebee;
+  --danger-bd:    #f5c6cb;
+  --warning:      #e65100;
+  --warning-bg:   #fff3e0;
+  --info:         #1565c0;
+  --info-bg:      #e3f2fd;
+  --radius:       8px;
+  --shadow-sm:    0 2px 8px rgba(85,88,139,.08);
+  --shadow-md:    0 4px 20px rgba(85,88,139,.14);
+}
+
+/* ─── HEADER ─── */
+.period-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+.period-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-main);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.period-title-icon {
+  width: 44px; height: 44px;
+  border-radius: var(--radius);
+  background: linear-gradient(135deg, var(--brand), var(--brand-dark));
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 4px 14px rgba(85,88,139,.3);
+  flex-shrink: 0;
+}
+.period-title-icon i { color: #fff; font-size: 19px; }
+
+/* ─── ALERT ─── */
+.alert {
+  padding: 13px 18px;
+  border-radius: var(--radius);
+  margin-bottom: 20px;
+  border-left: 4px solid;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 13px;
+  font-weight: 500;
+}
+.alert i { flex-shrink: 0; margin-top: 1px; }
+.alert-warning { background: var(--warning-bg); color: var(--warning); border-left-color: var(--warning); }
+.alert-danger  { background: var(--danger-bg);  color: var(--danger);  border-left-color: var(--danger); }
+.alert-info    { background: var(--info-bg);    color: var(--info);    border-left-color: var(--info); }
+
+/* ─── SUMMARY GRID ─── */
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 22px;
+}
+.summary-card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px 16px;
+  box-shadow: var(--shadow-sm);
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+.summary-card::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 3px;
+  background: linear-gradient(90deg, var(--brand), var(--brand-muted));
+}
+.summary-card.s-income::before  { background: linear-gradient(90deg, #2e7d32, #66bb6a); }
+.summary-card.s-expense::before { background: linear-gradient(90deg, #c62828, #ef9a9a); }
+.summary-card.s-profit::before  { background: linear-gradient(90deg, var(--brand), var(--brand-muted)); }
+
+.summary-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-sub);
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  margin-bottom: 10px;
+}
+.summary-value {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--text-main);
+}
+.summary-value.income  { color: var(--success); }
+.summary-value.expense { color: var(--danger); }
+.summary-value.profit  { color: var(--brand); }
+.summary-value.loss    { color: var(--danger); }
+
+/* ─── SECTION CARD ─── */
+.info-section {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 18px;
+  box-shadow: var(--shadow-sm);
+}
+.section-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-main);
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+.section-title i { color: var(--brand); font-size: 17px; }
+
+/* ─── CHECKLIST ─── */
+.checklist-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--brand-light);
+  font-size: 13px;
+  color: var(--text-main);
+}
+.checklist-item:last-child { border-bottom: none; }
+
+.check-icon {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+.check-icon.ok    { background: var(--success-bg); color: var(--success); border: 1px solid var(--success-bd); }
+.check-icon.error { background: var(--danger-bg);  color: var(--danger);  border: 1px solid var(--danger-bd); }
+
+/* ─── INFO LIST ─── */
+.info-list {
+  list-style: none;
+  padding: 0; margin: 0;
+}
+.info-list li {
+  padding: 8px 0;
+  border-bottom: 1px solid var(--brand-light);
+  font-size: 13px;
+  color: var(--text-main);
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.info-list li:last-child { border-bottom: none; }
+.info-list i { color: var(--brand); flex-shrink: 0; margin-top: 2px; }
+
+/* ─── ACTION BUTTONS ─── */
+.action-buttons {
+  display: flex;
+  gap: 10px;
+  margin-top: 24px;
+  flex-wrap: wrap;
+}
+
+.btn-action {
+  padding: 10px 22px;
+  border: none;
+  border-radius: var(--radius);
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all .2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  font-family: 'Poppins', sans-serif;
+}
+
+.btn-execute {
+  background: linear-gradient(135deg, var(--brand), var(--brand-dark));
+  color: #fff;
+  box-shadow: 0 3px 10px rgba(85,88,139,.28);
+}
+.btn-execute:hover {
+  background: linear-gradient(135deg, var(--brand-dark), var(--brand-deeper));
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+  color: #fff;
+}
+.btn-execute:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-back-action {
+  background: var(--white);
+  color: var(--text-sub);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+}
+.btn-back-action:hover {
+  background: var(--brand-light);
+  color: var(--brand);
+  border-color: var(--brand);
+}
+
+@media (max-width: 768px) {
+  .summary-grid    { grid-template-columns: 1fr; }
+  .action-buttons  { flex-direction: column; }
+  .btn-action      { width: 100%; justify-content: center; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid" style="padding: 30px 20px;">
+
+  <!-- Header -->
+  <div class="period-header">
+    <div class="period-title">
+      <div class="period-title-icon"><i class="bi bi-calendar2-check"></i></div>
+      Prepare Fiscal Year Closing: {{ fiscal_year.name }}
+    </div>
+  </div>
+
+  <!-- Warning -->
+  <div class="alert alert-warning">
+    <i class="bi bi-exclamation-triangle-fill"></i>
+    <span><strong>Important:</strong> This process will create closing entries and cannot be easily reversed. Ensure all transactions for {{ fiscal_year.name }} have been entered and verified before proceeding.</span>
+  </div>
+
+  <!-- Summary Cards -->
+  <div class="summary-grid">
+    <div class="summary-card s-income">
+      <div class="summary-label">Total Income</div>
+      <div class="summary-value income">₹{{ totals.total_income|floatformat:2 }}</div>
+    </div>
+    <div class="summary-card s-expense">
+      <div class="summary-label">Total Expenses</div>
+      <div class="summary-value expense">₹{{ totals.total_expenses|floatformat:2 }}</div>
+    </div>
+    <div class="summary-card s-profit">
+      <div class="summary-label">Net Profit / Loss</div>
+      <div class="summary-value {% if totals.net_profit_loss >= 0 %}profit{% else %}loss{% endif %}">
+        {% if totals.net_profit_loss > 0 %}+{% endif %}₹{{ totals.net_profit_loss|floatformat:2 }}
+      </div>
+    </div>
+  </div>
+
+  <!-- Pre-Closing Checklist -->
+  <div class="info-section">
+    <div class="section-title">
+      <i class="bi bi-checklist"></i> Pre-Closing Checklist
+    </div>
+    <div class="checklist-item">
+      <div class="check-icon ok"><i class="bi bi-check"></i></div>
+      All invoices and bills recorded for {{ fiscal_year.name }}
+    </div>
+    <div class="checklist-item">
+      <div class="check-icon ok"><i class="bi bi-check"></i></div>
+      Bank reconciliation completed
+    </div>
+    <div class="checklist-item">
+      <div class="check-icon ok"><i class="bi bi-check"></i></div>
+      Stock adjustments finalized
+    </div>
+    <div class="checklist-item">
+      <div class="check-icon ok"><i class="bi bi-check"></i></div>
+      GST / Tax reports verified
+    </div>
+    <div class="checklist-item">
+      <div class="check-icon ok"><i class="bi bi-check"></i></div>
+      Trial balance verified
+    </div>
+  </div>
+
+  <!-- What Happens -->
+  <div class="info-section">
+    <div class="section-title">
+      <i class="bi bi-info-circle-fill"></i> What Happens During Closing
+    </div>
+    <ul class="info-list">
+      <li>
+        <i class="bi bi-arrow-right-circle-fill"></i>
+        <span><strong>P&amp;L Transfer:</strong> All income and expense accounts are zeroed out</span>
+      </li>
+      <li>
+        <i class="bi bi-arrow-right-circle-fill"></i>
+        <span><strong>Profit Transfer:</strong> Net profit (₹{{ totals.net_profit_loss|floatformat:2 }}) is moved to {{ retained_earnings_account.name|default:"Retained Earnings" }}</span>
+      </li>
+      <li>
+        <i class="bi bi-arrow-right-circle-fill"></i>
+        <span><strong>Opening Balances:</strong> Balance sheet accounts (Assets, Liabilities, Equity) are carried forward to {{ next_fiscal_year.name }}</span>
+      </li>
+      <li>
+        <i class="bi bi-arrow-right-circle-fill"></i>
+        <span><strong>Year Lock:</strong> {{ fiscal_year.name }} will be locked from all edits</span>
+      </li>
+      <li>
+        <i class="bi bi-arrow-right-circle-fill"></i>
+        <span><strong>Next Year Activation:</strong> {{ next_fiscal_year.name }} will be unlocked and marked as Active FY</span>
+      </li>
+    </ul>
+  </div>
+
+  <!-- System Validation -->
+  <div class="info-section">
+    <div class="section-title">
+      <i class="bi bi-shield-check"></i> System Validation
+    </div>
+
+    {% if retained_earnings_account %}
+    <div class="checklist-item">
+      <div class="check-icon ok"><i class="bi bi-check"></i></div>
+      <span><strong>Retained Earnings Account Found:</strong> {{ retained_earnings_account.name }}</span>
+    </div>
+    {% else %}
+    <div class="alert alert-danger" style="margin-top:8px;">
+      <i class="bi bi-x-circle-fill"></i>
+      <span><strong>Error:</strong> Retained Earnings account not found. Please configure it before closing.</span>
+    </div>
+    {% endif %}
+
+    {% if next_fiscal_year %}
+    <div class="checklist-item">
+      <div class="check-icon ok"><i class="bi bi-check"></i></div>
+      <span><strong>Next Fiscal Year Created:</strong> {{ next_fiscal_year.name }} ({{ next_fiscal_year.start_date|date:"d M Y" }} – {{ next_fiscal_year.end_date|date:"d M Y" }})</span>
+    </div>
+    {% else %}
+    <div class="alert alert-danger" style="margin-top:8px;">
+      <i class="bi bi-x-circle-fill"></i>
+      <span><strong>Error:</strong> Next fiscal year not found. Please create {{ expected_next_fy_name }} before closing.</span>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Actions -->
+  <div class="action-buttons">
+    <a href="{% url 'fiscal_year_closing_dashboard' %}" class="btn-action btn-back-action">
+      <i class="bi bi-arrow-left"></i> Back
+    </a>
+    {% if can_proceed %}
+    <button type="button" class="btn-action btn-execute" data-bs-toggle="modal" data-bs-target="#closingConfirmationModal">
+      <i class="bi bi-check-circle-fill"></i> Proceed with Closing
+    </button>
+    {% else %}
+    <button disabled class="btn-action btn-execute">
+      <i class="bi bi-lock-fill"></i> Cannot Close — Missing Requirements
+    </button>
+    {% endif %}
+  </div>
+
+  <!-- Confirmation Modal -->
+  <div class="modal fade" id="closingConfirmationModal" tabindex="-1" aria-labelledby="closingModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+      <div class="modal-content" style="border: none; border-radius: 8px; box-shadow: 0 8px 32px rgba(85,88,139,.18);">
+        <!-- Modal Header -->
+        <div style="background: linear-gradient(135deg, #55588b 0%, #3f4266 100%); color: white; padding: 24px; border-radius: 8px 8px 0 0;">
+          <h5 id="closingModalLabel" style="margin: 0; font-size: 24px; font-weight: 700; display: flex; align-items: center; gap: 12px; color: #ffffff !important; text-shadow: 0 1px 3px rgba(0,0,0,0.3);">
+            <i class="bi bi-exclamation-circle"></i> Confirm Fiscal Year Closing
+          </h5>
+        </div>
+
+        <!-- Modal Body -->
+        <div class="modal-body" style="padding: 24px;">
+          <p style="color: var(--text-sub); margin-bottom: 20px; font-size: 14px;">
+            You are about to close <strong>{{ fiscal_year.name }}</strong>. This action will:
+          </p>
+
+          <div style="background: var(--warning-bg); border-left: 4px solid var(--warning); padding: 12px 16px; border-radius: 4px; margin-bottom: 20px; font-size: 13px;">
+            <i class="bi bi-exclamation-triangle-fill" style="color: var(--warning); margin-right: 8px;"></i>
+            <strong>Warning:</strong> This will create permanent journal entries that cannot be easily reversed. Ensure all transactions for FY {{ fiscal_year.name }} are complete and verified.
+          </div>
+
+          <div style="margin-bottom: 20px;">
+            <h6 style="color: var(--text-main); font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+              <i class="bi bi-check-circle" style="color: var(--success); font-size: 18px;"></i> What Will Happen
+            </h6>
+            
+            <div style="display: flex; align-items: center; padding: 12px; background: var(--surface); border-radius: 6px; margin-bottom: 8px; gap: 12px;">
+              <i class="bi bi-check" style="color: var(--success); font-size: 18px; flex-shrink: 0;"></i>
+              <div>
+                <strong style="color: var(--text-main);">P&L Transfer</strong>
+                <span style="color: var(--text-sub); font-size: 13px; display: block;">Income and Expense accounts will be zeroed out</span>
+              </div>
+            </div>
+
+            <div style="display: flex; align-items: center; padding: 12px; background: var(--surface); border-radius: 6px; margin-bottom: 8px; gap: 12px;">
+              <i class="bi bi-check" style="color: var(--success); font-size: 18px; flex-shrink: 0;"></i>
+              <div>
+                <strong style="color: var(--text-main);">Profit Transfer</strong>
+                <span style="color: var(--text-sub); font-size: 13px; display: block;">Net profit/loss moved to Retained Earnings (Equity)</span>
+              </div>
+            </div>
+
+            <div style="display: flex; align-items: center; padding: 12px; background: var(--surface); border-radius: 6px; margin-bottom: 8px; gap: 12px;">
+              <i class="bi bi-check" style="color: var(--success); font-size: 18px; flex-shrink: 0;"></i>
+              <div>
+                <strong style="color: var(--text-main);">Opening Balances</strong>
+                <span style="color: var(--text-sub); font-size: 13px; display: block;">Balance sheet accounts carried forward to {{ next_fiscal_year.name }}</span>
+              </div>
+            </div>
+
+            <div style="display: flex; align-items: center; padding: 12px; background: var(--surface); border-radius: 6px; margin-bottom: 8px; gap: 12px;">
+              <i class="bi bi-check" style="color: var(--success); font-size: 18px; flex-shrink: 0;"></i>
+              <div>
+                <strong style="color: var(--text-main);">Year Lock</strong>
+                <span style="color: var(--text-sub); font-size: 13px; display: block;">{{ fiscal_year.name }} locked from all edits (view-only)</span>
+              </div>
+            </div>
+
+            <div style="display: flex; align-items: center; padding: 12px; background: var(--surface); border-radius: 6px; margin-bottom: 8px; gap: 12px;">
+              <i class="bi bi-check" style="color: var(--success); font-size: 18px; flex-shrink: 0;"></i>
+              <div>
+                <strong style="color: var(--text-main);">Next Year Activation</strong>
+                <span style="color: var(--text-sub); font-size: 13px; display: block;">{{ next_fiscal_year.name }} unlocked and set as Active FY</span>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <h6 style="color: var(--text-main); font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
+              <i class="bi bi-info-circle" style="color: var(--info); font-size: 18px;"></i> Journal Entries
+            </h6>
+            <p style="color: var(--text-sub); font-size: 12px; margin: 0; margin-bottom: 8px;">
+              Two journal entries will be created:
+            </p>
+            <ul style="color: var(--text-sub); font-size: 12px; margin: 0; padding-left: 20px;">
+              <li>Closing Entry: P&L accounts → Retained Earnings</li>
+              <li>Opening Entry: All balance sheet accounts for {{ next_fiscal_year.name }}</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Modal Footer -->
+        <div class="modal-footer" style="border-top: 1px solid var(--border); padding: 16px; background: var(--surface);">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="background: var(--surface); color: var(--text-main); border: 2px solid var(--border); font-weight: 600; padding: 10px 20px;">
+            <i class="bi bi-arrow-left"></i> Cancel
+          </button>
+          <form method="POST" action="{% url 'execute_fiscal_year_closing' fiscal_year.pk %}" style="display: inline;">
+            {% csrf_token %}
+            <button type="submit" class="btn" style="background: linear-gradient(135deg, #55588b 0%, #3f4266 100%); color: white; border: none; font-weight: 600; padding: 10px 20px; border-radius: 6px;">
+              <i class="bi bi-check-circle"></i> Confirm & Close Year
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

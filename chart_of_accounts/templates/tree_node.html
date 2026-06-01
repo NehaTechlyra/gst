@@ -1,0 +1,22 @@
+<li>
+    {% if node.children %}
+        <span class="toggle level-{{ level }}">
+            {% comment %} <span class="icon closed" >&#9656;</span> <!-- Right-pointing triangle -->
+            {{ node.name }} {% endcomment %}
+            <span class="icon closed">&#9656;</span> <!-- Right-pointing triangle -->
+            <a href="{% url 'account_detail' node.id %}" title="{{ node.description }}">{{ node.name }}</a>
+        </span>
+        <ul class="children">
+            {% for child in node.children %}
+                {% include 'tree_node.html' with node=child level=level|add:1 %}
+            {% endfor %}
+        </ul>
+    {% else %}
+        <span class="level-{{ level }}">
+            <span style="margin-left:5px;margin-right:5px;"> &#8226; </span><!-- Bullet point -->
+             {% comment %} {{ node.name }} {% endcomment %}
+             <a href="{% url 'account_detail' node.id %}" title="{{ node.description }}">{{ node.name }}</a>
+        </span>
+    {% endif %}
+</li>
+

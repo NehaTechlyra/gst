@@ -1,0 +1,419 @@
+{% extends 'website/index.html' %}
+{% load widget_tweaks %}
+{% load static %}
+{% block exstyle %}
+<link href="{% static 'style/general.css' %}" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.9.1/font/bootstrap-icons.css" rel="stylesheet">
+<style>
+    .tax-type-dropdown-footer {
+        border-top: 1px solid #e9ecef;
+        padding: 8px;
+        background: #fff;
+    }
+
+    .tax-type-dropdown-footer .btn {
+        width: 100%;
+    }
+</style>
+{% endblock exstyle %}
+{% block page_title %}Add New Tax{% endblock page_title %}
+{% block content %}
+
+    <div class="container mt-4">
+    
+    <div class="card p-4 shadow-sm border-0">
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+
+            <!-- Vendor Fields: Two Column Layout -->
+            <div class="row">
+    {% for field in form %}
+        {% if field.is_hidden %}
+            {{ field }}
+        {% else %}
+        <div class="col-md-4 mb-3">
+            <label for="{{ field.id_for_label }}" class="form-label">
+                {{ field.label }}{% if field.field.required %}<span class="required-asterisk">*</span>{% endif %}
+            </label>
+
+            {% if field.name == "rate" %}
+                <!-- Special design for Rate field -->
+                <div class="input-group">
+                    {{ field|add_class:"form-control" }}
+                    <span class="input-group-text">%</span>
+                </div>
+            {% else %}
+                <!-- Normal rendering for other fields -->
+                {{ field|add_class:"form-control" }}
+            {% endif %}
+            
+
+            {% if field.help_text %}
+                <div class="form-text">{{ field.help_text }}</div>
+            {% endif %}
+            {% for error in field.errors %}
+                <div class="text-danger small">{{ error }}</div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    {% endfor %}
+</div>
+
+            
+
+            <!-- Buttons -->
+            <div class="mt-3">
+                <button type="submit" class="btn btn-primary">Save Tax</button>
+                <a href="{% url 'tax_list' %}" class="btn btn-outline-secondary ms-2">Cancel</a>
+            </div>
+        </form>
+
+    <!-- <a href="{% url 'tax_list' %}">Back to List</a> -->
+    <script>
+        // Track form changes - Global variable
+        let formChanged = false;
+        const form = document.querySelector('form');
+        const taxTypeModalUrl = "{% url 'tax_type_add_modal' %}";
+        let taxTypeModalInstance = null;
+
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        function ensureTaxTypeModal() {
+            let modalElement = document.getElementById('taxTypeModal');
+            if (!modalElement) {
+                document.body.insertAdjacentHTML('beforeend', `
+                    <div class="modal fade" id="taxTypeModal" tabindex="-1" aria-hidden="true">
+                        <div class="modal-dialog modal-dialog-centered">
+                            <div class="modal-content" id="taxTypeModalContent"></div>
+                        </div>
+                    </div>                                                          
+                `);
+                modalElement = document.getElementById('taxTypeModal');
+            }
+
+            taxTypeModalInstance = bootstrap.Modal.getOrCreateInstance(modalElement);
+            return modalElement;
+        }
+
+        function bindTaxTypeModalForm() {
+            const modalForm = document.getElementById('taxTypeForm');
+            if (!modalForm) {
+                return;
+            }
+
+            modalForm.addEventListener('submit', function(event) {
+                event.preventDefault();
+
+                fetch(taxTypeModalUrl, {
+                    method: 'POST',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRFToken': getCookie('csrftoken'),
+                    },
+                    body: new FormData(modalForm),
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const select = document.querySelector('select[name="taxtype"]');
+                        if (!select) {
+                            return;
+                        }
+
+                        const option = new Option(data.tax_type_name, data.tax_type_id, true, true);
+                        select.add(option);
+
+                        if (window.$ && window.jQuery && $(select).hasClass('select2-hidden-accessible')) {
+                            $(select).trigger('change');
+                        } else {
+                            select.value = data.tax_type_id;
+                            select.dispatchEvent(new Event('change', { bubbles: true }));
+                        }
+
+                        formChanged = true;
+                        taxTypeModalInstance.hide();
+                    } else if (data.html_form) {
+                        document.getElementById('taxTypeModalContent').innerHTML = data.html_form;
+                        bindTaxTypeModalForm();
+                    }
+                });
+            });
+        }
+
+        function openTaxTypeModal() {
+            const modalElement = ensureTaxTypeModal();
+            fetch(taxTypeModalUrl, {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                }
+            })
+            .then(response => response.text())
+            .then(html => {
+                document.getElementById('taxTypeModalContent').innerHTML = html;
+                bindTaxTypeModalForm();
+                taxTypeModalInstance.show();
+            });
+        }
+
+        function initializeTaxTypeSelect() {
+            if (!(window.$ && window.jQuery && $.fn.select2)) {
+                return;
+            }
+
+            const $taxType = $('select[name="taxtype"]');
+            if (!$taxType.length || $taxType.hasClass('select2-hidden-accessible')) {
+                return;
+            }
+
+            $taxType.select2({
+                width: '100%',
+                placeholder: $taxType.data('placeholder') || 'Search tax type...',
+            });
+
+            $taxType.on('select2:open', function() {
+                const dropdown = document.querySelector('.select2-container--open .select2-dropdown');
+                if (!dropdown || dropdown.querySelector('.tax-type-dropdown-footer')) {
+                    return;
+                }
+
+                const footer = document.createElement('div');
+                footer.className = 'tax-type-dropdown-footer';
+                footer.innerHTML = '<button type="button" class="btn btn-sm btn-outline-primary" id="select2AddTaxTypeBtn">+ New Tax Type</button>';
+                dropdown.appendChild(footer);
+
+                const addButton = footer.querySelector('#select2AddTaxTypeBtn');
+                addButton.addEventListener('click', function(event) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    $taxType.select2('close');
+                    openTaxTypeModal();
+                });
+            });
+        }
+
+        initializeTaxTypeSelect();       
+        if (form) {
+            // Track all form input changes
+            form.addEventListener('change', function(e) {
+                formChanged = true;
+                console.log('Form changed via change event');
+            });
+            
+            form.addEventListener('input', function(e) {
+                formChanged = true;
+                console.log('Form changed via input event');
+            });
+            
+        }
+        
+        // Track Select2 changes using jQuery delegation (works regardless of initialization timing)
+        if (window.$ && window.jQuery) {
+            $(document).on('change', 'select.select2, .select2-hidden-accessible', function() {
+                formChanged = true;
+                console.log('Form changed via Select2 change event (delegation)');
+            });
+        }
+
+        (function () {
+            // Tax structure and applicable_on are now hidden and always set to GST and Total Amount
+            // Only update tax_scope choices when tax structure changes
+            const COMPANY_TAX_TYPE = "{{ company_tax_type|default:''|escapejs }}";
+            const taxStructureEl = document.querySelector('select[name="tax_type"]');
+            const taxScopeEl = document.querySelector('select[name="tax_scope"]');
+
+            if (!taxStructureEl || !taxScopeEl) return;
+
+            // Update tax scope choices when tax structure changes
+            function updateTaxScopeChoices() {
+                if (!taxScopeEl) return;
+                const selected = taxStructureEl.value;
+                const prev = taxScopeEl.value;
+                let options = [];
+                // If company uses SALES tax and tax structure is LOCAL -> show Both
+                if ((COMPANY_TAX_TYPE || '').toUpperCase() === 'SALES' && selected === 'LOCAL') {
+                    options = [ { value: '', label: 'Select Scope' }, { value: 'BOTH', label: 'Both' } ];
+                } else {
+                    options = [ { value: '', label: 'Select Scope' }, { value: 'SALES', label: 'Sales' }, { value: 'PURCHASE', label: 'Purchase' } ];
+                }
+
+                taxScopeEl.innerHTML = '';
+                options.forEach(opt => {
+                    const el = new Option(opt.label, opt.value);
+                    taxScopeEl.appendChild(el);
+                });
+
+                if (options.find(o => o.value === prev)) {
+                    taxScopeEl.value = prev;
+                } else {
+                    taxScopeEl.value = options[0].value;
+                }
+            }
+
+            updateTaxScopeChoices();
+            taxStructureEl.addEventListener('change', updateTaxScopeChoices);
+        })();
+        
+        // Direct select element change listeners as fallback
+        document.addEventListener('change', function(e) {
+            if (e.target.tagName === 'SELECT') {
+                formChanged = true;
+                console.log('Form changed via direct select change event');
+            }
+        }, true);
+        
+        // Global click interceptor for all links - Outside of form check
+        document.addEventListener('click', function(e) {
+            // Check if clicked element is a link
+            let link = e.target.closest('a');
+            
+            console.log('Link clicked:', link ? link.href : 'not a link');
+            
+            if (link && formChanged) {
+                // Get the href
+                const href = link.getAttribute('href');
+                
+                console.log('Checking href:', href, 'formChanged:', formChanged);
+                
+                // Check if it's a navigation link (not modal, not anchor, not javascript)
+                if (href && !href.startsWith('#') && !link.getAttribute('data-bs-toggle') && !href.startsWith('javascript:')) {
+                    console.log('Preventing navigation to:', href);
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    // Show confirmation modal
+                    const navModalHtml = `
+                        <div class="modal fade" id="navConfirmationModal" tabindex="-1" role="dialog" aria-labelledby="navConfirmationLabel" aria-hidden="true">
+                            <div class="modal-dialog" role="document">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title" id="navConfirmationLabel">Confirm Navigation</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <p>Are you sure you want to leave this page? All unsaved data will be lost.</p>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                        <button type="button" class="btn btn-primary" id="confirm-nav">OK</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    // Remove any existing modal
+                    const existingModal = document.getElementById('navConfirmationModal');
+                    if (existingModal) existingModal.remove();
+                    
+                    // Add new modal to body
+                    document.body.insertAdjacentHTML('beforeend', navModalHtml);
+                    
+                    // Show the modal
+                    const navModal = new bootstrap.Modal(document.getElementById('navConfirmationModal'));
+                    navModal.show();
+                    
+                    // Store the target URL
+                    const targetUrl = href;
+                    
+                    // Handle the confirmation
+                    document.getElementById('confirm-nav').addEventListener('click', function() {
+                        formChanged = false; // Reset to allow navigation
+                        window.location.href = targetUrl;
+                    });
+                    
+                    // Clean up modal when it's hidden
+                    document.getElementById('navConfirmationModal').addEventListener('hidden.bs.modal', function () {
+                        document.getElementById('navConfirmationModal').remove();
+                    });
+                }
+            }
+        }, true); // Use capture phase for better event handling
+    </script>
+
+        <script>
+            (function(){
+                function ensureFeedback(el) {
+                    if (!el) return { invalid: null, valid: null };
+                    let invalid = el.parentNode.querySelector('.invalid-feedback');
+                    let valid = el.parentNode.querySelector('.valid-feedback');
+                    if (!invalid) { invalid = document.createElement('div'); invalid.className = 'invalid-feedback'; invalid.style.display = 'none'; el.parentNode.appendChild(invalid); }
+                    if (!valid) { valid = document.createElement('div'); valid.className = 'valid-feedback'; valid.style.display = 'none'; el.parentNode.appendChild(valid); }
+                    return { invalid: invalid, valid: valid };
+                }
+
+                function attachTaxValidation(container) {
+                    try {
+                        const form = container.querySelector('form') || document.querySelector('form');
+                        if (!form) return;
+
+                        const nameEl = form.querySelector('input[name="taxname"], input[id*="taxname"], input[name="tax_name"], input[id*="tax_name"]');
+                        //const typeEl = form.querySelector('select[name="taxtype"], input[name="taxtype"], input[id*="taxtype"], select[name="tax_type"], input[name="tax_type"], input[id*="tax_type"]');
+                        const typeEl = form.querySelector('select[name="taxtype"]:not([type="hidden"]), select[name="tax_type"]');
+                        const rateEl = form.querySelector('input[name="rate"], input[id*="rate"], input[name="tax_rate"], input[id*="tax_rate"]');
+
+                        const fbName = ensureFeedback(nameEl);
+                        const fbType = ensureFeedback(typeEl);
+                        const fbRate = ensureFeedback(rateEl);
+
+                        function validateName() {
+                            if (!nameEl) return true;
+                            const v = (nameEl.value || '').trim();
+                            if (v.length >= 2) { nameEl.classList.remove('is-invalid'); nameEl.classList.add('is-valid'); if (fbName && fbName.invalid) { fbName.invalid.style.display = 'none'; } return true; }
+                            nameEl.classList.remove('is-valid'); nameEl.classList.add('is-invalid'); if (fbName.invalid) { fbName.invalid.textContent = 'Enter a valid tax name (min 2 characters)'; fbName.invalid.style.display = 'block'; fbName.valid.style.display = 'none'; }
+                            return false;
+                        }
+
+                        function validateType() {
+                            if (!typeEl) return true;
+                            if (typeEl.type === 'hidden') return true;  //  If hidden, skip validation (not required)
+                            const tag = typeEl.tagName.toLowerCase();
+                            const v = (typeEl.value || '').toString().trim();
+                            if (tag === 'select') {
+                                if (v !== '' && v !== '0') { typeEl.classList.remove('is-invalid'); typeEl.classList.add('is-valid'); if (fbType && fbType.invalid) { fbType.invalid.style.display = 'none'; } return true; }
+                                typeEl.classList.remove('is-valid'); typeEl.classList.add('is-invalid'); if (fbType.invalid) { fbType.invalid.textContent = 'Select a tax type'; fbType.invalid.style.display = 'block'; fbType.valid.style.display = 'none'; } return false;
+                            }
+                            if (v !== '') { typeEl.classList.remove('is-invalid'); typeEl.classList.add('is-valid'); if (fbType && fbType.invalid) { fbType.invalid.style.display = 'none'; } return true; }
+                            typeEl.classList.remove('is-valid'); typeEl.classList.add('is-invalid'); if (fbType.invalid) { fbType.invalid.textContent = 'This field is required'; fbType.invalid.style.display = 'block'; fbType.valid.style.display = 'none'; }
+                            return false;
+                        }
+
+                        function validateRate() {
+                            if (!rateEl) return true;
+                            const v = (rateEl.value || '').toString().trim();
+                            const n = parseFloat(v);
+                            if (v !== '' && !isNaN(n) && n >= 0 && n <= 100) { rateEl.classList.remove('is-invalid'); rateEl.classList.add('is-valid'); if (fbRate && fbRate.invalid) { fbRate.invalid.style.display = 'none'; } return true; }
+                            rateEl.classList.remove('is-valid'); rateEl.classList.add('is-invalid'); if (fbRate.invalid) { fbRate.invalid.textContent = 'Enter a valid rate between 0 and 100'; fbRate.invalid.style.display = 'block'; fbRate.valid.style.display = 'none'; }
+                            return false;
+                        }
+
+                        [nameEl, typeEl, rateEl].forEach(el => {
+                            if (!el) return;
+                            el.addEventListener('input', function() { if (el === nameEl) validateName(); else if (el === typeEl) validateType(); else if (el === rateEl) validateRate(); });
+                            el.addEventListener('blur', function() { if (el === nameEl) validateName(); else if (el === typeEl) validateType(); else if (el === rateEl) validateRate(); });
+                        });
+
+                        form.addEventListener('submit', function(e){ const ok = validateName() & validateType() & validateRate(); if (!ok) { e.preventDefault(); e.stopPropagation(); const first = form.querySelector('.is-invalid'); if (first) { first.focus(); if (typeof first.scrollIntoView === 'function') first.scrollIntoView({ block: 'center', behavior: 'smooth' }); } } });
+
+                    } catch (err) { console.debug('attachTaxValidation error', err); }
+                }
+
+                // run immediately
+                attachTaxValidation(document);
+            })();
+        </script>
+</body>
+</html>
+{% endblock %}

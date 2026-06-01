@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+{% block title %}{{ price_list.name }}{% endblock %}
+
+{% block content %}
+<div class="pl-wrapper">
+
+  <!-- Breadcrumb -->
+  <div class="breadcrumb">
+    <a href="{% url 'pricelist:index' %}">Price Lists</a> / {{ price_list.name }}
+  </div>
+
+  <!-- Header Card -->
+  <div class="detail-header">
+    <div class="detail-header-left">
+      <div class="detail-title-row">
+        <h1>{{ price_list.name }}</h1>
+        <span class="badge badge-{{ price_list.type }}">{{ price_list.get_type_display }}</span>
+        <span class="status-dot {% if price_list.is_active %}active{% else %}inactive{% endif %}">
+          ● {% if price_list.is_active %}Active{% else %}Inactive{% endif %}
+        </span>
+      </div>
+      {% if price_list.description %}<p class="detail-desc">{{ price_list.description }}</p>{% endif %}
+      <div class="detail-meta">
+        <span>💱 {{ price_list.currency }}</span>
+        <span>🔢 {{ price_list.get_rounding_display }}</span>
+        {% if price_list.valid_from %}<span>📅 From: {{ price_list.valid_from }}</span>{% endif %}
+        {% if price_list.valid_to %}<span>📅 To: {{ price_list.valid_to }}</span>{% endif %}
+      </div>
+    </div>
+    <div class="detail-actions">
+      <a href="{% url 'pricelist:edit' price_list.pk %}" class="btn-secondary">Edit</a>
+      <a href="{% url 'pricelist:toggle_status' price_list.pk %}" class="btn-toggle {% if price_list.is_active %}btn-deactivate{% else %}btn-activate{% endif %}">
+        {% if price_list.is_active %}Deactivate{% else %}Activate{% endif %}
+      </a>
+      <a href="{% url 'pricelist:delete' price_list.pk %}" class="btn-danger">Delete</a>
+    </div>
+  </div>
+
+  <!-- Messages -->
+  {% for message in messages %}
+  <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+  {% endfor %}
+
+  <!-- Items Section -->
+  <div class="section-card">
+    <div class="section-header">
+      <h2>Items <span class="count-badge">{{ items.count }}</span></h2>
+      <a href="{% url 'pricelist:item_add' price_list.pk %}" class="btn-primary-sm">+ Add Item</a>
+    </div>
+
+    {% if items %}
+    <table class="pl-table">
+      <thead>
+        <tr>
+          <th>Item / Product</th>
+          <th>Base Rate</th>
+          <th>Pricing Method</th>
+          <th>Adjustment</th>
+          <th>Final Price</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for pl_item in items %}
+        <tr>
+          <td><strong>{{ pl_item.item.name }}</strong></td>
+          <td>{{ pl_item.item.rate }}</td>
+          <td>
+            <span class="method-badge method-{{ pl_item.pricing_method }}">
+              {{ pl_item.get_pricing_method_display }}
+            </span>
+          </td>
+          <td>
+            {% if pl_item.pricing_method == 'percentage' %}
+              {{ pl_item.get_adjustment_type_display }}: {{ pl_item.percentage }}%
+            {% else %}
+              Fixed Rate
+            {% endif %}
+          </td>
+          <td class="final-price">{{ pl_item.get_computed_price }}</td>
+          <td class="actions">
+            <a href="{% url 'pricelist:item_edit' price_list.pk pl_item.pk %}">✏️</a>
+            <a href="{% url 'pricelist:item_delete' price_list.pk pl_item.pk %}" class="danger">🗑</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="empty-msg">No items added yet. <a href="{% url 'pricelist:item_add' price_list.pk %}">Add the first item →</a></p>
+    {% endif %}
+  </div>
+
+  <!-- Contacts Section -->
+  <div class="section-card">
+    <div class="section-header">
+      <h2>Assigned Contacts <span class="count-badge">{{ assignments.count }}</span></h2>
+      <a href="{% url 'pricelist:assign_contact' price_list.pk %}" class="btn-primary-sm">+ Assign Contact</a>
+    </div>
+
+    {% if assignments %}
+    <table class="pl-table">
+      <thead>
+        <tr>
+          <th>Contact Name</th>
+          <th>Type</th>
+          <th>Assigned On</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for a in assignments %}
+        <tr>
+          <td><strong>{{ a.contact }}</strong></td>
+          <td>{{ a.contact.contact_type|default:"—" }}</td>
+          <td>{{ a.assigned_at|date:"d M Y" }}</td>
+          <td class="actions">
+            <a href="{% url 'pricelist:remove_contact' price_list.pk a.pk %}" class="danger" title="Remove">🗑</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="empty-msg">No contacts assigned. <a href="{% url 'pricelist:assign_contact' price_list.pk %}">Assign one →</a></p>
+    {% endif %}
+  </div>
+
+</div>
+
+<style>
+.pl-wrapper { max-width: 1100px; margin: 2rem auto; padding: 0 1rem; font-family: 'Segoe UI', sans-serif; }
+.breadcrumb { font-size: 0.85rem; color: #9ca3af; margin-bottom: 1rem; }
+.breadcrumb a { color: #4f46e5; text-decoration: none; }
+.detail-header { background: #fff; border-radius: 14px; padding: 1.5rem; display: flex; justify-content: space-between; align-items: flex-start; box-shadow: 0 1px 8px rgba(0,0,0,0.07); margin-bottom: 1.5rem; gap: 1rem; flex-wrap: wrap; }
+.detail-title-row { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 0.5rem; }
+.detail-title-row h1 { font-size: 1.5rem; font-weight: 700; color: #1a1a2e; margin: 0; }
+.detail-desc { color: #6b7280; font-size: 0.9rem; margin: 0.25rem 0 0.75rem; }
+.detail-meta { display: flex; gap: 1rem; flex-wrap: wrap; font-size: 0.85rem; color: #6b7280; }
+.detail-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.badge { display: inline-block; padding: 0.2rem 0.65rem; border-radius: 999px; font-size: 0.75rem; font-weight: 600; }
+.badge-sales { background: #dbeafe; color: #1d4ed8; }
+.badge-purchase { background: #fef3c7; color: #92400e; }
+.status-dot { font-size: 0.82rem; font-weight: 600; }
+.status-dot.active { color: #16a34a; }
+.status-dot.inactive { color: #9ca3af; }
+.btn-secondary { background: #f3f4f6; color: #374151; padding: 0.5rem 1rem; border-radius: 7px; text-decoration: none; font-size: 0.85rem; font-weight: 500; }
+.btn-toggle { padding: 0.5rem 1rem; border-radius: 7px; text-decoration: none; font-size: 0.85rem; font-weight: 500; }
+.btn-deactivate { background: #fef3c7; color: #92400e; }
+.btn-activate { background: #d1fae5; color: #065f46; }
+.btn-danger { background: #fee2e2; color: #b91c1c; padding: 0.5rem 1rem; border-radius: 7px; text-decoration: none; font-size: 0.85rem; font-weight: 500; }
+.section-card { background: #fff; border-radius: 14px; padding: 1.25rem 1.5rem; box-shadow: 0 1px 8px rgba(0,0,0,0.07); margin-bottom: 1.25rem; }
+.section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+.section-header h2 { font-size: 1.1rem; font-weight: 700; color: #1a1a2e; margin: 0; display: flex; align-items: center; gap: 0.5rem; }
+.count-badge { background: #e0e7ff; color: #4f46e5; font-size: 0.75rem; padding: 0.15rem 0.55rem; border-radius: 999px; font-weight: 700; }
+.btn-primary-sm { background: #4f46e5; color: #fff; padding: 0.45rem 1rem; border-radius: 7px; text-decoration: none; font-size: 0.85rem; font-weight: 600; }
+.pl-table { width: 100%; border-collapse: collapse; }
+.pl-table th { padding: 0.65rem 0.75rem; text-align: left; font-size: 0.78rem; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid #e5e7eb; }
+.pl-table td { padding: 0.8rem 0.75rem; font-size: 0.88rem; color: #374151; border-bottom: 1px solid #f3f4f6; }
+.pl-table tr:last-child td { border-bottom: none; }
+.pl-table tr:hover td { background: #fafafa; }
+.final-price { font-weight: 700; color: #065f46; }
+.method-badge { display: inline-block; padding: 0.2rem 0.55rem; border-radius: 5px; font-size: 0.75rem; font-weight: 600; }
+.method-percentage { background: #ede9fe; color: #6d28d9; }
+.method-fixed { background: #d1fae5; color: #065f46; }
+.actions a { margin-right: 0.5rem; text-decoration: none; }
+.actions a.danger { opacity: 0.65; }
+.actions a.danger:hover { opacity: 1; }
+.empty-msg { color: #9ca3af; font-size: 0.9rem; padding: 0.5rem 0; }
+.empty-msg a { color: #4f46e5; }
+.alert { padding: 0.75rem 1rem; border-radius: 8px; margin-bottom: 1rem; font-size: 0.9rem; background: #d1fae5; color: #065f46; }
+</style>
+{% endblock %}

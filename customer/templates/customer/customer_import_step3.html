@@ -1,0 +1,240 @@
+{% extends "website/index.html" %}
+{% block title %}Preview – Import Customers{% endblock %}
+
+{% block content %}
+{% load dict_filters %}
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap');
+:root {
+  --ink:#0f0f0f;--ink2:#3a3a3a;--muted:#888;--border:#e2e2e2;
+  --bg:#f7f6f3;--white:#ffffff;--accent:#1a56db;--accent-light:#e8effc;
+  --danger:#dc2626;--danger-bg:#fff5f5;--success:#16a34a;--warn:#d97706;
+  --mono:'DM Mono',monospace;--sans:'DM Sans',sans-serif;
+}
+.imp-shell { margin:40px auto 80px; font-family:var(--sans); color:var(--ink); padding:0 16px; }
+.imp-breadcrumb { font-size:12px; color:var(--muted); font-family:var(--mono); letter-spacing:.04em; margin-bottom:10px; }
+.imp-breadcrumb a { color:var(--accent); text-decoration:none; }
+.imp-title { font-size:26px; font-weight:600; letter-spacing:-.02em; margin:0 0 4px; }
+.imp-subtitle { font-size:14px; color:var(--muted); font-weight:300; margin-bottom:28px; }
+.imp-steps { display:flex; align-items:center; margin-bottom:32px; background:var(--white); border:1px solid var(--border); border-radius:10px; overflow:hidden; }
+.imp-step { flex:1; display:flex; align-items:center; gap:10px; padding:14px 20px; font-size:13px; font-weight:500; color:var(--muted); border-right:1px solid var(--border); }
+.imp-step:last-child { border-right:none; }
+.imp-step.active { background:var(--accent); color:#fff; }
+.imp-step.done { color:var(--success); background:#f0fdf4; }
+.step-n { width:22px; height:22px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; background:rgba(0,0,0,.08); flex-shrink:0; }
+.imp-step.active .step-n { background:rgba(255,255,255,.25); }
+.imp-step.done .step-n { background:#dcfce7; color:var(--success); }
+
+.stats-bar { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:24px; }
+.stat-card { background:var(--white); border:1px solid var(--border); border-radius:10px; padding:18px 20px; text-align:center; }
+.stat-num { font-size:32px; font-weight:700; font-family:var(--mono); line-height:1; margin-bottom:6px; }
+.stat-num.green { color:var(--success); }
+.stat-num.orange { color:var(--warn); }
+.stat-num.blue { color:var(--accent); }
+.stat-label { font-size:12px; color:var(--muted); }
+
+.dup-note { display:flex; align-items:center; gap:8px; font-size:13px; color:var(--ink2); background:var(--accent-light); border:1px solid #bfdbfe; border-radius:8px; padding:12px 16px; margin-bottom:20px; }
+
+.tabs-wrap { display:flex; border-bottom:2px solid var(--border); margin-bottom:20px; }
+.tab-btn { background:none; border:none; cursor:pointer; padding:10px 20px; font-size:13.5px; font-weight:500; color:var(--muted); font-family:var(--sans); border-bottom:2px solid transparent; margin-bottom:-2px; display:flex; align-items:center; gap:7px; }
+.tab-btn:hover { color:var(--ink); }
+.tab-btn.active { color:var(--accent); border-bottom-color:var(--accent); }
+.tab-count { font-size:11px; font-weight:700; font-family:var(--mono); border-radius:20px; padding:1px 7px; }
+.tab-btn.active .tab-count { background:var(--accent-light); color:var(--accent); }
+.tab-btn:not(.active) .tab-count { background:var(--bg); color:var(--muted); }
+
+.tab-panel { display:none; }
+.tab-panel.active { display:block; }
+
+.data-table-wrap { border:1px solid var(--border); border-radius:10px; overflow:auto; max-height:440px; }
+.data-table { width:100%; border-collapse:collapse; font-size:13px; }
+.data-table thead th { background:var(--bg); padding:10px 14px; font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.07em; color:var(--muted); font-family:var(--mono); border-bottom:1px solid var(--border); text-align:left; position:sticky; top:0; z-index:1; white-space:nowrap; }
+.data-table tbody td { padding:10px 14px; border-bottom:1px solid #f3f4f6; vertical-align:top; max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.data-table tbody tr:last-child td { border-bottom:none; }
+.data-table tbody tr:hover td { background:#fafafa; }
+.data-table td.err { color:var(--danger); font-size:12px; font-family:var(--mono); white-space:normal; }
+.row-num { color:var(--muted); font-family:var(--mono); font-size:11px; }
+.type-badge { font-size:11px; font-weight:600; padding:2px 7px; border-radius:4px; font-family:var(--mono); }
+.type-badge.company { background:#ede9fe; color:#6d28d9; }
+.type-badge.individual { background:#e0f2fe; color:#0369a1; }
+
+.unmapped-block { background:var(--white); border:1px solid var(--border); border-radius:10px; padding:20px 24px; }
+.unmapped-intro { font-size:13px; color:var(--ink2); margin-bottom:14px; line-height:1.6; }
+.unmapped-chips { display:flex; flex-wrap:wrap; gap:8px; }
+.unmapped-chip { font-size:12px; font-family:var(--mono); background:var(--bg); border:1px solid var(--border); border-radius:6px; padding:4px 10px; color:var(--ink2); }
+
+.empty-state { text-align:center; padding:40px 20px; color:var(--muted); }
+.empty-state p { font-size:14px; }
+.more-note { font-size:12px; color:var(--muted); font-family:var(--mono); padding:8px 14px; }
+
+.imp-bottom { display:flex; justify-content:space-between; align-items:center; margin-top:28px; }
+.act-left { display:flex; gap:10px; align-items:center; }
+.btn-import { display:inline-flex; align-items:center; gap:8px; background:var(--success); color:#fff; border:none; border-radius:8px; padding:12px 30px; font-size:14.5px; font-weight:600; cursor:pointer; font-family:var(--sans); }
+.btn-import:hover { background:#15803d; }
+.btn-import:disabled { background:#86efac; cursor:not-allowed; }
+.btn-back { display:inline-flex; align-items:center; gap:6px; background:var(--white); color:var(--ink2); border:1px solid var(--border); border-radius:8px; padding:11px 22px; font-size:14px; font-weight:500; text-decoration:none; font-family:var(--sans); }
+.btn-back:hover { background:var(--bg); }
+.btn-cancel { font-size:13.5px; color:var(--muted); text-decoration:none; padding:8px 12px; border-radius:6px; }
+</style>
+
+<div class="imp-shell">
+  <div class="imp-breadcrumb">
+    <a href="{% url 'customers' company_code=company_code %}">Customers</a> /
+    <a href="{% url 'import_customers_step1' company_code=company_code %}">Import</a> /
+    Preview
+  </div>
+  <h1 class="imp-title">Preview Import</h1>
+  <p class="imp-subtitle">Review what will happen before committing the import</p>
+
+  <div class="imp-steps">
+    <div class="imp-step done"><div class="step-n">✓</div>Upload File</div>
+    <div class="imp-step done"><div class="step-n">✓</div>Map Columns</div>
+    <div class="imp-step active"><div class="step-n">3</div>Preview &amp; Import</div>
+  </div>
+
+  <div class="stats-bar">
+    <div class="stat-card"><div class="stat-num green">{{ ready|length }}</div><div class="stat-label">Ready to import</div></div>
+    <div class="stat-card"><div class="stat-num orange">{{ skipped|length }}</div><div class="stat-label">Will be skipped</div></div>
+    <div class="stat-card"><div class="stat-num blue">{{ unmapped|length }}</div><div class="stat-label">Unmapped columns</div></div>
+  </div>
+
+  <div class="dup-note">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    Duplicate handling:
+    {% if duplicate == "overwrite" %}
+      <strong>Overwrite</strong> — existing customers with matching email will be updated.
+    {% else %}
+      <strong>Skip</strong> — rows with emails that already exist will be ignored.
+    {% endif %}
+  </div>
+
+  <div class="tabs-wrap">
+    <button class="tab-btn active" onclick="showTab('ready', this)">Ready to Import <span class="tab-count">{{ ready|length }}</span></button>
+    <button class="tab-btn" onclick="showTab('skipped', this)">Skipped <span class="tab-count">{{ skipped|length }}</span></button>
+    <button class="tab-btn" onclick="showTab('unmapped', this)">Unmapped Columns <span class="tab-count">{{ unmapped|length }}</span></button>
+  </div>
+
+  <!-- Ready panel -->
+  <div class="tab-panel active" id="panel-ready">
+    {% if ready %}
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Email</th>
+            <th>Type</th>
+            <th>Name / Company</th>
+            <th>Phone</th>
+            <th>GST No.</th>
+            <th>Tax Pref</th>
+            <th>City</th>
+            <th>State</th>
+            <th>Country</th>
+            <th>Opening Bal</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for entry in ready|slice:":50" %}
+          <tr>
+            <td class="row-num">{{ forloop.counter }}</td>
+            <td><strong>{{ entry.mapped.email }}</strong></td>
+            <td>
+              <span class="type-badge {{ entry.mapped.type|default:'individual' }}">
+                {{ entry.mapped.customer_type|default:"individual" }}
+              </span>
+            </td>
+            <td>
+              {% if entry.mapped.customer_type == "company" %}
+                {{ entry.mapped.company_name|default:"—" }}
+              {% else %}
+                {{ entry.mapped.first_name|default:"" }} {{ entry.mapped.last_name|default:"" }}
+              {% endif %}
+            </td>
+            <td>{{ entry.mapped.phone|default:entry.mapped.mobile|default:"—" }}</td>
+            <td>{{ entry.mapped.gst_number|default:"—" }}</td>
+            <td>{{ entry.mapped.tax_preference|default:"taxable" }}</td>
+            <td>{{ entry.mapped.city|default:"—" }}</td>
+            <td>{{ entry.mapped.state|default:"—" }}</td>
+            <td>{{ entry.mapped.country|default:"—" }}</td>
+            <td>{{ entry.mapped.opening_balance|default:"0" }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if ready|length > 50 %}
+      <div class="more-note">Showing first 50 of {{ ready|length }} rows.</div>
+    {% endif %}
+    {% else %}
+    <div class="empty-state">
+      <p>No valid rows found. Check that Email is mapped and your data is correct.</p>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Skipped panel -->
+  <div class="tab-panel" id="panel-skipped">
+    {% if skipped %}
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead><tr><th>#</th><th>Row (Email / Name)</th><th>Reason</th></tr></thead>
+        <tbody>
+          {% for entry in skipped %}
+          <tr>
+            <td class="row-num">{{ forloop.counter }}</td>
+            <td>{{ entry.name }}</td>
+            <td class="err">{{ entry.errors|join:", " }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty-state"><p>No rows will be skipped — all rows passed validation.</p></div>
+    {% endif %}
+  </div>
+
+  <!-- Unmapped panel -->
+  <div class="tab-panel" id="panel-unmapped">
+    {% if unmapped %}
+    <div class="unmapped-block">
+      <p class="unmapped-intro">These columns were not mapped and will be <strong>ignored</strong> during import. Go back to Map Columns if you want to include them.</p>
+      <div class="unmapped-chips">{% for h in unmapped %}<span class="unmapped-chip">{{ h }}</span>{% endfor %}</div>
+    </div>
+    {% else %}
+    <div class="empty-state"><p>All columns are mapped.</p></div>
+    {% endif %}
+  </div>
+
+  <form method="post">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="import">
+    <div class="imp-bottom">
+      <div class="act-left">
+        <a href="{% url 'import_customers_step2' company_code=company_code %}" class="btn-back">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+          Back
+        </a>
+        <button type="submit" class="btn-import" {% if not ready %}disabled title="No valid customers to import"{% endif %}>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+            <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
+          Import {{ ready|length }} Customer{{ ready|length|pluralize }}
+        </button>
+      </div>
+      <a href="{% url 'customers' company_code=company_code %}" class="btn-cancel">Cancel</a>
+    </div>
+  </form>
+</div>
+
+<script>
+function showTab(name, btn) {
+  document.querySelectorAll('.tab-panel').forEach(function(p){ p.classList.remove('active'); });
+  document.querySelectorAll('.tab-btn').forEach(function(b){ b.classList.remove('active'); });
+  document.getElementById('panel-' + name).classList.add('active');
+  btn.classList.add('active');
+}
+</script>
+{% endblock %}

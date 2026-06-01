@@ -1,0 +1,927 @@
+{% extends "website/index.html" %}
+{% load static %}
+{% block exstyle %}
+<link href="{% static 'style/general.css' %}" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Ubuntu&display=swap" rel="stylesheet">
+<link href="{% static 'style/quotation_detail.css' %}" rel="stylesheet">
+<style>
+  /* ─── Design Tokens ─────────────────────────────────────────── */
+  :root {
+    --brand:        #55588b;
+    --brand-dark:   #3e4070;
+    --brand-light:  #8486b8;
+    --brand-pale:   #f0f0f8;
+    --brand-muted:  #f5f5fb;
+    --brand-border: #dcddf0;
+    --success:      #2a7a56;
+    --danger:       #c0392b;
+    --text-primary: #2c2d4a;
+    --text-secondary:#6b6d96;
+    --text-muted:   #a0a2c0;
+    --surface:      #ffffff;
+    --surface-alt:  #fafafa;
+    --border:       #eaeaef;
+    --shadow-xs:    0 1px 2px rgba(85,88,139,.06);
+    --shadow-sm:    0 2px 8px rgba(85,88,139,.08);
+    --shadow-md:    0 4px 16px rgba(85,88,139,.10);
+    --radius:       8px;
+    --radius-sm:    5px;
+    --radius-lg:    12px;
+    --font-main:    'DM Sans', sans-serif;
+    --font-mono:    'DM Mono', monospace;
+  }
+
+  body { font-family: var(--font-main); color: var(--text-primary); background: #f6f6fb; }
+  .crm-page { padding: 24px 20px 48px; max-width: 1200px; }
+
+  /* ─── Action Bar ─────────────────────────────────────────────── */
+  .action-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .action-bar .btn-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 16px;
+    background: #fff;
+    color: var(--brand);
+    border: 1px solid var(--brand-border);
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: all .15s;
+    box-shadow: var(--shadow-xs);
+  }
+  .action-bar .btn-back:hover {
+    background: var(--brand-muted);
+    border-color: var(--brand);
+    color: var(--brand-dark);
+  }
+
+  /* ─── Buttons ────────────────────────────────────────────────── */
+  .btn {
+    font-family: var(--font-main);
+    font-weight: 500;
+    font-size: 0.85rem;
+    border-radius: var(--radius-sm);
+    transition: all .15s ease;
+    letter-spacing: 0;
+  }
+  .btn:hover { transform: translateY(-1px); box-shadow: var(--shadow-sm); }
+  .btn:active { transform: translateY(0); box-shadow: none; }
+  .btn-primary { background: var(--brand); border-color: var(--brand); color: #fff; }
+  .btn-primary:hover, .btn-primary:focus { background: var(--brand-dark); border-color: var(--brand-dark); color: #fff; }
+  .btn-warning { background: var(--brand-muted); border-color: var(--brand-border); color: var(--brand); }
+  .btn-warning:hover { background: var(--brand-pale); border-color: var(--brand); color: var(--brand-dark); }
+  .btn-outline-secondary { border-color: var(--border); color: var(--text-secondary); background: #fff; }
+  .btn-outline-secondary:hover { background: var(--brand-muted); border-color: var(--brand-border); color: var(--brand); }
+  .btn-danger { background: var(--danger); border-color: var(--danger); color: #fff; }
+  .btn-danger:hover { background: #a93226; border-color: #a93226; }
+  .btn-light { background: #fff; border-color: var(--border); color: var(--text-secondary); }
+  .btn-light:hover { background: var(--brand-muted); border-color: var(--brand-border); color: var(--brand); }
+
+  /* ─── Cards ──────────────────────────────────────────────────── */
+  .card {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-xs);
+    background: var(--surface);
+    overflow: hidden;
+    transition: box-shadow .2s;
+  }
+  .card:hover { box-shadow: var(--shadow-sm); }
+
+  .card > .card-header,
+  .card>.card-header {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    border-bottom: 1px solid var(--border) !important;
+    border-left: 3px solid var(--brand) !important;
+    padding: 13px 18px !important;
+    position: relative;
+  }
+  .card > .card-header::after,
+  .card>.card-header::after { display: none; }
+
+  .card > .card-header h5,
+  .card > .card-header h6,
+  .card>.card-header h5,
+  .card>.card-header h6 {
+    color: var(--brand) !important;
+    font-size: 0.82rem !important;
+    font-weight: 700 !important;
+    letter-spacing: .07em !important;
+    text-transform: uppercase !important;
+    margin: 0 !important;
+  }
+  .card > .card-header i,
+  .card>.card-header i { color: var(--brand-light) !important; }
+
+  .card-body { padding: 20px; }
+  .card-footer {
+    background: var(--surface-alt);
+    border-top: 1px solid var(--border);
+    padding: 14px 20px;
+  }
+
+  /* ─── Info Rows ──────────────────────────────────────────────── */
+  .info-row {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    padding: 8px 0;
+    border-bottom: 1px dashed var(--border);
+    font-size: 0.88rem;
+  }
+  .info-row:last-child { border-bottom: none; }
+  .info-row strong {
+    color: var(--text-muted);
+    font-weight: 600;
+    font-size: 0.74rem;
+    text-transform: uppercase;
+    letter-spacing: .07em;
+    min-width: 130px;
+    flex-shrink: 0;
+  }
+  .info-row span { color: var(--text-primary); font-weight: 400; }
+  .info-row a { color: var(--brand); text-decoration: none; font-weight: 500; }
+  .info-row a:hover { text-decoration: underline; }
+
+  /* ─── Status Dropdown ────────────────────────────────────────── */
+  #statusDropdown {
+    display: inline-block;
+    max-width: 175px;
+    padding: 4px 30px 4px 11px;
+    border-radius: 5px;
+    border: 1px solid var(--brand-border);
+    background-color: var(--brand-muted);
+    color: var(--brand);
+    font-weight: 600;
+    font-size: 0.78rem;
+    letter-spacing: .03em;
+    text-transform: uppercase;
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2355588b'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  #statusDropdown:focus {
+    outline: none;
+    border-color: var(--brand);
+    box-shadow: 0 0 0 3px rgba(85,88,139,.12);
+  }
+  #statusDropdown.status-rejected {
+    color: var(--danger);
+    border-color: #e8c4c1;
+    background-color: #fdf5f5;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23c0392b'/%3E%3C/svg%3E");
+  }
+
+  /* ─── Order Number Badge ─────────────────────────────────────── */
+  .qno-badge {
+    display: inline-flex;
+    align-items: center;
+    background: var(--brand-pale);
+    color: var(--brand);
+    border: 1px solid var(--brand-border);
+    border-radius: 5px;
+    padding: 2px 10px;
+    font-family: var(--font-mono);
+    font-size: 0.9rem;
+    font-weight: 500;
+    letter-spacing: .02em;
+  }
+
+  /* ─── Address Card ───────────────────────────────────────────── */
+  .address-card .card-header {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 10px !important;
+    padding: 11px 18px !important;
+    border-left: 3px solid var(--brand) !important;
+  }
+  .address-divider { width: 1px; height: 16px; background: var(--brand-border); flex-shrink: 0; }
+  .address-col { padding: 16px 18px; }
+  .address-col + .address-col { border-left: 1px solid var(--border); }
+  .addr-label {
+    font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .08em; color: var(--text-muted); margin-bottom: 8px;
+  }
+  .addr-name { font-size: 0.88rem; font-weight: 600; color: var(--text-primary); margin-bottom: 4px; }
+  .addr-line { font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 2px; line-height: 1.55; }
+
+  /* ─── Items Table ────────────────────────────────────────────── */
+  .items-table { width: 100%; border-collapse: collapse; font-size: 0.855rem; }
+  .items-table thead tr {
+    background-color: var(--brand-muted) !important;
+    background: var(--brand-muted) !important;
+  }
+  .items-table thead th {
+    color: var(--brand) !important;
+    background: transparent !important;
+    font-size: 0.72rem !important;
+    font-weight: 700 !important;
+    letter-spacing: .07em !important;
+    text-transform: uppercase !important;
+    padding: 10px 14px !important;
+    border: none !important;
+    border-bottom: 2px solid var(--brand-border) !important;
+    white-space: nowrap !important;
+  }
+  .items-table thead th:first-child,
+  .items-table thead th:last-child { border-radius: 0 !important; }
+  .items-table tbody tr { transition: background .12s; }
+  .items-table tbody tr:nth-child(even) { background: var(--surface-alt); }
+  .items-table tbody tr:hover { background: var(--brand-muted); }
+  .items-table tbody td {
+    padding: 11px 14px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-primary);
+    vertical-align: middle;
+    font-size: 0.855rem;
+  }
+  .items-table tbody td.amount {
+    font-family: var(--font-mono); font-weight: 500; color: var(--text-primary); text-align: right;
+  }
+
+  /* ─── Totals ─────────────────────────────────────────────────── */
+  .totals-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+  .totals-table td { padding: 5px 8px; color: var(--text-secondary); }
+  .totals-table td:first-child { text-align: right; font-weight: 500; }
+  .totals-table td:last-child  { text-align: right; font-family: var(--font-mono); }
+  .totals-table .total-final td {
+    border-top: 1px solid var(--brand-border);
+    padding-top: 10px; font-size: 1rem; color: var(--brand-dark); font-weight: 700;
+  }
+
+  /* ─── Badges ─────────────────────────────────────────────────── */
+  .badge { font-size: 0.7rem; font-weight: 600; letter-spacing: .04em; border-radius: 4px; padding: 3px 8px; }
+  .bg-primary   { background: var(--brand) !important; }
+  .bg-danger    { background: var(--danger) !important; }
+  .bg-secondary { background: var(--text-muted) !important; }
+
+  /* ─── Quick Actions ──────────────────────────────────────────── */
+  .quick-actions-body { display: flex; flex-direction: column; gap: 8px; padding: 16px 20px; }
+
+  /* ─── Dropdown Menus ─────────────────────────────────────────── */
+  .dropdown-menu {
+    border: 1px solid var(--border); border-radius: var(--radius);
+    box-shadow: var(--shadow-md); padding: 5px;
+    font-family: var(--font-main); font-size: 0.855rem;
+  }
+  .dropdown-item { border-radius: 4px; padding: 7px 12px; color: var(--text-primary); font-weight: 400; transition: background .1s; }
+  .dropdown-item:hover { background: var(--brand-muted); color: var(--brand); }
+  .dropdown-toggle::after { margin-left: 5px; }
+
+  /* ─── Modal ──────────────────────────────────────────────────── */
+  .modal-content { border: none; border-radius: var(--radius-lg); box-shadow: var(--shadow-md); font-family: var(--font-main); }
+  .modal-header {
+    background: var(--brand-muted) !important;
+    border-bottom: 1px solid var(--brand-border) !important;
+    border-top: 3px solid var(--brand) !important;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0 !important;
+    padding: 14px 20px;
+  }
+  .modal-title { color: var(--brand) !important; font-weight: 700; font-size: 0.9rem; }
+  .modal-body { padding: 20px 24px; color: var(--text-primary); font-size: 0.88rem; }
+  .modal-footer { border-top: 1px solid var(--border); padding: 12px 20px; gap: 8px; }
+
+  /* ─── Toast ──────────────────────────────────────────────────── */
+  #toastContainer .toast {
+    font-family: var(--font-main); font-size: 0.855rem; font-weight: 500;
+    border-radius: var(--radius); box-shadow: var(--shadow-md);
+  }
+
+  /* ─── Misc ───────────────────────────────────────────────────── */
+  .empty-state { color: var(--text-muted); font-style: italic; font-size: 0.85rem; }
+  @media (max-width: 768px) {
+    .address-col + .address-col { border-left: none; border-top: 1px solid var(--border); }
+    .action-bar { flex-direction: column; align-items: flex-start; }
+  }
+</style>
+
+{% endblock %}
+{% block page_title %}Performa Invoice Detail{% endblock page_title %}
+{% block scripts %}
+<script>
+// ✅ Make company_is_india flag available to JavaScript
+const COMPANY_IS_INDIA = {{ company_is_india|lower }};
+</script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const statusDropdown = document.getElementById('statusDropdown');
+  const confirmModalEl = document.getElementById('confirmStatusModal');
+  const confirmModal = confirmModalEl ? new bootstrap.Modal(confirmModalEl) : null;
+  const confirmText = confirmModalEl ? document.getElementById('confirmStatusText') : null;
+  const sendEmailButtons = [
+    document.getElementById('sendEmailBtn'),
+    document.getElementById('sendEmailBtnQuick')
+  ].filter(Boolean);
+  let pendingStatus = null;
+
+  function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+      const cookies = document.cookie.split(';');
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
+
+  function showToast(message, type, delay) {
+    let toastContainer = document.getElementById('toastContainer');
+    if (!toastContainer) {
+      toastContainer = document.createElement('div');
+      toastContainer.id = 'toastContainer';
+      toastContainer.className = 'toast-container position-fixed p-3';
+      toastContainer.style.top = '70px';
+      toastContainer.style.right = '20px';
+      toastContainer.style.bottom = 'auto';
+      toastContainer.style.left = 'auto';
+      document.body.appendChild(toastContainer);
+    }
+
+    const toastEl = document.createElement('div');
+    toastEl.className = `toast align-items-center text-bg-${type} border-0 shadow`;
+    toastEl.style.minWidth = '260px';
+    toastEl.style.marginTop = '8px';
+    toastEl.setAttribute('role', 'alert');
+    toastEl.setAttribute('aria-live', 'assertive');
+    toastEl.setAttribute('aria-atomic', 'true');
+    toastEl.innerHTML = `
+      <div class="d-flex">
+        <div class="toast-body">${message}</div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+      </div>
+    `;
+
+    toastContainer.appendChild(toastEl);
+    const toast = new bootstrap.Toast(toastEl, { delay: delay || 3000 });
+    toast.show();
+  }
+
+  const statusTransitionMap = {
+    Draft: ['Sent', 'Cancelled'],
+    Sent: ['Accepted', 'Cancelled'],
+    Accepted: [],
+    Cancelled: []
+  };
+  const convertUrl = "{% if company_code %}{% url 'convert_performa_to_order' company_code invoice.pk %}{% else %}{% url 'convert_performa_to_order' invoice.pk %}{% endif %}";
+  const convertLinks = [
+    document.getElementById('convertToOrderLink'),
+    document.getElementById('convertToOrderQuick')
+  ].filter(Boolean);
+
+  function isTransitionAllowed(fromStatus, toStatus) {
+    if (!fromStatus || !toStatus) return false;
+    if (fromStatus === toStatus) return true;
+    const allowedNext = statusTransitionMap[fromStatus] || [];
+    return allowedNext.includes(toStatus);
+  }
+
+  function applyStatusOptionGuards(currentStatus) {
+    if (!statusDropdown) return;
+    const allowedNext = statusTransitionMap[currentStatus] || [];
+    Array.from(statusDropdown.options).forEach(function(option) {
+      const sameStatus = option.value === currentStatus;
+      const allowed = allowedNext.includes(option.value);
+      option.disabled = !(sameStatus || allowed);
+    });
+  }
+
+  function updateConvertActions(currentStatus) {
+    if (!convertLinks.length) return;
+    const canConvert = currentStatus === 'Accepted';
+    convertLinks.forEach(function(link) {
+      if (canConvert) {
+        link.classList.remove('disabled');
+        link.setAttribute('href', convertUrl);
+        link.removeAttribute('aria-disabled');
+        link.removeAttribute('tabindex');
+      } else {
+        link.classList.add('disabled');
+        link.setAttribute('href', '#');
+        link.setAttribute('aria-disabled', 'true');
+        link.setAttribute('tabindex', '-1');
+      }
+    });
+  }
+
+  if (statusDropdown) {
+    statusDropdown.dataset.original = statusDropdown.value;
+    applyStatusOptionGuards(statusDropdown.dataset.original);
+    updateConvertActions(statusDropdown.dataset.original);
+    statusDropdown.addEventListener('change', function() {
+      const fromStatus = this.dataset.original || this.value;
+      const toStatus = this.value;
+      if (!isTransitionAllowed(fromStatus, toStatus)) {
+        this.value = fromStatus;
+        showToast(`Invalid status transition: ${fromStatus} -> ${toStatus}.`, 'warning', 3500);
+        return;
+      }
+      pendingStatus = this.value;
+      if (confirmText) {
+        confirmText.innerHTML = `Change status to <strong>${pendingStatus}</strong>?`;
+      }
+      if (confirmModal) confirmModal.show();
+    });
+  }
+
+  const confirmBtn = document.getElementById('confirmStatusBtn');
+  const cancelBtn = document.getElementById('cancelStatusBtn');
+  if (confirmBtn) {
+    confirmBtn.addEventListener('click', function() {
+      if (!pendingStatus) return;
+
+      const formData = new FormData();
+      formData.append('status', pendingStatus);
+      formData.append('csrfmiddlewaretoken', getCookie('csrftoken'));
+
+      if (statusDropdown) statusDropdown.disabled = true;
+
+      fetch("{% if company_code %}{% url 'update_performa_status' company_code invoice.pk %}{% else %}{% url 'update_performa_status' invoice.pk %}{% endif %}", {
+        method: 'POST',
+        body: formData
+      })
+      .then(response => {
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        return response.json();
+      })
+      .then(data => {
+        if (data.success) {
+          showToast(data.message, 'success', 3000);
+          if (statusDropdown) {
+            statusDropdown.dataset.original = pendingStatus;
+            applyStatusOptionGuards(pendingStatus);
+            updateConvertActions(pendingStatus);
+          }
+          const statusValue = document.getElementById('performaStatusValue');
+          if (statusValue) statusValue.textContent = pendingStatus;
+        } else {
+          showToast(data.error || 'Failed to update status', 'danger', 4000);
+          if (statusDropdown) statusDropdown.value = statusDropdown.dataset.original;
+        }
+      })
+      .catch(error => {
+        console.error('Status update error:', error);
+        showToast('An error occurred while updating status: ' + error.message, 'danger', 4000);
+        if (statusDropdown) statusDropdown.value = statusDropdown.dataset.original;
+      })
+      .finally(() => {
+        if (statusDropdown) statusDropdown.disabled = false;
+        pendingStatus = null;
+        if (confirmModal) confirmModal.hide();
+      });
+    });
+  }
+
+  if (cancelBtn) {
+    cancelBtn.addEventListener('click', function() {
+      if (statusDropdown) {
+        statusDropdown.value = statusDropdown.dataset.original || statusDropdown.value;
+      }
+      pendingStatus = null;
+      if (confirmModal) confirmModal.hide();
+    });
+  }
+
+  if (sendEmailButtons.length) {
+    const sendEmail = function () {
+      const url = "{% if company_code %}{% url 'send_performa_invoice_message' company_code invoice.pk %}{% else %}{% url 'send_performa_invoice_message' invoice.pk %}{% endif %}?method=email";
+      sendEmailButtons.forEach(btn => btn.classList.add('disabled'));
+      showToast('Sending email...', 'info', 2000);
+
+      fetch(url, {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': getCookie('csrftoken')
+        }
+      })
+      .then(resp => resp.json())
+      .then(data => {
+        if (data && data.success) {
+          showToast(data.message || 'Email sent', 'success', 4000);
+          const statusValue = document.getElementById('performaStatusValue');
+          if (statusValue && statusValue.textContent.trim() === 'Draft') {
+            statusValue.textContent = 'Sent';
+          }
+          if (statusDropdown && statusDropdown.dataset.original === 'Draft') {
+            statusDropdown.value = 'Sent';
+            statusDropdown.dataset.original = 'Sent';
+            applyStatusOptionGuards('Sent');
+            updateConvertActions('Sent');
+          }
+        } else {
+          showToast(data.message || data.error || 'Failed to send email', 'danger', 5000);
+        }
+      })
+      .catch(err => {
+        console.error(err);
+        showToast('An error occurred while sending email: ' + (err.message || err), 'danger', 5000);
+      })
+      .finally(() => {
+        sendEmailButtons.forEach(btn => btn.classList.remove('disabled'));
+      });
+    };
+
+    sendEmailButtons.forEach(function (btn) {
+      btn.addEventListener('click', function (e) {
+        e.preventDefault();
+        sendEmail();
+      });
+    });
+  }
+
+  if (!statusDropdown) {
+    updateConvertActions("{{ invoice.status }}");
+  }
+});
+</script>
+{% endblock scripts %}
+{% block content %}
+<div class="container crm-page">
+   <!-- ── Action Bar ─────────────────────────────────────────────── -->
+   <div class="action-bar">
+      <a href="{% if company_code %}{% url 'performa_inv_list' company_code %}{% else %}{% url 'performa_inv_list' %}{% endif %}" class="btn btn-warning">Back to List</a>
+    
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <!-- Send -->
+            <div class="dropdown">
+                <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="sendDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                <i class="bi bi-envelope me-1"></i> Send
+                </button>
+                <ul class="dropdown-menu" aria-labelledby="sendDropdown">
+                <li>
+                    <a class="dropdown-item" href="#" id="sendEmailBtn">
+                    <i class="bi bi-envelope me-2"></i> Send Email
+                    </a>
+                </li>
+                </ul>
+            </div>
+
+            <!-- PDF / Print -->
+            <div class="dropdown">
+              <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="pdfDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+              <i class="bi bi-file-earmark-pdf me-1"></i> PDF / Print
+              </button>
+              <ul class="dropdown-menu" aria-labelledby="pdfDropdown">
+              <li>
+                <a class="dropdown-item" href="{% if company_code %}{% url 'performa_invoice_pdf' company_code invoice.pk %}{% else %}{% url 'performa_invoice_pdf' invoice.pk %}{% endif %}" target="_blank">
+                <i class="bi bi-file-earmark-pdf me-2"></i> PDF
+                </a>
+              </li>
+              <li>
+                <a class="dropdown-item" href="{% if company_code %}{% url 'performa_invoice_print' company_code invoice.pk %}{% else %}{% url 'performa_invoice_print' invoice.pk %}{% endif %}?print=1" target="_blank">
+                <i class="bi bi-printer me-2"></i> Print
+                </a>
+              </li>
+              </ul>
+            </div>
+            {% if can_create_orders %}
+            <div class="dropdown me-2">
+                <button class="btn btn-primary dropdown-toggle" type="button" id="convertDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                Convert
+                </button>
+                <ul class="dropdown-menu" aria-labelledby="convertDropdown">
+                {% if converted_order %}
+                <li>
+                    <a class="dropdown-item" href="{% if company_code %}{% url 'order_detail' company_code converted_order.pk %}{% else %}{% url 'order_detail' converted_order.pk %}{% endif %}">
+                    <span class="me-2"><i class="bi bi-file-earmark-text"></i></span>
+                    View Sales Order {{ converted_order.order_number }}
+                    </a>
+                </li>
+                {% else %}
+                <li>
+                    <a class="dropdown-item {% if invoice.status != 'Accepted' %}disabled{% endif %}"
+                    id="convertToOrderLink"
+                    {% if invoice.status == 'Accepted' %}
+                    href="{% if company_code %}{% url 'convert_performa_to_order' company_code invoice.pk %}{% else %}{% url 'convert_performa_to_order' invoice.pk %}{% endif %}"
+                    {% else %}
+                    href="#"
+                    aria-disabled="true"
+                    tabindex="-1"
+                    {% endif %}>
+                    <span class="me-2"><i class="bi bi-file-earmark"></i></span>
+                    Convert to Sales Order
+                    </a>
+                </li>
+                {% endif %}
+                </ul>
+            </div>
+            {% endif %}
+        
+        
+        </div>
+    </div>
+
+  <div class="row">
+    <div class="col-md-6">
+      <div class="card mb-4">
+        <div class="card-header">
+          <h5>Performa Invoice Information</h5>
+        </div>
+        <div class="card-body">
+          <p><strong style="color: #55588b;">Performa Number:</strong> <span style="color: #55588b;">{{ q_no }}</span></p>
+          {% if invoice.customer %}
+          <p><strong style="color: #55588b;">Customer:</strong> <span style="color: #55588b;">{% if invoice.customer.customer_type == 'company' %}{{ invoice.customer.company_name }}{% else %}{{ invoice.customer.first_name }} {% if invoice.customer.last_name %}{{ invoice.customer.last_name }}{% endif %}{% endif %}</span></p>
+          {% endif %}
+          <p><strong style="color: #55588b;">Status:</strong>
+            {% if can_edit_performa_invoice %}
+            <select class="form-select form-select-sm" id="statusDropdown" style="max-width: 220px; display: inline-block;">
+              <option value="Draft" {% if invoice.status == 'Draft' %}selected{% endif %}>Draft</option>
+              <option value="Sent" {% if invoice.status == 'Sent' %}selected{% endif %}>Sent</option>
+              <option value="Accepted" {% if invoice.status == 'Accepted' %}selected{% endif %}>Accepted</option>
+              <option value="Cancelled" {% if invoice.status == 'Cancelled' %}selected{% endif %}>Cancelled</option>
+            </select>
+            <span id="performaStatusValue" style="display:none;">{{ invoice.status }}</span>
+            {% else %}
+            <span id="performaStatusValue" style="color: #55588b;">{{ invoice.status }}</span>
+            {% endif %}
+          </p>
+          <p><strong style="color: #55588b;">Date:</strong> <span style="color: #55588b;">{{ invoice.date }}</span></p>
+          <p><strong style="color: #55588b;">Document Currency:</strong> <span style="color: #55588b;">{{ invoice.document_currency.code|default:company_base_currency_code }} ({{ document_currency_symbol|default:company_base_currency_symbol }})</span></p>
+          {% if invoice.document_currency and invoice.document_currency.code != company_base_currency_code %}
+          <p><strong style="color: #55588b;">Exchange Rate:</strong> <span style="color: #55588b;">1 {{ invoice.document_currency.code }} = {{ invoice.fx_rate_to_base|floatformat:4 }} {{ company_base_currency_code }}</span></p>
+          <p><strong style="color: #55588b;">Exchange Rate Date:</strong> <span style="color: #55588b;">{{ invoice.fx_rate_date|default:invoice.date }}</span></p>
+          {% endif %}
+          {% if invoice.sales_person %}
+          <p><strong style="color: #55588b;">Sales Person:</strong> <span style="color: #55588b;">{{ invoice.sales_person.name }}</span></p>
+          {% endif %}
+          {% if invoice.payment_term %}
+          <p><strong style="color: #55588b;">Payment Terms:</strong> <span style="color: #55588b;">{{ invoice.payment_term.name }}</span></p>
+          {% endif %}
+          {% if invoice.place_of_supply %}
+          <p><strong style="color: #55588b;">Place of Supply:</strong> <span style="color: #55588b;">{{ invoice.place_of_supply }}</span></p>
+          {% endif %}
+          <p><strong style="color: #55588b;">Notes:</strong></p>
+          <p><span style="color: #55588b;">{{ invoice.notes|default:'-' }}</span></p>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-6">
+      <div class="card mb-4">
+        <div class="card-header">
+          <h5>Quick Actions</h5>
+        </div>
+        <div class="card-body">
+          {% comment %} {% if can_create_orders %}
+              {% if converted_order %}
+              <a href="{% if company_code %}{% url 'order_detail' company_code converted_order.pk %}{% else %}{% url 'order_detail' converted_order.pk %}{% endif %}" class="btn btn-success btn-block mb-2 flex-fill">View Sales Order</a>
+              {% else %}
+              <a href="{% if invoice.status == 'Accepted' %}{% if company_code %}{% url 'convert_performa_to_order' company_code invoice.pk %}{% else %}{% url 'convert_performa_to_order' invoice.pk %}{% endif %}{% else %}#{% endif %}"
+                 id="convertToOrderQuick"
+                 class="btn btn-primary btn-block mb-2 w-100 {% if invoice.status != 'Accepted' %}disabled{% endif %}">
+                Convert to Sales Order
+              </a>
+              {% endif %}
+            {% endif %} {% endcomment %}
+          <div class="d-flex flex-wrap gap-3">
+            {% if can_edit_performa_invoice %}
+            <a href="{% if company_code %}{% url 'performa_invoice_edit' company_code invoice.pk %}{% else %}{% url 'performa_invoice_edit' invoice.pk %}{% endif %}" class="btn btn-primary btn-block mb-2 w-50">Edit</a>
+            {% endif %}
+            {% comment %} <button type="button" class="btn btn-primary btn-block mb-2 flex-fill" id="sendEmailBtnQuick">Send Email</button> {% endcomment %}
+            {% comment %} <a href="{% if company_code %}{% url 'performa_invoice_print' company_code invoice.pk %}{% else %}{% url 'performa_invoice_print' invoice.pk %}{% endif %}?print=1" target="_blank" class="btn btn-primary btn-block mb-2 flex-fill">Print</a> {% endcomment %}
+            
+            {% if can_delete_performa_invoice %}
+            <form action="{% if company_code %}{% url 'delete_performa_inv' company_code invoice.pk %}{% else %}{% url 'delete_performa_inv' invoice.pk %}{% endif %}" method="post" onsubmit="return confirm('Are you sure you want to delete this performa invoice?');" class="flex-fill">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-danger btn-block w-100">Delete</button>
+            </form>
+            {% endif %}
+          </div>
+          {% if converted_order %}
+          {% comment %} <p class="mt-2 mb-0 text-success">
+            Converted to Sales Order
+            <a href="{% if company_code %}{% url 'order_detail' company_code converted_order.pk %}{% else %}{% url 'order_detail' converted_order.pk %}{% endif %}">
+              {{ converted_order.order_number }}
+            </a>
+          </p> {% endcomment %}
+          {% elif invoice.status != 'Accepted' %}
+          <p class="mt-2 mb-0 text-muted">Performa Invoice must be in <strong>Accepted</strong> status before conversion.</p>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="card mb-4">
+        <div class="card-header" style="padding: 0.75rem 1rem;">
+          <h6 style="margin: 0; display: flex; justify-content: space-between; align-items: center; font-size: 0.95rem;">
+            <span><strong style="color: #55588b;">BILLING ADDRESS</strong></span>
+            <span style="font-weight: 300; color: #999;">|</span>
+            <span><strong style="color: #55588b;">SHIPPING ADDRESS</strong></span>
+          </h6>
+        </div>
+        <div class="card-body" style="padding: 0.75rem 1rem;">
+          <div class="row" style="margin: 0;">
+            <div class="col-md-6" style="padding: 0 7px;">
+              {% if invoice.customer %}
+              <div>
+                <p style="margin-bottom: 0.25rem; font-size: 0.9rem;"><strong style="color: #55588b;">{% if invoice.customer.customer_type == 'company' %}{{ invoice.customer.company_name }}{% else %}{{ invoice.customer.first_name }} {% if invoice.customer.last_name %}{{ invoice.customer.last_name }}{% endif %}{% endif %}</strong></p>
+                {% if invoice.customer.address_line_1 %}
+                <p style="margin-bottom: 0.25rem; font-size: 0.85rem; color: #55588b;">{{ invoice.customer.address_line_1 }}</p>
+                {% endif %}
+                {% if invoice.customer.address %}
+                <p style="margin-bottom: 0.25rem; font-size: 0.85rem; color: #55588b;">{{ invoice.customer.address }}</p>
+                {% endif %}
+                {% if invoice.customer.city %}
+                <p style="margin-bottom: 0.25rem; font-size: 0.85rem; color: #55588b;">{{ invoice.customer.city }}{% if invoice.customer.state %}, {{ invoice.customer.state }}{% endif %}{% if invoice.customer.postal_code %} - {{ invoice.customer.postal_code }}{% endif %}</p>
+                {% endif %}
+                {% if invoice.customer.country %}
+                <p style="margin-bottom: 0; font-size: 0.85rem; color: #55588b;">{{ invoice.customer.country }}</p>
+                {% endif %}
+              </div>
+              {% endif %}
+            </div>
+
+            <div class="col-md-6" style="padding: 0 7px;">
+              {% if invoice.shipping_address1 or invoice.shipping_city %}
+              <div>
+                {% if invoice.shipping_attention %}
+                <p style="margin-bottom: 0.25rem; font-size: 0.9rem;"><strong style="color: #55588b;">Attention To:</strong> <span style="font-size: 0.85rem; color: #55588b;">{{ invoice.shipping_attention }}</span></p>
+                {% endif %}
+                {% if invoice.shipping_address1 %}
+                <p style="margin-bottom: 0.25rem; font-size: 0.85rem; color: #55588b;">{{ invoice.shipping_address1 }}</p>
+                {% if invoice.shipping_address2 %}<p style="margin-bottom: 0.25rem; font-size: 0.85rem; color: #55588b;">{{ invoice.shipping_address2 }}</p>{% endif %}
+                {% endif %}
+                {% if invoice.shipping_city %}
+                <p style="margin-bottom: 0.25rem; font-size: 0.85rem; color: #55588b;">{{ invoice.shipping_city }}{% if invoice.shipping_postal_code %} - {{ invoice.shipping_postal_code }}{% endif %}</p>
+                {% endif %}
+                {% if invoice.shipping_state %}
+                <p style="margin-bottom: 0.25rem; font-size: 0.85rem; color: #55588b;">{{ invoice.shipping_state }}</p>
+                {% endif %}
+                {% if invoice.shipping_country %}
+                <p style="margin-bottom: 0.25rem; font-size: 0.85rem; color: #55588b;">{{ invoice.shipping_country }}</p>
+                {% endif %}
+                {% if invoice.shipping_email %}
+                <p style="margin-bottom: 0.25rem; font-size: 0.85rem;"><strong style="color: #55588b;">Email:</strong> <span style="color: #55588b;">{{ invoice.shipping_email }}</span></p>
+                {% endif %}
+                {% if invoice.shipping_phone %}
+                <p style="margin-bottom: 0; font-size: 0.85rem;"><strong style="color: #55588b;">Phone:</strong> <span style="color: #55588b;">{{ invoice.shipping_phone }}</span></p>
+                {% endif %}
+              </div>
+              {% else %}
+              <div style="color: #999;">
+                <p style="margin: 0; font-size: 0.85rem;"><em>No shipping address</em></p>
+              </div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="confirmStatusModal" tabindex="-1" aria-labelledby="confirmStatusLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="confirmStatusLabel">Confirm Status Change</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p id="confirmStatusText">Are you sure you want to change the status?</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" id="cancelStatusBtn" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" id="confirmStatusBtn" class="btn btn-primary">Confirm</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card mb-4">
+    <div class="card-header">
+      <h5>Items</h5>
+    </div>
+    <div class="card-body p-0" style="overflow-x: auto;">
+      <table class="items-table">
+        <thead>
+          <tr>
+            <th>Item</th>
+            <th>HSN</th>
+            <th>Description</th>
+            <th>Qty</th>
+            <th>Price {% if document_currency_symbol %}({{ document_currency_symbol }}){% endif %}</th>
+            <th>Price (Base) {% if company_base_currency_symbol %}({{ company_base_currency_symbol }}){% endif %}</th>
+            <th>Tax</th>
+            <th>Discount</th>
+            <th style="text-align:right;">Amount {% if document_currency_symbol %}({{ document_currency_symbol }}){% endif %}</th>
+            <th style="text-align:right;">Amount (Base) {% if company_base_currency_symbol %}({{ company_base_currency_symbol }}){% endif %}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in items_info %}
+          <tr>
+            <td style="font-weight:600;">{{ item.product_name }}</td>
+            <td style="font-family:var(--font-mono);font-size:.8rem;color:var(--text-muted);">{% if item.hsn %}{{ item.hsn }}{% else %}—{% endif %}</td>
+            <td style="color:var(--text-muted);font-size:.85rem;">{{ item.description|default:'—' }}</td>
+            <td>{{ item.quantity }}</td>
+            <td style="font-family:var(--font-mono);">
+              {% if document_currency_symbol %}{{ document_currency_symbol }}{{ item.price|floatformat:2 }}{% else %}{{ company_base_currency_symbol }}{{ item.price|floatformat:2 }}{% endif %}
+            </td>
+            <td style="font-family:var(--font-mono); text-align:right;">
+              {% if company_base_currency_symbol %}{{ company_base_currency_symbol }}{{ item.price_base|floatformat:2 }}{% else %}<span class="text-muted">—</span>{% endif %}
+            </td>
+            <td>{% if item.tax_rate %}<span style="background:var(--brand-muted);color:var(--brand);border-radius:4px;padding:2px 8px;font-size:.78rem;font-weight:600;">{{ item.tax_rate|floatformat:2 }}%</span>{% else %}—{% endif %}</td>
+            <td>
+              {% if item.discount_amount and item.discount_amount > 0 %}
+                {% if item.discount_type == 'percent' %}
+                  {{ item.discount_amount|floatformat:2 }}%
+                {% else %}
+                  {% if document_currency_symbol %}{{ document_currency_symbol }}{{ item.discount_amount|floatformat:2 }}{% else %}{{ company_base_currency_symbol }}{{ item.discount_amount|floatformat:2 }}{% endif %}
+                {% endif %}
+              {% else %}
+                —
+              {% endif %}
+            </td>
+            <td class="amount">
+              {% if document_currency_symbol %}{{ document_currency_symbol }}{{ item.line_total|floatformat:2 }}{% else %}{{ company_base_currency_symbol }}{{ item.line_total|floatformat:2 }}{% endif %}
+            </td>
+            <td class="amount">
+              {% if company_base_currency_symbol %}{{ company_base_currency_symbol }}{{ item.line_total_base|floatformat:2 }}{% else %}<span class="text-muted">—</span>{% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="card-footer">
+      <div style="max-width: 420px; margin-left: auto;">
+        <table class="totals-table">
+          <thead>
+            <tr>
+              <th></th>
+              <th style="text-align:right;">Document {% if document_currency_symbol %}({{ document_currency_symbol }}){% else %}Amount{% endif %}</th>
+              <th style="text-align:right;">Base {% if company_base_currency_symbol %}({{ company_base_currency_symbol }}){% else %}Base{% endif %}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Subtotal</td>
+              <td style="text-align:right;">{% if document_currency_symbol %}{{ document_currency_symbol }}{{ subtotal_calc|floatformat:2 }}{% else %}{{ company_base_currency_symbol }}{{ subtotal_calc|floatformat:2 }}{% endif %}</td>
+              <td style="text-align:right;">{% if company_base_currency_symbol %}{{ company_base_currency_symbol }}{{ subtotal_calc_base|floatformat:2 }}{% else %}<span class="text-muted">—</span>{% endif %}</td>
+            </tr>
+            {% if company_tax_type|default:''|upper != 'NONE' %}
+            {% if company_tax_type == 'GST' %}
+              <tr>
+                <td>Total CGST</td>
+                <td style="text-align:right;">{% if document_currency_symbol %}{{ document_currency_symbol }}{{ total_cgst|floatformat:2 }}{% else %}{{ company_base_currency_symbol }}{{ total_cgst|floatformat:2 }}{% endif %}</td>
+                <td style="text-align:right;">{% if company_base_currency_symbol %}{{ company_base_currency_symbol }}{{ total_cgst_base|floatformat:2 }}{% else %}<span class="text-muted">—</span>{% endif %}</td>
+              </tr>
+              <tr>
+                <td>Total SGST</td>
+                <td style="text-align:right;">{% if document_currency_symbol %}{{ document_currency_symbol }}{{ total_sgst|floatformat:2 }}{% else %}{{ company_base_currency_symbol }}{{ total_sgst|floatformat:2 }}{% endif %}</td>
+                <td style="text-align:right;">{% if company_base_currency_symbol %}{{ company_base_currency_symbol }}{{ total_sgst_base|floatformat:2 }}{% else %}<span class="text-muted">—</span>{% endif %}</td>
+              </tr>
+            {% else %}
+              <tr>
+                <td>{% if company_tax_type|default:''|upper == 'VAT' or company_tax_type|default:''|upper == 'SALES' or company_tax_type|default:''|upper == 'TURNOVER' %}Total Tax{% else %}Total VAT{% endif %}</td>
+                <td style="text-align:right;">{% if document_currency_symbol %}{{ document_currency_symbol }}{{ total_tax|floatformat:2 }}{% else %}{{ company_base_currency_symbol }}{{ total_tax|floatformat:2 }}{% endif %}</td>
+                <td style="text-align:right;">{% if company_base_currency_symbol %}{{ company_base_currency_symbol }}{{ total_tax_base|floatformat:2 }}{% else %}<span class="text-muted">—</span>{% endif %}</td>
+              </tr>
+            {% endif %}
+            {% endif %}
+            <tr>
+              <td>Total Discount</td>
+              <td style="text-align:right; color:var(--success);">–{% if document_currency_symbol %}{{ document_currency_symbol }}{{ total_discount_combined|floatformat:2 }}{% else %}{{ company_base_currency_symbol }}{{ total_discount_combined|floatformat:2 }}{% endif %}</td>
+              <td style="text-align:right; color:var(--success);">{% if company_base_currency_symbol %}–{{ company_base_currency_symbol }}{{ total_discount_combined_base|floatformat:2 }}{% else %}<span class="text-muted">—</span>{% endif %}</td>
+            </tr>
+            {% if company_tax_type|default:''|upper == 'TURNOVER' %}
+            <tr>
+              <td>Turnover Tax</td>
+              <td style="text-align:right;">{{ invoice.turnover_tax.taxname|default:"-" }}</td>
+              <td style="text-align:right;">{% if invoice.turnover_tax.rate %}{{ invoice.turnover_tax.rate|floatformat:2 }}%{% else %}<span class="text-muted">-</span>{% endif %}</td>
+            </tr>
+            <tr>
+              <td>Turnover Tax Amount</td>
+              <td style="text-align:right;">{% if document_currency_symbol %}{{ document_currency_symbol }}{{ turnover_tax_amount|floatformat:2 }}{% else %}{{ company_base_currency_symbol }}{{ turnover_tax_amount|floatformat:2 }}{% endif %}</td>
+              <td style="text-align:right;">{% if company_base_currency_symbol %}{{ company_base_currency_symbol }}{{ turnover_tax_amount_base|floatformat:2 }}{% else %}<span class="text-muted">â€”</span>{% endif %}</td>
+            </tr>
+            {% endif %}
+            <tr class="total-final">
+              <td style="font-weight:700;">{% if company_tax_type|default:''|upper == 'TURNOVER' %}Final Total{% else %}Total{% endif %}</td>
+              <td style="text-align:right; font-weight:700;">{% if document_currency_symbol %}{{ document_currency_symbol }}{{ final_total|floatformat:2 }}{% else %}{{ company_base_currency_symbol }}{{ final_total|floatformat:2 }}{% endif %}</td>
+              <td style="text-align:right; font-weight:700;">{% if company_base_currency_symbol %}{{ company_base_currency_symbol }}{{ final_total_base|floatformat:2 }}{% else %}<span class="text-muted">—</span>{% endif %}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

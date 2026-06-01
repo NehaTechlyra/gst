@@ -1,0 +1,328 @@
+{% extends 'website/index.html' %}
+{% load static %}
+
+{% block page_title %}Reconciliation — Accounts{% endblock %}
+
+{% block exstyle %}
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+{% endblock %}
+
+{% block content %}
+<style>
+  :root {
+    --bg:           #f5f6fa;
+    --surface:      #ffffff;
+    --border:       #e4e8f0;
+    --text-primary: #111827;
+    --text-muted:   #6b7280;
+    --accent:       #4f46e5;
+    --accent-light: #eef2ff;
+    --green:        #059669;
+    --green-light:  #ecfdf5;
+    --orange:       #d97706;
+    --orange-light: #fffbeb;
+    --red:          #dc2626;
+    --radius:       12px;
+    --shadow:       0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.05);
+  }
+
+  body { background: var(--bg); font-family: 'DM Sans', sans-serif; color: var(--text-primary); margin: 0; }
+
+  /* ── Topbar ── */
+  .hr-topbar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    display: flex; align-items: stretch; justify-content: space-between;
+    min-height: 52px;
+  }
+  .hr-breadcrumb {
+    display: flex; align-items: center;
+    font-size: 13px; gap: 4px; color: var(--text-muted);
+  }
+  .hr-breadcrumb a {
+    color: var(--accent); text-decoration: none;
+    padding: 16px 8px; display: block;
+  }
+  .hr-breadcrumb a:hover { text-decoration: underline; }
+  .hr-breadcrumb .sep { color: #d1d5db; }
+  .hr-breadcrumb .current {
+    color: var(--text-primary); font-weight: 600;
+    padding: 16px 8px;
+    border-bottom: 2px solid var(--accent);
+  }
+  .hr-topbar-right { display: flex; align-items: center; gap: 10px; }
+
+  /* ── Content ── */
+  .hr-content { padding: 20px 24px; }
+
+  /* ── Section card ── */
+  .hr-section {
+    background: var(--surface);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    margin-bottom: 16px;
+  }
+  .hr-section-header {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .hr-section-title {
+    font-size: 0.875rem; font-weight: 700; color: var(--text-primary);
+    display: flex; align-items: center; gap: 7px; margin: 0;
+  }
+  .hr-section-title i { color: var(--accent); font-size: 1rem; }
+
+  /* ── Table ── */
+  .items-table { width: 100%; border-collapse: collapse; }
+  .items-table thead tr { background: #f9fafb; border-bottom: 1px solid var(--border); }
+  .items-table thead th {
+    padding: 10px 16px;
+    font-size: 11px; font-weight: 600;
+    color: var(--text-muted); text-transform: uppercase;
+    letter-spacing: 0.04em; white-space: nowrap; text-align: left;
+  }
+  .items-table thead th.text-end { text-align: right; }
+  .items-table tbody td {
+    padding: 13px 16px;
+    font-size: 13px; color: var(--text-primary);
+    border-bottom: 1px solid #f3f4f6;
+    vertical-align: middle;
+  }
+  .items-table tbody tr:last-child td { border-bottom: none; }
+  .items-table tbody tr:hover { background: #fafbfc; }
+  .text-end { text-align: right; }
+
+  /* ── Stat pill ── */
+  .stat-pill {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 3px 10px; border-radius: 20px;
+    font-size: 12px; font-weight: 600;
+  }
+  .stat-pill.green { background: var(--green-light); color: var(--green); }
+  .stat-pill.orange { background: var(--orange-light); color: var(--orange); }
+  .stat-pill.gray { background: #f3f4f6; color: var(--text-muted); }
+
+  /* ── Bank icon ── */
+  .bank-icon {
+    width: 34px; height: 34px; border-radius: 8px;
+    background: var(--accent-light); color: var(--accent);
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 16px; flex-shrink: 0;
+  }
+  .bank-cell { display: flex; align-items: center; gap: 10px; }
+  .bank-name { font-weight: 600; font-size: 13px; }
+  .bank-sub  { font-size: 11px; color: var(--text-muted); }
+
+  /* ── Buttons ── */
+  .btn-hr {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 7px 14px; border-radius: 8px;
+    font-size: 12px; font-weight: 600; cursor: pointer;
+    border: none; text-decoration: none;
+    transition: background 0.15s; line-height: 1;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .btn-hr-primary { background: var(--accent); color: #fff; }
+  .btn-hr-primary:hover { background: #4338ca; color: #fff; text-decoration: none; box-shadow: 0 4px 12px rgba(79,70,229,0.2); }
+  .btn-hr-outline { background: var(--surface); color: var(--accent); border: 1.5px solid var(--accent); }
+  .btn-hr-outline:hover { background: var(--accent-light); color: var(--accent); text-decoration: none; }
+  .action-cell { display: flex; gap: 6px; }
+
+  /* ── How-to steps ── */
+  .hr-howto {
+    background: var(--surface);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+    padding: 20px 24px;
+  }
+  .hr-howto-title {
+    font-size: 0.875rem; font-weight: 700; color: var(--text-primary);
+    display: flex; align-items: center; gap: 7px; margin-bottom: 18px;
+  }
+  .hr-howto-title i { color: var(--accent); }
+  .hr-steps { display: flex; gap: 20px; flex-wrap: wrap; }
+  .hr-step { flex: 1; min-width: 180px; display: flex; gap: 12px; }
+  .hr-step-num {
+    width: 28px; height: 28px; flex-shrink: 0;
+    background: var(--accent); color: #fff;
+    border-radius: 50%;
+    font-size: 12px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    margin-top: 1px;
+  }
+  .hr-step-text h6 { font-size: 13px; font-weight: 700; color: var(--text-primary); margin: 0 0 4px; }
+  .hr-step-text p  { font-size: 12px; color: var(--text-muted); margin: 0; line-height: 1.5; }
+
+  /* ── Warning bar ── */
+  .hr-warn-bar {
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    border-radius: 8px; padding: 11px 16px;
+    font-size: 12px; color: #92400e;
+    margin-bottom: 16px;
+    display: flex; align-items: flex-start; gap: 8px;
+  }
+  .hr-warn-bar i { margin-top: 1px; flex-shrink: 0; color: var(--orange); }
+
+  /* ── Empty ── */
+  .hr-empty {
+    text-align: center; padding: 50px 20px;
+    color: var(--text-muted); font-size: 13px;
+  }
+  .hr-empty i { font-size: 36px; color: #d1d5db; display: block; margin-bottom: 10px; }
+</style>
+
+<div>
+
+  <!-- Topbar -->
+  <div class="hr-topbar">
+    <nav class="hr-breadcrumb">
+      <span class="current">Reconciliation</span>
+    </nav>
+    <div class="hr-topbar-right">
+        {% if accounts and can_create_reconciliation %}
+        <a href="{% company_url 'reconciliation_start_form' accounts.0.id %}" class="btn-hr btn-hr-primary">
+          <i class="bi bi-plus-lg"></i> New Reconciliation
+        </a>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="hr-content">
+
+    <!-- Warning -->
+    <div class="hr-warn-bar">
+      <i class="bi bi-exclamation-triangle-fill"></i>
+      <span><strong>Note:</strong> The opening balance cannot be edited once transactions have been reconciled.
+      Ensure it is correct before reconciling any transaction.</span>
+    </div>
+
+    <!-- Accounts table -->
+    <div class="hr-section">
+      <div class="hr-section-header">
+        <div class="hr-section-title">
+          <i class="bi bi-bank2"></i> Bank Accounts
+        </div>
+        <span style="font-size:12px;color:var(--text-muted);">
+          {{ accounts|length }} account{{ accounts|length|pluralize }}
+        </span>
+      </div>
+
+      <table class="items-table">
+        <thead>
+          <tr>
+            <th>Bank / Account</th>
+            <th>Account Holder</th>
+            <th>Last Reconciled</th>
+            <th class="text-end">Total</th>
+            <th class="text-end">Reconciled</th>
+            <th class="text-end">In Progress</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for account in accounts %}
+          <tr>
+            <td>
+              <div class="bank-cell">
+                <div class="bank-icon"><i class="bi bi-bank2"></i></div>
+                <div>
+                  <div class="bank-name">{{ account.bank.bank_name }}</div>
+                  <div class="bank-sub">{{ account.account_number }}</div>
+                </div>
+              </div>
+            </td>
+            <td>{{ account.account_holder_name|default:"—" }}</td>
+            <td>
+              {% if account.last_reconciled %}
+                <span class="stat-pill green">
+                  <i class="bi bi-check-circle-fill" style="font-size:10px;"></i>
+                  {{ account.last_reconciled|date:"d/m/Y" }}
+                </span>
+              {% else %}
+                <span class="stat-pill gray">Never</span>
+              {% endif %}
+            </td>
+            <td class="text-end" style="font-family:'DM Mono',monospace;font-size:13px;">
+              {{ account.total_recons }}
+            </td>
+            <td class="text-end">
+              {% if account.reconciled_count %}
+                <span class="stat-pill green">{{ account.reconciled_count }}</span>
+              {% else %}
+                <span style="color:var(--text-muted);">0</span>
+              {% endif %}
+            </td>
+            <td class="text-end">
+              {% if account.in_progress_count %}
+                <span class="stat-pill orange">{{ account.in_progress_count }}</span>
+              {% else %}
+                <span style="color:var(--text-muted);">0</span>
+              {% endif %}
+            </td>
+            <td>
+              <div class="action-cell">
+                <a href="{% company_url 'reconciliation_list' account.id %}" class="btn-hr btn-hr-outline">
+                  <i class="bi bi-eye"></i> View
+                </a>
+                {% if can_create_reconciliation %}
+                <a href="{% company_url 'reconciliation_start_form' account.id %}" class="btn-hr btn-hr-primary">
+                  <i class="bi bi-plus-lg"></i> New
+                </a>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="7">
+              <div class="hr-empty">
+                <i class="bi bi-bank2"></i>
+                No bank accounts available.
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- How-to -->
+    <div class="hr-howto">
+      <div class="hr-howto-title">
+        <i class="bi bi-info-circle-fill"></i> How to Reconcile a Bank Account
+      </div>
+      <div class="hr-steps">
+        <div class="hr-step">
+          <div class="hr-step-num">1</div>
+          <div class="hr-step-text">
+            <h6>Initiate Reconciliation</h6>
+            <p>Click "New" on any bank account. Enter the period dates and the closing balance from your bank statement.</p>
+          </div>
+        </div>
+        <div class="hr-step">
+          <div class="hr-step-num">2</div>
+          <div class="hr-step-text">
+            <h6>Upload Bank Statement</h6>
+            <p>Optionally upload your bank statement as a CSV. The system will auto-match transactions by date and amount.</p>
+          </div>
+        </div>
+        <div class="hr-step">
+          <div class="hr-step-num">3</div>
+          <div class="hr-step-text">
+            <h6>Tick &amp; Reconcile</h6>
+            <p>Tick cleared transactions. When the difference reaches {{ base_currency_symbol }}0.00 the Reconcile button activates. Click to lock the period.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

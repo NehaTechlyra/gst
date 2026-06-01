@@ -1,0 +1,53 @@
+ul { list-style-type: none; padding-left: 20px; margin: 0; }
+        li {  cursor: pointer;font-size:15px !important; }
+        .children { display: none; }
+        /* optional styling for different levels */
+        .level-1 { font-weight: bold;color:#55588b; font-size:16px;}
+        .level-2 { color: #55588b; }
+        .level-3 { color: #55588b; }
+        .level-4 { color: #55588b; }
+        .icon {
+    display: inline-block;
+    width: 12px;
+    margin-right: 5px;
+    cursor: pointer;
+    user-select: none;
+}
+.children {
+    display: none;
+}
+.container{
+    padding-left:10px !important;
+}
+.tree-container {
+    border: 1px solid #ddd;        /* Subtle gray border */
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08); /* Light shadow */
+    border-radius: 8px;            /* Rounded corners (optional) */
+    background: #fff;              /* Ensures clean background */
+    padding: 24px;                 /* Space inside container */
+    /* margin-left: 10px !important; */
+}
+.icon{
+    font-size:22px;
+}
+  .fa, .fas, .far {
+  font-family: "Font Awesome 6 Free" !important;
+  font-weight: 900;
+}
+
+/* Styling for account links - no underline */
+a:not(.btn) {
+    color: #55588b !important;
+    text-decoration: none !important;
+    transition: color 0.2s ease;
+}
+
+a:not(.btn):hover {
+    color: #007bff !important;
+    text-decoration: none !important;
+}
+
+a:not(.btn):visited {
+    color: #55588b !important;
+    text-decoration: none !important;
+}

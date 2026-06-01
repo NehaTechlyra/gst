@@ -1,0 +1,446 @@
+{% extends 'website/index.html' %}
+{% load static %}
+
+{% block page_title %}Period Lock Reports - Analytics{% endblock %}
+
+{% block exstyle %}
+<link href="{% static 'style/general.css' %}" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+
+<style>
+.report-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.report-title {
+    font-size: 28px;
+    font-weight: 600;
+    color: #333;
+}
+
+.report-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.btn-export {
+    background: #55588b;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.3s;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-export:hover {
+    background: #3f4266;
+    transform: translateY(-1px);
+}
+
+.btn-export.secondary {
+    background: #e8e8f0;
+    color: #55588b;
+}
+
+.btn-export.secondary:hover {
+    background: #d8d8e0;
+}
+
+/* Stats Grid */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.stat-card {
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    transition: all 0.3s;
+}
+
+.stat-card:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    transform: translateY(-2px);
+}
+
+.stat-label {
+    font-size: 13px;
+    font-weight: 500;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 10px;
+}
+
+.stat-value {
+    font-size: 32px;
+    font-weight: 700;
+    color: #333;
+}
+
+.stat-subtext {
+    font-size: 12px;
+    color: #999;
+    margin-top: 8px;
+}
+
+.stat-card.success {
+    border-left: 4px solid #2e7d32;
+}
+
+.stat-card.warning {
+    border-left: 4px solid #f57c00;
+}
+
+.stat-card.danger {
+    border-left: 4px solid #d32f2f;
+}
+
+.stat-card.info {
+    border-left: 4px solid #1976d2;
+}
+
+/* Reports Section */
+.reports-section {
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 25px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.reports-section h3 {
+    margin: 0 0 20px 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: #333;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #f0f0f0;
+}
+
+/* Table in Reports */
+.report-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+.report-table td {
+    padding: 12px;
+    border-bottom: 1px solid #eee;
+}
+
+.report-table tr:hover {
+    background: #f9f9fb;
+}
+
+.report-table .label {
+    color: #666;
+    font-weight: 500;
+}
+
+.report-table .value {
+    text-align: right;
+    color: #333;
+    font-weight: 600;
+}
+
+.progress-bar {
+    display: inline-block;
+    height: 8px;
+    background: #e0e0e0;
+    border-radius: 4px;
+    overflow: hidden;
+    width: 100px;
+    margin-left: 10px;
+}
+
+.progress-fill {
+    height: 100%;
+    background: #55588b;
+    border-radius: 4px;
+}
+
+/* Activity List */
+.activity-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid #eee;
+}
+
+.activity-item:last-child {
+    border-bottom: none;
+}
+
+.activity-info {
+    flex: 1;
+}
+
+.activity-fy {
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 4px;
+}
+
+.activity-meta {
+    font-size: 12px;
+    color: #999;
+}
+
+.activity-action {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.activity-action.lock {
+    background: #ffe8e8;
+    color: #d32f2f;
+}
+
+.activity-action.unlock {
+    background: #e8f5e9;
+    color: #2e7d32;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .report-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .report-actions {
+        width: 100%;
+        flex-direction: column;
+    }
+    
+    .btn-export {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .report-table td {
+        padding: 8px;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid" style="padding: 30px 20px;">
+    <!-- Header -->
+    <div class="report-header">
+        <span class="report-title">📊 Period Lock Reports</span>
+        <div class="report-actions">
+            <a href="{% url 'period_management' %}" class="btn-export secondary" title="Back to Period Management">
+                <i class="bi bi-arrow-left"></i> Back
+            </a>
+        </div>
+    </div>
+
+    <!-- Key Statistics -->
+    <div class="stats-grid">
+        <div class="stat-card success">
+            <div class="stat-label"><i class="bi bi-lock"></i> Total Locks</div>
+            <div class="stat-value">{{ total_locks }}</div>
+            <div class="stat-subtext">Lock operations performed</div>
+        </div>
+
+        <div class="stat-card warning">
+            <div class="stat-label"><i class="bi bi-unlock"></i> Total Unlocks</div>
+            <div class="stat-value">{{ total_unlocks }}</div>
+            <div class="stat-subtext">Unlock operations performed</div>
+        </div>
+
+        <div class="stat-card info">
+            <div class="stat-label"><i class="bi bi-shield-check"></i> Active Exemptions</div>
+            <div class="stat-value">{{ total_exemptions }}</div>
+            <div class="stat-subtext">Users exempted from period locks</div>
+        </div>
+
+        <div class="stat-card warning">
+            <div class="stat-label"><i class="bi bi-exclamation-triangle"></i> Partial Locks</div>
+            <div class="stat-value">{{ partial_locks }}</div>
+            <div class="stat-subtext">Lock operations with restricted categories</div>
+        </div>
+
+        <div class="stat-card danger">
+            <div class="stat-label"><i class="bi bi-calendar-lock"></i> Fiscal Years Status</div>
+            <div class="stat-value">
+                <span style="color: #d32f2f;">{{ locked_fy_count }}</span> / <span style="color: #2e7d32;">{{ unlocked_fy_count }}</span>
+            </div>
+            <div class="stat-subtext">Locked / Unlocked periods</div>
+        </div>
+    </div>
+
+    <!-- Activity Summary -->
+    <div class="reports-section">
+        <h3><i class="bi bi-activity"></i> Activity Overview</h3>
+        <table class="report-table">
+            <tr>
+                <td class="label">Total Lock Activities:</td>
+                <td class="value">{{ total_lock_activities }}</td>
+            </tr>
+            <tr>
+                <td class="label">Lock Operations:</td>
+                <td class="value">
+                    {{ total_locks }}
+                    <div class="progress-bar" style="display: inline-block; margin-left: 10px;">
+                        {% if total_lock_activities > 0 %}
+                        <div class="progress-fill" style="width: {{ lock_percentage }}%"></div>
+                        {% endif %}
+                    </div>
+                    <span style="margin-left: 10px; color: #666; font-size: 12px;">{{ lock_percentage }}%</span>
+                </td>
+            </tr>
+            <tr>
+                <td class="label">Unlock Operations:</td>
+                <td class="value">
+                    {{ total_unlocks }}
+                    <div class="progress-bar" style="display: inline-block; margin-left: 10px;">
+                        {% if total_lock_activities > 0 %}
+                        <div class="progress-fill" style="width: {{ unlock_percentage }}%"></div>
+                        {% endif %}
+                    </div>
+                    <span style="margin-left: 10px; color: #666; font-size: 12px;">{{ unlock_percentage }}%</span>
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    <!-- By User Report -->
+    <div class="reports-section">
+        <h3><i class="bi bi-person-check"></i> Lock Activity by User</h3>
+        {% if lock_by_user %}
+        <table class="report-table">
+            <tr>
+                <td class="label" style="font-weight: 600;">User</td>
+                <td class="value" style="font-weight: 600;">Activities</td>
+            </tr>
+            {% for user, count in lock_by_user %}
+            <tr>
+                <td class="label">{{ user }}</td>
+                <td class="value">{{ count }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+        {% else %}
+        <p style="color: #999; text-align: center; padding: 20px;">No lock activity data available</p>
+        {% endif %}
+    </div>
+
+    <!-- By Fiscal Year Report -->
+    <div class="reports-section">
+        <h3><i class="bi bi-calendar-check"></i> Lock Activity by Fiscal Year</h3>
+        {% if lock_by_fy %}
+        <table class="report-table">
+            <tr>
+                <td class="label" style="font-weight: 600;">Fiscal Year</td>
+                <td class="value" style="font-weight: 600;">Lock Events</td>
+            </tr>
+            {% for fy, count in lock_by_fy %}
+            <tr>
+                <td class="label">{{ fy }}</td>
+                <td class="value">{{ count }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+        {% else %}
+        <p style="color: #999; text-align: center; padding: 20px;">No fiscal year data available</p>
+        {% endif %}
+    </div>
+
+    <!-- Lock Activity by Category -->
+    <div class="reports-section">
+        <h3><i class="bi bi-list-check"></i> Lock Activity by Category</h3>
+        {% if lock_by_category %}
+        <table class="report-table">
+            <tr>
+                <td class="label" style="font-weight: 600;">Category</td>
+                <td class="value" style="font-weight: 600;">Lock Events</td>
+            </tr>
+            {% for cat, count in lock_by_category %}
+            <tr>
+                <td class="label">{{ cat|title }}</td>
+                <td class="value">{{ count }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+        {% else %}
+        <p style="color: #999; text-align: center; padding: 20px;">No category lock activity available</p>
+        {% endif %}
+    </div>
+
+    <!-- Exemptions by Fiscal Year -->
+    <div class="reports-section">
+        <h3><i class="bi bi-shield-check"></i> Exemptions by Fiscal Year</h3>
+        {% if exemptions_by_fy %}
+        <table class="report-table">
+            <tr>
+                <td class="label" style="font-weight: 600;">Fiscal Year</td>
+                <td class="value" style="font-weight: 600;">Exemption Count</td>
+            </tr>
+            {% for fy, count in exemptions_by_fy %}
+            <tr>
+                <td class="label">{{ fy }}</td>
+                <td class="value">{{ count }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+        {% else %}
+        <p style="color: #999; text-align: center; padding: 20px;">No exemption data available</p>
+        {% endif %}
+    </div>
+
+    <!-- Recent Activities -->
+    <div class="reports-section">
+        <h3><i class="bi bi-clock-history"></i> Recent Activities (Last 10)</h3>
+        {% if lock_history %}
+        <div style="padding: 15px 0;">
+            {% for log in lock_history %}
+            <div class="activity-item">
+                <div class="activity-info">
+                    <div class="activity-fy">{{ log.fiscal_year.name }}</div>
+                    <div class="activity-meta">
+                        {{ log.performed_by.username }} • {{ log.performed_at|date:"d M Y H:i" }}
+                        {% if log.reason %} • {{ log.reason|truncatewords:5 }}{% endif %}
+                    </div>
+                </div>
+                <span class="activity-action {% if log.action == 'lock' %}lock{% else %}unlock{% endif %}">
+                    {% if log.action == 'lock' %}🔒 LOCKED{% else %}🔓 UNLOCKED{% endif %}
+                </span>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p style="color: #999; text-align: center; padding: 20px;">No activity data available</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

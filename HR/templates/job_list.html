@@ -1,0 +1,253 @@
+{% extends 'website/index.html' %}
+{% load static %}
+{% block exstyle %}
+<link href="{% static 'style/general.css' %}" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.9.1/font/bootstrap-icons.css" rel="stylesheet">
+{% endblock exstyle %}
+{% block page_title %}Job Openings{% endblock page_title %}
+{% block content %}
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+
+        <div style="display:flex; gap:10px; align-items:center;">
+            <a href="{% url 'recruiter_dashboard' %}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left"></i> Back to Recruitment</a>
+            <a href="{% url 'job_creation' %}" class="btn btn-success">+ Add Job Opening</a>
+        </div>
+
+        <!-- Search Box -->
+        <form method="get" class="d-flex mb-3" id="jobSearchForm">
+            <input type="text" name="q" id="jobSearchInput" class="form-control me-2"
+                   placeholder="&#x1F50D;&#xFE0E; Search jobs..."
+                   value="{{ search_query }}">
+        </form>
+    </div>
+
+    {% if jobs %}
+    <table class="items-table" id="jobTableContainer">
+        <thead>
+            <tr>
+                <th class="si-no">No.</th>
+                <th>Job Name</th>
+                <th>Department</th>
+                <th>Designation</th>
+                <th>Vacancies</th>
+                <th>Job Type</th>
+                <th>Status</th>
+                <th>Closing Date</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for job in jobs %}
+            <tr>
+                <td class="si-no">{{ forloop.counter }}</td>
+                <td>{{ job.title }}</td>
+                <td>{% if job.department %}{{ job.department.department_name }}{% else %}-{% endif %}</td>
+                <td>{% if job.designation %}{{ job.designation.designation_name }}{% else %}-{% endif %}</td>
+                <td>{{ job.vacancies }}</td>
+                <td>{{ job.get_employment_type_display }}</td>
+                <td>
+                    <span class="badge
+                        {% if job.status == 'open' %}bg-success
+                        {% elif job.status == 'closed' %}bg-danger
+                        {% elif job.status == 'on_hold' %}bg-warning
+                        {% else %}bg-secondary{% endif %}">
+                        {{ job.get_status_display }}
+                    </span>
+                </td>
+                <td>{% if job.closing_date %}{{ job.closing_date|date:"d M Y" }}{% else %}-{% endif %}</td>
+                <td>
+                    <div class="sale-actions" style="margin-top:5px;">
+                        <a href="{% url 'job_detail' job.pk %}" class="btn add-item-btn">View</a>
+                        <a href="{% url 'job_edit' job.pk %}" class="btn add-item-btn ms-2">Edit</a>
+                        <form style="display:inline;">
+                            {% csrf_token %}
+                            <button
+                                type="button"
+                                class="btn btn-sm delete-btn delete-job-btn"
+                                data-job-id="{{ job.pk }}"
+                                data-delete-url="{% url 'job_delete' job.pk %}">
+                                <span class="bi bi-trash"></span>
+                            </button>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="alert alert-info text-center">
+        No job openings found.
+        <a href="{% url 'job_creation' %}" class="alert-link">Add your first job opening</a>.
+    </div>
+    {% endif %}
+</div>
+
+<!-- Pagination -->
+{% if jobs.paginator.num_pages > 1 %}
+<nav aria-label="Page navigation" class="mt-3 Page-navigation">
+    <ul class="pagination">
+        {% if jobs.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?q={{ search_query }}&page={{ jobs.previous_page_number }}">&laquo;</a>
+            </li>
+        {% else %}
+            <li class="page-item disabled"><span class="page-link">&laquo;</span></li>
+        {% endif %}
+
+        {% for num in jobs.paginator.page_range %}
+            {% if num <= 1 %}
+                {% if num == jobs.number %}
+                    <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                {% else %}
+                    <li class="page-item"><a class="page-link" href="?q={{ search_query }}&page={{ num }}">{{ num }}</a></li>
+                {% endif %}
+            {% elif num >= jobs.number|add:'-1' and num <= jobs.number|add:'1' %}
+                {% if num == jobs.number %}
+                    <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                {% else %}
+                    <li class="page-item"><a class="page-link" href="?q={{ search_query }}&page={{ num }}">{{ num }}</a></li>
+                {% endif %}
+            {% elif num > jobs.paginator.num_pages|add:'-1' %}
+                {% if num == jobs.number %}
+                    <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                {% else %}
+                    <li class="page-item"><a class="page-link" href="?q={{ search_query }}&page={{ num }}">{{ num }}</a></li>
+                {% endif %}
+            {% elif num == 2 and jobs.number > 2 %}
+                <li class="page-item disabled"><span class="page-link">...</span></li>
+            {% elif num == jobs.paginator.num_pages|add:'-1' and jobs.number < jobs.paginator.num_pages|add:'-1' %}
+                <li class="page-item disabled"><span class="page-link">...</span></li>
+            {% endif %}
+        {% endfor %}
+
+        {% if jobs.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?q={{ search_query }}&page={{ jobs.next_page_number }}">&raquo;</a>
+            </li>
+        {% else %}
+            <li class="page-item disabled"><span class="page-link">&raquo;</span></li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+
+<!-- Delete confirmation modal -->
+<div id="deletePromptJob" class="prompt-modal">
+    <div class="prompt-modal-content">
+        <p>Are you sure you want to delete this job opening?</p>
+        <div class="prompt-buttons">
+            <button id="confirmDeleteJob" class="prompt-btn prompt-ok-btn">OK</button>
+            <button id="cancelDeleteJob" class="prompt-btn prompt-cancel-btn">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<script>
+function submitDeleteJob(jobId, rowToRemove, deleteUrl) {
+    const csrfToken = document.querySelector('input[name="csrfmiddlewaretoken"]')?.value;
+    let url = deleteUrl;
+    if (!url) {
+        const pathParts = window.location.pathname.split('/').filter(p => p);
+        const companyCode = pathParts[0];
+        url = `/${companyCode}/HR/jobs/${jobId}/delete/`;
+    }
+
+    const formData = new FormData();
+    if (csrfToken) formData.append('csrfmiddlewaretoken', csrfToken);
+
+    return fetch(url, {
+        method: 'POST',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        body: formData
+    }).then(function(response) {
+        if (!response.ok) throw new Error('Error deleting job. Status: ' + response.status);
+        if (rowToRemove) rowToRemove.remove();
+        else location.reload();
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    const toastContainer = document.getElementById('toastContainer');
+    let pendingDelete = { jobId: null, row: null, deleteUrl: null };
+
+    function showDeleteModal(jobId, row, deleteUrl) {
+        pendingDelete = { jobId, row: row || null, deleteUrl: deleteUrl || null };
+        const modal = document.getElementById('deletePromptJob');
+        if (modal) modal.style.display = 'flex';
+    }
+    function hideDeleteModal() {
+        const modal = document.getElementById('deletePromptJob');
+        if (modal) modal.style.display = 'none';
+        pendingDelete = { jobId: null, row: null, deleteUrl: null };
+    }
+    function showToast(message, type) {
+        try {
+            if (typeof bootstrap !== 'undefined' && bootstrap.Toast && toastContainer) {
+                const toastEl = document.createElement('div');
+                toastEl.className = `toast align-items-center text-bg-${type || 'success'} border-0`;
+                toastEl.setAttribute('role', 'alert');
+                toastEl.setAttribute('aria-live', 'assertive');
+                toastEl.setAttribute('aria-atomic', 'true');
+                toastEl.innerHTML = `<div class="d-flex"><div class="toast-body">${message}</div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button></div>`;
+                toastContainer.appendChild(toastEl);
+                const toast = new bootstrap.Toast(toastEl, { delay: 3000 });
+                toast.show();
+                toastEl.addEventListener('hidden.bs.toast', () => { try { toastEl.remove(); } catch(e){} });
+                return;
+            }
+        } catch(e) {}
+        const el = document.createElement('div');
+        el.textContent = message;
+        Object.assign(el.style, { position:'fixed', right:'20px', bottom:'20px', background: type==='danger'?'#d9534f':'#28a745', color:'#fff', padding:'10px 14px', borderRadius:'6px', zIndex:20000, boxShadow:'0 4px 10px rgba(0,0,0,0.12)' });
+        document.body.appendChild(el);
+        setTimeout(() => { try { el.remove(); } catch(e){} }, 3500);
+    }
+
+    document.addEventListener('click', function(e) {
+        const btn = e.target.closest('.delete-job-btn');
+        if (!btn) return;
+        e.preventDefault(); e.stopPropagation();
+        const jobId = btn.getAttribute('data-job-id');
+        if (!jobId) return;
+        showDeleteModal(jobId, btn.closest('tr'), btn.dataset.deleteUrl);
+    });
+
+    document.getElementById('confirmDeleteJob')?.addEventListener('click', function() {
+        if (!pendingDelete.jobId) { hideDeleteModal(); return; }
+        submitDeleteJob(pendingDelete.jobId, pendingDelete.row, pendingDelete.deleteUrl)
+            .then(() => showToast('Job opening deleted successfully.', 'success'))
+            .catch(err => showToast(err.message || 'Error deleting job.', 'danger'))
+            .finally(hideDeleteModal);
+    });
+    document.getElementById('cancelDeleteJob')?.addEventListener('click', hideDeleteModal);
+
+    /* Live search */
+    const searchInput = document.getElementById('jobSearchInput');
+    const tableContainer = document.getElementById('jobTableContainer');
+    let timeout = null;
+    if (searchInput && tableContainer) {
+        searchInput.addEventListener('keyup', function() {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => {
+                const q = searchInput.value;
+                fetch(`?q=${encodeURIComponent(q)}`, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                })
+                .then(r => r.text())
+                .then(html => {
+                    const tmp = document.createElement('div');
+                    tmp.innerHTML = html;
+                    const newTable = tmp.querySelector('#jobTableContainer');
+                    if (newTable) tableContainer.innerHTML = newTable.innerHTML;
+                });
+            }, 300);
+        });
+    }
+});
+</script>
+
+{% endblock %}

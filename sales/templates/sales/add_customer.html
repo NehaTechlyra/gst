@@ -1,0 +1,334 @@
+<!--updt by neha on 2-2-26-->
+<style>
+    #customer-form .form-control,
+    #customer-form select.form-control {
+        {% comment %} width: 100% !important;
+        max-width: 100% !important; {% endcomment %}
+    }
+    
+    #customer-form .select2-container {
+        width: 100% !important;
+    }
+</style>
+{% load widget_tweaks static %}
+<div
+    data-location-load-states-url="{% url 'load_states' %}"
+    data-location-load-cities-url="{% url 'load_cities' %}"
+    data-location-load-cities-url="{% url 'load_cities' %}"
+
+    hidden
+></div>
+<form method="POST" action="/sales/add_customer/" novalidate id="customer-form">
+    {% csrf_token %}
+    {# Keep modal Basic Details in the same order as the main Add Customer page. #}
+    <div class="row">
+        <!-- Customer Type -->
+        <div class="col-md-6 mb-3 field-wrapper" data-field-name="customer_type">
+            <label for="{{ customer_form.customer_type.id_for_label }}" class="form-label">
+                {{ customer_form.customer_type.label }}
+                {% if customer_form.customer_type.field.required %}
+                    <span class="required-asterisk" style="color:#dc3545 !important;">*</span>
+                {% endif %}
+            </label>
+            {{ customer_form.customer_type|add_class:"form-control" }}
+            {% for error in customer_form.customer_type.errors %}
+                <div class="text-danger small">{{ error }}</div>
+            {% endfor %}
+        </div>
+
+        <!-- Company Name -->
+        <div class="col-md-6 mb-3 field-wrapper" data-field-name="company_name">
+            <label for="{{ customer_form.company_name.id_for_label }}" class="form-label">
+                {{ customer_form.company_name.label }}
+                {% if customer_form.company_name.field.required %}
+                    <span class="required-asterisk" style="color:#dc3545 !important;">*</span>
+                {% endif %}
+            </label>
+            {% if initial_name %}
+                <input type="text" name="company_name" id="{{ customer_form.company_name.id_for_label }}" class="form-control" value="{{ initial_name }}">
+            {% else %}
+                {{ customer_form.company_name|add_class:"form-control" }}
+            {% endif %}
+            {% for error in customer_form.company_name.errors %}
+                <div class="text-danger small">{{ error }}</div>
+            {% endfor %}
+        </div>
+
+        <!-- First Name -->
+        <div class="col-md-6 mb-3 field-wrapper" data-field-name="first_name">
+            <label for="{{ customer_form.first_name.id_for_label }}" class="form-label">
+                {{ customer_form.first_name.label }}
+                {% comment %} {% if customer_form.first_name.field.required %} {% endcomment %}
+                    <span class="required-asterisk" style="color:#dc3545 !important;">*</span>
+                {% comment %} {% endif %} {% endcomment %}
+            </label>
+            {% if initial_name %}
+                <input type="text" name="first_name" id="{{ customer_form.first_name.id_for_label }}" class="form-control" value="{{ initial_name }}">
+            {% else %}
+                {{ customer_form.first_name|add_class:"form-control" }}
+            {% endif %}
+            {% for error in customer_form.first_name.errors %}
+                <div class="text-danger small">{{ error }}</div>
+            {% endfor %}
+        </div>
+
+        <!-- Last Name -->
+        <div class="col-md-6 mb-3 field-wrapper" data-field-name="last_name">
+            <label for="{{ customer_form.last_name.id_for_label }}" class="form-label">
+                {{ customer_form.last_name.label }}
+                {% if customer_form.last_name.field.required %}
+                    <span class="required-asterisk" style="color:#dc3545 !important;">*</span>
+                {% endif %}
+            </label>
+            {{ customer_form.last_name|add_class:"form-control" }}
+            {% for error in customer_form.last_name.errors %}
+                <div class="text-danger small">{{ error }}</div>
+            {% endfor %}
+        </div>
+    </div>
+    <div class="row">
+        <!-- Customer Code -->
+        <div class="col-md-6 mb-3 field-wrapper" data-field-name="customer_code">
+            <label for="{{ customer_form.customer_code.id_for_label }}" class="form-label">
+                {{ customer_form.customer_code.label }}
+                {% if customer_form.customer_code.field.required %}
+                    <span class="required-asterisk" style="color:#dc3545 !important;">*</span>
+                {% endif %}
+            </label>
+            {{ customer_form.customer_code|add_class:"form-control" }}
+            {% for error in customer_form.customer_code.errors %}
+                <div class="text-danger small">{{ error }}</div>
+            {% endfor %}
+        </div>
+
+        <!-- Email -->
+        <div class="col-md-6 mb-3 field-wrapper" data-field-name="email">
+            <label for="{{ customer_form.email.id_for_label }}" class="form-label">
+                {{ customer_form.email.label }}
+                {% if customer_form.email.field.required %}
+                    <span class="required-asterisk" style="color:#dc3545 !important;">*</span>
+                {% endif %}
+            </label>
+            {{ customer_form.email|add_class:"form-control" }}
+            {% for error in customer_form.email.errors %}
+                <div class="text-danger small">{{ error }}</div>
+            {% endfor %}
+        </div>
+    </div>
+    <div class="row">
+        <!-- Phone -->
+        <div class="col-md-6 mb-3 field-wrapper" data-field-name="phone">
+            <label for="{{ customer_form.phone.id_for_label }}" class="form-label">
+                {{ customer_form.phone.label }}
+                {% if customer_form.phone.field.required %}
+                    <span class="required-asterisk" style="color:#dc3545 !important;">*</span>
+                {% endif %}
+            </label>
+             {{ customer_form.phone|add_class:"form-control"|attr:"type:tel"|attr:"pattern:[0-9]{10}"|attr:"maxlength:10"|attr:"title:Please enter a valid 10-digit phone number" }}
+            {% for error in customer_form.phone.errors %}
+                <div class="text-danger small">{{ error }}</div>
+            {% endfor %}
+        </div>
+
+        <!-- Mobile -->
+        <div class="col-md-6 mb-3 field-wrapper" data-field-name="mobile">
+            <label for="{{ customer_form.mobile.id_for_label }}" class="form-label">
+                {{ customer_form.mobile.label }}
+                {% if customer_form.mobile.field.required %}
+                    <span class="required-asterisk" style="color:#dc3545 !important;">*</span>
+                {% endif %}
+            </label>
+            {{ customer_form.mobile|add_class:"form-control"|attr:"type:tel"|attr:"pattern:[0-9]{10}"|attr:"maxlength:10"|attr:"title:Please enter a valid 10-digit phone number" }}
+            {% for error in customer_form.mobile.errors %}
+                <div class="text-danger small">{{ error }}</div>
+            {% endfor %}
+        </div>
+    </div>
+    <div class="row">
+        
+
+        <!-- Address Line 1 -->
+        <div class="col-md-6 mb-3 field-wrapper" data-field-name="address_line_1">
+            <label for="{{ customer_form.address_line_1.id_for_label }}" class="form-label">
+                {{ customer_form.address_line_1.label }}
+                {% if customer_form.address_line_1.field.required %}
+                    <span class="required-asterisk" style="color:#dc3545 !important;">*</span>
+                {% endif %}
+            </label>
+            {{ customer_form.address_line_1|add_class:"form-control" }}
+            {% for error in customer_form.address_line_1.errors %}
+                <div class="text-danger small">{{ error }}</div>
+            {% endfor %}
+        </div>
+        <div class="col-md-6 mb-3 field-wrapper" data-field-name="country">
+            <label for="{{ customer_form.country.id_for_label }}" class="form-label">
+                {{ customer_form.country.label }}
+                {% if customer_form.country.field.required %}
+                    <span class="required-asterisk" style="color:#dc3545 !important;">*</span>
+                {% endif %}
+            </label>
+            {{ customer_form.country|add_class:"form-control" }}
+            {% for error in customer_form.country.errors %}
+                <div class="text-danger small">{{ error }}</div>
+            {% endfor %}
+        </div>
+    </div>
+    <div class="row">
+        
+        <div class="col-md-6 mb-3 field-wrapper" data-field-name="state">
+            <label for="{{ customer_form.state.id_for_label }}" class="form-label">
+                {{ customer_form.state.label }}
+                {% if customer_form.state.field.required %}
+                    <span class="required-asterisk" style="color:#dc3545 !important;">*</span>
+                {% endif %}
+            </label>
+            {{ customer_form.state|add_class:"form-control" }}
+            {% for error in customer_form.state.errors %}
+                <div class="text-danger small">{{ error }}</div>
+            {% endfor %}
+        </div>
+        <div class="col-md-6 mb-3 field-wrapper" data-field-name="city">
+            <label for="{{ customer_form.city.id_for_label }}" class="form-label">
+                {{ customer_form.city.label }}
+                {% if customer_form.city.field.required %}
+                    <span class="required-asterisk" style="color:#dc3545 !important;">*</span>
+                {% endif %}
+            </label>
+            {{ customer_form.city|add_class:"form-control" }}
+            {% for error in customer_form.city.errors %}
+                <div class="text-danger small">{{ error }}</div>
+            {% endfor %}
+        </div>
+    </div>
+    <div class="row">
+        <!-- Currency -->
+        <div class="col-md-6 mb-3 field-wrapper" data-field-name="currency">
+            <label for="{{ customer_form.currency.id_for_label }}" class="form-label">
+                {{ customer_form.currency.label }}
+                <span class="required-asterisk" style="color:#dc3545 !important;">*</span>
+            </label>
+            {{ customer_form.currency|add_class:"form-control"|attr:"required:'required'" }}
+            {% for error in customer_form.currency.errors %}
+                <div class="text-danger small">{{ error }}</div>
+            {% endfor %}
+            <div class="text-danger small currency-error d-none">Currency is required.</div>
+        </div>
+
+        <!-- Payment Terms removed from customer modal per request -->
+    </div>
+    
+
+    <div class="mt-3">
+        <button type="submit" class="btn btn-primary">Save Customer</button>
+        <button type="button" class="btn btn-outline-secondary ms-2" data-bs-dismiss="modal">Cancel</button>
+    </div>
+</form>
+
+<script src="{% static 'js/location_selects.js' %}"></script>
+
+<script>
+(function() {
+    console.log("Customer form script loaded");
+    
+    const customerTypeField = document.querySelector('#customer-form [name="customer_type"]');
+    
+    function toggleFields() {
+        console.log("toggleFields is called");
+        const customerType = customerTypeField ? customerTypeField.value : '';
+        console.log("Customer type:", customerType);
+        
+        // Get field wrappers
+        const firstNameWrapper = document.querySelector('#customer-form .field-wrapper[data-field-name="first_name"]');
+        const lastNameWrapper = document.querySelector('#customer-form .field-wrapper[data-field-name="last_name"]');
+        const companyNameWrapper = document.querySelector('#customer-form .field-wrapper[data-field-name="company_name"]');
+        
+        // Get inputs
+        const firstNameInput = document.querySelector('#customer-form [name="first_name"]');
+        const lastNameInput = document.querySelector('#customer-form [name="last_name"]');
+        const companyNameInput = document.querySelector('#customer-form [name="company_name"]');
+        
+        if (customerType === 'individual') {
+            console.log("Showing individual fields");
+            // Show individual fields
+            if (firstNameWrapper) firstNameWrapper.style.display = 'block';
+            if (lastNameWrapper) lastNameWrapper.style.display = 'block';
+            if (companyNameWrapper) companyNameWrapper.style.display = 'none';
+            
+            // Update required
+            if (firstNameInput) firstNameInput.required = true;
+            if (lastNameInput) lastNameInput.required = true;
+            if (companyNameInput) {
+                companyNameInput.required = false;
+                companyNameInput.value = ''; // Clear value
+            }
+            
+        } else if (customerType === 'company') {
+            console.log("Showing company field");
+            // Show company field
+            if (firstNameWrapper) firstNameWrapper.style.display = 'none';
+            if (lastNameWrapper) lastNameWrapper.style.display = 'none';
+            if (companyNameWrapper) companyNameWrapper.style.display = 'block';
+            
+            // Update required
+            if (firstNameInput) {
+                firstNameInput.required = false;
+                firstNameInput.value = ''; // Clear value
+            }
+            if (lastNameInput) {
+                lastNameInput.required = false;
+                lastNameInput.value = ''; // Clear value
+            }
+            if (companyNameInput) companyNameInput.required = true;
+            
+        } else {
+            console.log("No customer type - hiding all name fields");
+            // No customer type selected - hide all name fields
+            if (firstNameWrapper) firstNameWrapper.style.display = 'none';
+            if (lastNameWrapper) lastNameWrapper.style.display = 'none';
+            if (companyNameWrapper) companyNameWrapper.style.display = 'none';
+        }
+    }
+    
+    const currencyField = document.querySelector('#customer-form [name="currency"]');
+    const currencyError = document.querySelector('#customer-form .currency-error');
+
+    function validateCurrencySelection() {
+        if (!currencyField) return true;
+        const hasValue = currencyField.value && currencyField.value.trim() !== '';
+        currencyField.classList.toggle('is-invalid', !hasValue);
+        if (currencyError) {
+            currencyError.classList.toggle('d-none', hasValue);
+        }
+        return hasValue;
+    }
+
+    const customerForm = document.getElementById('customer-form');
+
+    if (customerForm) {
+        customerForm.addEventListener('submit', function(e) {
+            if (!validateCurrencySelection()) {
+                e.preventDefault();
+                currencyField && currencyField.focus();
+            }
+        });
+    }
+
+    if (currencyField) {
+        currencyField.addEventListener('change', validateCurrencySelection);
+        currencyField.addEventListener('input', validateCurrencySelection);
+    }
+
+    // Run immediately since modal is already loaded
+    if (customerTypeField) {
+        console.log("Customer type field found, setting up listener");
+        toggleFields();
+        
+        // Run when customer_type changes
+        customerTypeField.addEventListener('change', toggleFields);
+    } else {
+        console.log("Customer type field NOT found");
+    }
+
+    // Payment Terms select removed from this modal
+})();
+</script>

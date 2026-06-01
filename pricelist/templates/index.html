@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block title %}Price Lists{% endblock %}
+
+{% block content %}
+<div class="pl-wrapper">
+
+  <!-- Header -->
+  <div class="pl-header">
+    <div>
+      <h1 class="pl-title">Price Lists</h1>
+      <p class="pl-subtitle">Manage custom rates for customers and vendors</p>
+    </div>
+    <a href="{% url 'pricelist:create' %}" class="btn-primary">+ New Price List</a>
+  </div>
+
+  <!-- Filters -->
+  <form method="get" class="pl-filters">
+    <input type="text" name="q" value="{{ query }}" placeholder="Search price lists…" class="filter-input">
+    <select name="type" class="filter-select">
+      <option value="">All Types</option>
+      <option value="sales" {% if type_filter == 'sales' %}selected{% endif %}>Sales</option>
+      <option value="purchase" {% if type_filter == 'purchase' %}selected{% endif %}>Purchase</option>
+    </select>
+    <select name="status" class="filter-select">
+      <option value="">All Status</option>
+      <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Active</option>
+      <option value="inactive" {% if status_filter == 'inactive' %}selected{% endif %}>Inactive</option>
+    </select>
+    <button type="submit" class="btn-filter">Filter</button>
+    <a href="{% url 'pricelist:index' %}" class="btn-reset">Reset</a>
+  </form>
+
+  <!-- Table -->
+  {% if price_lists %}
+  <div class="pl-table-wrap">
+    <table class="pl-table">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Currency</th>
+          <th>Items</th>
+          <th>Contacts</th>
+          <th>Valid Until</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for pl in price_lists %}
+        <tr>
+          <td><a href="{% url 'pricelist:detail' pl.pk %}" class="pl-name-link">{{ pl.name }}</a></td>
+          <td>
+            <span class="badge badge-{{ pl.type }}">{{ pl.get_type_display }}</span>
+          </td>
+          <td>{{ pl.currency }}</td>
+          <td>{{ pl.items.count }}</td>
+          <td>{{ pl.contact_assignments.count }}</td>
+          <td>{{ pl.valid_to|default:"—" }}</td>
+          <td>
+            <span class="status-dot {% if pl.is_active %}active{% else %}inactive{% endif %}">
+              {% if pl.is_active %}Active{% else %}Inactive{% endif %}
+            </span>
+          </td>
+          <td class="actions">
+            <a href="{% url 'pricelist:detail' pl.pk %}" title="View">👁</a>
+            <a href="{% url 'pricelist:edit' pl.pk %}" title="Edit">✏️</a>
+            <a href="{% url 'pricelist:delete' pl.pk %}" title="Delete" class="danger">🗑</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="pl-empty">
+    <p>No price lists found. <a href="{% url 'pricelist:create' %}">Create your first one →</a></p>
+  </div>
+  {% endif %}
+
+</div>
+
+<style>
+.pl-wrapper { max-width: 1100px; margin: 2rem auto; padding: 0 1rem; font-family: 'Segoe UI', sans-serif; }
+.pl-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem; }
+.pl-title { font-size: 1.8rem; font-weight: 700; color: #1a1a2e; margin: 0; }
+.pl-subtitle { color: #6b7280; margin: 0.25rem 0 0; }
+.btn-primary { background: #4f46e5; color: #fff; padding: 0.6rem 1.2rem; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 0.9rem; }
+.btn-primary:hover { background: #4338ca; }
+.pl-filters { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1.25rem; }
+.filter-input, .filter-select { padding: 0.5rem 0.75rem; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.9rem; background: #fff; }
+.filter-input { flex: 1; min-width: 200px; }
+.btn-filter { background: #4f46e5; color: #fff; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; }
+.btn-reset { color: #6b7280; padding: 0.5rem 0.75rem; text-decoration: none; }
+.pl-table-wrap { overflow-x: auto; border-radius: 12px; box-shadow: 0 1px 8px rgba(0,0,0,0.08); }
+.pl-table { width: 100%; border-collapse: collapse; background: #fff; }
+.pl-table th { background: #f9fafb; padding: 0.75rem 1rem; text-align: left; font-size: 0.8rem; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid #e5e7eb; }
+.pl-table td { padding: 0.85rem 1rem; border-bottom: 1px solid #f3f4f6; font-size: 0.9rem; color: #374151; }
+.pl-table tr:last-child td { border-bottom: none; }
+.pl-table tr:hover td { background: #fafafa; }
+.pl-name-link { color: #4f46e5; font-weight: 600; text-decoration: none; }
+.pl-name-link:hover { text-decoration: underline; }
+.badge { display: inline-block; padding: 0.2rem 0.6rem; border-radius: 999px; font-size: 0.75rem; font-weight: 600; }
+.badge-sales { background: #dbeafe; color: #1d4ed8; }
+.badge-purchase { background: #fef3c7; color: #92400e; }
+.status-dot { font-size: 0.82rem; font-weight: 600; }
+.status-dot.active { color: #16a34a; }
+.status-dot.inactive { color: #9ca3af; }
+.actions a { margin-right: 0.5rem; text-decoration: none; font-size: 1rem; }
+.actions a.danger { opacity: 0.7; }
+.actions a.danger:hover { opacity: 1; }
+.pl-empty { text-align: center; padding: 3rem; color: #9ca3af; background: #fff; border-radius: 12px; box-shadow: 0 1px 8px rgba(0,0,0,0.06); }
+.pl-empty a { color: #4f46e5; }
+</style>
+{% endblock %}

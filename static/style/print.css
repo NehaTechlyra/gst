@@ -1,0 +1,283 @@
+ @page {
+      size: A4;
+      margin: 10mm;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 12px;
+      color: #222;
+      background: #fff;
+    }
+
+    /* Outer page container: controls global width + side margins */
+    .page {
+      max-width: 780px;              /* single fixed width for everything */
+      margin: 5mm auto;              /* small margin from 4 sides inside @page */
+      padding: 8mm;
+      border: 1px solid #ddd;
+    }
+
+    h1, h2, h3, h4, h5 {
+      margin: 0;
+      font-weight: 600;
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+    }
+
+    th, td {
+      padding: 6px 8px;
+      vertical-align: top;
+    }
+
+    .text-center { text-align: center; }
+    .text-right  { text-align: right; }
+    .text-left   { text-align: left; }
+    .muted       { color: #777; }
+    .nowrap      { white-space: nowrap; }
+
+    /* ----- Header band ----- */
+    .header-wrap {
+      border: 1px solid #d0d0d0;
+      border-radius: 4px 4px 0 0;
+      overflow: hidden;
+    }
+
+    .header-top {
+      background: #f4f4f6;
+      border-bottom: 1px solid #d0d0d0;
+    }
+
+    .header-left {
+      padding: 10px 12px;
+    }
+
+    .company-name {
+      font-size: 18px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .company-meta {
+      font-size: 11px;
+      margin-top: 4px;
+      line-height: 1.4;
+    }
+
+    .header-right {
+      padding: 10px 12px;
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    .order-badge {
+      display: inline-block;
+      font-size: 24px;
+      padding: 4px 16px;
+      border-radius: 18px;
+      border: 2px solid #444;
+      letter-spacing: 2px;
+      font-weight: 700;
+    }
+
+    /* ----- Meta table under header ----- */
+    .meta-table {
+      font-size: 11px;
+      border: 1px solid #d0d0d0;
+      border-top: none;
+      border-radius: 0 0 4px 4px;
+      overflow: hidden;
+      margin-top: 0;
+    }
+
+    .meta-table td {
+      border-top: 1px solid #eee;
+    }
+
+    .meta-table tr:first-child td {
+      border-top: none;
+    }
+
+    .meta-label {
+      color: #555;
+      font-weight: 600;
+      width: 18%;
+      white-space: nowrap;
+    }
+
+    .meta-value {
+      font-weight: 500;
+      width: 32%;
+    }
+
+    /* ----- Address blocks ----- */
+    .addr-section {
+      margin-top: 10px;
+    }
+
+    .addr-box {
+      border: 1px solid #d0d0d0;
+      border-radius: 4px;
+      padding: 8px 10px;
+      min-height: 100px;
+      font-size: 11px;
+    }
+
+    .addr-title {
+      font-weight: 700;
+      font-size: 12px;
+      margin-bottom: 4px;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+    }
+
+    /* ----- Items table ----- */
+    .items {
+      margin-top: 12px;
+      font-size: 11px;
+    }
+
+    .items thead th {
+      background: #f0f2f5;
+      border: 1px solid #cfcfcf;
+      font-weight: 600;
+    }
+
+    .items tbody td {
+      border: 1px solid #e0e0e0;
+    }
+
+    .items tbody tr:nth-child(odd) {
+      background: #fafafa;
+    }
+
+    .items tbody tr:nth-child(even) {
+      background: #ffffff;
+    }
+
+    /* ----- Totals ----- */
+    .summary-wrap {
+      margin-top: 10px;
+      width: 40%;
+      margin-left: auto;
+    }
+
+    .totals-table {
+      font-size: 11px;
+      border: 1px solid #d0d0d0;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .totals-table td {
+      padding: 6px 8px;
+    }
+
+    /* xhtml2pdf doesn't support complex pseudo selectors like :not().
+       Replace with simpler rules and rely on the existing 'grand-row'
+       class to avoid a bottom border on the final (grand total) row. */
+    .totals-table tr td {
+      border-bottom: 1px solid #eee;
+    }
+
+    .totals-table tr.grand-row td {
+      border-bottom: none;
+    }
+
+    .totals-label {
+      text-align: left;
+      width: 60%;
+    }
+
+    .totals-value {
+      text-align: right;
+      width: 40%;
+      white-space: nowrap;
+    }
+
+    .grand-row {
+      background: #f4f4f6;
+      font-weight: 700;
+      font-size: 12px;
+    }
+
+    /* ----- Notes & signature ----- */
+    .bottom-row {
+      margin-top: 18px;
+    }
+
+    .notes-box {
+      border: 1px solid #d0d0d0;
+      border-radius: 4px;
+      font-size: 11px;
+    }
+
+    .notes-header {
+      background: #f4f4f6;
+      font-weight: 600;
+      padding: 6px 8px;
+      border-bottom: 1px solid #d0d0d0;
+    }
+
+    .notes-body {
+      padding: 8px 10px;
+      min-height: 40px;
+    }
+
+    .signature-box {
+      text-align: center;
+      font-size: 11px;
+      margin-left: auto;
+      width: 60%;
+    }
+
+    .signature-line {
+      margin-top: 40px;
+      border-top: 1px solid #444;
+      padding-top: 4px;
+      font-weight: 600;
+    }
+
+    .signature-label {
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      font-size: 10px;
+      color: #555;
+    }
+
+    /* ----- Footer ----- */
+    .footer {
+      position: fixed;
+      bottom: 5mm;
+      left: 10mm;
+      right: 10mm;
+      font-size: 9px;
+      color: #777;
+    }
+
+    .footer-left { float: left; }
+    .footer-right { float: right; }
+
+    .pagenum:after {
+      content: counter(page);
+    }
+
+    @media print {
+      a { display: none; }
+      body {
+        background: #fff;
+      }
+      .page {
+        border: none;        /* clean for PDF */
+        margin: 0 auto;
+      }
+    }

@@ -1,0 +1,144 @@
+{% load widget_tweaks %}
+
+
+<form id="taxForm" method="post" novalidate>
+  {% csrf_token %}
+  {% for field in form %}
+    {% if field.is_hidden or field.name == "tax_type" or field.name == "tax_scope" or field.name == "applicable_on" %}
+      {{ field.as_hidden }}
+    {% endif %}
+  {% endfor %}
+  <div class="modal-header">
+    <h5 class="modal-title">Add New Tax </h5>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+  </div>
+  <div class="modal-body">
+    <div class="row">
+      {% for field in form %}
+        {% if not field.is_hidden and field.name != "tax_type" and field.name != "tax_scope" and field.name != "applicable_on" %}
+        <div class="col-md-4 mb-3">
+          <label for="{{ field.id_for_label }}" class="form-label">
+            {{ field.label }}{% if field.field.required %}<span class="required-asterisk">*</span>{% endif %}
+          </label>
+          {{ field|add_class:"form-control" }}
+          {% if field.help_text %}
+            <div class="form-text">{{ field.help_text }}</div>
+          {% endif %}
+          {% for error in field.errors %}
+            <div class="text-danger small">{{ error }}</div>
+          {% endfor %}
+        </div>
+        {% endif %}
+      {% endfor %}
+    </div>
+  </div>
+  <div class="modal-footer">
+    <button type="submit" class="btn btn-primary">Save Tax</button>
+    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+  </div>
+</form>
+<script>
+  (function(){
+    function ensureFeedback(el) {
+      if (!el) return { invalid: null, valid: null };
+      let invalid = el.parentNode.querySelector('.invalid-feedback');
+      let valid = el.parentNode.querySelector('.valid-feedback');
+      if (!invalid) {
+        invalid = document.createElement('div'); invalid.className = 'invalid-feedback'; invalid.style.display = 'none'; el.parentNode.appendChild(invalid);
+      }
+      if (!valid) {
+        valid = document.createElement('div'); valid.className = 'valid-feedback'; valid.style.display = 'none'; el.parentNode.appendChild(valid);
+      }
+      return { invalid: invalid, valid: valid };
+    }
+
+    function attachTaxValidation(container) {
+      try {
+        const form = container.querySelector('#taxForm') || container.querySelector('form');
+        if (!form) return;
+
+        const nameEl = form.querySelector('input[name="taxname"], input[id*="taxname"]');
+        const typeEl = form.querySelector('select[name="taxtype"], input[name="taxtype"], input[id*="taxtype"]');
+        const rateEl = form.querySelector('input[name="rate"], input[id*="rate"]');
+
+        const fbName = ensureFeedback(nameEl);
+        const fbType = ensureFeedback(typeEl);
+        const fbRate = ensureFeedback(rateEl);
+
+        function validateName() {
+          if (!nameEl) return true;
+          const v = (nameEl.value || '').trim();
+            if (v.length >= 2) {
+            nameEl.classList.remove('is-invalid'); nameEl.classList.add('is-valid');
+            if (fbName && fbName.invalid) { fbName.invalid.style.display = 'none'; }
+            return true;
+          }
+          nameEl.classList.remove('is-valid'); nameEl.classList.add('is-invalid');
+          if (fbName.invalid) { fbName.invalid.textContent = 'Enter a valid tax name (min 2 characters)'; fbName.invalid.style.display = 'block'; fbName.valid.style.display = 'none'; }
+          return false;
+        }
+
+        function validateType() {
+          if (!typeEl) return true;
+          const tag = typeEl.tagName.toLowerCase();
+          const v = (typeEl.value || '').toString().trim();
+            if (tag === 'select') {
+            if (v !== '' && v !== '0') {
+              typeEl.classList.remove('is-invalid'); typeEl.classList.add('is-valid');
+              if (fbType && fbType.invalid) { fbType.invalid.style.display = 'none'; }
+              return true;
+            }
+            typeEl.classList.remove('is-valid'); typeEl.classList.add('is-invalid');
+            if (fbType.invalid) { fbType.invalid.textContent = 'Select a tax type'; fbType.invalid.style.display = 'block'; fbType.valid.style.display = 'none'; }
+            return false;
+          }
+          if (v !== '') { typeEl.classList.remove('is-invalid'); typeEl.classList.add('is-valid'); if (fbType && fbType.invalid) { fbType.invalid.style.display = 'none'; } return true; }
+          typeEl.classList.remove('is-valid'); typeEl.classList.add('is-invalid'); if (fbType.invalid) { fbType.invalid.textContent = 'This field is required'; fbType.invalid.style.display = 'block'; fbType.valid.style.display = 'none'; }
+          return false;
+        }
+
+        function validateRate() {
+          if (!rateEl) return true;
+          const v = (rateEl.value || '').toString().trim();
+          const n = parseFloat(v);
+          if (v !== '' && !isNaN(n) && n >= 0 && n <= 100) {
+            rateEl.classList.remove('is-invalid'); rateEl.classList.add('is-valid');
+            if (fbRate && fbRate.invalid) { fbRate.invalid.style.display = 'none'; }
+            return true;
+          }
+          rateEl.classList.remove('is-valid'); rateEl.classList.add('is-invalid');
+          if (fbRate.invalid) { fbRate.invalid.textContent = 'Enter a valid rate between 0 and 100'; fbRate.invalid.style.display = 'block'; fbRate.valid.style.display = 'none'; }
+          return false;
+        }
+
+        [nameEl, typeEl, rateEl].forEach(el => {
+          if (!el) return;
+          el.addEventListener('input', function() {
+            if (el === nameEl) validateName();
+            else if (el === typeEl) validateType();
+            else if (el === rateEl) validateRate();
+          });
+          el.addEventListener('blur', function() {
+            if (el === nameEl) validateName();
+            else if (el === typeEl) validateType();
+            else if (el === rateEl) validateRate();
+          });
+        });
+
+        form.addEventListener('submit', function(e){
+          const ok = validateName() & validateType() & validateRate();
+          if (!ok) {
+            e.preventDefault(); e.stopPropagation();
+            const first = form.querySelector('.is-invalid'); if (first) { first.focus(); if (typeof first.scrollIntoView === 'function') first.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
+          }
+        });
+
+      } catch (err) { console.debug('attachTaxValidation error', err); }
+    }
+
+    document.addEventListener('DOMContentLoaded', function(){
+      const container = document.currentScript ? document.currentScript.parentNode : document.body;
+      attachTaxValidation(container);
+    });
+  })();
+</script>

@@ -1,0 +1,277 @@
+{% extends 'website/index.html' %}
+{% load static %}
+{% block exstyle %}
+<link href="{% static 'style/general.css' %}" rel="stylesheet">
+{% endblock exstyle %}
+{% block page_title %}Process Return{% endblock page_title %}
+{% block content %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    .form-section{margin-bottom:24px}
+    .form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px}
+    .form-group label{display:block;margin-bottom:6px;font-weight:600;color:#555}
+    .form-group .required::after{content:" *";color:#e74c3c}
+    .form-group input,.form-group select,.form-group textarea{width:100%;padding:12px;border:1px solid #ddd;border-radius:6px}
+    .items-table{width:100%;border-collapse:collapse;margin-top:10px}
+    .items-table thead{background:#34495e;color:#fff}
+    .items-table th,.items-table td{padding:12px;border-bottom:1px solid #ecf0f1}
+    .form-actions{display:flex;gap:12px;justify-content:flex-end;margin-top:18px}
+  </style>
+</head>
+<body>
+  <div class="container mt-4">
+    {% comment %} <h4>Process Return for Invoice: {{ invoice.inv_number }}</h4> {% endcomment %}
+
+    <form id="returnForm" method="post">
+      {% csrf_token %}
+
+      {% if period_locked %}
+      <div class="alert alert-warning" style="background:#fff3cd;border-left:4px solid #ffc107;color:#856404;padding:15px;margin-bottom:20px;border-radius:6px">
+        <strong><i class="bi bi-lock-fill"></i> Period Locked:</strong> Sales returns are locked for the fiscal year <strong>{{ fiscal_year_name }}</strong>. 
+        Only users with exemption can create or edit sales returns in this period.
+      </div>
+      {% endif %}
+
+      <div class="form-section">
+        <h5>Invoice & Warehouse Information</h5>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Sales Invoice</label>
+            <div class="invoice-info" style="background:#f8f9fa;padding:10px;border-radius:6px">{{ invoice.inv_number }} &nbsp; — &nbsp; {{ invoice.customer }}</div>
+            <div class="help-text">Return will be created against this invoice</div>
+          </div>
+
+          <div class="form-group">
+            <label>Warehouse</label>
+            <input
+              type="text"
+              class="form-control"
+              value="{% if fixed_warehouse %}{{ fixed_warehouse.warehouse_name }}{% else %}No delivery warehouse found{% endif %}"
+              readonly
+            />
+            <div class="help-text">Returned items will be restocked only to this invoice warehouse</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <h5>Return Details</h5>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="required">Return Date</label>
+            <input type="date" name="date" value="{{ invoice.date|date:'Y-m-d' }}" class="form-control">
+          </div>
+
+          <div class="form-group">
+            <label class="required">Status</label>
+            <select name="status" class="form-select">
+              <option value="pending">Pending</option>
+              <option value="received">Received (stock will be added)</option>
+              <option value="cancelled">Cancelled</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Computed Refund</label>
+            <div class="form-control" id="computedRefund">0.00</div>
+          </div>
+
+          <div class="form-group">
+            <label>Shipped By</label>
+            <input type="text" name="shipped_by" class="form-control" placeholder="Name of shipper">
+          </div>
+
+          <div class="form-group">
+            <label>Courier Name</label>
+            <input type="text" name="courier_name" class="form-control" placeholder="e.g., FedEx">
+          </div>
+
+          <div class="form-group">
+            <label>Tracking Number</label>
+            <input type="text" name="tracking_number" class="form-control" placeholder="Tracking number">
+          </div>
+
+          <div class="form-group">
+            <label>Notes (optional)</label>
+            <textarea name="notes" class="form-control" placeholder="Reason for return..."></textarea>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <h5>Items to Return</h5>
+        <div class="alert alert-info">Select quantities to return. Stock will be increased when return is processed.</div>
+        <table class="items-table">
+          <thead>
+            <tr>
+              <th style="width:48px"><input type="checkbox" id="selectAll" /></th>
+              <th>Item</th>
+              <th>HSN Code</th>
+              <th>Ordered Qty</th>
+              <th>Return Qty</th>
+              <th style="text-align:right">Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for it in items %}
+            <tr>
+              <td style="vertical-align:middle">
+                <input type="checkbox" class="item-select" data-pk="{{ it.pk }}" />
+              </td>
+              <td>
+                <strong>{{ it.product.name }}</strong>
+              </td>
+              <td>{% if it.hsn_code %}{{ it.hsn_code }}{% else %}&mdash;{% endif %}</td>
+              <td>{{ it.quantity }}</td>
+              <td>
+                <input type="number" name="items[{{ it.pk }}]" min="0" max="{{ it.quantity }}" value="{{ it.quantity }}" class="form-control return-qty" data-pk="{{ it.pk }}" data-price="{{ it.price|default:"0.00" }}" data-tax="{{ it.prd_tax|default:"0.00" }}" readonly disabled />
+              </td>
+              <td style="text-align:right">
+                <span class="item-amount" data-pk="{{ it.pk }}">0.00</span>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Process Return</button>
+        <a href="{% url 'invoice_detail' invoice.pk %}" class="btn btn-secondary">Cancel</a>
+      </div>
+    </form>
+  </div>
+
+  <script>
+  // Toggle return qty input enabled state when checkbox checked
+  document.addEventListener('DOMContentLoaded', function(){
+    const selects = document.querySelectorAll('.item-select');
+    const qtys = document.querySelectorAll('.return-qty');
+    const selectAll = document.getElementById('selectAll');
+
+    function setRowState(checkbox){
+      const pk = checkbox.dataset.pk;
+      const input = document.querySelector('.return-qty[data-pk="'+pk+'"]');
+      if(!input) return;
+      if(checkbox.checked){
+        input.removeAttribute('readonly');
+        input.disabled = false;
+      } else {
+        input.setAttribute('readonly','readonly');
+        input.disabled = true;
+      }
+      updateAmounts();
+    }
+
+    selects.forEach(function(cb){ cb.addEventListener('change', function(){ setRowState(cb); }); setRowState(cb); });
+
+    if(selectAll){
+      selectAll.addEventListener('change', function(){
+        selects.forEach(function(cb){ cb.checked = selectAll.checked; setRowState(cb); });
+        updateAmounts();
+      });
+    }
+
+    // compute per-item amounts and total refund
+    function parseFloatOrZero(v){ v = parseFloat(v); return isNaN(v) ? 0 : v; }
+    function updateAmounts(){
+      let total = 0;
+      qtys.forEach(function(input){
+        const pk = input.dataset.pk;
+        const price = parseFloatOrZero(input.dataset.price);
+        const taxRate = parseFloatOrZero(input.dataset.tax);
+        const qty = parseFloatOrZero(input.value);
+        const checkbox = document.querySelector('.item-select[data-pk="'+pk+'"]');
+        const enabled = checkbox ? checkbox.checked && !input.disabled : !input.disabled;
+        // amount includes tax: price * qty * (1 + taxRate/100)
+        const amount = enabled ? (price * qty * (1 + (taxRate/100))) : 0;
+        const span = document.querySelector('.item-amount[data-pk="'+pk+'"]');
+        if(span) span.innerText = amount.toFixed(2);
+        total += amount;
+      });
+      const totalEl = document.getElementById('computedRefund');
+      if(totalEl) totalEl.innerText = total.toFixed(2);
+    }
+
+    // update when qty inputs change
+    qtys.forEach(function(q){ q.addEventListener('input', updateAmounts); });
+
+    // initialize amounts
+    updateAmounts();
+
+    // On submit, only enabled inputs will be sent
+    document.getElementById('returnForm').addEventListener('submit', function(e){
+      e.preventDefault();
+      const form = e.target;
+      const data = new FormData();
+      // append non-disabled form fields
+      form.querySelectorAll('input,select,textarea').forEach(function(el){
+        if(el.name && !el.disabled){
+          if(el.type === 'checkbox'){
+            if(el.checked){ data.append(el.name || ('selected_'+(el.dataset.pk||'') ), el.value || 'on'); }
+          } else {
+            data.append(el.name, el.value);
+          }
+        }
+      });
+
+      const fetchUrl = "{% if company_code %}{% url 'sales_invoice_return' company_code invoice.pk %}{% else %}{% url 'sales_invoice_return' invoice.pk %}{% endif %}";
+      fetch(fetchUrl, {
+        method: 'POST',
+        body: data,
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+      }).then(r=>r.json()).then(j=>{
+        if(j.success){
+          const redirectUrl = "{% if company_code %}{% url 'sales_return_detail' company_code 0 %}{% else %}{% url 'sales_return_detail' 0 %}{% endif %}".replace('/0/', '/' + j.return_id + '/');
+          window.location.href = redirectUrl;
+        } else {
+          const errorBodyElement = document.getElementById('errorModalBody');
+          if (errorBodyElement) {
+            errorBodyElement.innerHTML = (j.message || 'Error').replace(/\n/g, '<br>');
+            const errorModal = new bootstrap.Modal(document.getElementById('errorModal'));
+            errorModal.show();
+          } else {
+            alert(j.message || 'Error');
+          }
+        }
+      }).catch(err=>{ 
+        const errorBodyElement = document.getElementById('errorModalBody');
+        if (errorBodyElement) {
+          errorBodyElement.innerHTML = ('Error: ' + err).replace(/\n/g, '<br>');
+          const errorModal = new bootstrap.Modal(document.getElementById('errorModal'));
+          errorModal.show();
+        } else {
+          alert('Error: '+err);
+        }
+      });
+    });
+  });
+  </script>
+</body>
+</html>
+
+<!-- ERROR MODAL FOR PERIOD LOCK AND OTHER ERRORS -->
+<div class="modal fade" id="errorModal" tabindex="-1" aria-labelledby="errorModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="border: 2px solid #d9534f; border-radius: 8px;">
+      <div class="modal-header" style="background-color: #f8d7da; border-bottom: 2px solid #d9534f;">
+        <h5 class="modal-title" id="errorModalLabel" style="color: #721c24;">
+          <i class="bi bi-exclamation-circle" style="color: #d9534f;"></i> Error
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="errorModalBody" style="color: #721c24; padding: 20px; line-height: 1.6;">
+        <!-- Error message will be inserted here -->
+      </div>
+      <div class="modal-footer" style="border-top: 1px solid #dee2e6;">
+        <button type="button" class="btn btn-primary" data-bs-dismiss="modal">OK</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

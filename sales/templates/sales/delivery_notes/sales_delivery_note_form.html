@@ -1,0 +1,1648 @@
+{% extends 'website/index.html' %}
+{% load static lyra_tags %}
+{% block exstyle %}
+<link href="{% static 'style/general.css' %}" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.9.1/font/bootstrap-icons.css" rel="stylesheet">
+
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+
+{% endblock exstyle %}
+{% block page_title %}{% if form.instance.pk %}Edit{% else %}Create{% endif %} Delivery Note{% endblock page_title %}
+{% block content %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        .header {
+            background: white;
+            padding: 20px 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .header h1 {
+            color: #2c3e50;
+            font-size: 28px;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-secondary {
+            background: #95a5a6;
+            color: white;
+        }
+        
+        .btn-primary {
+            background: #3498db;
+            color: white;
+        }
+        
+        .btn-success {
+            background: #27ae60;
+            color: white;
+        }
+        
+        .form-section {
+            margin-bottom: 30px;
+        }
+        
+        .form-section:last-child {
+            border-bottom: none;
+        }
+        
+        .form-section h2 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 20px;
+        }
+        
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #555;
+        }
+        
+        .form-group .required::after {
+            content: " *";
+            color: #e74c3c;
+        }
+        
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: inherit;
+            transition: border-color 0.3s ease;
+        }
+        
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+        
+        .form-group textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+        
+        .items-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        
+        .items-table thead {
+            background: #34495e;
+            color: white;
+        }
+        
+        .items-table th,
+        .items-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ecf0f1;
+        }
+        
+        .items-table th {
+            font-weight: 600;
+            font-size: 13px;
+        }
+        
+        .items-table input[type="number"] {
+            width: 100px;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        
+        .items-table input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+        
+        .alert {
+            padding: 15px 20px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+        
+        .alert-info {
+            background: #d1ecf1;
+            border-left: 4px solid #17a2b8;
+            color: #0c5460;
+        }
+        
+        .alert-warning {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            color: #856404;
+        }
+        
+        .alert-danger {
+            background: #f8d7da;
+            border-left: 4px solid #dc3545;
+            color: #721c24;
+        }
+        
+        .errorlist {
+            list-style: none;
+            color: #e74c3c;
+            font-size: 13px;
+            margin-top: 5px;
+        }
+        
+        .form-actions {
+            display: flex;
+            gap: 15px;
+            justify-content: flex-end;
+            margin-top: 30px;
+            padding-top: 30px;
+            border-top: 2px solid #ecf0f1;
+        }
+        
+        .help-text {
+            font-size: 12px;
+            color: #7f8c8d;
+            margin-top: 5px;
+        }
+        
+        .qty-badge {
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-weight: 600;
+        }
+        
+        .qty-ordered {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+        
+        .qty-delivered {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .qty-remaining {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .invoice-info {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 15px;
+        }
+        
+        .invoice-info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+        }
+
+
+        /* Batch modal helpers */
+        .batch-summary {
+            margin-top:6px;
+            display:flex;
+            flex-wrap:wrap;
+            gap:4px;
+            min-height:24px;
+        }
+        .batch-summary-empty {
+            color:var(--c-muted);
+            font-size:12px;
+            line-height:1.4;
+        }
+        .serial-storage {
+            display:none;
+        }
+        .batch-tag { display:inline-flex; align-items:center; gap:6px; background:#e0f2fe; color:#0369a1; border-radius:20px; padding:3px 10px; font-size:12px; font-weight:600; margin:3px 2px; }
+        .batch-tag .remove-tag { cursor:pointer; font-weight:700; color:#0369a1; border:none; background:none; font-size:13px; line-height:1; }
+        .serial-list { display:flex; flex-wrap:wrap; gap:4px; margin-top:6px; }
+        .serial-tag { display:inline-flex; align-items:center; gap:5px; background:#fef9c3; color:#854d0e; border-radius:20px; padding:3px 10px; font-size:11px; font-weight:600; }
+        .serial-tag .rm { cursor:pointer; font-weight:900; border:none; background:none; color:#854d0e; }
+        .add-serial-row { display:flex; gap:6px; align-items:center; margin-top:8px; }
+        .add-serial-row input { flex:1; padding:6px 10px; border:1px solid var(--c-border); border-radius:5px; font-size:12px; }
+        .add-serial-row button { padding:6px 12px; background:var(--c-primary); color:#fff; border:none; border-radius:5px; font-size:12px; cursor:pointer; }
+        .expiry-warning { color:var(--c-red); font-size:11px; margin-top:3px; display:none; }
+        .toggle-batch-btn { font-size:11px; padding:4px 10px; background:none; border:1px solid var(--c-accent); color:var(--c-accent); border-radius:20px; cursor:pointer; white-space:nowrap; transition:all .2s; }
+        .toggle-batch-btn:hover { background:var(--c-accent); color:#fff; }
+        .batch-modal .modal-body {
+            background:linear-gradient(180deg, #fff 0%, #f8fbff 100%);
+        }
+        .batch-modal-meta {
+            display:grid;
+            grid-template-columns:repeat(3, minmax(0, 1fr));
+            gap:10px;
+            margin-bottom:16px;
+        }
+        .batch-modal-meta > div {
+            background:#fff;
+            border:1px solid var(--c-border);
+            border-radius:10px;
+            padding:10px 12px;
+        }
+        .batch-modal-meta .label {
+            display:block;
+            font-size:11px;
+            font-weight:700;
+            color:var(--c-muted);
+            text-transform:uppercase;
+            letter-spacing:.5px;
+            margin-bottom:4px;
+        }
+        .batch-modal-meta .value {
+            font-size:13px;
+            font-weight:600;
+            color:var(--c-text);
+            word-break:break-word;
+        }
+        .batch-modal-grid {
+            grid-template-columns:repeat(auto-fit, minmax(240px, 1fr));
+        }
+        .batch-modal-totals {
+            display:flex;
+            flex-wrap:wrap;
+            gap:10px;
+            margin-bottom:14px;
+        }
+        .batch-modal-total {
+            flex:1;
+            min-width:160px;
+            background:#fff;
+            border:1px solid var(--c-border);
+            border-radius:10px;
+            padding:10px 12px;
+        }
+        .batch-modal-total .label {
+            display:block;
+            font-size:11px;
+            font-weight:700;
+            color:var(--c-muted);
+            text-transform:uppercase;
+            letter-spacing:.5px;
+            margin-bottom:4px;
+        }
+        .batch-modal-total .value {
+            font-size:13px;
+            font-weight:700;
+            color:var(--c-text);
+        }
+        .batch-modal-total.error .value {
+            color:var(--c-red);
+        }
+        .batch-modal-subtitle {
+            font-size:12px;
+            color:var(--c-muted);
+        }
+        .batch-modal-serial-list {
+            min-height:48px;
+            padding:10px;
+            border:1px dashed var(--c-border);
+            border-radius:8px;
+            background:#fff;
+        }
+        .batch-entry-list {
+            display:flex;
+            flex-direction:column;
+            gap:14px;
+        }
+        .batch-entry-card {
+            background:#fff;
+            border:1px solid var(--c-border);
+            border-radius:14px;
+            box-shadow:0 8px 24px rgba(15,23,42,.04);
+            padding:14px;
+        }
+        .batch-entry-head {
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+            gap:12px;
+            margin-bottom:12px;
+        }
+        .batch-entry-title {
+            display:flex;
+            flex-direction:column;
+            gap:2px;
+        }
+        .batch-entry-title strong {
+            font-size:14px;
+            color:var(--c-text);
+        }
+        .batch-entry-title span {
+            font-size:12px;
+            color:var(--c-muted);
+        }
+        .batch-entry-grid {
+            grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));
+            gap:12px;
+            margin-bottom:8px;
+        }
+        .batch-entry-actions {
+            display:flex;
+            align-items:center;
+            gap:8px;
+            justify-content:flex-end;
+        }
+        .batch-entry-remove {
+            border:1px solid rgba(220,38,38,.2);
+            background:#fff;
+            color:var(--c-red);
+            border-radius:20px;
+            padding:6px 10px;
+            font-size:12px;
+            font-weight:600;
+        }
+        .batch-entry-remove:hover {
+            background:rgba(220,38,38,.06);
+        }
+        .batch-summary-note {
+            font-size:12px;
+            color:var(--c-muted);
+        }
+
+        /* Select2 bootstrap-5 theme sizing for sales_invoice and status */
+        .select2-container--bootstrap-5 .select2-selection {
+            min-height: 48px;
+            padding: 6px 12px;
+            font-size: 14px;
+        }
+
+        .select2-container--bootstrap-5 .select2-selection--single .select2-selection__rendered {
+            line-height: 36px;
+        }
+
+        .select2-container--bootstrap-5 .select2-selection--single .select2-selection__arrow {
+            height: 46px;
+        }
+
+        /* bootstrap-5 theme clear button — red */
+        .select2-container--bootstrap-5 .select2-selection--single .select2-selection__clear,
+        .select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__clear,
+        .select2-container--bootstrap-5 .select2-selection .select2-selection__clear {
+            color: #dc2626 !important;
+            font-size: 1.2rem !important;
+            font-weight: 700 !important;
+            position: absolute !important;
+            right: 30px !important;
+            top: 50% !important;
+            transform: translateY(-50%) !important;
+            margin: 0 !important;
+            padding: 0 3px !important;
+            cursor: pointer !important;
+            background: transparent !important;
+            border: none !important;
+            line-height: 1 !important;
+            opacity: 1 !important;
+        }
+
+        .select2-container--bootstrap-5 .select2-selection--single .select2-selection__clear:hover,
+        .select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__clear:hover,
+        .select2-container--bootstrap-5 .select2-selection .select2-selection__clear:hover {
+            color: #b91c1c !important;
+            opacity: 1 !important;
+        }
+
+        /* Default select2 theme (used for warehouse) — match items form exactly */
+        .select2-container--default .select2-selection--single {
+            height: 38px !important;
+            padding: 0.375rem 0.75rem !important;
+            font-size: 0.875rem !important;
+            line-height: 1.5 !important;
+            border: 1px solid #e5e7eb !important;
+            border-radius: 0.25rem !important;
+            background-color: #fff !important;
+            width: 100% !important;
+            box-shadow: none !important;
+            display: flex !important;
+            align-items: center !important;
+        }
+
+        .select2-container--default .select2-selection--single .select2-selection__rendered {
+            line-height: 1.5 !important;
+            padding-left: 0.75rem !important;
+            padding-right: 30px !important;
+            color: #333 !important;
+        }
+
+        .select2-container--default .select2-selection--single .select2-selection__arrow {
+            height: 36px !important;
+            width: 25px !important;
+        }
+
+        /* Default theme clear button — red, matching items form */
+        .select2-container--default .select2-selection--single .select2-selection__clear {
+            position: absolute !important;
+            right: 30px !important;
+            font-size: 1.2rem !important;
+            color: #dc2626 !important;
+            margin: 0 !important;
+            padding: 0 3px !important;
+            cursor: pointer !important;
+            font-weight: 700 !important;
+            top: 50% !important;
+            transform: translateY(-50%) !important;
+            opacity: 1 !important;
+            background: transparent !important;
+            border: none !important;
+            line-height: 1 !important;
+        }
+
+        .select2-container--default .select2-selection--single .select2-selection__clear:hover {
+            color: #b91c1c !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-4">
+        {% if messages %}
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }}">
+            {{ message }}
+        </div>
+        {% endfor %}
+        {% endif %}
+        
+        {% if form.errors %}
+        <div class="alert alert-danger">
+            <strong>Please correct the following errors:</strong>
+            <ul style="margin-top: 10px;">
+                {% for field, errors in form.errors.items %}
+                    {% for error in errors %}
+                    <li>{{ field }}: {{ error }}</li>
+                    {% endfor %}
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+        
+        <div class="form-container">
+            {% if period_locked %}
+            <div class="alert alert-warning" style="background:#fff3cd; border-left:4px solid #ffc107; color:#856404; padding:15px; margin-bottom:20px; border-radius:6px">
+                <strong><i class="bi bi-lock-fill"></i> Period Locked:</strong> Sales deliveries are locked for the fiscal year <strong>{{ fiscal_year_name }}</strong>. 
+                Only users with exemption can create or edit sales deliveries in this period.
+            </div>
+            {% endif %}
+
+            <form method="post" id="deliveryNoteForm">
+                {% csrf_token %}
+                
+                <div class="form-section">
+                    <h2>Invoice & Warehouse Information</h2>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label class="required">Sales Invoice</label>
+                            {{ form.sales_invoice }}
+                            {% if form.sales_invoice.errors %}
+                            <ul class="errorlist">
+                                {% for error in form.sales_invoice.errors %}
+                                <li>{{ error }}</li>
+                                {% endfor %}
+                            </ul>
+                            {% endif %}
+                            <div class="help-text">Select the invoice for this delivery</div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="required">Warehouse</label>
+                            {{ form.warehouse }}
+                            {% if form.warehouse.errors %}
+                            <ul class="errorlist">
+                                {% for error in form.warehouse.errors %}
+                                <li>{{ error }}</li>
+                                {% endfor %}
+                            </ul>
+                            {% endif %}
+                            <div class="help-text">Warehouse from which items will be shipped</div>
+                        </div>
+                    </div>
+                    
+                    <div id="invoiceInfo" style="display: none;" class="invoice-info">
+                        <strong>Invoice Details:</strong>
+                        <div style="margin-top: 10px;">
+                            <div class="invoice-info-row">
+                                <span><strong>Customer:</strong></span>
+                                <span id="customerName"></span>
+                            </div>
+                            <div class="invoice-info-row">
+                                <span><strong>Invoice Number:</strong></span>
+                                <span id="invNumber"></span>
+                            </div>
+                            <div class="invoice-info-row">
+                                <span><strong>Sales Person:</strong></span>
+                                <span id="salesPerson"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-section">
+                    <h2>Delivery Details</h2>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label class="required">Delivery Date</label>
+                            {{ form.delivery_date }}
+                            {% if form.delivery_date.errors %}
+                            <ul class="errorlist">
+                                {% for error in form.delivery_date.errors %}
+                                <li>{{ error }}</li>
+                                {% endfor %}
+                            </ul>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="required">Status</label>
+                            {{ form.status }}
+                            {% if form.status.errors %}
+                            <ul class="errorlist">
+                                {% for error in form.status.errors %}
+                                <li>{{ error }}</li>
+                                {% endfor %}
+                            </ul>
+                            {% endif %}
+                            <div class="help-text">Set to "Delivered" to automatically reduce stock</div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Shipped By</label>
+                            {{ form.shipped_by }}
+                            {% if form.shipped_by.errors %}
+                            <ul class="errorlist">
+                                {% for error in form.shipped_by.errors %}
+                                <li>{{ error }}</li>
+                                {% endfor %}
+                            </ul>
+                            {% endif %}
+                            <div class="help-text">Name of person who shipped the order</div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Courier Name</label>
+                            {{ form.courier_name }}
+                            {% if form.courier_name.errors %}
+                            <ul class="errorlist">
+                                {% for error in form.courier_name.errors %}
+                                <li>{{ error }}</li>
+                                {% endfor %}
+                            </ul>
+                            {% endif %}
+                            <div class="help-text">e.g., FedEx, UPS, DHL, Blue Dart</div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Tracking Number</label>
+                            {{ form.tracking_number }}
+                            {% if form.tracking_number.errors %}
+                            <ul class="errorlist">
+                                {% for error in form.tracking_number.errors %}
+                                <li>{{ error }}</li>
+                                {% endfor %}
+                            </ul>
+                            {% endif %}
+                            <div class="help-text">Shipment tracking number</div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Notes</label>
+                        {{ form.notes }}
+                        {% if form.notes.errors %}
+                        <ul class="errorlist">
+                            {% for error in form.notes.errors %}
+                            <li>{{ error }}</li>
+                            {% endfor %}
+                        </ul>
+                        {% endif %}
+                        <div class="help-text">Additional information about this delivery</div>
+                    </div>
+                </div>
+                
+                <div class="form-section">
+                    <h2>Items to Deliver</h2>
+                    <div class="alert alert-info">
+                        <strong>ℹ Info:</strong> Select items and enter quantities. Use <strong>Enter Batch / Expiry / Serials</strong> on each line to open a modal for lot details. Stock will be reduced when marked as delivered.
+                    </div>
+                    
+                    <div id="itemsContainer">
+                        <p style="text-align: center; color: #7f8c8d; padding: 40px;">
+                            Please select an invoice to load items
+                        </p>
+                    </div>
+                </div>
+                
+                {{ formset.management_form }}
+                
+                <div class="form-actions">
+                    <a href="{% url 'sales_delivery_note_list' %}" class="btn btn-secondary">Cancel</a>
+                    <button type="submit" class="btn btn-success">
+                        {% if form.instance.pk %}Update{% else %}Create{% endif %} Delivery Note
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal fade" id="periodLockErrorModal" tabindex="-1" aria-labelledby="periodLockErrorLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content" style="border: 2px solid #d9534f; border-radius: 8px;">
+                <div class="modal-header" style="background-color: #f8d7da; border-bottom: 2px solid #d9534f;">
+                    <h5 class="modal-title" id="periodLockErrorLabel" style="color: #721c24;">
+                        <i class="bi bi-exclamation-circle" style="color: #d9534f;"></i> Period Locked
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="periodLockErrorBody" style="color: #721c24; padding: 20px; line-height: 1.6;">
+                    <!-- Error message will be inserted here -->
+                </div>
+                <div class="modal-footer" style="border-top: 1px solid #dee2e6;">
+                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal">OK</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="warehouseCreateModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content custom-modal-content">
+                <form id="warehouseCreateForm" method="post" autocomplete="off">
+                    <div class="modal-header border-0 pb-1">
+                        <h5 class="modal-title fw-semibold">New Warehouse</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body"></div>
+                    <div class="modal-footer border-0 pt-1 d-flex">
+                        <button type="submit" class="btn btn-primary">Save</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+
+    //added by sree on 28-04-26 for batch entry modal
+    <div class="modal fade" id="batchEntryModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content custom-modal-content batch-modal">
+            <div class="modal-header border-0 pb-1">
+                <div>
+                <h5 class="modal-title fw-semibold mb-1" id="batchModalTitle">Enter Batch Details</h5>
+                <div class="batch-modal-subtitle" id="batchModalSubtitle">Select a delivery line to edit batch details.</div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="batch-modal-meta">
+                <div>
+                    <span class="label">Product</span>
+                    <div class="value" id="batchModalProduct">-</div>
+                </div>
+                <div>
+                    <span class="label">Deliver Qty</span>
+                    <div class="value" id="batchModalQty">-</div>
+                </div>
+                <div>
+                    <span class="label">Remaining</span>
+                    <div class="value" id="batchModalRemaining">-</div>
+                </div>
+                </div>
+
+                <div class="batch-modal-totals">
+                <div class="batch-modal-total">
+                    <span class="label">Allocated</span>
+                    <div class="value" id="batchModalAllocated">0</div>
+                </div>
+                <div class="batch-modal-total" id="batchModalRemainingBox">
+                    <span class="label">Remaining</span>
+                    <div class="value" id="batchModalRemainingQty">0</div>
+                </div>
+                <div class="batch-modal-total">
+                    <span class="label">Entry Count</span>
+                    <div class="value" id="batchModalEntryCount">1</div>
+                </div>
+                </div>
+
+                <div class="batch-entry-list" id="batchModalEntries"></div>
+                <div class="batch-summary-note" id="batchModalHint" style="margin-top:12px;">
+                Add one or more batch entries until the allocated quantity matches the item quantity.
+                </div>
+            </div>
+            <div class="modal-footer border-0 pt-1 d-flex justify-content-between flex-wrap gap-2">
+                <button type="button" class="btn btn-outline-secondary" onclick="addModalEntry()">+ Add Batch Entry</button>
+                <div class="d-flex gap-2">
+                <button type="button" class="btn btn-outline-danger" onclick="clearBatchModal()">Clear</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="saveBatchModal()">Save All</button>
+                </div>
+            </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+
+        let activeBatchRowIdx = null;
+        let batchModalInstance = null;
+        let batchModalEntrySeq = 0;
+
+        function getBatchModalEl() {
+        return document.getElementById('batchEntryModal');
+        }
+
+        function getBatchState(idx) {
+        const entries = getBatchEntries(idx);
+        return {
+            entries,
+            batchNumber: entries[0]?.batchNumber || '',
+            expiryDate: entries[0]?.expiryDate || '',
+            serials: entries.reduce(function(list, entry) {
+            return list.concat(entry.serials || []);
+            }, []),
+        };
+        }
+
+        function getBatchEntriesInput(idx) {
+        return document.getElementById(`batchEntries_${idx}`);
+        }
+
+        function parseBatchEntries(rawValue) {
+        if (!rawValue) return [];
+        try {
+            const parsed = JSON.parse(rawValue);
+            return Array.isArray(parsed) ? parsed : [];
+        } catch (err) {
+            return [];
+        }
+        }
+
+        function getBatchEntries(idx) {
+        const input = getBatchEntriesInput(idx);
+        const rawEntries = parseBatchEntries(input ? input.value : '');
+
+        return rawEntries.map(function(entry) {
+            const serials = Array.isArray(entry.serials)
+            ? entry.serials.map(value => String(value || '').trim()).filter(Boolean)
+            : [];
+
+            return {
+            qty: parseInt(entry.qty, 10) || 0,
+            batchNumber: String(entry.batchNumber ?? entry.batch_number ?? '').trim(),
+            expiryDate: String(entry.expiryDate ?? entry.expiry_date ?? '').trim(),
+            serials,
+            };
+        }).filter(function(entry) {
+            return entry.qty > 0 || entry.batchNumber || entry.expiryDate || entry.serials.length;
+        });
+        }
+
+        function setBatchEntries(idx, entries) {
+        const input = getBatchEntriesInput(idx);
+        if (!input) return;
+
+        input.value = entries && entries.length ? JSON.stringify(entries) : '';
+        updateBatchSummaryDisplay(idx);
+        }
+
+        function escapeHtml(value) {
+        return String(value ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+        }
+
+        function updateBatchSummaryDisplay(idx) {
+        const display = document.getElementById(`batchSummaryDisplay_${idx}`);
+        if (!display) return;
+
+        const entries = getBatchEntries(idx);
+        if (!entries.length) {
+            display.innerHTML = '<span class="batch-summary-empty">No batch details added</span>';
+            return;
+        }
+
+        const totalQty = entries.reduce(function(sum, entry) {
+            return sum + (entry.qty || 0);
+        }, 0);
+
+        const parts = entries.map(function(entry, index) {
+            const label = entry.batchNumber ? escapeHtml(entry.batchNumber) : `Entry #${index + 1}`;
+            const details = [`Qty ${entry.qty}`];
+            if (entry.expiryDate) details.push(`Exp ${escapeHtml(entry.expiryDate)}`);
+            if (entry.serials.length) details.push(`${entry.serials.length} serial${entry.serials.length === 1 ? '' : 's'}`);
+            return `<span class="batch-tag"><i class="bi bi-box-seam"></i> ${label} · ${details.join(' · ')}</span>`;
+        });
+
+        parts.push(`<span class="batch-tag"><i class="bi bi-layers"></i> Total ${totalQty}</span>`);
+        display.innerHTML = parts.join('');
+        }
+
+        function createRowSerialTag(idx, serial) {
+        const tag = document.createElement('span');
+        tag.className = 'serial-tag';
+        tag.dataset.sn = serial;
+
+        const icon = document.createElement('i');
+        icon.className = 'bi bi-upc-scan';
+        tag.appendChild(icon);
+        tag.appendChild(document.createTextNode(' ' + serial + ' '));
+
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'rm';
+        btn.innerHTML = '&times;';
+        btn.onclick = function() {
+            btn.closest('.serial-tag')?.remove();
+            updateBatchSummaryDisplay(idx);
+        };
+        tag.appendChild(btn);
+
+        const hidden = document.createElement('input');
+        hidden.type = 'hidden';
+        hidden.name = `items[${idx}][serials][]`;
+        hidden.value = serial;
+        tag.appendChild(hidden);
+
+        return tag;
+        }
+
+        function getBatchModalEntriesContainer() {
+        return document.getElementById('batchModalEntries');
+        }
+
+        function getModalTargetQty() {
+        return parseInt(getBatchModalEl()?.dataset.targetQty || '0', 10) || 0;
+        }
+
+        function getModalEntryData(card) {
+        const entryId = card.dataset.entryId;
+        const qty = parseInt(card.querySelector(`#${entryId}_qty`)?.value, 10) || 0;
+        const batchNumber = card.querySelector(`#${entryId}_batch`)?.value.trim() || '';
+        const expiryDate = card.querySelector(`#${entryId}_expiry`)?.value || '';
+        const serials = Array.from(card.querySelectorAll('.serial-tag')).map(function(tag) {
+            return tag.dataset.sn || '';
+        }).filter(Boolean);
+        return { entryId, qty, batchNumber, expiryDate, serials };
+        }
+
+        function updateModalEntryLabels() {
+        const cards = Array.from(getBatchModalEntriesContainer().querySelectorAll('.batch-entry-card'));
+        cards.forEach(function(card, index) {
+            const label = card.querySelector('.batch-entry-index');
+            if (label) label.textContent = ` #${index + 1}`;
+            const subtitle = card.querySelector('.batch-entry-subtitle');
+            if (subtitle) subtitle.textContent = index === 0
+            ? 'Allocate the required quantity for this item.'
+            : 'Add another batch split for the same item.';
+        });
+        const counter = document.getElementById('batchModalEntryCount');
+        if (counter) counter.textContent = String(cards.length);
+        }
+
+        function createModalSerialTag(entryId, serial) {
+        const tag = document.createElement('span');
+        tag.className = 'serial-tag';
+        tag.dataset.sn = serial;
+
+        const icon = document.createElement('i');
+        icon.className = 'bi bi-upc-scan';
+        tag.appendChild(icon);
+        tag.appendChild(document.createTextNode(' ' + serial + ' '));
+
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'rm';
+        btn.innerHTML = '&times;';
+        btn.onclick = function() {
+            removeModalSerial(btn, entryId);
+        };
+        tag.appendChild(btn);
+
+        return tag;
+        }
+
+        function createModalEntryCard(data) {
+        const entryId = `batchEntry_${Date.now()}_${batchModalEntrySeq++}`;
+        const card = document.createElement('div');
+        card.className = 'batch-entry-card';
+        card.dataset.entryId = entryId;
+        card.innerHTML = `
+            <div class="batch-entry-head">
+            <div class="batch-entry-title">
+                <strong>Batch Entry<span class="batch-entry-index"></span></strong>
+                <span class="batch-entry-subtitle">Allocate the required quantity for this item.</span>
+            </div>
+            <div class="batch-entry-actions">
+                <button type="button" class="batch-entry-remove" onclick="removeModalEntry('${entryId}')">Remove</button>
+            </div>
+            </div>
+            <div class="batch-entry-grid form-grid">
+            <div class="form-group">
+                <label>Quantity</label>
+                <input type="number" min="1" class="batch-entry-qty" id="${entryId}_qty" oninput="syncModalEntryQtyToSerials('${entryId}')">
+            </div>
+            <div class="form-group">
+                <label>Batch Number</label>
+                <input type="text" class="batch-entry-batch" id="${entryId}_batch">
+            </div>
+            <div class="form-group">
+                <label>Expiry Date</label>
+                <input type="date" class="batch-entry-expiry" id="${entryId}_expiry" oninput="onModalEntryExpiryChange('${entryId}')">
+                <div class="expiry-warning" id="${entryId}_warn">Batch is expired!</div>
+            </div>
+            </div>
+            <div class="form-group" style="margin-bottom:0;">
+            <label>Serial Numbers <span class="help-text" style="display:inline">one per unit</span></label>
+            <div class="add-serial-row">
+                <input type="text" class="batch-entry-serial-input" id="${entryId}_serialInput" placeholder="Type serial no. and press Add or Enter" onkeydown="if(event.key==='Enter'){event.preventDefault();addModalSerial('${entryId}');}">
+                <button type="button" onclick="addModalSerial('${entryId}')">Add</button>
+            </div>
+            <div class="serial-list batch-modal-serial-list batch-entry-serial-list" id="${entryId}_serialList"></div>
+            </div>
+        `;
+
+        card.querySelector(`#${entryId}_qty`).value = data && data.qty ? data.qty : '';
+        card.querySelector(`#${entryId}_batch`).value = data && data.batchNumber ? data.batchNumber : '';
+        card.querySelector(`#${entryId}_expiry`).value = data && data.expiryDate ? data.expiryDate : '';
+
+        const list = card.querySelector(`#${entryId}_serialList`);
+        (data && data.serials ? data.serials : []).forEach(function(serial) {
+            list.appendChild(createModalSerialTag(entryId, serial));
+        });
+
+        onModalEntryExpiryChange(entryId);
+        return card;
+        }
+
+        function addModalEntry(data) {
+        const container = getBatchModalEntriesContainer();
+        const currentAllocated = Array.from(container.querySelectorAll('.batch-entry-card')).reduce(function(sum, card) {
+            return sum + (parseInt(card.querySelector('.batch-entry-qty')?.value, 10) || 0);
+        }, 0);
+        const targetQty = getModalTargetQty();
+        const payload = Object.assign({}, data || {});
+        if (!payload.qty) {
+            const remaining = targetQty - currentAllocated;
+            payload.qty = remaining > 0 ? remaining : 1;
+        }
+
+        const card = createModalEntryCard(payload);
+        container.appendChild(card);
+        updateModalEntryLabels();
+        updateModalTotals();
+        return card.dataset.entryId;
+        }
+
+        function removeModalEntry(entryId) {
+        const container = getBatchModalEntriesContainer();
+        const card = container.querySelector(`.batch-entry-card[data-entry-id="${entryId}"]`);
+        if (!card) return;
+
+        const cards = container.querySelectorAll('.batch-entry-card');
+        if (cards.length <= 1) {
+            const qtyInput = card.querySelector(`#${entryId}_qty`);
+            const batchInput = card.querySelector(`#${entryId}_batch`);
+            const expiryInput = card.querySelector(`#${entryId}_expiry`);
+            const serialList = card.querySelector(`#${entryId}_serialList`);
+            if (qtyInput) qtyInput.value = '';
+            if (batchInput) batchInput.value = '';
+            if (expiryInput) expiryInput.value = '';
+            if (serialList) serialList.innerHTML = '';
+            onModalEntryExpiryChange(entryId);
+            updateModalTotals();
+            return;
+        }
+
+        card.remove();
+        updateModalEntryLabels();
+        updateModalTotals();
+        }
+
+        function updateModalTotals() {
+        const cards = Array.from(getBatchModalEntriesContainer().querySelectorAll('.batch-entry-card'));
+        const targetQty = getModalTargetQty();
+        const allocated = cards.reduce(function(sum, card) {
+            return sum + (parseInt(card.querySelector('.batch-entry-qty')?.value, 10) || 0);
+        }, 0);
+        const remaining = targetQty - allocated;
+
+        const allocatedEl = document.getElementById('batchModalAllocated');
+        const remainingEl = document.getElementById('batchModalRemainingQty');
+        const topRemainingEl = document.getElementById('batchModalRemaining');
+        const remainingBox = document.getElementById('batchModalRemainingBox');
+        const hint = document.getElementById('batchModalHint');
+
+        if (allocatedEl) allocatedEl.textContent = String(allocated);
+        if (remainingEl) remainingEl.textContent = String(remaining);
+        if (topRemainingEl) topRemainingEl.textContent = String(remaining);
+        if (remainingBox) remainingBox.classList.toggle('error', remaining < 0);
+
+        if (hint) {
+            if (!cards.length) {
+            hint.textContent = 'Add one or more batch entries until the allocated quantity matches the item quantity.';
+            } else if (remaining === 0) {
+            hint.textContent = 'Quantity is fully allocated. You can save all entries now.';
+            } else if (remaining > 0) {
+            hint.textContent = `${remaining} unit(s) still need to be allocated before saving.`;
+            } else {
+            hint.textContent = `${Math.abs(remaining)} unit(s) too many. Reduce a batch quantity before saving.`;
+            }
+        }
+        }
+
+        function syncModalEntryQtyToSerials(entryId) {
+        const card = document.querySelector(`.batch-entry-card[data-entry-id="${entryId}"]`);
+        if (!card) return;
+
+        const qty = parseInt(card.querySelector(`#${entryId}_qty`)?.value, 10) || 0;
+        const list = card.querySelector(`#${entryId}_serialList`);
+        const tags = list ? list.querySelectorAll('.serial-tag') : [];
+        if (tags.length > qty) {
+            for (let i = qty; i < tags.length; i++) tags[i].remove();
+        }
+        updateModalTotals();
+        }
+
+        function onModalEntryExpiryChange(entryId) {
+        const card = document.querySelector(`.batch-entry-card[data-entry-id="${entryId}"]`);
+        if (!card) return;
+
+        const input = card.querySelector(`#${entryId}_expiry`);
+        const warn = card.querySelector(`#${entryId}_warn`);
+        if (!input || !warn) return;
+
+        if (input.value && new Date(input.value) < new Date()) {
+            warn.style.display = 'block';
+        } else {
+            warn.style.display = 'none';
+        }
+        }
+
+        function addModalSerial(entryId) {
+        const card = document.querySelector(`.batch-entry-card[data-entry-id="${entryId}"]`);
+        if (!card) return;
+
+        const input = card.querySelector(`#${entryId}_serialInput`);
+        const value = input.value.trim();
+        if (!value) return;
+
+        const qty = parseInt(card.querySelector(`#${entryId}_qty`)?.value, 10) || 0;
+        const list = card.querySelector(`#${entryId}_serialList`);
+        const existing = Array.from(list.querySelectorAll('.serial-tag')).map(function(tag) {
+            return tag.dataset.sn || '';
+        });
+
+        if (existing.includes(value)) {
+            alert('Serial number already added.');
+            return;
+        }
+        const allSerials = Array.from(getBatchModalEntriesContainer().querySelectorAll('.serial-tag')).map(function(tag) {
+            return tag.dataset.sn || '';
+        });
+        if (allSerials.includes(value)) {
+            alert('Serial number already added in another batch entry.');
+            return;
+        }
+        if (existing.length >= qty) {
+            alert(`You can only add ${qty} serial number(s) for this batch entry.`);
+            return;
+        }
+
+        list.appendChild(createModalSerialTag(entryId, value));
+        input.value = '';
+        input.focus();
+        updateModalTotals();
+        }
+
+        function removeModalSerial(btn, entryId) {
+        const card = document.querySelector(`.batch-entry-card[data-entry-id="${entryId}"]`);
+        if (!card) return;
+
+        btn.closest('.serial-tag')?.remove();
+        const qty = parseInt(card.querySelector(`#${entryId}_qty`)?.value, 10) || 0;
+        const list = card.querySelector(`#${entryId}_serialList`);
+        const tags = list ? list.querySelectorAll('.serial-tag') : [];
+        if (tags.length > qty) {
+            for (let i = qty; i < tags.length; i++) tags[i].remove();
+        }
+        updateModalTotals();
+        }
+
+        function applyBatchEntriesToRow(idx, entries) {
+        const checkbox = document.getElementById(`item_${idx}`);
+        const qtyInput = document.getElementById(`qty_${idx}`);
+        const batchEntriesInput = getBatchEntriesInput(idx);
+
+        if (checkbox) {
+            checkbox.checked = true;
+            checkbox.disabled = false;
+        }
+        if (qtyInput) {
+            qtyInput.disabled = false;
+            const totalQty = Array.isArray(entries)
+            ? entries.reduce(function(sum, entry) { return sum + (parseInt(entry.qty, 10) || 0); }, 0)
+            : 0;
+            qtyInput.value = totalQty || qtyInput.value || '';
+        }
+        if (batchEntriesInput) {
+            batchEntriesInput.value = entries && entries.length ? JSON.stringify(entries) : '';
+        }
+        updateBatchSummaryDisplay(idx);
+        }
+
+        function openBatchModal(idx) {
+        const row = document.getElementById(`row_${idx}`);
+        if (!row) return;
+
+        const checkbox = row.querySelector('input[type="checkbox"]');
+        if (checkbox && !checkbox.checked) {
+            checkbox.checked = true;
+            toggleRow(checkbox, idx);
+        }
+
+        activeBatchRowIdx = idx;
+        const qtyInput = document.getElementById(`qty_${idx}`);
+        const targetQty = parseInt(qtyInput?.value, 10) || parseInt(qtyInput?.max, 10) || parseInt(row.dataset.remaining || '0', 10) || 0;
+        const state = getBatchState(idx);
+        const productName = row.querySelector('td strong')?.textContent?.trim() || 'Item';
+
+        getBatchModalEl().dataset.targetQty = String(targetQty);
+        document.getElementById('batchModalTitle').textContent = 'Enter Batch Details';
+        document.getElementById('batchModalSubtitle').textContent = productName;
+        document.getElementById('batchModalProduct').textContent = productName;
+        document.getElementById('batchModalQty').textContent = String(targetQty);
+        document.getElementById('batchModalRemaining').textContent = String(targetQty);
+
+        const entriesContainer = getBatchModalEntriesContainer();
+        entriesContainer.innerHTML = '';
+        batchModalEntrySeq = 0;
+        const entries = state.entries && state.entries.length ? state.entries : [{
+            qty: targetQty || 1,
+            batchNumber: '',
+            expiryDate: '',
+            serials: [],
+        }];
+
+        entries.forEach(function(entry) {
+            addModalEntry(entry);
+        });
+        updateModalEntryLabels();
+        updateModalTotals();
+
+        batchModalInstance = bootstrap.Modal.getOrCreateInstance(getBatchModalEl());
+        batchModalInstance.show();
+        }
+
+        function clearBatchModal() {
+        const entriesContainer = getBatchModalEntriesContainer();
+        entriesContainer.innerHTML = '';
+        batchModalEntrySeq = 0;
+        addModalEntry({ qty: 1 });
+        updateModalEntryLabels();
+        updateModalTotals();
+        }
+
+        function collectModalEntries() {
+        return Array.from(getBatchModalEntriesContainer().querySelectorAll('.batch-entry-card')).map(function(card) {
+            return getModalEntryData(card);
+        });
+        }
+
+        function saveBatchModal() {
+        const idx = activeBatchRowIdx;
+        if (idx === null || idx === undefined) return;
+
+        const entries = collectModalEntries();
+        const targetQty = getModalTargetQty();
+
+        if (!entries.length) {
+            alert('Add at least one batch entry.');
+            return;
+        }
+
+        const totalQty = entries.reduce(function(sum, entry) {
+            return sum + (entry.qty || 0);
+        }, 0);
+
+        if (totalQty !== targetQty) {
+            alert(`Allocated quantity (${totalQty}) must match the item quantity (${targetQty}).`);
+            return;
+        }
+
+        for (const entry of entries) {
+            if (!entry.qty || entry.qty <= 0) {
+            alert('Each batch entry needs a valid quantity.');
+            return;
+            }
+            if (entry.serials.length && entry.serials.length !== entry.qty) {
+            alert('Serial count must match the quantity for every batch entry.');
+            return;
+            }
+        }
+
+        const seenSerials = new Set();
+        for (const entry of entries) {
+            for (const serial of entry.serials) {
+            if (seenSerials.has(serial)) {
+                alert(`Serial number ${serial} is used in more than one batch entry.`);
+                return;
+            }
+            seenSerials.add(serial);
+            }
+        }
+
+        applyBatchEntriesToRow(idx, entries);
+        updateBatchSummaryDisplay(idx);
+        refreshDeliveryLimits();
+        batchModalInstance = bootstrap.Modal.getOrCreateInstance(getBatchModalEl());
+        batchModalInstance.hide();
+        }
+
+        const batchModalEl = getBatchModalEl();
+        if (batchModalEl) {
+        batchModalEl.addEventListener('hidden.bs.modal', function() {
+            activeBatchRowIdx = null;
+        });
+        }
+
+        $(document).ready(function() {
+            let lastWarehouseSearchTerm = '';
+
+            // sales_invoice — bootstrap-5 theme (unchanged)
+            $('select[name="sales_invoice"]').select2({
+                theme: 'bootstrap-5',
+                placeholder: 'Select an invoice',
+                allowClear: true,
+                width: '100%'
+            });
+
+            // warehouse — default select2 theme, exactly like items form
+            $('select[name="warehouse"]').select2({
+                placeholder: 'Select a warehouse',
+                allowClear: true,
+                width: '100%',
+                templateResult: function(data) {
+                    if (data.isNew) {
+                        return $(
+                            '<span style="display:block; margin:-6px -12px; padding:6px 12px; background:#5897fb; color:#fff; font-weight:500;">+ New</span>'
+                        );
+                    }
+                    return data.text;
+                },
+                minimumInputLength: 1,
+                ajax: {
+                    url: "{% company_path '/Items/warehouse/' %}",
+                    dataType: 'json',
+                    delay: 250,
+                    data: function(params) {
+                        lastWarehouseSearchTerm = params.term || '';
+                        return { q: params.term };
+                    },
+                    processResults: function(data) {
+                        const results = data.map(function(item) {
+                            return { id: item.id, text: item.name };
+                        });
+                        results.push({
+                            id: 'new',
+                            text: '+ New',
+                            isNew: true
+                        });
+                        return { results: results };
+                    },
+                    cache: true
+                }
+            });
+
+            $('select[name="status"]').select2({
+                theme: 'bootstrap-5',
+                placeholder: 'Select status',
+                allowClear: false,
+                width: '100%',
+                minimumResultsForSearch: -1
+            });
+
+            const itemsContainer = document.getElementById('itemsContainer');
+            const invoiceInfo = document.getElementById('invoiceInfo');
+
+            // Global event handler for all Select2 dropdowns to auto-focus search
+            $(document).on('select2:open', function(e) {
+                const selectId = e.target.id;
+                const searchField = document.querySelector(
+                    `.select2-search__field[aria-controls="select2-${selectId}-results"]`
+                );
+                if (searchField) {
+                    searchField.focus();
+                }
+            });
+
+            $('select[name="warehouse"]').on('select2:selecting', function(e) {
+                const data = (e.params && e.params.args && e.params.args.data) ? e.params.args.data : e.params.data;
+                if (data && data.isNew) {
+                    e.preventDefault();
+                    $('select[name="warehouse"]').select2('close');
+                    $.get("{% company_path '/Items/warehouse_createform/' %}", function(formHtml) {
+                        $('#warehouseCreateModal .modal-body').html(formHtml);
+                        $('#warehouseCreateModal').modal('show');
+                        $('#warehouseCreateModal').find('input[name="warehouse_name"]').val(lastWarehouseSearchTerm);
+                    });
+                    $('select[name="warehouse"]').val(null).trigger('change');
+                }
+            });
+
+            $('select[name="sales_invoice"]').on('select2:select', function(e) {
+                const invoiceId = e.params.data.id;
+                if (invoiceId) {
+                    loadInvoiceItems(invoiceId);
+                    loadInvoiceInfo(invoiceId);
+                } else {
+                    itemsContainer.innerHTML = '<p style="text-align: center; color: #7f8c8d; padding: 40px;">Please select an invoice to load items</p>';
+                    invoiceInfo.style.display = 'none';
+                }
+            });
+
+            $('select[name="sales_invoice"]').on('select2:clear', function(e) {
+                $('#itemsContainer').html('<p style="text-align: center; color: #7f8c8d; padding: 40px;">Please select an invoice to load items</p>');
+                $('#invoiceInfo').hide();
+            });
+
+            const selectedInvoice = $('select[name="sales_invoice"]').val();
+            if (selectedInvoice) {
+                loadInvoiceItems(selectedInvoice);
+                loadInvoiceInfo(selectedInvoice);
+            }
+
+            $(document).on('submit', '#deliveryNoteForm', function(e) {
+                e.preventDefault();
+                const form = this;
+                const formData = new FormData(form);
+                
+                fetch(window.location.href, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(response => {
+                    if (response.ok) {
+                        window.location.href = "{% url 'sales_delivery_note_list' %}";
+                        return;
+                    }
+                    return response.json().then(errData => { throw errData; });
+                })
+                .catch(error => {
+                    console.error('AJAX Error:', error);
+                    if (error.period_lock_error) {
+                        const lockError = error.period_lock_error;
+                        const errorMsg = `❌ Period Locked: The fiscal year is locked for editing (sales_delivery).<br><br>` +
+                            `<i class='bi bi-lock-fill'></i> <strong>Locked by:</strong> ${lockError.locked_by}<br>` +
+                            `<i class='bi bi-calendar'></i> <strong>Lock Date:</strong> ${lockError.lock_date}<br>` +
+                            `<i class='bi bi-info-circle'></i> <strong>Locked areas:</strong> ${lockError.locked_areas}<br><br>` +
+                            ` Contact your administrator to unlock this period if needed.`;
+                        document.getElementById('periodLockErrorBody').innerHTML = errorMsg;
+                        const periodLockModal = new bootstrap.Modal(document.getElementById('periodLockErrorModal'));
+                        periodLockModal.show();
+                    } else {
+                        // show regular errors if any
+                        if (error.message) {
+                            alert(error.message);
+                        } else {
+                            // Fallback to normal form submission to show validation errors if it's not a period lock error
+                            form.submit();
+                        }
+                    }
+                });
+            });
+
+            $(document).on('submit', '#warehouseCreateForm', function(e) {
+                e.preventDefault();
+                var $form = $(this);
+
+                $.ajax({
+                    method: 'POST',
+                    url: "{% company_path '/Items/add_warehouse/' %}",
+                    data: $form.serialize(),
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                    success: function(response) {
+                        if (response.success) {
+                            var modalEl = document.getElementById('warehouseCreateModal');
+                            var modal = bootstrap.Modal.getInstance(modalEl);
+                            if (modal) modal.hide();
+
+                            var newOption = new Option(response.name, response.id, true, true);
+                            $('select[name="warehouse"]').append(newOption).trigger('change');
+                            return;
+                        }
+
+                        $('.field-error').remove();
+                        $.each(response.errors || {}, function(field, messages) {
+                            var $input = $('#warehouseCreateModal').find('#id_' + field);
+                            $.each(messages, function(_, msg) {
+                                $input.after(
+                                    '<div class="text-danger small field-error">' + msg + '</div>'
+                                );
+                            });
+                        });
+                    },
+                    error: function(xhr) {
+                        $('.field-error').remove();
+                        $('#warehouseCreateModal .alert').remove();
+
+                        var errors = xhr.responseJSON && xhr.responseJSON.errors
+                            ? xhr.responseJSON.errors
+                            : {};
+
+                        $.each(errors, function(field, messages) {
+                            var $input = $('#warehouseCreateModal').find('#id_' + field);
+                            $.each(messages, function(_, msg) {
+                                $input.after(
+                                    '<div class="text-danger small field-error">' + msg + '</div>'
+                                );
+                            });
+                        });
+
+                        if (!Object.keys(errors).length) {
+                            $('#warehouseCreateModal .modal-body').prepend(
+                                '<div class="alert alert-danger">Error creating warehouse.</div>'
+                            );
+                        }
+                    }
+                });
+            });
+        });
+        
+        function loadInvoiceItems(invoiceId) {
+            fetch(`/sales/api/invoices/${invoiceId}/items/`)
+                .then(response => response.json())
+                .then(data => {
+                    renderItemsTable(data);
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    document.getElementById('itemsContainer').innerHTML = 
+                        '<div class="alert alert-danger">Error loading invoice items. Please try again.</div>';
+                });
+        }
+        
+        function loadInvoiceInfo(invoiceId) {
+            fetch(`/sales/api/invoices/${invoiceId}/`)
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('customerName').textContent = data.customer_name;
+                    document.getElementById('invNumber').textContent = data.inv_number;
+                    document.getElementById('salesPerson').textContent = data.sales_person;
+                    document.getElementById('invoiceInfo').style.display = 'block';
+                })
+                .catch(error => console.error('Error:', error));
+        }
+        
+        function renderItemsTable(items) {
+            if (items.length === 0) {
+                document.getElementById('itemsContainer').innerHTML = 
+                    '<div class="alert alert-warning">No items found for this invoice.</div>';
+                return;
+            }
+            
+            let html = `
+                <table class="items-table">
+                    <thead>
+                        <tr>
+                            <th>Select</th>
+                            <th>Product</th>
+                            <th>HSN Code</th>
+                            <th>Ordered Qty</th>
+                            <th>Already Delivered</th>
+                            <th>Remaining</th>
+                            <th>Deliver Qty</th>
+                            <th>Batch / Expiry / Serials</th>
+
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            items.forEach((item, index) => {
+                const remaining = item.quantity - (item.delivered_quantity || 0);
+                
+                if (remaining > 0) {
+                    html += `
+                        <tr>
+                            <td>
+                                <input type="checkbox" 
+                                       name="items[${index}][selected]" 
+                                       id="item_${item.id}" 
+                                       data-item-id="${item.id}"
+                                       onchange="toggleQuantityInput(this, ${index})">
+                            </td>
+                            <td>
+                                <strong>${item.product_name}</strong>
+                                <input type="hidden" name="items[${index}][invoice_item]" value="${item.id}">
+                            </td>
+                            <td>${item.hsn_code || '—'}</td>
+                            <td>
+                                <span class="qty-badge qty-ordered">${item.quantity}</span>
+                            </td>
+                            <td>
+                                <span class="qty-badge qty-delivered">${item.delivered_quantity || 0}</span>
+                            </td>
+                            <td>
+                                <span class="qty-badge qty-remaining">${remaining}</span>
+                            </td>
+                            <td>
+                                <input type="number" 
+                                       name="items[${index}][quantity_delivered]" 
+                                       id="qty_${index}"
+                                       min="1" 
+                                       max="${remaining}" 
+                                       value="${remaining}"
+                                       disabled
+                                       required>
+                            </td>
+                        </tr>
+                    `;
+                }
+            });
+            
+            html += `
+                    </tbody>
+                </table>
+            `;
+            
+            document.getElementById('itemsContainer').innerHTML = html;
+        }
+        
+        function toggleQuantityInput(checkbox, index) {
+            const qtyInput = document.getElementById(`qty_${index}`);
+            qtyInput.disabled = !checkbox.checked;
+            if (!checkbox.checked) {
+                qtyInput.value = '';
+            }
+        }
+        
+        // Form validation before submit
+        document.getElementById('deliveryNoteForm').addEventListener('submit', function(e) {
+            const checkboxes = document.querySelectorAll('input[type="checkbox"][name^="items"]');
+            const anyChecked = Array.from(checkboxes).some(cb => cb.checked);
+            
+            if (!anyChecked) {
+                e.preventDefault();
+                alert('Please select at least one item to deliver');
+                return false;
+            }
+            
+            const warehouse = document.querySelector('select[name="warehouse"]').value;
+            if (!warehouse) {
+                e.preventDefault();
+                alert('Please select a warehouse');
+                return false;
+            }
+            
+            return true;
+        });
+    </script>
+    <!-- Added these two script tags -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+</body>
+</html>
+{% endblock %}

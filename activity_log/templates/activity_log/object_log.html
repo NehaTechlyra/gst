@@ -1,0 +1,352 @@
+<!-- ============================================ -->
+<!-- activity_log/templates/activity_log/item_logs.html -->
+<!-- Timeline Design Version -->
+<!-- ============================================ -->
+{% extends "website/index.html" %}
+{% load static %}
+
+{% block page_title %}History{% endblock %}
+
+{% block exstyle %}
+<style>
+    .timeline-container {
+        max-width: 900px;
+        margin: 0 auto;
+    }
+    
+    .timeline-header {
+        background: white;
+        padding: 10px;
+        border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        margin-bottom: 30px;
+    }
+    
+    .timeline-table {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        overflow: hidden;
+    }
+    
+    .timeline-table table {
+        width: 100%;
+        margin: 0;
+        border-collapse: collapse;
+    }
+    
+    .timeline-table thead {
+        background-color: #f8f9fa;
+        border-bottom: 2px solid #e9ecef;
+    }
+    
+    .timeline-table thead th {
+        padding: 15px 20px;
+        text-align: left;
+        font-weight: 600;
+        font-size: 14px;
+        color: #6c757d;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .timeline-table tbody tr {
+        border-bottom: 1px solid #e9ecef;
+        transition: background-color 0.2s ease;
+    }
+    
+    .timeline-table tbody tr:hover {
+        background-color: #f8f9fa;
+    }
+    
+    .timeline-table tbody tr:last-child {
+        border-bottom: none;
+    }
+    
+    .timeline-table tbody td {
+        padding: 5px;
+        vertical-align: top;
+    }
+    
+    .timeline-date {
+        width: 180px;
+        color: #495057;
+        font-size: 14px;
+        font-weight: 500;
+        white-space: nowrap;
+    }
+    
+    .timeline-details {
+        color: #212529;
+        font-size: 14px;
+        line-height: 1.6;
+    }
+    
+    .timeline-user {
+        color: #6c757d;
+        font-style: italic;
+        font-size: 13px;
+    }
+    
+    .timeline-action {
+        display: inline-block;
+        margin-right: 4px;
+    }
+    
+    .change-highlight {
+        background-color: #fff3cd;
+        padding: 2px 6px;
+        border-radius: 3px;
+        font-weight: 500;
+    }
+    
+    .change-from {
+        color: #dc3545;
+        text-decoration: line-through;
+    }
+    
+    .change-to {
+        color: #28a745;
+        font-weight: 600;
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: #6c757d;
+    }
+    
+    .empty-state i {
+        font-size: 48px;
+        color: #dee2e6;
+        margin-bottom: 15px;
+    }
+    
+    .pagination {
+        margin-top: 30px;
+        justify-content: center;
+    }
+    
+    .badge-action {
+        font-size: 11px;
+        padding: 4px 8px;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+    
+    .back-button {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        color: #6c757d;
+        text-decoration: none;
+        font-weight: 500;
+        transition: color 0.2s ease;
+    }
+    
+    .back-button:hover {
+        color: #495057;
+    }
+    
+    .back-button i {
+        font-size: 16px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="container">
+        <!-- Header -->
+        <div class="timeline-header">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h6 class="mb-2">
+                        <i class="bi bi-clock-history me-2"></i>{{ model_name }}
+                    </h6>
+                    {% comment %} <p class="text-muted mb-0">
+                        {{ model_name }}: <strong>{{ object_name }}</strong>
+                    </p> {% endcomment %}
+                </div>
+                <a href="javascript:history.back()" class="back-button">
+                    <i class="bi bi-arrow-left"></i>
+                    <span>Back</span>
+                </a>
+            </div>
+        </div>
+
+        <!-- Timeline Table -->
+        {% if page_obj %}
+        <div class="timeline-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>DATE</th>
+                        <th>DETAILS</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in page_obj %}
+                    <tr>
+                        <td class="timeline-date">
+                            {{ log.timestamp|date:"d/m/Y H:i A" }}
+                        </td>
+                        <td class="timeline-details">
+                            {% if log.action == 'CREATE' %}
+                                <span class="timeline-action">created by</span>
+                                <span class="timeline-user">- {{ log.user.username|default:"System" }}</span>
+                            
+                            {% elif log.action == 'UPDATE' %}
+                                {% if log.changes %}
+                                    <span class="timeline-action">updated.</span>
+                                    {% for field, change in log.changes.items %}
+                                        {% if forloop.first %}
+                                            {{ field|cut:"_"|title }} changed from 
+                                            <span class="change-from">{{ change.old|default:"empty" }}</span> to 
+                                            <span class="change-to">{{ change.new }}</span>
+                                        {% endif %}
+                                    {% endfor %}
+                                    <span class="timeline-user">- {{ log.user.username|default:"System" }}</span>
+                                    
+                                    {% if log.changes|length > 1 %}
+                                    <div class="mt-2" style="font-size: 13px; color: #6c757d;">
+                                        <details>
+                                            <summary style="cursor: pointer; color: #007bff;">
+                                                View {{ log.changes|length|add:"-1" }} more change{{ log.changes|length|add:"-1"|pluralize }}
+                                            </summary>
+                                            <div class="mt-2 ps-3">
+                                                {% for field, change in log.changes.items %}
+                                                    {% if not forloop.first %}
+                                                        <div class="mb-1">
+                                                            <strong>{{ field|cut:"_"|title }}:</strong>
+                                                            <span class="change-from">{{ change.old|default:"empty" }}</span> → 
+                                                            <span class="change-to">{{ change.new }}</span>
+                                                        </div>
+                                                    {% endif %}
+                                                {% endfor %}
+                                            </div>
+                                        </details>
+                                    </div>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="timeline-action">updated by</span>
+                                    <span class="timeline-user">- {{ log.user.username|default:"System" }}</span>
+                                {% endif %}
+                            
+                            {% elif log.action == 'DELETE' %}
+                                <span class="timeline-action">deleted by</span>
+                                <span class="timeline-user">- {{ log.user.username|default:"System" }}</span>
+                            
+                            {% elif log.action == 'SEND_EMAIL' %}
+                                <span class="timeline-action">email sent by</span>
+                                <span class="timeline-user">- {{ log.user.username|default:"System" }}</span>
+                            
+                            {% elif log.action == 'EXPORT' %}
+                                <span class="timeline-action">exported by</span>
+                                <span class="timeline-user">- {{ log.user.username|default:"System" }}</span>
+                            
+                            {% else %}
+                                <span class="timeline-action">{{ log.action|lower }} by</span>
+                                <span class="timeline-user">- {{ log.user.username|default:"System" }}</span>
+                            {% endif %}
+                            
+                            {% if log.description and log.action != 'UPDATE' %}
+                                <div class="mt-1" style="color: #6c757d; font-size: 13px;">
+                                    {{ log.description }}
+                                </div>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        {% if page_obj.has_other_pages %}
+        <nav aria-label="Page navigation">
+            <ul class="pagination">
+                {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page=1">First</a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a>
+                </li>
+                {% endif %}
+
+                <li class="page-item active">
+                    <span class="page-link">
+                        Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+                    </span>
+                </li>
+
+                {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Last</a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+        
+        {% else %}
+        <!-- Empty State -->
+        <div class="timeline-table">
+            <div class="empty-state">
+                <i class="bi bi-clock-history"></i>
+                <p class="mb-0">No activity logs found for this item.</p>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+
+<!-- ============================================ -->
+<!-- ALTERNATIVE: Compact Timeline Design -->
+<!-- ============================================ -->
+<!-- Replace the table section with this for a more compact design -->
+{% comment %}
+<div class="timeline-table">
+    <div class="list-group list-group-flush">
+        {% for log in logs %}
+        <div class="list-group-item list-group-item-action">
+            <div class="d-flex w-100 justify-content-between">
+                <div>
+                    <small class="text-muted">{{ log.timestamp|date:"d/m/Y H:i A" }}</small>
+                    <p class="mb-1 mt-1">
+                        {% if log.action == 'CREATE' %}
+                            created by <em>{{ log.user.username|default:"System" }}</em>
+                        {% elif log.action == 'UPDATE' %}
+                            {% if log.changes %}
+                                updated. 
+                                {% for field, change in log.changes.items %}
+                                    {{ field|title }} changed from 
+                                    <span class="change-from">{{ change.old }}</span> to 
+                                    <span class="change-to">{{ change.new }}</span>
+                                {% endfor %}
+                                <em>- {{ log.user.username|default:"System" }}</em>
+                            {% else %}
+                                updated by <em>{{ log.user.username|default:"System" }}</em>
+                            {% endif %}
+                        {% elif log.action == 'DELETE' %}
+                            deleted by <em>{{ log.user.username|default:"System" }}</em>
+                        {% else %}
+                            {{ log.action|lower }} by <em>{{ log.user.username|default:"System" }}</em>
+                        {% endif %}
+                    </p>
+                </div>
+                <span class="badge badge-action bg-{{ log.action == 'CREATE' and 'success' or log.action == 'UPDATE' and 'primary' or log.action == 'DELETE' and 'danger' or 'info' }}">
+                    {{ log.action }}
+                </span>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endcomment %}

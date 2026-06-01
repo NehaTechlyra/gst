@@ -1,0 +1,496 @@
+{% extends 'website/index.html' %}
+{% load static %}
+
+{% block page_title %}Reconciliation Details{% endblock %}
+
+{% block exstyle %}
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+{% endblock %}
+
+{% block content %}
+<style>
+  :root {
+    --bg:           #f5f6fa;
+    --surface:      #ffffff;
+    --border:       #e4e8f0;
+    --text-primary: #111827;
+    --text-muted:   #6b7280;
+    --accent:       #4f46e5;
+    --accent-light: #eef2ff;
+    --green:        #059669;
+    --green-light:  #ecfdf5;
+    --orange:       #d97706;
+    --orange-light: #fffbeb;
+    --red:          #dc2626;
+    --red-light:    #fef2f2;
+    --radius:       12px;
+    --shadow:       0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.05);
+  }
+
+  body { background: var(--bg); font-family: 'DM Sans', sans-serif; color: var(--text-primary); margin: 0; }
+
+  /* ── Topbar ── */
+  .hr-topbar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    display: flex; align-items: stretch; justify-content: space-between;
+    min-height: 52px;
+  }
+  .hr-breadcrumb {
+    display: flex; align-items: center;
+    font-size: 13px; gap: 4px; color: var(--text-muted);
+  }
+  .hr-breadcrumb a {
+    color: var(--accent); text-decoration: none;
+    padding: 16px 8px; display: block;
+  }
+  .hr-breadcrumb a:hover { text-decoration: underline; }
+  .hr-breadcrumb .sep { color: #d1d5db; }
+  .hr-breadcrumb .current {
+    color: var(--text-primary); font-weight: 600;
+    padding: 16px 8px;
+    border-bottom: 2px solid var(--accent);
+  }
+  .hr-topbar-right { display: flex; align-items: center; gap: 10px; }
+
+  /* ── Content ── */
+  .hr-content { padding: 20px 24px; }
+
+  /* ── Summary bar ── */
+  .hr-summary-bar {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    display: flex; overflow: hidden;
+    margin-bottom: 16px;
+  }
+  .hr-summary-cell {
+    flex: 1; padding: 16px 20px;
+    border-right: 1px solid var(--border);
+    text-align: center;
+  }
+  .hr-summary-cell:last-child { border-right: none; }
+  .hr-summary-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 5px; }
+  .hr-summary-value { font-size: 20px; font-weight: 700; font-family: 'DM Mono', monospace; color: var(--text-primary); }
+  .hr-summary-value.blue   { color: var(--accent); }
+  .hr-summary-value.green  { color: var(--green); }
+  .hr-summary-value.red    { color: var(--red); }
+  .hr-summary-value.orange { color: var(--orange); }
+
+  /* ── Alert banners ── */
+  .hr-alert {
+    border-radius: var(--radius); padding: 16px 20px;
+    font-size: 14px; font-weight: 600;
+    margin-bottom: 16px;
+    display: flex; align-items: flex-start; gap: 10px;
+    border: 1px solid;
+  }
+  .hr-alert i { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+  .hr-alert p { font-size: 13px; margin: 5px 0 0; font-weight: 400; }
+  .hr-alert.warn  { background: var(--orange-light); border-color: #fde68a; color: var(--orange); }
+  .hr-alert.success { background: var(--green-light); border-color: #a7f3d0; color: var(--green); }
+  .hr-alert .btn-hr-sm { margin-top: 10px; }
+
+  /* ── Tabs ── */
+  .hr-tabs {
+    display: flex; gap: 0;
+    border-bottom: 2px solid var(--border);
+    margin-bottom: 16px;
+  }
+  .hr-tab {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 10px 16px;
+    font-size: 13px; font-weight: 600; cursor: pointer;
+    border: none; background: none;
+    color: var(--text-muted);
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    transition: color 0.15s;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .hr-tab:hover { color: var(--accent); }
+  .hr-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .hr-tab-count {
+    display: inline-flex; align-items: center; justify-content: center;
+    background: #f3f4f6; color: var(--text-muted);
+    border-radius: 20px; padding: 1px 8px;
+    font-size: 11px; min-width: 22px;
+  }
+  .hr-tab.active .hr-tab-count { background: var(--accent-light); color: var(--accent); }
+
+  /* ── Tab panes ── */
+  .hr-tab-pane { display: none; }
+  .hr-tab-pane.active { display: block; }
+
+  /* ── Section card ── */
+  .hr-section {
+    background: var(--surface);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    margin-bottom: 16px;
+  }
+
+  /* ── Table ── */
+  .items-table { width: 100%; border-collapse: collapse; }
+  .items-table thead tr { background: #f9fafb; border-bottom: 1px solid var(--border); }
+  .items-table thead th {
+    padding: 10px 16px;
+    font-size: 11px; font-weight: 600;
+    color: var(--text-muted); text-transform: uppercase;
+    letter-spacing: 0.04em; white-space: nowrap; text-align: left;
+  }
+  .items-table thead th.text-end { text-align: right; }
+  .items-table tbody td {
+    padding: 12px 16px;
+    font-size: 13px; color: var(--text-primary);
+    border-bottom: 1px solid #f3f4f6;
+    vertical-align: middle;
+  }
+  .items-table tbody tr:last-child td { border-bottom: none; }
+  .items-table tbody tr:hover { background: #fafbfc; }
+  .items-table tbody tr.row-matched { background: var(--green-light); }
+  .items-table tbody tr.row-selected { background: var(--accent-light); }
+  .text-end { text-align: right; }
+
+  /* ── Badges ── */
+  .badge-matched   { display: inline-flex; align-items: center; gap: 4px; background: var(--green-light); color: var(--green); border-radius: 20px; padding: 3px 10px; font-size: 11px; font-weight: 700; }
+  .badge-unmatched { display: inline-flex; align-items: center; gap: 4px; background: var(--red-light);   color: var(--red);   border-radius: 20px; padding: 3px 10px; font-size: 11px; font-weight: 700; }
+  .badge-type      { display: inline-block; background: #f3f4f6; color: var(--text-muted); border-radius: 4px; padding: 2px 8px; font-size: 11px; }
+
+  /* ── Amount cols ── */
+  .amt-pos { color: var(--green); font-family: 'DM Mono', monospace; }
+  .amt-neg { color: var(--red);   font-family: 'DM Mono', monospace; }
+  .amt-num { font-family: 'DM Mono', monospace; }
+
+  /* ── Unmatched entry row (clickable) ── */
+  .entry-row { cursor: pointer; transition: background 0.15s; }
+
+  /* ── Buttons ── */
+  .btn-hr {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 7px 14px; border-radius: 8px;
+    font-size: 13px; font-weight: 600; cursor: pointer;
+    border: none; text-decoration: none;
+    transition: background 0.15s; line-height: 1;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .btn-hr-sm { padding: 5px 10px; font-size: 12px; }
+  .btn-hr-primary { background: var(--accent); color: #fff; }
+  .btn-hr-primary:hover { background: #4338ca; color: #fff; text-decoration: none; }
+  .btn-hr-ghost { background: var(--surface); color: var(--text-muted); border: 1.5px solid var(--border); }
+  .btn-hr-ghost:hover { background: var(--bg); color: var(--text-primary); text-decoration: none; }
+  .btn-hr-danger { background: var(--red-light); color: var(--red); border: 1.5px solid #fecaca; }
+  .btn-hr-danger:hover { background: #fee2e2; }
+  .btn-hr-green { background: var(--green); color: #fff; }
+  .btn-hr-green:hover { background: #047857; color: #fff; }
+
+  /* ── Empty ── */
+  .hr-empty { text-align: center; padding: 40px 20px; color: var(--text-muted); font-size: 13px; }
+  .hr-empty i { font-size: 32px; color: #d1d5db; display: block; margin-bottom: 10px; }
+
+  /* ── Modal ── */
+  .hr-modal-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.35); z-index: 10000;
+    align-items: center; justify-content: center;
+  }
+  .hr-modal-overlay.show { display: flex; }
+  .hr-modal {
+    background: #fff; border-radius: var(--radius);
+    padding: 28px 32px; max-width: 400px; width: 100%;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+  }
+  .hr-modal h5 { font-size: 16px; font-weight: 700; margin: 0 0 16px; }
+  .hr-modal-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 13px; }
+  .hr-modal-row strong { color: var(--text-muted); font-weight: 600; }
+  .hr-modal-footer { display: flex; gap: 10px; margin-top: 20px; }
+</style>
+
+<div>
+  <!-- Topbar -->
+  <div class="hr-topbar">
+    <nav class="hr-breadcrumb">
+      <a href="{% url 'reconciliation_list' reconciliation.bank_account.id %}">{{ reconciliation.bank_account.account_number }}</a>
+      <span class="sep">&rsaquo;</span>
+      <span class="current">Details</span>
+    </nav>
+    <div class="hr-topbar-right">
+      <a href="{% url 'reconciliation_list' reconciliation.bank_account.id %}" class="btn-hr btn-hr-ghost btn-hr-sm">
+        <i class="bi bi-arrow-left"></i> Back
+      </a>
+    </div>
+  </div>
+
+  <div class="hr-content">
+
+    <!-- Summary Bar -->
+    <div class="hr-summary-bar">
+      <div class="hr-summary-cell">
+        <div class="hr-summary-label">Statement Balance</div>
+        <div class="hr-summary-value blue">{{ reconciliation.statement_balance|floatformat:2 }}</div>
+      </div>
+      <div class="hr-summary-cell">
+        <div class="hr-summary-label">System Balance</div>
+        <div class="hr-summary-value green">{{ reconciliation.system_balance|floatformat:2 }}</div>
+      </div>
+      <div class="hr-summary-cell">
+        <div class="hr-summary-label">Gap</div>
+        <div class="hr-summary-value {% if reconciliation.reconciliation_gap == 0 %}green{% else %}red{% endif %}">
+          {{ reconciliation.reconciliation_gap|floatformat:2 }}
+        </div>
+      </div>
+      <div class="hr-summary-cell">
+        <div class="hr-summary-label">Period</div>
+        <div style="font-size:13px;font-weight:600;margin-top:4px;">
+          {{ reconciliation.statement_start_date|date:"d/m/Y" }}<br>
+          <span style="font-size:11px;color:var(--text-muted);font-weight:400;">to {{ reconciliation.statement_end_date|date:"d/m/Y" }}</span>
+        </div>
+      </div>
+      <div class="hr-summary-cell">
+        <div class="hr-summary-label">Status</div>
+        <div style="margin-top:6px;">
+          <span class="{% if reconciliation.status == 'pendingreconciled' %}badge-matched{% else %}badge-unmatched{% endif %}">
+            {{ reconciliation.get_status_display }}
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Gap alert -->
+    {% if reconciliation.reconciliation_gap != 0 %}
+    <div class="hr-alert warn">
+      <i class="bi bi-exclamation-triangle-fill"></i>
+      <div>
+        Reconciliation Gap: <strong>{{ reconciliation.reconciliation_gap|floatformat:2 }}</strong>
+        <p>Please match all unmatched entries to complete the reconciliation.</p>
+      </div>
+    </div>
+    {% else %}
+    <div class="hr-alert success">
+      <i class="bi bi-check-circle-fill"></i>
+      <div>
+        All entries are reconciled!
+        <p>
+          <a href="{% url 'reconciliation_working_screen' reconciliation.id %}"
+             class="btn-hr btn-hr-green btn-hr-sm" style="margin-top:10px;display:inline-flex;">
+            <i class="bi bi-eye"></i> Open Reconciliation
+          </a>
+        </p>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Tabs -->
+    <div class="hr-tabs">
+      <button class="hr-tab active" onclick="switchTab('matched', this)">
+        <i class="bi bi-check-lg"></i> Matched
+        <span class="hr-tab-count">{{ matches|length }}</span>
+      </button>
+      <button class="hr-tab" onclick="switchTab('unmatched-bank', this)">
+        <i class="bi bi-clock"></i> Unmatched Bank
+        <span class="hr-tab-count">{{ unmatched_statements|length }}</span>
+      </button>
+      <button class="hr-tab" onclick="switchTab('unmatched-system', this)">
+        <i class="bi bi-clock"></i> Unmatched System
+        <span class="hr-tab-count">{{ unmatched_systems|length }}</span>
+      </button>
+    </div>
+
+    <!-- Matched -->
+    <div id="tab-matched" class="hr-tab-pane active">
+      <div class="hr-section">
+        <table class="items-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Bank Description</th>
+              <th>System Description</th>
+              <th class="text-end">Amount</th>
+              <th class="text-end">Variance</th>
+              <th>Type</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for match in matches %}
+            <tr class="row-matched">
+              <td style="white-space:nowrap;">{{ match.statement_entry.transaction_date|date:"d/m/Y" }}</td>
+              <td style="font-size:12px;">{{ match.statement_entry.description }}</td>
+              <td style="font-size:12px;">{{ match.system_entry.description }}</td>
+              <td class="text-end amt-num">{{ match.statement_entry.amount|floatformat:2 }}</td>
+              <td class="text-end {% if match.variance_amount != 0 %}amt-neg{% else %}amt-pos{% endif %}">
+                {{ match.variance_amount|floatformat:2 }}
+              </td>
+              <td><span class="badge-type">{{ match.get_match_type_display }}</span></td>
+              <td>
+                <button class="btn-hr btn-hr-danger btn-hr-sm unmatch-btn"
+                        data-match-id="{{ match.id }}" title="Unmatch">
+                  <i class="bi bi-x-lg"></i>
+                </button>
+              </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="7"><div class="hr-empty"><i class="bi bi-link-45deg"></i>No matched entries yet.</div></td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Unmatched Bank -->
+    <div id="tab-unmatched-bank" class="hr-tab-pane">
+      <div class="hr-section">
+        {% if unmatched_statements %}
+        <div style="padding:10px 16px;font-size:12px;color:var(--text-muted);border-bottom:1px solid var(--border);">
+          Click a bank entry and a system entry to match them.
+        </div>
+        {% endif %}
+        <table class="items-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Description</th>
+              <th>Reference</th>
+              <th class="text-end">Amount</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="bankEntriesList">
+            {% for entry in unmatched_statements %}
+            <tr class="entry-row bank-entry" data-entry-id="{{ entry.id }}" data-amount="{{ entry.amount }}">
+              <td style="white-space:nowrap;">{{ entry.transaction_date|date:"d/m/Y" }}</td>
+              <td>{{ entry.description }}</td>
+              <td style="color:var(--text-muted);">{{ entry.cheque_number|default:"—" }}</td>
+              <td class="text-end amt-num">{{ entry.amount|floatformat:2 }}</td>
+              <td><span class="badge-unmatched">Unmatched</span></td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5"><div class="hr-empty"><i class="bi bi-check-all"></i>All bank entries are matched!</div></td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Unmatched System -->
+    <div id="tab-unmatched-system" class="hr-tab-pane">
+      <div class="hr-section">
+        {% if unmatched_systems %}
+        <div style="padding:10px 16px;font-size:12px;color:var(--text-muted);border-bottom:1px solid var(--border);">
+          Click a system entry and a bank entry to match them.
+        </div>
+        {% endif %}
+        <table class="items-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Description</th>
+              <th>Journal</th>
+              <th class="text-end">Amount</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="systemEntriesList">
+            {% for entry in unmatched_systems %}
+            <tr class="entry-row system-entry" data-entry-id="{{ entry.id }}" data-amount="{{ entry.amount }}">
+              <td style="white-space:nowrap;">{{ entry.transaction_date|date:"d/m/Y" }}</td>
+              <td>{{ entry.description }}</td>
+              <td style="color:var(--text-muted);font-size:12px;">{{ entry.journal_line.journal.entry_number }}</td>
+              <td class="text-end amt-num">{{ entry.amount|floatformat:2 }}</td>
+              <td><span class="badge-unmatched">Unmatched</span></td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5"><div class="hr-empty"><i class="bi bi-check-all"></i>All system entries are matched!</div></td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Match confirmation modal -->
+<div id="matchModal" class="hr-modal-overlay">
+  <div class="hr-modal">
+    <h5><i class="bi bi-link-45deg" style="color:var(--accent);"></i> Confirm Match</h5>
+    <div id="matchModalBody"></div>
+    <div class="hr-modal-footer">
+      <button id="confirmMatchBtn" class="btn-hr btn-hr-primary">Confirm Match</button>
+      <button onclick="document.getElementById('matchModal').classList.remove('show')"
+              class="btn-hr btn-hr-ghost">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// Tabs
+function switchTab(id, btn) {
+  document.querySelectorAll('.hr-tab-pane').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.hr-tab').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + id).classList.add('active');
+  btn.classList.add('active');
+}
+
+// Match logic
+let selectedBank = null, selectedSystem = null;
+
+document.querySelectorAll('.bank-entry').forEach(el => {
+  el.addEventListener('click', function () {
+    document.querySelectorAll('.bank-entry').forEach(r => r.classList.remove('row-selected'));
+    this.classList.add('row-selected');
+    selectedBank = { id: this.dataset.entryId, amount: parseFloat(this.dataset.amount) };
+    if (selectedSystem) showMatchModal();
+  });
+});
+
+document.querySelectorAll('.system-entry').forEach(el => {
+  el.addEventListener('click', function () {
+    document.querySelectorAll('.system-entry').forEach(r => r.classList.remove('row-selected'));
+    this.classList.add('row-selected');
+    selectedSystem = { id: this.dataset.entryId, amount: parseFloat(this.dataset.amount) };
+    if (selectedBank) showMatchModal();
+  });
+});
+
+function showMatchModal() {
+  const variance = Math.abs(selectedBank.amount - selectedSystem.amount);
+  document.getElementById('matchModalBody').innerHTML = `
+    <div class="hr-modal-row"><strong>Bank Entry</strong><span>${selectedBank.amount.toFixed(2)}</span></div>
+    <div class="hr-modal-row"><strong>System Entry</strong><span>${selectedSystem.amount.toFixed(2)}</span></div>
+    <div class="hr-modal-row"><strong>Variance</strong><span style="color:${variance > 0 ? 'var(--red)' : 'var(--green)'}">${variance.toFixed(2)}</span></div>
+    <p style="font-size:12px;color:var(--text-muted);margin:12px 0 0;">Proceed with matching these entries?</p>
+  `;
+  document.getElementById('confirmMatchBtn').onclick = () => matchEntries(selectedBank.id, selectedSystem.id);
+  document.getElementById('matchModal').classList.add('show');
+}
+
+function matchEntries(bankId, systemId) {
+  fetch(`/bank/reconciliation/{{ reconciliation.id }}/match/`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || '' },
+    body: JSON.stringify({ statement_entry_id: bankId, system_entry_id: systemId })
+  }).then(r => r.json()).then(data => {
+    if (data.success) { document.getElementById('matchModal').classList.remove('show'); location.reload(); }
+    else alert('Error: ' + data.error);
+  });
+}
+
+document.querySelectorAll('.unmatch-btn').forEach(btn => {
+  btn.addEventListener('click', function (e) {
+    e.stopPropagation();
+    if (!confirm('Remove this match?')) return;
+    fetch(`/bank/reconciliation/{{ reconciliation.id }}/unmatch/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || '' },
+      body: JSON.stringify({ match_id: this.dataset.matchId })
+    }).then(r => r.json()).then(data => { if (data.success) location.reload(); else alert('Error: ' + data.error); });
+  });
+});
+</script>
+{% endblock %}

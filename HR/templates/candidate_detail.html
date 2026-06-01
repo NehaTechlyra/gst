@@ -1,0 +1,287 @@
+{% extends 'website/index.html' %}
+{% load static %}
+
+{% block exstyle %}
+<link href="{% static 'style/general.css' %}" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.9.1/font/bootstrap-icons.css" rel="stylesheet">
+<style>
+/* Candidate name */
+    .c-name {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #43425d;
+        margin-bottom: 4px;
+    }
+    .c-sub {
+        font-size: 0.9rem;
+        color: #999;
+        margin-bottom: 16px;
+    }
+
+
+    /* Buttons — exact copy from candidate form */
+    .btn-outline-secondary {
+        background-color: transparent;
+        color: #6c757d;
+        border: 1px solid #6c757d;
+        padding: 8px 18px;
+        border-radius: 6px;
+        font-size: 1rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+        text-decoration: none;
+        display: inline-block;
+    }
+    .btn-outline-secondary:hover { background-color: #6c757d; color: #fff; }
+
+    .btn-primary {
+        background-color: #0d6efd;
+        color: #fff !important;
+        border: none;
+        padding: 8px 18px;
+        border-radius: 6px;
+        font-size: 1rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background-color 0.2s;
+        text-decoration: none;
+        display: inline-block;
+    }
+    .btn-primary:hover { background-color: #0b5ed7; }
+
+    /* Details card */
+    .detail-card {
+        background: #f9fafb;
+        border: 1px solid #eee;
+        border-radius: 10px;
+        padding: 20px 24px;
+        margin-bottom: 28px;
+    }
+
+    /* 3-column grid inside card */
+    .detail-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 20px 24px;
+    }
+    .detail-grid .span-full { grid-column: 1 / -1; }
+
+    @media (max-width: 768px) { .detail-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 480px) { .detail-grid { grid-template-columns: 1fr; } .detail-grid .span-full { grid-column: auto; } }
+
+    .detail-field label {
+        display: block;
+        font-size: 0.78rem;
+        color: #aaa;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        margin-bottom: 3px;
+    }
+    .detail-field .val {
+        font-size: 0.95rem;
+        color: #43425d;
+        font-weight: 500;
+    }
+    .detail-field .val a { color: #0d6efd; text-decoration: none; }
+    .detail-field .val a:hover { text-decoration: underline; }
+
+    /* Section heading */
+    .section-title {
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: #43425d;
+        margin: 28px 0 10px;
+        padding-bottom: 7px;
+        border-bottom: 2px solid #eef0f8;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+    }
+
+    /* Status badge */
+    .status-badge {
+        display: inline-block;
+        padding: 3px 11px;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        background: #e8eaff;
+        color: #55588b;
+    }
+    .status-badge.joined        { background: #d1fae5; color: #065f46; }
+    .status-badge.selected      { background: #dbeafe; color: #1e40af; }
+    .status-badge.rejected      { background: #fee2e2; color: #991b1b; }
+    .status-badge.offer_sent    { background: #dbeafe; color: #1d4ed8; }
+    .status-badge.offer_accepted{ background: #d1fae5; color: #047857; }
+    .status-badge.offer_declined{ background: #fee2e2; color: #b91c1c; }
+    .status-badge.offer_cancelled{ background: #fee2e2; color: #991b1b; }
+    .status-badge.screening     { background: #fef3c7; color: #92400e; }
+
+    .empty-cell {
+        text-align: center;
+        color: #bbb;
+        font-style: italic;
+        padding: 18px !important;
+    }
+</style>
+{% endblock exstyle %}
+
+{% block page_title %}View Candidate{% endblock page_title %}
+
+{% block content %}
+<div class="container mt-4">
+
+    <!-- Action buttons -->
+    <div style="margin-bottom: 16px; border-bottom: 1px solid #eee; padding-bottom: 12px; display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+        <a href="{% url 'candidate_list' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Back to Candidates
+        </a>
+        <a href="{% url 'candidate_edit' candidate.pk %}" class="btn btn-primary">
+            <i class="bi bi-pencil"></i> Edit
+        </a>
+        {% if candidate.current_status == 'selected' or candidate.current_status == 'offer_sent' or candidate.current_status == 'offer_accepted' or candidate.current_status == 'offer_declined' %}
+        <a href="{% url 'offer_create' %}?candidate={{ candidate.pk }}" class="btn btn-outline-secondary">Create Offer</a>
+        {% endif %}
+        {% if candidate.current_status == 'joined' and not candidate.employee %}
+        <form method="post" action="{% url 'candidate_convert_to_employee' candidate.pk %}" style="margin:0;">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-outline-secondary">Convert to Employee</button>
+        </form>
+        {% endif %}
+    </div>
+
+    <!-- Name & job title -->
+    <div class="c-name">{{ candidate.full_name }}</div>
+    <div class="c-sub">{{ candidate.job_opening.title }}</div>
+
+    <!-- Details card -->
+    <div class="detail-card">
+        <div class="detail-grid">
+
+            <div class="detail-field">
+                <label>Status</label>
+                <div class="val"><span class="status-badge {{ candidate.current_status }}">{{ candidate.get_current_status_display }}</span></div>
+            </div>
+
+            <div class="detail-field">
+                <label>Email</label>
+                <div class="val">{{ candidate.email|default:"—" }}</div>
+            </div>
+
+            <div class="detail-field">
+                <label>Phone</label>
+                <div class="val">{{ candidate.phone|default:"—" }}</div>
+            </div>
+
+            <div class="detail-field">
+                <label>Source</label>
+                <div class="val">{{ candidate.get_source_display }}</div>
+            </div>
+
+            <div class="detail-field">
+                <label>Current Company</label>
+                <div class="val">{{ candidate.current_company|default:"—" }}</div>
+            </div>
+
+            <div class="detail-field">
+                <label>Total Experience</label>
+                <div class="val">{% if candidate.total_experience_years %}{{ candidate.total_experience_years }} yrs{% else %}—{% endif %}</div>
+            </div>
+
+            <div class="detail-field">
+                <label>Current CTC</label>
+                <div class="val">{{ candidate.current_ctc|default:"—" }}</div>
+            </div>
+
+            <div class="detail-field">
+                <label>Expected CTC</label>
+                <div class="val">{{ candidate.expected_ctc|default:"—" }}</div>
+            </div>
+
+            <div class="detail-field">
+                <label>Notice Period</label>
+                <div class="val">{% if candidate.notice_period_days %}{{ candidate.notice_period_days }} days{% else %}—{% endif %}</div>
+            </div>
+
+            <div class="detail-field">
+                <label>Resume</label>
+                <div class="val">{{ candidate.resume_name|default:"—" }}</div>
+            </div>
+
+            {% if candidate.employee %}
+            <div class="detail-field">
+                <label>Employee</label>
+                <div class="val"><a href="{% url 'employee_edit' candidate.employee.pk %}">{{ candidate.employee.emp_code }}</a></div>
+            </div>
+            {% endif %}
+
+            <div class="detail-field span-full">
+                <label>Key Skills</label>
+                <div class="val">{{ candidate.key_skills|default:"—"|linebreaksbr }}</div>
+            </div>
+
+            <div class="detail-field span-full">
+                <label>Remarks</label>
+                <div class="val">{{ candidate.remarks|default:"—"|linebreaksbr }}</div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Status History -->
+    <div class="section-title">Status History</div>
+    <table class="items-table">
+        <thead>
+            <tr>
+                <th>Status</th>
+                <th>From</th>
+                <th>Changed By</th>
+                <th>Date &amp; Time</th>
+                <th>Remarks</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in history %}
+            <tr>
+                <td><span class="status-badge {{ item.new_status }}">{{ item.get_new_status_display }}</span></td>
+                <td>{% if item.old_status %}{{ item.old_status|title }}{% else %}—{% endif %}</td>
+                <td>{% if item.changed_by %}{{ item.changed_by.username }}{% else %}—{% endif %}</td>
+                <td>{{ item.changed_at|date:"d M Y H:i" }}</td>
+                <td>{{ item.remarks|default:"—" }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" class="empty-cell">No status history yet.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <!-- Offers -->
+    <div class="section-title">Offers</div>
+    <table class="items-table">
+        <thead>
+            <tr>
+                <th>Offer</th>
+                <th>Status</th>
+                <th>Sent On</th>
+                <th>Offered CTC</th>
+                <th>Joining Date</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for offer in offers %}
+            <tr>
+                <td><a href="{% url 'offer_detail' offer.pk %}" class="offer-link">Offer #{{ offer.pk }}</a></td>
+                <td><span class="status-badge {{ offer.status }}">{{ offer.get_status_display }}</span></td>
+                <td>{% if offer.sent_at %}{{ offer.sent_at|date:"d M Y H:i" }}{% else %}—{% endif %}</td>
+                <td>{{ offer.offered_ctc|default:"—" }}</td>
+                <td>{% if offer.joining_date %}{{ offer.joining_date|date:"d M Y" }}{% else %}—{% endif %}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" class="empty-cell">No offers created yet.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+</div>
+{% endblock content %}

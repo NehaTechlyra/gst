@@ -1,0 +1,229 @@
+{% extends 'website/index.html' %}
+{% load static %}
+{% block exstyle %}
+<link href="{% static 'style/general.css' %}" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.9.1/font/bootstrap-icons.css" rel="stylesheet">
+{% endblock exstyle %}
+{% block page_title %}User{% endblock page_title %}
+{% block content %}
+<div class="container mt-4">
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <!-- Add New user Button -->
+        {% if request.user.is_superuser or can_create %}
+        <a href="{% company_url 'add_user' %}" class="btn btn-success">+ Add New User</a>
+        {% else %}
+        <div></div>
+        {% endif %}
+
+        <!-- Search Box -->
+        <form method="get" class="d-flex mb-3" id="userSearchForm">
+            <input type="text" name="q" id="userSearchInput" class="form-control me-2"
+                   placeholder="&#x1F50D;&#xFE0E; Search users..." value="{{ search_query }}">
+            {% comment %} <button class="btn commmombtn" type="submit">Search</button> {% endcomment %}
+        </form>
+    </div>
+
+    <!-- Table + Pagination together -->
+
+    <div id="userTableContainer">
+          {% if users %}
+        <table class="items-table">
+            <thead class="table-light">
+                <tr>
+                    <th>No.</th>
+                    <th>Name</th>
+                    <th>Role</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for user in users %}
+                <tr>
+                    <td class="si-no">{{ forloop.counter0|add:users.start_index }}</td>
+                    <td>{{ user.usr_name }}</td>
+                    <td>{{ user.usr_roleid }}</td>
+                    <td class="actions-td">
+          <!-- Action buttons -->
+          <div class="vendor-actions" style="margin-top: 5px;">
+              {% if request.user.is_superuser or can_edit %}
+              <a href="{% company_url 'user_edit' user.pk %}" class="btn add-item-btn">View/Edit</a>
+              {% endif %}
+              {% if request.user.is_superuser or can_delete %}
+              <form action="{% company_url 'user_delete' user.pk %}" method="post" style="display:inline;">
+    {% csrf_token %}
+    <button type="button" class="btn btn-sm delete-btn btn-delete-user"
+            data-confirm="Are you sure you want to delete this user?">
+        <span class="bi bi-trash"></span>
+    </button>
+  </form>
+              {% endif %}
+  <a href="{% company_url 'model_object_activity_log_list' 'User' user.id %}">
+                        <span class="bi bi-clock-history"></span>
+  </a>
+          </div>
+        </td>
+                </tr>
+             {% endfor %}
+            </tbody>
+        </table>
+{% else %}
+                <div class="alert alert-info text-center">
+    No Users found. <a href="{% company_url 'add_user' %}" class="alert-link">Add your first User</a>.
+  </div>
+  {% endif %}
+        <!-- Pagination -->
+        {% if users.paginator.num_pages > 1 %}
+        <nav aria-label="Page navigation" class="mt-3">
+            <ul class="pagination">
+                {% if users.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?q={{ search_query }}&page={{ users.previous_page_number }}">&laquo;</a>
+                    </li>
+                {% else %}
+                    <li class="page-item disabled"><span class="page-link">&laquo;</span></li>
+                {% endif %}
+
+                {% for num in users.paginator.page_range %}
+                    {% if num == users.number %}
+                        <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                    {% else %}
+                        <li class="page-item">
+                            <a class="page-link" href="?q={{ search_query }}&page={{ num }}">{{ num }}</a>
+                        </li>
+                    {% endif %}
+                {% endfor %}
+
+                {% if users.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?q={{ search_query }}&page={{ users.next_page_number }}">&raquo;</a>
+                    </li>
+                {% else %}
+                    <li class="page-item disabled"><span class="page-link">&raquo;</span></li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+    </div>
+
+</div>
+
+<div id="deleteUserModal" class="prompt-modal">
+    <div class="prompt-modal-content">
+        <p id="deleteUserMessage">Are you sure?</p>
+        <div class="prompt-buttons">
+            <button type="button" id="confirmDeleteUser" class="prompt-btn prompt-ok-btn">OK</button>
+            <button type="button" id="cancelDeleteUser" class="prompt-btn prompt-cancel-btn">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+    const toastContainer = document.getElementById('toastContainer');
+    {% if messages %}
+      {% for message in messages %}
+        const toastEl = document.createElement('div');
+        toastEl.className = 'toast align-items-center text-bg-{{ message.tags }} border-0';
+        toastEl.setAttribute('role', 'alert');
+        toastEl.setAttribute('aria-live', 'assertive');
+        toastEl.setAttribute('aria-atomic', 'true');
+        toastEl.innerHTML = `
+          <div class="d-flex">
+            <div class="toast-body">
+              {{ message|escapejs }}
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+          </div>
+        `;
+        toastContainer.appendChild(toastEl);
+
+        const toast = new bootstrap.Toast(toastEl, { delay: 5000 });
+        toast.show();
+      {% endfor %}
+    {% endif %}
+  });
+  
+document.addEventListener("DOMContentLoaded", function() {
+    const searchInput = document.getElementById("userSearchInput");
+    const tableContainer = document.getElementById("userTableContainer");
+    let timeout = null;
+
+    function ajaxSearch(url) {
+        fetch(url, { headers: { "X-Requested-With": "XMLHttpRequest" } })
+        .then(response => response.text())
+        .then(html => {
+            const tempDiv = document.createElement("div");
+            tempDiv.innerHTML = html;
+            const newContent = tempDiv.querySelector("#userTableContainer");
+            if (newContent) {
+                tableContainer.innerHTML = newContent.innerHTML;
+
+                // Re-bind pagination links inside new content
+                tableContainer.querySelectorAll(".pagination a").forEach(link => {
+                    link.addEventListener("click", function(e) {
+                        e.preventDefault();
+                        ajaxSearch(this.href);
+                    });
+                });
+            }
+        });
+    }
+
+    // Search typing
+    searchInput.addEventListener("keyup", function() {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => {
+            const query = searchInput.value;
+            ajaxSearch(`?q=${encodeURIComponent(query)}`);
+        }, 300);
+    });
+
+    // Bind initial pagination links
+    tableContainer.querySelectorAll(".pagination a").forEach(link => {
+        link.addEventListener("click", function(e) {
+            e.preventDefault();
+            ajaxSearch(this.href);
+        });
+    });
+});
+
+(function() {
+    var modal = document.getElementById('deleteUserModal');
+    var msg = document.getElementById('deleteUserMessage');
+    var confirmBtn = document.getElementById('confirmDeleteUser');
+    var cancelBtn = document.getElementById('cancelDeleteUser');
+    var pendingForm = null;
+
+    function showPrompt() {
+        if (modal) modal.style.display = 'flex';
+    }
+
+    function hidePrompt() {
+        if (modal) modal.style.display = 'none';
+        pendingForm = null;
+    }
+
+    document.addEventListener('click', function(e) {
+        var btn = e.target.closest('.btn-delete-user');
+        if (!btn) return;
+        e.preventDefault();
+        pendingForm = btn.closest('form');
+        if (!pendingForm) return;
+        msg.textContent = btn.getAttribute('data-confirm') || 'Are you sure?';
+        showPrompt();
+    });
+
+    confirmBtn.addEventListener('click', function() {
+        if (!pendingForm) return hidePrompt();
+        pendingForm.submit();
+    });
+
+    cancelBtn.addEventListener('click', hidePrompt);
+    modal.addEventListener('click', function(e){ if (e.target === modal) hidePrompt(); });
+    document.addEventListener('keydown', function(e){
+        if (e.key === 'Escape' && modal.style.display === 'flex') hidePrompt();
+    });
+})();
+</script>
+{% endblock %}

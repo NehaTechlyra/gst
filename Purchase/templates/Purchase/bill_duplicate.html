@@ -1,0 +1,2710 @@
+{% extends "website/index.html" %}
+{% load static %}
+{% block exstyle %}
+<link href="{% static 'style/general.css' %}" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Ubuntu&display=swap" rel="stylesheet">
+
+<script src="{% static 'css/paytermmodal.css' %}"></script>
+
+<style>
+  .select2-container {
+    width: 100% !important;
+  }
+
+  .select2-container--default .select2-selection--single {
+    height: 38px !important;
+    padding: 0.375rem 0.75rem !important;
+    font-size: 0.875rem !important;
+    line-height: 1.5 !important;
+    border: 1px solid #e5e7eb !important;
+    border-radius: 0.25rem !important;
+    background-color: #fff !important;
+    width: 100% !important;
+    box-shadow: none !important;
+    transition: border-color 0.15s ease-in-out !important;
+    display: flex !important;
+    align-items: center !important;
+  }
+
+  .select2-container--default .select2-selection--single .select2-selection__rendered {
+    line-height: 1.5 !important;
+    padding-left: 0.75rem !important;
+    padding-right: 30px !important;
+    color: #333 !important;
+  }
+
+  .select2-container--default .select2-selection--single .select2-selection__arrow {
+    height: 36px !important;
+    width: 25px !important;
+  }
+
+  .select2-results__option div small {
+    display: block;
+    color: #6b7280;
+    margin-top: 0.25rem;
+  }
+
+  .select2-container--disabled .select2-selection {
+    cursor: not-allowed !important;
+    background-color: #e9ecef !important;
+  }
+
+  #addItemModal .modal-dialog {
+    max-width: 1000px;
+    width: 95%;
+  }
+
+  #addItemModal .modal-body {
+    max-height: 70vh;
+    overflow-y: auto;
+  }
+
+  .add-item-btn-inline {
+    color: #3a7bd5;
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 0.85em;
+  }
+
+  .add-item-btn-inline:hover {
+    text-decoration: underline;
+  }
+
+  #vendor_select + .select2-container {
+    width: 100% !important;
+    margin-bottom: 12px;
+  }
+
+  #vendor_select + .select2-container .select2-selection--single {
+    position: relative;
+    height: 38px !important;
+    padding: 0 !important;
+    border: 1px solid #ddd !important;
+    border-radius: 6px !important;
+    background: #fff !important;
+    display: block !important;
+  }
+
+  #vendor_select + .select2-container .select2-selection__rendered {
+    line-height: 36px !important;
+    padding-left: 34px !important;
+    padding-right: 34px !important;
+    color: #43425d !important;
+  }
+
+  #vendor_select + .select2-container .select2-selection__clear {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-52%);
+    margin: 0 !important;
+    color: #111827;
+    font-size: 22px;
+    line-height: 1;
+  }
+
+  #vendor_select + .select2-container .select2-selection__arrow {
+    right: 8px;
+  }
+
+  #bill-form #vendor-info {
+    margin-top: 12px;
+  }
+</style>
+
+{% endblock exstyle %}
+{% block page_title %}Edit Bill{% endblock page_title %}<!--add title-->
+{% block scripts %}
+<script>
+  //  THIS MUST RUN BEFORE ANY OTHER SCRIPTS
+  (function () {
+    console.log('=== EARLY SHIPPING SETUP ===');
+
+    // Immediately store the saved shipping data BEFORE DOMContentLoaded
+    const savedShippingData = {
+      attention: '{{ shipping_attention|escapejs }}',
+      email: '{{ shipping_email|escapejs }}',
+      phone: '{{ shipping_phone|escapejs }}',
+      country: '{{ shipping_country|escapejs }}',
+      address1: '{{ shipping_address1|escapejs }}',
+      address2: '{{ shipping_address2|escapejs }}',
+      city: '{{ shipping_city|escapejs }}',
+      state: '{{ shipping_state|escapejs }}',
+      postal: '{{ shipping_postal_code|escapejs }}'
+    };
+
+    console.log('Saved shipping data from Django:', savedShippingData);
+
+    // Check if we have saved shipping data
+    const hasSavedShipping = Object.values(savedShippingData).some(val => val !== '');
+    console.log('Has saved shipping:', hasSavedShipping);
+
+    // Store globally IMMEDIATELY so loadVendorDetails can see it
+    window.hasSavedShippingData = hasSavedShipping;
+    window.savedShippingData = savedShippingData;
+
+    console.log('Set window.hasSavedShippingData:', window.hasSavedShippingData);
+    console.log('=== EARLY SHIPPING SETUP COMPLETE ===');
+  })();
+
+  document.addEventListener('DOMContentLoaded', function () {
+    console.log('=== DOM LOADED - SHIPPING SETUP ===');
+    console.log('window.hasSavedShippingData:', window.hasSavedShippingData);
+    console.log('window.savedShippingData:', window.savedShippingData);
+
+    // Function to display shipping address - MAKE IT GLOBAL
+    window.displayShippingAddress = function (data) {
+      console.log('displayShippingAddress called with:', data);
+
+      const shipNameEl = document.getElementById('shipping-name');
+      const shipAddrEl = document.getElementById('shipping-address');
+      const shipContactEl = document.getElementById('shipping-contact');
+
+      if (shipNameEl) {
+        shipNameEl.innerText = data.attention || '';
+        console.log('Set shipping-name to:', data.attention);
+      }
+
+      if (shipAddrEl) {
+        let lines = [];
+        if (data.address1) lines.push(data.address1);
+        if (data.address2) lines.push(data.address2);
+        let loc = '';
+        if (data.city) loc += data.city;
+        if (data.state) loc += (loc ? ', ' : '') + data.state;
+        if (data.postal) loc += (loc ? ' - ' : '') + data.postal;
+        if (data.country) loc += (loc ? ', ' : '') + data.country;
+        if (loc) lines.push(loc);
+        const displayText = lines.length > 0 ? lines.join('\n') : 'New Address';
+        shipAddrEl.innerText = displayText;
+        console.log('Set shipping-address to:', displayText);
+      }
+      if (shipContactEl) {
+        shipContactEl.innerText = (data.email ? data.email + (data.phone ? ' | ' + data.phone : '') : (data.phone || ''));
+      }
+
+      // Update place of supply if state is present
+      if (data.state) {
+        const placeDiv = document.getElementById('place-of-supply');
+        const placeHidden = document.querySelector('input[name="place_of_supply"]');
+        if (placeDiv) placeDiv.innerText = data.state;
+        if (placeHidden) placeHidden.value = data.state;
+        console.log('Set place of supply to:', data.state);
+      }
+    };
+
+    //  NEW: Display saved shipping immediately when vendor info is visible
+    const vendorInfo = document.getElementById('vendor-info');
+    if (vendorInfo && window.hasSavedShippingData) {
+      // Watch for vendor info to become visible
+      const checkVendorVisible = setInterval(() => {
+        if (vendorInfo.style.display !== 'none') {
+          console.log('Vendor info is visible, displaying saved shipping');
+          window.displayShippingAddress(window.savedShippingData);
+          clearInterval(checkVendorVisible);
+        }
+      }, 100);
+
+      // Stop checking after 5 seconds
+      setTimeout(() => clearInterval(checkVendorVisible), 5000);
+    }
+
+    //  Get modal instance once
+    const modalEl = document.getElementById('shippingAddressModal');
+    let shippingModal = null;
+
+    if (modalEl) {
+      shippingModal = new bootstrap.Modal(modalEl, {
+        backdrop: true,
+        keyboard: true
+      });
+    }
+
+    //  Helper function to properly close modal
+    function closeShippingModal() {
+      console.log('Closing shipping modal...');
+
+      if (shippingModal) {
+        shippingModal.hide();
+      }
+
+      // Force cleanup of backdrop
+      requestAnimationFrame(() => {
+        const backdrops = document.querySelectorAll('.modal-backdrop');
+        backdrops.forEach(backdrop => backdrop.remove());
+        document.body.classList.remove('modal-open');
+        document.body.style.overflow = '';
+        document.body.style.paddingRight = '';
+      });
+    }
+
+    // Edit shipping button handler
+    const editShippingBtn = document.getElementById('edit-shipping-btn');
+    if (editShippingBtn) {
+      editShippingBtn.addEventListener('click', function (e) {
+        e.preventDefault();
+        console.log('Edit shipping clicked');
+
+        // Populate modal with saved data
+        if (window.savedShippingData) {
+          document.getElementById('sa_attention').value = window.savedShippingData.attention;
+          document.getElementById('sa_email').value = window.savedShippingData.email;
+          document.getElementById('sa_phone').value = window.savedShippingData.phone;
+          document.getElementById('sa_country').value = window.savedShippingData.country;
+          document.getElementById('sa_address1').value = window.savedShippingData.address1;
+          document.getElementById('sa_address2').value = window.savedShippingData.address2;
+          document.getElementById('sa_city').value = window.savedShippingData.city;
+          document.getElementById('sa_state').value = window.savedShippingData.state;
+          document.getElementById('sa_postal').value = window.savedShippingData.postal;
+        }
+
+        // Show modal
+        if (shippingModal) {
+          shippingModal.show();
+        }
+      });
+    }
+
+    // Save shipping button handler
+    const saveShippingBtn = document.getElementById('saveShippingBtn');
+    if (saveShippingBtn) {
+      saveShippingBtn.addEventListener('click', function () {
+        console.log('Save shipping clicked');
+
+        const newData = {
+          attention: document.getElementById('sa_attention').value || '',
+          email: document.getElementById('sa_email').value || '',
+          phone: document.getElementById('sa_phone').value || '',
+          country: document.getElementById('sa_country').value || '',
+          address1: document.getElementById('sa_address1').value || '',
+          address2: document.getElementById('sa_address2').value || '',
+          city: document.getElementById('sa_city').value || '',
+          state: document.getElementById('sa_state').value || '',
+          postal: document.getElementById('sa_postal').value || ''
+        };
+
+        // Update window variables
+        window.savedShippingData = newData;
+        window.hasSavedShippingData = Object.values(newData).some(val => val !== '');
+
+        // Update hidden inputs
+        document.getElementById('shipping_attention').value = newData.attention;
+        document.getElementById('shipping_email').value = newData.email;
+        document.getElementById('shipping_phone').value = newData.phone;
+        document.getElementById('shipping_country').value = newData.country;
+        document.getElementById('shipping_address1').value = newData.address1;
+        document.getElementById('shipping_address2').value = newData.address2;
+        document.getElementById('shipping_city').value = newData.city;
+        document.getElementById('shipping_state').value = newData.state;
+        document.getElementById('shipping_postal_code').value = newData.postal;
+
+        // Update display
+        window.displayShippingAddress(newData);
+
+        // Close modal properly
+        closeShippingModal();
+      });
+    }
+
+    // Cleanup when modal is hidden (backup safety net)
+    if (modalEl) {
+      modalEl.addEventListener('hidden.bs.modal', function () {
+        requestAnimationFrame(() => {
+          const backdrops = document.querySelectorAll('.modal-backdrop');
+          backdrops.forEach(backdrop => backdrop.remove());
+          document.body.classList.remove('modal-open');
+          document.body.style.overflow = '';
+          document.body.style.paddingRight = '';
+        });
+      });
+    }
+
+    console.log('=== SHIPPING SETUP COMPLETE ===');
+  });
+</script>
+<script>
+window.initialPurchaseCurrencyId = "{{ bill.document_currency_id|default:''|escapejs }}";
+window.initialPurchaseFxRate = "{{ bill.fx_rate_to_base|default:'1.000000'|escapejs }}";
+window.initialPurchaseFxDate = "{% if bill.fx_rate_date %}{{ bill.fx_rate_date|date:'Y-m-d' }}{% endif %}";
+window.initialPurchaseVendorId = "{{ bill.vendor_id|default:''|escapejs }}";
+window.isExistingPurchaseOrderEdit = true;
+window.preserveInitialPurchaseFx = true;
+window.lockPurchaseOrderCurrency = true;
+</script>
+<script src="{% static 'js/purchase_order.js' %}?v={{ today }}"></script>
+<script src="{% static 'js/location_selects.js' %}?v={{ today }}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  if (typeof setDocumentCurrencyLocked === 'function') {
+    setDocumentCurrencyLocked(true);
+  }
+});
+</script>
+<script src="{% static 'js/cancel_confirm.js' %}"></script>
+
+
+<script>
+  // ✅ Make company_is_india flag available to JavaScript
+  const COMPANY_IS_INDIA = {{ company_is_india|lower }};
+  const COMPANY_TAX_TYPE = String("{{ company_tax_type|default:'' }}").trim().toUpperCase();
+
+  // Initialize item modal Select2 dropdowns
+  function initializeItemModalSelects() {
+    // Unit select
+    $('#item_unit_select').select2({
+      placeholder: 'Choose unit',
+      allowClear: true,
+      minimumInputLength: 0,
+      dropdownParent: $('#addItemModal'),
+      ajax: {
+        url: (function () {
+          var pathParts = window.location.pathname.split('/');
+          var companyCode = pathParts[1] || '';
+          return '/' + companyCode + '/Items/unit/';
+        })(),
+        dataType: 'json',
+        delay: 250,
+        data: function (params) {
+          return { q: params.term };
+        },
+        processResults: function (data) {
+          let results = data.map(function (item) {
+            return { id: item.id, text: item.name };
+          });
+          // Add "+New" option at the end
+          results.push({
+            id: 'new',
+            text: '+ New Unit',
+            isNew: true
+          });
+          return { results: results };
+        },
+        cache: true
+      }
+    });
+
+    // Intra Tax select
+    $('#item_intra_tax_select').select2({
+      placeholder: 'Choose Intra State Tax Rate',
+      allowClear: true,
+      dropdownParent: $('#addItemModal'),
+      ajax: {
+        url: (function () {
+          var pathParts = window.location.pathname.split('/');
+          var companyCode = pathParts[1] || '';
+          return '/' + companyCode + '/Items/tax-groups/';
+        })(),
+        dataType: 'json',
+        delay: 250,
+        data: function (params) {
+          const scope = COMPANY_TAX_TYPE === 'TURNOVER' ? 'local' : 'default';
+          return { q: params.term, scope: scope };
+        },
+        processResults: function (data) {
+          return data;
+        },
+        cache: true
+      }
+    });
+
+    // Inter Tax select
+    $('#item_inter_tax_select').select2({
+      placeholder: 'Choose Inter State Tax Rate',
+      allowClear: true,
+      dropdownParent: $('#addItemModal'),
+      ajax: {
+        url: (function () {
+          var pathParts = window.location.pathname.split('/');
+          var companyCode = pathParts[1] || '';
+          return '/' + companyCode + '/Items/inter-state-taxes/';
+        })(),
+        dataType: 'json',
+        delay: 250,
+        data: function (params) { return { q: params.term, scope: 'inter' }; },
+        processResults: function (data) {
+          return data;
+        },
+        cache: true
+      }
+    });
+    // Default Tax select (for non-India countries)
+    $('#item_default_tax_select').select2({
+      placeholder: 'Choose Tax Rate',
+      allowClear: true,
+      dropdownParent: $('#addItemModal'),
+      ajax: {
+        url: (function () {
+          var pathParts = window.location.pathname.split('/');
+          var companyCode = pathParts[1] || '';
+          return '/' + companyCode + '/Items/inter-state-taxes/';
+        })(),
+        dataType: 'json',
+        delay: 250,
+        data: function (params) {
+          const taxType = (typeof COMPANY_TAX_TYPE !== 'undefined' ? COMPANY_TAX_TYPE : window.COMPANY_TAX_TYPE);
+        const scope = String(taxType || '').trim().toUpperCase() === 'TURNOVER' ? 'local' : 'default';
+        return { q: params.term, scope: scope };
+        },
+        processResults: function (data) {
+          return data;
+        },
+        cache: true
+      }
+    });
+
+    $('#item_sales_tax_select').select2({
+      placeholder: 'Choose Sales Tax Rate',
+      allowClear: true,
+      dropdownParent: $('#addItemModal'),
+      ajax: {
+        url: (typeof salesCompanyPrefix !== 'undefined' ? salesCompanyPrefix : '/' + (window.location.pathname.split('/')[1] || '')) + '/Items/inter-state-taxes/',
+        dataType: 'json',
+        delay: 250,
+        data: function (params) { return { q: params.term, scope: 'sales' }; },
+        processResults: function (data) { return data; },
+        cache: true
+      }
+    });
+    $('#item_purchase_tax_select').select2({
+      placeholder: 'Choose Purchase Tax Rate',
+      allowClear: true,
+      dropdownParent: $('#addItemModal'),
+      ajax: {
+        url: (typeof salesCompanyPrefix !== 'undefined' ? salesCompanyPrefix : '/' + (window.location.pathname.split('/')[1] || '')) + '/Items/inter-state-taxes/',
+        dataType: 'json',
+        delay: 250,
+        data: function (params) { return { q: params.term, scope: 'purchase' }; },
+        processResults: function (data) { return data; },
+        cache: true
+      }
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', function () {
+    let currentRowIndex = null;
+    //const addItemModal = new bootstrap.Modal(document.getElementById('addItemModal'));
+
+    // Toggle tax fields based on tax preference AND company country
+    $('#addItemModal').on('change', '#item_tax_pref', function () {
+      updateTaxFieldsVisibility();
+    });
+
+    function updateTaxFieldsVisibility() {
+      const taxPref = $('#item_tax_pref').val();
+    if (COMPANY_TAX_TYPE === 'NONE') {
+      $('#item_tax_pref').val('non_taxable').prop('disabled', true);
+      $('#item_tax_fields, #item_indian_tax_fields, #item_default_tax_fields, #item_sales_purchase_tax_fields').hide();
+      $('#item_intra_tax_select, #item_inter_tax_select, #item_default_tax_select, #item_sales_tax_select, #item_purchase_tax_select').attr('required', false);
+      return;
+    }
+    $('#item_tax_pref').prop('disabled', false);
+    if (taxPref === 'taxable') {
+      $('#item_tax_fields').show();
+      // Show appropriate tax fields based on company tax type
+      if (COMPANY_TAX_TYPE === 'GST') {
+        $('#item_indian_tax_fields').show();
+        $('#item_default_tax_fields').hide();
+        $('#item_sales_purchase_tax_fields').hide();
+        $('#item_intra_tax_select').attr('required', true);
+        $('#item_inter_tax_select').attr('required', true);
+        $('#item_default_tax_select').attr('required', false);
+        $('#item_sales_tax_select, #item_purchase_tax_select').attr('required', false);
+      } else if (COMPANY_TAX_TYPE === 'SALES') {
+        $('#item_indian_tax_fields').hide();
+        $('#item_default_tax_fields').hide();
+        $('#item_sales_purchase_tax_fields').show();
+        $('#item_intra_tax_select, #item_inter_tax_select, #item_default_tax_select').attr('required', false);
+        $('#item_sales_tax_select, #item_purchase_tax_select').attr('required', true);
+      } else {
+        $('#item_indian_tax_fields').hide();
+        $('#item_default_tax_fields').show();
+        $('#item_sales_purchase_tax_fields').hide();
+        $('#item_intra_tax_select').attr('required', false);
+        $('#item_inter_tax_select').attr('required', false);
+        $('#item_default_tax_select').attr('required', true);
+        $('#item_sales_tax_select, #item_purchase_tax_select').attr('required', false);
+      }
+    } else {
+      $('#item_tax_fields').hide();
+      $('#item_intra_tax_select').attr('required', false);
+      $('#item_inter_tax_select').attr('required', false);
+      $('#item_default_tax_select').attr('required', false);
+      $('#item_sales_tax_select, #item_purchase_tax_select').attr('required', false);
+    } else {
+        $('#item_tax_fields').hide();
+        $('#item_intra_tax_select').attr('required', false);
+        $('#item_inter_tax_select').attr('required', false);
+        $('#item_default_tax_select').attr('required', false);
+      }
+    }
+
+
+
+
+    // Save new item
+    $('#saveNewItemBtn').on('click', function () {
+      const form = $('#addItemForm')[0];
+
+
+      // ✅ Use native HTML5 validation
+      if (!form.checkValidity()) {
+        form.reportValidity(); // Shows native browser validation messages
+        return;
+      }
+
+      // Basic validation
+      const itemName = $('#item_name').val().trim();
+      const itemUnit = $('#item_unit_select').val();
+      const costPrice = $('#item_cost_price').val();
+
+      if (!itemName) {
+        alert('Please enter item name');
+        $('#item_name').focus();
+        return;
+      }
+
+      if (!itemUnit) {
+        $('#item_unit_select').next('.select2-container').addClass('is-invalid');
+        if (!$('#item_unit_select').next().next('.invalid-feedback').length) {
+          $('#item_unit_select').next('.select2-container').after(
+            '<div class="invalid-feedback d-block">Please select a unit</div>'
+          );
+        }
+        return;
+
+      }
+
+      if (!costPrice || parseFloat(costPrice) <= 0) {
+        alert('Please enter a valid cost price');
+        $('#item_cost_price').focus();
+        return;
+      }
+
+
+      // ✅ Validate tax fields when taxable
+      const taxPref = $('#item_tax_pref').val();
+      if (taxPref === 'taxable' && COMPANY_TAX_TYPE !== 'NONE') {
+        if (COMPANY_TAX_TYPE === 'GST') {
+          const intraState = $('#item_intra_tax_select').val();
+          const interState = $('#item_inter_tax_select').val();
+          
+          if (!intraState || !interState) {
+            if (!intraState) {
+              $('#item_intra_tax_select').next('.select2-container').addClass('is-invalid');
+              if (!$('#item_intra_tax_select').next().next('.invalid-feedback').length) {
+                $('#item_intra_tax_select').next('.select2-container').after(
+                  '<div class="invalid-feedback d-block">Please select intra state tax rate</div>'
+                );
+              }
+            }
+            if (!interState) {
+              $('#item_inter_tax_select').next('.select2-container').addClass('is-invalid');
+              if (!$('#item_inter_tax_select').next().next('.invalid-feedback').length) {
+                $('#item_inter_tax_select').next('.select2-container').after(
+                  '<div class="invalid-feedback d-block">Please select inter state tax rate</div>'
+                );
+              }
+            }
+            return;
+          }
+        } else if (COMPANY_TAX_TYPE === 'SALES') {
+          const salesTax = $('#item_sales_tax_select').val();
+          const purchaseTax = $('#item_purchase_tax_select').val();
+          if (!salesTax || !purchaseTax) {
+            if (!salesTax) {
+              $('#item_sales_tax_select').next('.select2-container').addClass('is-invalid');
+              if (!$('#item_sales_tax_select').next().next('.invalid-feedback').length) {
+                $('#item_sales_tax_select').next('.select2-container').after(
+                  '<div class="invalid-feedback d-block">Please select sales tax rate</div>'
+                );
+              }
+            }
+            if (!purchaseTax) {
+              $('#item_purchase_tax_select').next('.select2-container').addClass('is-invalid');
+              if (!$('#item_purchase_tax_select').next().next('.invalid-feedback').length) {
+                $('#item_purchase_tax_select').next('.select2-container').after(
+                  '<div class="invalid-feedback d-block">Please select purchase tax rate</div>'
+                );
+              }
+            }
+            return;
+          }        } else {
+          const defaultTax = $('#item_default_tax_select').val();
+          
+          if (!defaultTax) {
+            $('#item_default_tax_select').next('.select2-container').addClass('is-invalid');
+            if (!$('#item_default_tax_select').next().next('.invalid-feedback').length) {
+              $('#item_default_tax_select').next('.select2-container').after(
+                '<div class="invalid-feedback d-block">Please select tax rate</div>'
+              );
+            }
+            return;
+          }
+        }
+      }
+
+      // Prepare form data
+      //const formData = new FormData(form[0]);
+      const formData = new FormData(form);
+    if (COMPANY_TAX_TYPE === 'NONE') {
+      formData.set('tax_pref', 'non_taxable');
+    }
+
+      // Add CSRF token
+      formData.append('csrfmiddlewaretoken', $('[name=csrfmiddlewaretoken]').first().val());
+
+      // Send AJAX request to save item (company-prefixed URL)
+      var pathParts = window.location.pathname.split('/');
+      var companyCode = pathParts[1] || '';
+      var ajaxUrl = '/' + companyCode + '/Items/create-item-ajax/';
+
+      $.ajax({
+        url: ajaxUrl,
+        method: 'POST',
+        data: formData,
+        processData: false,
+        contentType: false,
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest'
+        },
+        success: function (response) {
+          if (response.success) {
+            const item = response.item;
+            const $row = $('tr').eq(currentRowIndex + 1); // +1 because of header row
+
+            // Alternative: Find the row by select name
+            const productSelect = $('select[name="form-' + currentRowIndex + '-product"]');
+            const $targetRow = productSelect.closest('tr');
+
+            if ($targetRow.length) {
+              console.log('Processing newly created item:', item);
+
+              // Create option with item ID and barcode
+              const itemValue = item.id + '_' + (item.barcode || '');
+              const itemText = item.name + ' ' + (item.unit || '');
+
+              const newOption = new Option(itemText, itemValue, true, true);
+
+              // Create complete item data object
+              const gstIncludeValue = item.taxincld_costprice ? 'true' : 'false';
+              const taxRateValue = parseFloat(item.tax_rate) || 0;
+
+              // Calculate the tax-exclusive price (o_price) if GST is inclusive
+              let costPrice = parseFloat(item.cost_price) || 0;
+              let taxExclusivePrice = costPrice; // Default to same price
+
+              if (item.taxincld_costprice && taxRateValue > 0) {
+                console.log("item.taxincld_costprice && taxRateValue > 0");
+                // If price includes GST, calculate the base price without tax
+                // Formula: base_price = inclusive_price / (1 + tax_rate/100)
+                //taxExclusivePrice = sellingPrice / (1 + (taxRateValue / 100));
+                taxExclusivePrice = Math.round((costPrice / (1 + (taxRateValue / 100))) * 100) / 100;
+
+                console.log('GST Inclusive - cost Price:', costPrice,
+                  'Tax Rate:', taxRateValue,
+                  'Tax-Exclusive Price:', taxExclusivePrice);
+              }
+
+              const completeItemData = {
+                id: itemValue,
+                text: itemText,
+                description: item.hsn_code || item.sac_code || '',
+                price: costPrice,
+                gstinclude: gstIncludeValue,
+                o_price: taxExclusivePrice,
+                uom: item.unit || '',
+                tax_id: item.tax_id || '',
+                tax_name: item.tax_name || '',
+                tax_rate: taxRateValue,
+                tax_pref: item.tax_pref || 'taxable',
+                isNew: false
+              };
+
+              console.log('Complete item data:', completeItemData);
+
+              // Attach data to the option element
+              $(newOption).data(completeItemData);
+
+              // Add option to select and select it
+              productSelect.empty().append(newOption).trigger('change');
+
+              // ========================================
+              // CRITICAL FIX: Manually populate the row
+              // ========================================
+              productSelect.trigger('select2:select', { params: { data: completeItemData } });
+
+              // 1. Set description
+              $targetRow.find('.desc').val(completeItemData.description || '');
+
+              // 2. Set hidden fields
+              $targetRow.find('.gstinclude').val(completeItemData.gstinclude);
+              $targetRow.find('.o_price').val(completeItemData.o_price);
+
+              // 3. Set price and quantity
+              $targetRow.find('.price').val(completeItemData.o_price);
+              $targetRow.find('.qty').val(1);
+
+              // 4. Store tax_pref as data attribute on the row
+              $targetRow.data('tax-pref', completeItemData.tax_pref || '');
+
+              // 5. Handle tax select based on tax preference
+              let $taxSelect = $targetRow.find('.tax-select');
+              $taxSelect.empty();
+
+              console.log('Tax preference:', completeItemData.tax_pref);
+              console.log('Tax ID:', completeItemData.tax_id);
+              console.log('Tax Rate:', completeItemData.tax_rate);
+
+              if (completeItemData.tax_pref === 'non_taxable') {
+                // For non-taxable items: disable tax select and show "Non-Taxable"
+                let nonTaxOption = new Option('Non-taxable', '', true, true);
+                $(nonTaxOption).data('rate', 0);
+                $taxSelect.append(nonTaxOption);
+                $taxSelect.prop('disabled', true);
+                $taxSelect.addClass('bg-light');
+                $taxSelect.data('rate', 0);
+
+                // Disable select2 if initialized
+                if ($taxSelect.hasClass('select2-hidden-accessible')) {
+                  $taxSelect.select2('destroy');
+                }
+              } else {
+                // For taxable items: enable and populate tax
+                $taxSelect.prop('disabled', false);
+                $taxSelect.removeClass('bg-light');
+
+                if (completeItemData.tax_id && completeItemData.tax_name) {
+                  // Create the tax option with the rate attached
+                  let taxOption = new Option(
+                    completeItemData.tax_name,
+                    completeItemData.tax_id,
+                    true,
+                    true
+                  );
+
+                  // ✅ CRITICAL: Attach rate to option using jQuery data AND data-rate attribute
+                  $(taxOption).data('rate', completeItemData.tax_rate);
+                  $(taxOption).attr('data-rate', completeItemData.tax_rate);
+
+                  $taxSelect.append(taxOption);
+
+                  // ✅ CRITICAL: Also set rate on the select itself
+                  $taxSelect.data('rate', completeItemData.tax_rate);
+
+                  console.log('Tax option created with rate:', completeItemData.tax_rate);
+                  console.log('Tax select data-rate:', $taxSelect.data('rate'));
+                } else {
+                  $taxSelect.data('rate', 0);
+                }
+
+                // Re-initialize select2 if needed
+                if (!$taxSelect.hasClass('select2-hidden-accessible')) {
+                  initTaxSelect($taxSelect);
+                } else {
+                  $taxSelect.trigger('change');
+                }
+              }
+
+              // 6. Set discount to 0
+              $targetRow.find('.item-discount').val(0);
+              $targetRow.find('.discount-type').val('flat');
+
+              // 7. Update HSN if present
+              if (item.hsn_code) {
+                $targetRow.find('.hsn-input').val(item.hsn_code);
+                $targetRow.find('.hsn-display').text(item.hsn_code);
+              }
+
+              // ========================================
+              // 8. CRITICAL: Update row amount and totals
+              // ========================================
+              console.log('Calling updateRowAmount...');
+              updateRowAmount($targetRow);
+
+              console.log('Calling calculateTotals...');
+              calculateTotals();
+
+              console.log('Row amount:', $targetRow.find('.amount').text());
+            }
+
+            // CRITICAL FIX: Trigger validation after item is populated
+            setTimeout(function () {
+              if (typeof validateForm === 'function') {
+                validateForm();
+              }
+            }, 100);
+
+            // Close modal
+            $('#addItemModal').modal('hide');
+
+            // Show success message
+            //alert('Item created successfully!');
+          } else {
+            alert('Error: ' + (response.error || 'Failed to create item'));
+          }
+        },
+        error: function (xhr) {
+          console.error('Error:', xhr);
+          const errorMsg = xhr.responseJSON?.error || 'An error occurred while saving the item';
+          alert(errorMsg);
+        }
+      });
+    });
+    // Initialize modal when shown
+    $('#addItemModal').on('shown.bs.modal', function() {
+      console.log("addItemModal shown.bs.modal is calling");
+      // Initialize tax field visibility based on country when modal opens
+      updateTaxFieldsVisibility();
+      
+      // Reset Select2 instances to ensure fresh data
+      if ($('#item_intra_tax_select').hasClass('select2-hidden-accessible')) {
+        $('#item_intra_tax_select').val(null).trigger('change');
+      }
+      if ($('#item_inter_tax_select').hasClass('select2-hidden-accessible')) {
+        $('#item_inter_tax_select').val(null).trigger('change');
+      }
+      if ($('#item_default_tax_select').hasClass('select2-hidden-accessible')) {
+        $('#item_default_tax_select').val(null).trigger('change');
+      }
+    });
+    // Close modal cleanup
+    $('#addItemModal').on('hidden.bs.modal', function () {
+      // Destroy all Select2 instances in the modal
+      $(this).find('.select2-hidden-accessible').each(function () {
+        $(this).select2('destroy');
+      });
+      // ✅ Also reset the form when modal closes
+      document.getElementById('addItemForm').reset();
+    });
+    // ✅ Make currentRowIndex accessible globally for the initItemSelect function
+    window.currentRowIndex = currentRowIndex;
+    window.setCurrentRowIndex = function (index) {
+      currentRowIndex = index;
+    };
+  });
+</script>
+{% endblock scripts%}
+
+{% block content %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Edit Bill</title>
+  <style>
+    input[type="checkbox"][name$="-DELETE"] {
+      display: none;
+    }
+
+    button {
+      position: relative;
+    }
+
+    .savebtn:disabled {
+      cursor: not-allowed;
+      opacity: 0.6;
+    }
+
+    .savebtn:disabled:hover::after {
+      content: "\26D4";
+      /* 🚫 block sign */
+      position: absolute;
+      color: red;
+      font-size: 1.5em;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+    }
+
+    .savebtn-wrapper {
+      display: inline-block;
+      position: relative;
+      cursor: not-allowed;
+    }
+
+    .savebtn:disabled {
+      opacity: 0.6;
+    }
+
+
+      {
+      % comment %
+    }
+
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: #f8f8fb;
+      margin: 0;
+      padding: 0;
+      color: #43425d;
+    }
+
+    .container {
+      /* max-width: 800px; */
+      margin: 4px 17px;
+      padding: 8px 10px;
+      /* align-items:center; */
+      background: #fff;
+      /* border-radius: 10px; */
+      /* box-shadow: 0 2px 8px rgba(0,0,0,0.07); */
+    }
+
+    h2 {
+      margin-bottom: 0.2em;
+      font-size: 1.2rem;
+    }
+
+    .section-title {
+      font-size: 1.25rem;
+      margin-bottom: 1em;
+      color: #43425d;
+    }
+
+    .grid {
+      display: flex;
+      flex-wrap: wrap;
+      /* gap: 32px;
+      margin-bottom: 32px; */
+    }
+
+    .column {
+      flex: 1;
+      min-width: 250px;
+    }
+
+    label {
+      font-size: 0.92em;
+      margin-bottom: 6px;
+      display: block;
+      margin-top: 12px;
+      color: #777;
+      font-weight: 500;
+    }
+
+      {
+      % endcomment %
+    }
+
+    label {
+      display: block;
+    }
+
+    input,
+    select,
+    textarea {
+      width: 100%;
+      padding: 5px 12px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      margin-bottom: 10px;
+      font-size: 1rem;
+      outline: none;
+    }
+
+    .totals-row span {
+      color: #7d7cad;
+      font-size: 15px;
+      font-weight: bold;
+    }
+
+    .purchase-edit-form {
+      padding-bottom: 24px;
+    }
+
+  .purchase-edit-form .grid {
+      margin-bottom: 18px;
+    }
+
+    .purchase-edit-form .grid > .text-danger,
+    .purchase-edit-form .grid > .row {
+      width: 100%;
+      flex: 0 0 100%;
+    }
+
+    .purchase-edit-form .section-title {
+      font-size: 1.05rem;
+      font-weight: 600;
+      color: #56588d;
+      margin-bottom: 14px;
+    }
+
+    .purchase-edit-form .items-table {
+      margin-bottom: 16px;
+    }
+
+    .purchase-edit-form .items-table th {
+      white-space: nowrap;
+    }
+
+    .purchase-edit-form .items-table td {
+      vertical-align: middle;
+    }
+
+    .purchase-edit-form .items-table .price,
+    .purchase-edit-form .items-table .qty,
+    .purchase-edit-form .items-table .item-discount,
+    .purchase-edit-form .items-table .tax-select {
+      min-width: 84px;
+    }
+
+    .purchase-edit-form .items-table .base-price .o_price_display {
+      min-width: 130px;
+    }
+
+    .purchase-edit-form .items-table td.amount {
+      white-space: nowrap;
+      min-width: 96px;
+      font-family: 'Ubuntu', sans-serif !important;
+    }
+
+    .purchase-edit-form .add-item-btn {
+      margin-bottom: 0;
+    }
+
+
+
+    .totals-section {
+      max-width: 380px;
+      float: right;
+      margin-top: 24px;
+      margin-bottom: 36px;
+      padding: 16px 20px;
+      background: #f7f7fa;
+      border-radius: 12px;
+      box-shadow: 0 1px 4px rgba(200, 200, 255, 0.1);
+    }
+
+    .totals-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 1.01em;
+      margin-bottom: 8px;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .totals-row strong {
+      color: #43425d;
+    }
+
+    .totals-section select {
+      width: 90px;
+      margin-left: 12px;
+    }
+
+    .notes-box {
+      margin-top: 0;
+      font-size: 1rem;
+    }
+
+    .notes-box label {
+      display: block;
+      margin-bottom: 8px;
+      color: #5f618f;
+      font-weight: 600;
+    }
+
+    .notes-box textarea {
+      width: 100%;
+      max-width: 100%;
+      height: 115px;
+      border-radius: 6px;
+      padding: 12px 14px;
+      font-size: 1rem;
+      margin-bottom: 0;
+      resize: vertical;
+    }
+
+    .po-bottom-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 380px;
+      gap: 28px;
+      align-items: start;
+      margin-top: 28px;
+    }
+
+    .po-main-panel,
+    .po-side-panel {
+      min-width: 0;
+    }
+
+    .po-main-panel {
+      grid-column: 1;
+      grid-row: 1;
+    }
+
+    .po-side-panel {
+      grid-column: 2;
+      grid-row: 1;
+    }
+
+    .po-side-panel .totals-section {
+      float: none;
+      width: 100%;
+      max-width: none;
+      margin: 0 0 20px;
+    }
+
+    .po-side-panel .totals-section:last-child {
+      margin-bottom: 0;
+    }
+
+    .savebtn-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 18px !important;
+    }
+
+    .savebtn-wrapper .btn {
+      min-width: 140px;
+    }
+
+    @media (max-width: 700px) {
+      .container {
+        padding: 12px;
+      }
+
+      .grid {
+        gap: 16px;
+      }
+
+      .totals-section {
+        float: none;
+        max-width: 100%;
+      }
+    }
+
+    @media (max-width: 991.98px) {
+      .po-bottom-layout {
+        grid-template-columns: 1fr;
+        gap: 22px;
+      }
+
+      .po-main-panel,
+      .po-side-panel {
+        grid-column: auto;
+        grid-row: auto;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .savebtn-wrapper .btn {
+        width: 100%;
+        min-width: 0;
+      }
+    }
+
+    tbody tr:hover .delete-row {
+      display: inline-block !important;
+      cursor: pointer;
+    }
+
+    .amount {
+      font-family: 'Ubuntu', sans-serif !important;
+    }
+
+    .rupee-sign {
+      font-family: 'Ubuntu', sans-serif !important;
+
+    }
+
+
+
+    /* Vendor info styling to match design (copied from order_add) */
+    #vendor-info {
+      background: #ffffff;
+      border: 1px solid #e9ecef;
+      padding: 16px;
+      border-radius: 8px;
+      color: #333;
+      margin-top: 8px;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+    }
+
+    #vendor-info strong {
+      color: #515966ff;
+      font-size: 0.95rem;
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    #vendor-info #billing-block {
+      width: 60%;
+    }
+
+    #vendor-info #shipping-block {
+      width: 40%;
+    }
+
+    #vendor-info>div {
+      display: flex;
+    }
+
+    #billing-name,
+    #shipping-name {
+      color: #515966ff;
+      font-weight: 700;
+      font-size: 1.02rem;
+    }
+
+    #billing-address {
+      color: #444;
+      margin-top: 6px;
+      white-space: pre-line;
+    }
+
+    #billing-contact,
+    #billing-gst {
+      color: #666;
+      margin-top: 6px;
+    }
+
+    #shipping-address {
+      color: #444;
+      margin-top: 6px;
+      text-decoration: none;
+      cursor: default;
+    }
+
+    #place-of-supply-select {
+      max-width: 320px;
+      margin-top: 6px;
+    }
+
+    @media (max-width: 768px) {
+      #vendor-info>div {
+        flex-direction: column;
+      }
+
+      #vendor-info #billing-block,
+      #vendor-info #shipping-block {
+        width: 100%;
+      }
+    }
+
+    /* Shipping modal scrollbar styling */
+    #shippingAddressModal .modal-body {
+      max-height: 70vh;
+      overflow-y: auto;
+    }
+
+    /* Hide body scrollbar when modal is open */
+    body.modal-open {
+      overflow: hidden !important;
+      padding-right: 0 !important;
+    }
+
+    #shippingAddressModal {
+      overflow: hidden;
+    }
+  </style>
+
+
+  </style>
+</head>
+
+<body>
+  <div class="container mt-4">
+
+    <!-- Error Modal for Period Lock -->
+    <div class="modal fade" id="billErrorModal" tabindex="-1" aria-labelledby="billErrorModalTitle" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border: 2px solid #d9534f; border-radius: 8px;">
+          <div class="modal-header" style="background-color: #f8d7da; border-bottom: 2px solid #d9534f;">
+            <h5 class="modal-title" id="billErrorModalTitle" style="color: #721c24;">
+              <i class="bi bi-exclamation-circle" style="color: #d9534f;"></i> Cannot Edit Bill
+            </h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body" id="billErrorModalBody" style="color: #721c24; padding: 20px; line-height: 1.6;">
+          </div>
+          <div class="modal-footer" style="border-top: 1px solid #dee2e6;">
+            <button type="button" class="btn btn-primary" data-bs-dismiss="modal">OK</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- <form> -->
+    <form id="bill-form" class="purchase-edit-form" method="POST" action="{% url 'bill_edit' bill.pk %}">
+      {% csrf_token %}
+      {{ bill_formset.management_form }}
+      <input type="hidden" name="form-INITIAL_FORMS" value="0">
+
+      <div class="grid">
+
+        <p class="text-danger"><span>*</span>This field is required</p>
+
+        <div class="row">
+
+          <div class="col-md-6 mb-3">
+
+            <label for="{{ bill_form.vendor.id_for_label }}">Vendor <span class="text-danger">*</span></label>
+            {% with form_field=bill_form.vendor %}
+            {{ form_field }}
+            <script>
+              document.addEventListener('DOMContentLoaded', function () {
+                const sel = document.querySelector('select[name="vendor"]');
+                if (sel && !sel.id) sel.id = 'vendor_select';
+              });
+            </script>
+            {% endwith %}
+
+            <div class="vendor-info" id="vendor-info"
+              style="display:none; background:#f7f7fb; padding:10px; border-radius:6px;">
+              <div style="display:flex; gap:24px; align-items:flex-start;">
+                <div id="billing-block">
+                  <strong>BILLING ADDRESS</strong>
+                  <div id="billing-name" style="margin-top:6px;"></div>
+                  <div id="billing-address" style="color:#444; margin-top:6px;"></div>
+                  <div id="billing-contact" style="color:#666; margin-top:6px;"></div>
+                  <div id="billing-gst" style="color:#666; margin-top:6px;"></div>
+                </div>
+                <div id="shipping-block">
+                  <div class="shipping-header" style="display:flex; justify-content:space-between; align-items:center;">
+                    <strong>SHIPPING ADDRESS</strong>
+                    <a href="#" id="edit-shipping-btn" title="Edit shipping address"
+                      style="color:#3a7bd5; text-decoration:none;">✎</a>
+                  </div>
+                  <div id="shipping-name" style="margin-top:6px; color:#515966ff; font-weight:700; font-size:1.02rem;">
+                    &nbsp;</div>
+                  <div id="shipping-address" style="color:#444; margin-top:6px; white-space:pre-line;">New Address</div>
+                  <div id="shipping-contact" style="color:#666; margin-top:6px;"></div>
+                </div>
+              </div>
+              <div style="margin-top:6px; display:flex; align-items:center; gap:10px;">
+                <label style="font-weight:600; margin:0;">Place of Supply:</label>
+                <div id="place-of-supply" style="color:#444;"></div>
+                <input type="hidden" name="place_of_supply" id="place_of_supply_hidden"
+                  value="{{ place_of_supply|default:'' }}">
+              </div>
+            </div>
+            <!-- Hidden inputs to store shipping address values for form submission -->
+            <input type="hidden" name="shipping_attention" id="shipping_attention"
+              value="{{ shipping_attention|default:'' }}">
+            <input type="hidden" name="shipping_email" id="shipping_email" value="{{ shipping_email|default:'' }}">
+            <input type="hidden" name="shipping_phone" id="shipping_phone" value="{{ shipping_phone|default:'' }}">
+            <input type="hidden" name="shipping_country" id="shipping_country"
+              value="{{ shipping_country|default:'' }}">
+            <input type="hidden" name="shipping_address1" id="shipping_address1"
+              value="{{ shipping_address1|default:'' }}">
+            <input type="hidden" name="shipping_address2" id="shipping_address2"
+              value="{{ shipping_address2|default:'' }}">
+            <input type="hidden" name="shipping_city" id="shipping_city" value="{{ shipping_city|default:'' }}">
+            <input type="hidden" name="shipping_state" id="shipping_state" value="{{ shipping_state|default:'' }}">
+            <input type="hidden" name="shipping_postal_code" id="shipping_postal_code"
+              value="{{ shipping_postal_code|default:'' }}">
+
+            {% comment %} <a href="#" style="font-size:0.96em; text-decoration:underline; color:#7988e8;">Choose a
+              different vendor</a> {% endcomment %}
+          </div>
+
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col-md-4 mb-3">
+          <label for="{{ bill_form.bill_number.id_for_label }}">Bill # <span class="text-danger">*</span></label>
+          {{ bill_form.bill_number}}
+
+        </div>
+        <div class="col-md-4 mb-3">
+          <label for="{{ bill_form.order.id_for_label }}">Order # </label>
+          {{ bill_form.order}}
+
+        </div>
+        {% comment %} <div class="col-md-4 mb-3">
+          <label for="{{ bill_form.bill_number.id_for_label }}">bill# <span class="text-danger">*</span></label>
+          {{ bill_form.bill_number}}
+        </div> {% endcomment %}
+        <div class="col-md-4 mb-3">
+          <label for="{{ bill_form.date.id_for_label }}">Bill Date <span class="text-danger">*</span></label>
+          {{ bill_form.date}}
+
+        </div>
+        <div class="col-md-4 mb-3">
+          <label for="document_currency">Document Currency</label>
+          <select id="document_currency" class="form-control select2 document-currency-locked"
+            data-base-symbol="{{ company_base_currency_symbol }}" data-base-code="{{ company_base_currency_code }}"
+            data-locked-by-vendor="1" disabled>
+            <option value="">Choose currency</option>
+            {% for cur in company_currencies %}
+            <option value="{{ cur.id }}"
+              data-symbol="{{ cur.symbol|default:cur.code }}"
+              {% if bill.document_currency and bill.document_currency.id == cur.id or not bill.document_currency_id and cur.code == company_base_currency_code %}selected{% endif %}>
+              {{ cur.code }}
+            </option>
+            {% endfor %}
+          </select>
+          <input type="hidden" name="document_currency" id="document_currency_locked_value" value="{{ bill.document_currency_id|default:'' }}">
+          <small class="text-muted">Leave blank to use vendor's currency or company base if none selected.</small>
+        </div>
+        <div class="col-md-4 mb-3">
+          <label for="fx_rate_to_base">FX Rate to Base (optional)</label>
+          <input type="text" name="fx_rate_to_base" id="fx_rate_to_base" class="form-control"
+            value="{% if bill.fx_rate_to_base %}{{ bill.fx_rate_to_base }}{% endif %}" placeholder="e.g. 1.1200">
+          <label for="fx_rate_date" style="margin-top:6px;">FX Rate Date (optional)</label>
+          <input type="date" name="fx_rate_date" id="fx_rate_date" class="form-control"
+            value="{% if bill.fx_rate_date %}{{ bill.fx_rate_date }}{% endif %}">
+          <small class="text-muted">Provide to override auto rates.</small>
+        </div>
+        <div class="col-md-4 mb-3">
+          <label for="pay-terms">Payment Terms</label>
+          <select id="pay-terms" name="payment_term" style="width:100%;">
+            {% if bill.payment_term %}
+            <option value="{{ bill.payment_term.id }}" selected>{{ bill.payment_term.name }} ({{ bill.payment_term.days
+              }})</option>
+            {% endif %}
+          </select>
+        </div>
+        {% comment %} <div class="col-md-4 mb-3">
+          <label for="warehouse">Warehouse</label>
+          <select id="warehouse" name="warehouse" style="width:100%;">
+            {% if bill.warehouse %}
+            <option value="{{ bill.warehouse.id }}" selected="selected">{{ bill.warehouse.warehouse_name }}</option>
+            {% endif %}
+          </select>
+        </div> {% endcomment %}
+
+      </div>
+
+      <div class="section-title" style="margin-top:30px;">Item Details<span class="text-danger"> *</span></div>
+      {% comment %} <p>item.name: {{ item_formset.name }}</p> {% endcomment %}
+      <table class="items-table" id="items-table">
+        <thead>
+          <tr>
+            <th class="col-md-3">Item</th>
+            <th>Description</th>
+            <th>Quantity</th>
+            <th>Price</th>
+            <th>Base Currency Price</th>
+            <th style="display:none;"></th>
+
+            <th class="col-md-2">Tax</th>
+            <th class="col-md-2">Discount</th>
+            <th>Amount</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+
+          {% for form in bill_formset %}
+
+          <tr>
+            <td>
+              {{ form.product }}
+              <div style="margin-top:6px;">
+                <a href="#" class="open-hsn-btn">
+                  HSN:
+                  <span class="hsn-display">
+                    {% if form.instance and form.instance.hsn_code %}
+                    {{ form.instance.hsn_code }}
+                    {% elif form.instance and form.instance.product and form.instance.product.hsn_code %}
+                    {{ form.instance.product.hsn_code }}
+                    {% endif %}
+                  </span>
+                  <small style="color:#3a7bd5;">Update</small>
+                </a>
+                <input type="hidden" name="{{ form.prefix }}-hsn_code" class="hsn-input"
+                  value="{% if form.instance and form.instance.hsn_code %}{{ form.instance.hsn_code }}{% elif form.instance and form.instance.product and form.instance.product.hsn_code %}{{ form.instance.product.hsn_code }}{% endif %}">
+              </div>
+            </td>
+
+            <td>{{ form.description }}</td>
+            <td>{{ form.quantity }}</td>
+            <td>{{ form.price }}</td>
+            <td class="base-price">
+              <input type="text" class="form-control form-control-sm o_price_display"
+                name="{{ form.prefix }}-o_price_display"
+                value="{% if form.initial.o_price %}{{ form.initial.o_price|floatformat:2 }}{% else %}{% endif %}"
+                readonly>
+            </td>
+            <td>{{ form.prd_tax }}</td>
+
+
+
+
+            <td class="discount-item">
+              <div style="display:flex;align-items:center; gap:4px;">{{ form.prd_disvalue }}{{ form.prd_distype }}</div>
+            </td>
+            <td style="display:none;">
+              <input type="hidden" name="{{ form.prefix }}-gstinclude" class="gstinclude"
+                value="{{ form.initial.gstinclude|default:'false' }}">
+            </td>
+            <td style="display:none;">
+              <input type="hidden" name="{{ form.prefix }}-o_price" class="o_price"
+                value="{{ form.initial.o_price|default:0 }}">
+            </td>
+            <td class="amount">₹{{ item.amount }}</td>
+
+            <td>
+              {{ form.DELETE }}
+
+              <button type="button" class="remove-item-btn">X</button>
+            </td>
+            {% comment %} <p class="test">TAEST </p> {% endcomment %}
+          </tr>
+          {% endfor %}
+
+        </tbody>
+
+
+
+      </table>
+
+      <button type="button" id="add-item-btn" class="add-item-btn">+ Add an Item</button>
+
+
+      <div class="po-bottom-layout">
+        <div class="po-side-panel">
+      <div class="totals-section">
+        <div class="totals-row">
+          <span>Subtotal</span>
+          <strong id="subtotal" style="font-family:Ubuntu;" name="subtotal" class="amount"><span
+              class="currency-symbol">₹</span>0.00</strong>
+        </div>
+
+        <div class="totals-row">
+
+        </div>
+        {% if company_tax_type|default:''|upper != 'NONE' %}
+        {% if company_tax_type == 'GST' %}
+        <div class="totals-row">
+          <span>Total CGST</span>
+          <strong id="tax-total-cgst" class="amount"><span class="currency-symbol">₹</span>0.00</strong>
+        </div>
+        <div class="totals-row">
+          <span>Total SGST</span>
+          <strong id="tax-total-sgst" class="amount"><span class="currency-symbol">₹</span>0.00</strong>
+        </div>
+        {% else %}
+        <div class="totals-row">
+          {% if company_tax_type|default:''|upper == 'VAT' or company_tax_type|default:''|upper == 'SALES' or company_tax_type|default:''|upper == 'TURNOVER' %}
+            <span>Total Tax</span>
+          {% else %}
+            <span>Total Tax</span>
+          {% endif %}
+          {% endif %}
+          <strong id="tax-total-vat" class="amount">₹0.00</strong>
+        </div>
+        {% endif %}
+        <div class="totals-row">
+          <span>Add Discount</span>
+          <input type="number" id="grand-discount"
+            value="{% if bill.discount_value %}{{ bill.discount_value }}{% else %}0{% endif %}"
+            name="grand-discount-value" step="0.01" style="width:70px; margin-left:10px;">
+          <select id="grand-discount-type" name="discount_type" class="rupee-sign">
+            <option value="percent" {% if bill.discount_type == 'percent' %}selected{% endif %}>%</option>
+            <option value="flat" class="amount" {% if bill.discount_type == 'flat' %}selected{% endif %}>&#x20B9;</option>
+          </select>
+          <strong id="grandDiscountValue" class="rupee-sign" style="padding-left:5px;"><span
+              class="currency-symbol">₹</span>0.00</strong>
+
+        </div>
+        <div class="totals-row">
+          <span>Total Discount</span>
+          <strong id="discount-amount" class="amount"><span class="currency-symbol">₹</span>0.00</strong>
+        </div>
+        <hr>
+        <div class="totals-row" style="margin-top:14px;">
+          <span style="font-size:1.2em; font-weight:600;">Total</span>
+          <strong style="font-size:1.18em; color:#5a5c8a;" id="grand-total" class="amount"><span
+              class="currency-symbol">₹</span>0.00</strong>
+          <input style="font-size:1.18em; color:#5a5c8a;" type="hidden" class="amount" name="grandTotal" id="grandTotal"
+            value="0.00">
+
+        </div>
+      </div>
+
+      <!-- ===== BASE CURRENCY TRANSACTION - RESTYLED TO MATCH TOTALS SECTION ===== -->
+      <div class="totals-section" id="base-transaction-summary"
+        data-base-symbol="{{ company_base_currency_symbol|default:" &#x20B9;" }}"
+        data-base-code="{{ company_base_currency_code }}" style="clear:both; margin-top:12px;">
+
+        <!-- Clickable header row with toggle arrow -->
+        <div class="totals-row" id="base-transaction-toggle" style="cursor:pointer; user-select:none;" onclick="
+             var body = document.getElementById('base-transaction-body');
+             var arrow = document.getElementById('base-transaction-arrow');
+             if (body.style.display === 'none') {
+               body.style.display = 'block';
+               arrow.textContent = '▲';
+             } else {
+               body.style.display = 'none';
+               arrow.textContent = '▼';
+             }
+           ">
+          <span style="font-size:1.05em; font-weight:600;">
+            Base Currency Transaction{% if company_base_currency_code %} ({{ company_base_currency_code }}){% endif %}
+          </span>
+          <span id="base-transaction-arrow" style="color:#7d7cad; font-size:0.9em;">▲</span>
+        </div>
+
+        <!-- Collapsible body -->
+        <div id="base-transaction-body">
+          <div class="totals-row">
+            <span>Subtotal</span>
+            <strong id="base-subtotal" class="amount">{{ company_base_currency_symbol|default:"&#x20B9;" }}0.00</strong>
+          </div>
+          {% if company_is_india %}
+          <div class="totals-row">
+            <span>CGST</span>
+            <strong id="base-tax-cgst" class="amount">{{ company_base_currency_symbol|default:"&#x20B9;" }}0.00</strong>
+          </div>
+          <div class="totals-row">
+            <span>SGST</span>
+            <strong id="base-tax-sgst" class="amount">{{ company_base_currency_symbol|default:"&#x20B9;" }}0.00</strong>
+          </div>
+          {% else %}
+          <div class="totals-row">
+            <span>VAT</span>
+            <strong id="base-tax-vat" class="amount">{{ company_base_currency_symbol|default:"&#x20B9;" }}0.00</strong>
+          </div>
+          {% endif %}
+          <div class="totals-row">
+            <span>Total Discount</span>
+            <strong id="base-total-discount" class="amount">{{ company_base_currency_symbol|default:"&#x20B9;"
+              }}0.00</strong>
+          </div>
+          <hr>
+          <div class="totals-row" style="margin-top:14px;">
+            <span style="font-size:1.2em; font-weight:600;">Grand Total</span>
+            <strong id="base-grand-total" class="amount" style="font-size:1.18em; color:#5a5c8a;">
+              {{ company_base_currency_symbol|default:"&#x20B9;" }}0.00
+            </strong>
+          </div>
+        </div>
+
+      </div>
+      <!-- ===== END BASE CURRENCY TRANSACTION ===== -->
+        </div>
+
+        <div class="po-main-panel">
+      <div class="notes-box">
+        <label for="notes">Notes</label>
+        <textarea name="notes" id="notes"
+          placeholder="Enter Notes">{% if bill.notes %}{{ bill.notes }}{% endif %}</textarea>
+      </div>
+
+      <div class="mt-3 savebtn-wrapper" title="Please fill all the required fields">
+        {% comment %} {% if is_edit %}
+        <a href="{% url 'bill_add' %}" class="savebtn btn btn-primary">Revise bill</a>
+        {% else %} {% endcomment %}
+        <button type="submit" class="savebtn btn btn-primary">Save Bill</button>
+        {% comment %} {% endif %} {% endcomment %}
+        <a href="{% url 'bill_list' %}" class="btn btn-secondary">Cancel</a>
+
+
+      </div>
+        </div>
+      </div>
+    </form>
+  </div>
+  {% comment %} {% for form in purchase_formset %}
+  <p>Form {{ forloop.counter }} fields:</p>
+  <ul>
+    {% for field in form %}
+    <li>{{ field.name }}: {{ field }}</li>
+    {% endfor %}
+  </ul>
+  {% endfor %} {% endcomment %}
+
+  {% comment %} Pay terms list modal {% endcomment %}
+  <div class="modal fade" id="paymentTermsModal" tabindex="-1" aria-labelledby="paymentTermsLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="paymentTermsLabel">Configure Payment Terms</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>TERM NAME</th>
+                <th>NUMBER OF DAYS</th>
+              </tr>
+            </thead>
+            <tbody>
+
+            </tbody>
+          </table>
+          <button class="btn btn-link" id="addNew">+ Add New</button>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-primary" type="button">Save</button>
+          <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Unit Modal -->
+  <div class="modal fade" id="addUnitModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Add New Unit</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="addUnitForm">
+            <div class="mb-3">
+              <label for="unit_name" class="form-label">Unit Name <span class="text-danger">*</span></label>
+              <input type="text" class="form-control" id="unit_name" name="name" required>
+              {% comment %} <small class="text-muted">Enter the unit of measurement</small> {% endcomment %}
+            </div>
+
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-primary" id="saveUnitBtn">Save Unit</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- Simplified Add New Item Modal - Only Essential Fields -->
+  <div class="modal fade" id="addItemModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Add New Item</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="addItemForm" novalidate>
+
+            <!-- Type Selection -->
+            <div class="row mb-3">
+              <div class="col-md-12">
+                <label class="form-label">Type<span class="text-danger">*</span></label>
+                <div class="d-flex gap-3" style="align-items: center;">
+
+                  <div style="display: flex; align-items: center;">
+                    <input type="radio" name="type" value="goods" checked id="type_goods">
+                    <label for="type_goods" style="margin: 0; line-height: 1; cursor: pointer;">Goods</label>
+                  </div>
+                  <div style="display: flex; align-items: center;">
+
+                    {% comment %} <label for="type_goods" class="me-3"></label> {% endcomment %}
+                    <input type="radio" class="ms-3" name="type" value="service" id="type_service">
+                    <label for="type_service" style="margin: 0; line-height: 1; cursor: pointer;">Service</label>
+
+                    {% comment %} <label for="type_service"></label> {% endcomment %}
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            <!-- Basic Information -->
+            <div class="row mb-3">
+              <div class="col-md-6">
+                <label for="item_name" class="form-label">Name<span class="text-danger">*</span></label>
+                <input type="text" class="form-control" name="name" id="item_name" required>
+              </div>
+              <div class="col-md-6">
+                <label for="item_unit_select" class="form-label">Default Unit<span class="text-danger">*</span></label>
+                <select class="form-select" name="unit" id="item_unit_select" style="width: 100%;" required>
+                  <option value="">Choose...</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="row mb-3">
+              <div class="col-md-6">
+                <label for="item_barcode" class="form-label">Barcode</label>
+                <input type="text" class="form-control" name="barcode" id="item_barcode">
+              </div>
+              <div class="col-md-6">
+                <label for="item_tax_pref" class="form-label">Tax Preference<span class="text-danger">*</span></label>
+                <select class="form-select" name="tax_pref" id="item_tax_pref">
+                  <option value="taxable">Taxable</option>
+                  <option value="non_taxable">Non-Taxable</option>
+                </select>
+              </div>
+            </div>
+
+            <hr>
+
+            <!-- Purchase Information Section -->
+            <div class="card p-3 mb-3">
+              {% comment %} <h6 class="mb-3">Purchase Information</h6> {% endcomment %}
+              <div class="row mb-2">
+                <div class="col-md-5">
+                  <label class="form-label">Cost Price<span class="text-danger">*</span></label>
+                  <div class="input-group">
+                    <span class="input-group-text">{{ company_base_currency_code|default:"INR" }}</span>
+                    <input type="number" class="form-control" name="cost_price" id="item_cost_price" step="0.01"
+                      required>
+                  </div>
+                </div>
+                <div class="col-md-6" id="item_tax_fields">
+                  {% comment %} <h6>tax rates</h6> {% endcomment %}
+                  <div class="row mb-2" id="item_indian_tax_fields">
+                    <div class="col-md-6">
+                      <label for="item_intra_tax_select" class="form-label">Intra State Tax Rate</label>
+                      <select class="form-select" name="intra_tax" id="item_intra_tax_select" style="width: 100%;">
+                        <option value="">Choose...</option>
+                      </select>
+                    </div>
+                    <div class="col-md-6">
+                      <label for="item_inter_tax_select" class="form-label">Inter State Tax Rate</label>
+                      <select class="form-select" name="inter_tax_group" id="item_inter_tax_select"
+                        style="width: 100%;">
+                        <option value="">Choose...</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div class="row mb-2" id="item_default_tax_fields" style="display: none;">
+                    <div class="col-md-12">
+                      <label for="item_default_tax_select" class="form-label">Tax Rate</label>
+                      <select class="form-select" name="tax" id="item_default_tax_select" style="width: 100%;">
+                        <option value="">Choose...</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+                <div class="row mb-2" id="item_sales_purchase_tax_fields" style="display: none;">
+                  <div class="col-md-6">
+                    <label for="item_sales_tax_select" class="form-label">Sales Tax Rate</label>
+                    <select class="form-select" name="sales_tax" id="item_sales_tax_select" style="width: 100%;">
+                      <option value="">Choose...</option>
+                    </select>
+                  </div>
+                  <div class="col-md-6">
+                    <label for="item_purchase_tax_select" class="form-label">Purchase Tax Rate</label>
+                    <select class="form-select" name="purchase_tax" id="item_purchase_tax_select" style="width: 100%;">
+                      <option value="">Choose...</option>
+                    </select>
+                  </div>
+                </div>
+                {% comment %} <div class="col-md-6">
+                  <label class="form-label">Selling Price</label>
+                  <div class="input-group">
+                    <span class="input-group-text">{{ company_base_currency_code|default:"INR" }}</span>
+                    <input type="number" class="form-control" name="selling_price" id="item_selling_price" step="0.01">
+                  </div>
+                </div> {% endcomment %}
+              </div>
+              <div class="row mb-2" id="item_gst_inclusive_row">
+                <div class="col-md-12">
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="item_taxincld_costprice"
+                      name="taxincld_costprice">
+                    <label class="form-check-label" for="item_taxincld_costprice">
+                      Price is inclusive of Tax
+                    </label>
+                  </div>
+                </div>
+              </div>
+              {% comment %} <div class="row mb-2">
+                <div class="col-md-12">
+                  <label for="item_purchase_desc" class="form-label">Description</label>
+                  <textarea class="form-control" name="purchase_desc" id="item_purchase_desc" rows="2"></textarea>
+                </div>
+              </div> {% endcomment %}
+            </div>
+
+            <!-- Tax Rates Section -->
+            {% comment %} <div id="item_tax_fields" class="card p-3">
+              <h6 class="mb-3">Tax Rates</h6>
+              <div class="row mb-2">
+                <div class="col-md-6">
+                  <label for="item_intra_tax_select" class="form-label">Intra State Tax Rate</label>
+                  <select class="form-select" name="intra_tax" id="item_intra_tax_select" style="width: 100%;">
+                    <option value="">Choose...</option>
+                  </select>
+                </div>
+                <div class="col-md-6">
+                  <label for="item_inter_tax_select" class="form-label">Inter State Tax Rate</label>
+                  <select class="form-select" name="inter_tax_group" id="item_inter_tax_select" style="width: 100%;">
+                    <option value="">Choose...</option>
+                  </select>
+                </div>
+              </div>
+            </div> {% endcomment %}
+
+            <!-- Hidden fields to satisfy backend validation -->
+            <input type="hidden" name="sales_info" value="on">
+            <input type="hidden" name="purchase_info" value="on">
+
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" id="saveNewItemBtn" class="btn btn-primary">Save Item</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+
+  <div class="modal fade" id="vendorCreateModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog ">
+      <div class="modal-content custom-modal-content">
+        <form id="vendorCreateForm" method="post" autocomplete="off">
+          <div class="modal-header border-0 pb-1">
+            <h5 class="modal-title fw-semibold">New Vendor</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <!-- Form loaded dynamically via AJAX -->
+          </div>
+          <div class="modal-footer border-0 pt-1 d-flex">
+            <button type="submit" class="btn btn-primary">Save</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+
+
+
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      const toastContainer = document.getElementById('toastContainer');
+      {% if messages %}
+      {% for message in messages %}
+      const toastEl = document.createElement('div');
+      toastEl.className = 'toast align-items-center text-bg-{{ message.tags }} border-0';
+      toastEl.setAttribute('role', 'alert');
+      toastEl.setAttribute('aria-live', 'assertive');
+      toastEl.setAttribute('aria-atomic', 'true');
+      toastEl.innerHTML = `
+          <div class="d-flex">
+            <div class="toast-body">
+              {{ message|escapejs }}
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+          </div>
+        `;
+      toastContainer.appendChild(toastEl);
+
+      const toast = new bootstrap.Toast(toastEl, { delay: 3000 });
+      toast.show();
+      {% endfor %}
+      {% endif %}
+    });
+
+
+    {% comment %} document.querySelectorAll('.remove-item-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        const formRow = btn.closest('tr');
+        const deleteCheckbox = formRow.querySelector('input[type="checkbox"][name$="-DELETE"]');
+        if (deleteCheckbox) {
+          deleteCheckbox.checked = true;  // mark form for deletion
+        }
+
+        // Do NOT disable inputs; keep them enabled to be submitted
+
+        // Hide the row visually
+        formRow.style.display = 'none';
+      });
+    }); {% endcomment %}
+
+  </script>
+
+  <script>
+    // Load and display selected vendor details in billing/shipping area
+    document.addEventListener('DOMContentLoaded', function () {
+      function qs(selector) { return document.querySelector(selector); }
+      const select = qs('#id_vendor') || qs('#vendor_select') || qs('select[name="vendor"]');
+      const vendorInfo = qs('#vendor-info');
+      const billingName = qs('#billing-name');
+      const billingAddress = qs('#billing-address');
+      const billingContact = qs('#billing-contact');
+      const billingGst = qs('#billing-gst');
+      // GST treatment element removed; do not set GST Treatment here
+      const placeSelect = qs('#place-of-supply-select');
+
+      function clearVendor() {
+        if (!vendorInfo) return;
+        vendorInfo.style.display = 'none';
+        billingName.innerText = '';
+        billingAddress.innerText = '';
+        billingContact.innerText = '';
+        billingGst.innerText = '';
+        if (placeSelect) placeSelect.innerHTML = '<option value="">Select Place of Supply</option>';
+      }
+
+      function fillVendor(data) {
+        if (!vendorInfo) return;
+        if (!data || data.error) { clearVendor(); return; }
+        vendorInfo.style.display = 'block';
+        const b = data.billing || {};
+        billingName.innerText = b.name || '';
+        let addr = '';
+        if (b.address_line_1) addr += b.address_line_1 + ', ';
+        if (b.address_line_2) addr += b.address_line_2 + ', ';
+        if (b.city) addr += b.city + ', ';
+        if (b.postal_code) addr += b.postal_code + ', ';
+        if (b.country) addr += b.country;
+        billingAddress.innerText = addr.replace(/, $/, '');
+        billingContact.innerText = (b.email ? b.email + (b.phone ? ' | ' + b.phone : '') : (b.phone || ''));
+        billingGst.innerText = b.gst_number ? ('Tax Number: ' + b.gst_number) : '';
+
+        // Shipping: use user-edited saved shipping first, else vendor shipping, else fallback to billing.
+        const hasSavedShipping = !!(window.hasSavedShippingData && window.savedShippingData && Object.values(window.savedShippingData).some(v => (v || '').toString().trim() !== ''));
+        let shipData = null;
+        if (hasSavedShipping) {
+          shipData = window.savedShippingData;
+        } else if (data.shipping) {
+          shipData = {
+            attention: data.shipping.name || '',
+            email: data.shipping.email || '',
+            phone: data.shipping.phone || '',
+            country: data.shipping.shipping_country || '',
+            address1: data.shipping.shipping_address_line_1 || '',
+            address2: data.shipping.shipping_address_line_2 || '',
+            city: data.shipping.shipping_city || '',
+            state: data.shipping.shipping_state || '',
+            postal: data.shipping.shipping_postal_code || ''
+          };
+        } else {
+          shipData = {
+            attention: b.name || '',
+            email: b.email || '',
+            phone: b.phone || '',
+            country: b.country || '',
+            address1: b.address_line_1 || '',
+            address2: b.address_line_2 || '',
+            city: b.city || '',
+            state: b.state || '',
+            postal: b.postal_code || ''
+          };
+        }
+
+        if (window.displayShippingAddress && shipData) {
+          window.displayShippingAddress(shipData);
+        }
+        if (shipData) {
+          const setVal = function (id, val) { const el = document.getElementById(id); if (el) el.value = val || ''; };
+          setVal('shipping_attention', shipData.attention);
+          setVal('shipping_email', shipData.email);
+          setVal('shipping_phone', shipData.phone);
+          setVal('shipping_country', shipData.country);
+          setVal('shipping_address1', shipData.address1);
+          setVal('shipping_address2', shipData.address2);
+          setVal('shipping_city', shipData.city);
+          setVal('shipping_state', shipData.state);
+          setVal('shipping_postal_code', shipData.postal);
+          window.savedShippingData = shipData;
+          window.hasSavedShippingData = Object.values(shipData).some(v => (v || '').toString().trim() !== '');
+        }
+        // GST treatment display removed; don't set gstTreatment here.
+        if (placeSelect) {
+          const states = [
+            'Andaman and Nicobar Islands', 'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar',
+            'Chandigarh', 'Chhattisgarh', 'Dadra and Nagar Haveli', 'Daman and Diu', 'Delhi',
+            'Goa', 'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jharkhand', 'Karnataka', 'Kerala',
+            'Ladakh', 'Lakshadweep', 'Madhya Pradesh', 'Maharashtra', 'Manipur', 'Meghalaya',
+            'Mizoram', 'Nagaland', 'Odisha', 'Puducherry', 'Punjab', 'Rajasthan', 'Sikkim',
+            'Tamil Nadu', 'Telangana', 'Tripura', 'Uttar Pradesh', 'Uttarakhand', 'West Bengal'
+          ];
+          // Prefer the saved order value (hidden form field) when present (editing),
+          // otherwise fall back to the vendor's default place_of_supply.
+          const savedPlaceField = document.querySelector('input[name="place_of_supply"]');
+          const savedVal = savedPlaceField ? (savedPlaceField.value || '').trim() : '';
+          const initialVal = document.getElementById('place_of_supply_value') ? (document.getElementById('place_of_supply_value').value || '').trim() : '';
+          const state = savedVal || initialVal || data.place_of_supply || '';
+          placeSelect.innerHTML = '';
+          const opt0 = document.createElement('option'); opt0.value = ''; opt0.text = 'Select Place of Supply'; placeSelect.appendChild(opt0);
+          states.forEach(s => {
+            const o = document.createElement('option'); o.value = s; o.text = s;
+            if (s === state) o.selected = true;
+            placeSelect.appendChild(o);
+          });
+          // Set the value and refresh select2
+          if (window.jQuery && $.fn.select2) {
+            // Check if select2 is already initialized before destroying
+            if ($(placeSelect).data('select2')) {
+              $(placeSelect).select2('destroy');
+            }
+            $(placeSelect).select2({
+              placeholder: 'Select Place of Supply',
+              allowClear: true,
+              width: '100%'
+            });
+          }
+          // Set the value after initializing select2
+          if (state) {
+            placeSelect.value = state;
+            if (window.jQuery && $(placeSelect).data('select2')) {
+              $(placeSelect).trigger('change');
+            }
+          }
+
+          // Sync the visual dropdown to the hidden form field (if present)
+          const hiddenField = document.querySelector('input[name="place_of_supply"]');
+          if (hiddenField && state) {
+            hiddenField.value = state;
+          }
+        }
+      }
+
+      // Sync place-of-supply-select to hidden form field on change
+      const placeSelectElement = document.getElementById('place-of-supply-select');
+      const hiddenPlaceField = document.querySelector('input[name="place_of_supply"]');
+      if (placeSelectElement && hiddenPlaceField) {
+        placeSelectElement.addEventListener('change', function () {
+          hiddenPlaceField.value = this.value;
+        });
+        // Also handle select2 events
+        if (window.jQuery && $.fn.select2) {
+          $(placeSelectElement).on('select2:select select2:unselect', function () {
+            hiddenPlaceField.value = $(this).val() || '';
+          });
+        }
+      }
+
+      function loadVendorDetails(vendorId) {
+        if (!vendorId) { clearVendor(); return; }
+        fetch(`/purchase/vendor/${vendorId}/detail/`)
+          .then(r => r.json())
+          .then(fillVendor)
+          .catch(err => { console.error(err); clearVendor(); });
+      }
+
+      if (select) {
+        select.addEventListener('change', function () {
+          loadVendorDetails(this.value);
+        });
+        // Also handle select2 selection event
+        if (window.jQuery) {
+          $(select).on('select2:select', function (e) {
+            var id = $(this).val();
+            if (id) loadVendorDetails(id);
+          });
+        }
+        // Load initial vendor if present
+        const init = select.value;
+        if (init) loadVendorDetails(init);
+      }
+    });
+  </script>
+</body>
+
+<!-- HSN Modal for items (added so HSN Update link works on revise/edit pages) -->
+<div class="modal fade" id="hsnModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">HSN Code</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <label for="hsn_select">HSN Code</label>
+        <select id="hsn_select" style="width:100%"></select>
+      </div>
+      <div class="modal-footer">
+        <button type="button" id="hsn_save_btn" class="btn btn-primary">Save</button>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+</html>
+
+
+<div class="modal fade" id="addVendorModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog ">
+    <div class="modal-content custom-modal-content">
+      <div id="addVendorContainer">
+        <div class="modal-header border-0 pb-1">
+          <h5 class="modal-title fw-semibold">Add New Vendor</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <!-- vendor form fields will be loaded here dynamically via AJAX -->
+        </div>
+      </div>
+      <script>
+        // Show Add vendor Modal on +New click
+        document.addEventListener('DOMContentLoaded', function () {
+          var addVendorBtn = document.getElementById('addVendorBtn');
+          if (addVendorBtn) {
+            addVendorBtn.addEventListener('click', function () {
+              var modal = new bootstrap.Modal(document.getElementById('addVendorModal'));
+              modal.show();
+            });
+          }
+        });
+      </script>
+    </div>
+  </div>
+</div>
+
+
+<!-- Shipping Address Modal (copied from add template) -->
+<div class="modal fade" id="shippingAddressModal" tabindex="-1" aria-hidden="true"
+     data-location-load-countries-url="{% if company_code %}{% url 'load_countries' company_code %}{% else %}#{% endif %}"
+     data-location-load-states-url="{% if company_code %}{% url 'load_states' company_code %}{% else %}#{% endif %}"
+     data-location-load-cities-url="{% if company_code %}{% url 'load_cities' company_code %}{% else %}#{% endif %}">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Shipping Address</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p><a href="#" id="copy-billing-btn" class="text-primary"><i class="bi bi-arrow-down"></i> Copy billing
+            address</a></p>
+        <form id="shippingAddressForm">
+          <div class="mb-2">
+            <label>Attention</label>
+            <input type="text" id="sa_attention" class="form-control" placeholder="Attention">
+          </div>
+          <div class="mb-2">
+            <label>Email</label>
+            <input type="email" id="sa_email" class="form-control" placeholder="Email">
+          </div>
+          <div class="mb-2">
+            <label>Phone</label>
+            <input type="text" id="sa_phone" class="form-control" placeholder="Phone">
+          </div>
+          <div class="mb-2">
+            <label>Country/Region</label>
+            <select id="sa_country" class="form-control select2 location-country-select" data-current-value="{{ shipping_country|default:'' }}">
+              <option value="">Select Country</option>
+              {% if shipping_country %}<option value="{{ shipping_country }}" selected>{{ shipping_country }}</option>{% endif %}
+            </select>
+          </div>
+          <div class="mb-2">
+            <label>Address Line 1</label>
+            <textarea id="sa_address1" class="form-control" rows="2" placeholder="Address Line 1"></textarea>
+          </div>
+          <div class="mb-2">
+            <label>Address Line 2</label>
+            <textarea id="sa_address2" class="form-control" rows="2" placeholder="Address Line 2"></textarea>
+          </div>
+          <div class="row">
+            <div class="col-md-4 mb-2">
+              <label>State</label>
+              <select id="sa_state" class="form-control select2 sa-state-select location-state-select"
+                      data-country-field="sa_country"
+                      data-city-field="sa_city"
+                      data-current-value="{{ shipping_state|default:'' }}">
+                <option value="">Select State</option>
+                {% if shipping_state %}<option value="{{ shipping_state }}" selected>{{ shipping_state }}</option>{% endif %}
+              </select>
+            </div>
+            <div class="col-md-6 mb-2">
+              <label>City</label>
+              <select id="sa_city" class="form-control select2 location-city-select"
+                      data-country-field="sa_country"
+                      data-state-field="sa_state"
+                      data-current-value="{{ shipping_city|default:'' }}"
+                      data-initial-value="{{ shipping_city|default:'' }}">
+                <option value="">Select City</option>
+                {% if shipping_city %}<option value="{{ shipping_city }}" selected>{{ shipping_city }}</option>{% endif %}
+              </select>
+            </div>
+            <div class="col-md-2 mb-2">
+              <label>Pin Code</label>
+              <input type="text" id="sa_postal" class="form-control">
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="saveShippingBtn">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- Bill Action Modal - Shows after successful save added on 17-2-26 -->
+<div class="modal fade" id="billActionModal" tabindex="-1" role="dialog" aria-labelledby="billActionModalLabel"
+  aria-hidden="true" data-backdrop="static" data-keyboard="false">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-header text-green justify-content-center">
+        <h5 class="modal-title" id="billActionModalLabel" style="color: #28a745 !important;width: 95% !important;
+    text-align: center;">
+          <i class="fas fa-check-circle"></i> Bill Saved Successfully!
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body text-center py-4">
+        <p class="mb-3" style="color: #55588b !important;">Bill <strong id="BillNumber"
+            style="color: #28a745; font-size: 1.1em;"></strong> has been created.</p>
+        <p class="text-muted mb-2" style="color: #55588b !important;">Vendor: <span id="VendorName"
+            style="font-weight: 600;"></span></p>
+        <p class="text-muted mb-2" style="color: #55588b !important;">Amount: <strong id="BillAmount"
+            style="color: #333; font-size: 1.1em;"></strong></p>
+        <hr class="my-3">
+        <p class="text-muted mt-3" style="color: #55588b !important;">What would you like to do next?</p>
+      </div>
+      <div class="modal-footer justify-content-center border-0 pb-4">
+        <button type="button" class="btn btn-primary btn-lg mx-2" id="printBillBtn">
+          <i class="fas fa-print"></i> Print Bill
+        </button>
+        <button type="button" class="btn btn-success btn-lg mx-2" id="payBillBtn">
+          <i class="fas fa-credit-card"></i> Record Payment
+        </button>
+        {% comment %} <button type="button" class="btn btn-secondary btn-lg mx-2" id="closeModalBtn">
+          <i class="fas fa-times"></i> Close
+        </button> {% endcomment %}
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const modalEl = document.getElementById('shippingAddressModal');
+    const bsModal = modalEl ? new bootstrap.Modal(modalEl) : null;
+    const editShippingBtn = document.getElementById('edit-shipping-btn');
+    if (editShippingBtn) {
+      editShippingBtn.addEventListener('click', function (e) { e.preventDefault(); if (bsModal) bsModal.show(); });
+    }
+
+    // Prefill shipping display and modal fields from hidden inputs (for editing)
+    function prefillShippingFromHiddenInputs() {
+      const att = document.getElementById('shipping_attention') ? document.getElementById('shipping_attention').value : '';
+      const email = document.getElementById('shipping_email') ? document.getElementById('shipping_email').value : '';
+      const phone = document.getElementById('shipping_phone') ? document.getElementById('shipping_phone').value : '';
+      const country = document.getElementById('shipping_country') ? document.getElementById('shipping_country').value : '';
+      const a1 = document.getElementById('shipping_address1') ? document.getElementById('shipping_address1').value : '';
+      const a2 = document.getElementById('shipping_address2') ? document.getElementById('shipping_address2').value : '';
+      const city = document.getElementById('shipping_city') ? document.getElementById('shipping_city').value : '';
+      const state = document.getElementById('shipping_state') ? document.getElementById('shipping_state').value : '';
+      const postal = document.getElementById('shipping_postal_code') ? document.getElementById('shipping_postal_code').value : '';
+
+      if (att || email || phone || a1 || a2 || city || state || postal) {
+        // Populate modal fields
+        if (document.getElementById('sa_attention')) document.getElementById('sa_attention').value = att;
+        if (document.getElementById('sa_email')) document.getElementById('sa_email').value = email;
+        if (document.getElementById('sa_phone')) document.getElementById('sa_phone').value = phone;
+        if (document.getElementById('sa_country')) document.getElementById('sa_country').value = country;
+        if (document.getElementById('sa_address1')) document.getElementById('sa_address1').value = a1;
+        if (document.getElementById('sa_address2')) document.getElementById('sa_address2').value = a2;
+        if (document.getElementById('sa_city')) document.getElementById('sa_city').value = city;
+        if (document.getElementById('sa_state')) document.getElementById('sa_state').value = state;
+        if (document.getElementById('sa_postal')) document.getElementById('sa_postal').value = postal;
+
+        // Update display
+        const shipEl = document.getElementById('shipping-address');
+        const shipContactEl = document.getElementById('shipping-contact');
+        if (shipEl) {
+          const nameEl = document.getElementById('shipping-name');
+          nameEl.innerText = att;
+          let lines = [];
+          if (a1) lines.push(a1);
+          if (a2) lines.push(a2);
+          let loc = '';
+          if (city) loc += city;
+          if (state) loc += (loc ? ', ' : '') + state;
+          if (postal) loc += (loc ? ', ' : '') + postal;
+          if (country) loc += (loc ? ', ' : '') + country;
+          if (loc) lines.push(loc);
+          shipEl.innerText = lines.join('\n');
+        }
+        if (shipContactEl) {
+          shipContactEl.innerText = (email ? email + (phone ? ' | ' + phone : '') : (phone || ''));
+        }
+      }
+    }
+    prefillShippingFromHiddenInputs();
+
+    // Prefill place of supply from saved value
+    function prefillPlaceOfSupply() {
+      const placeSelect = document.getElementById('place-of-supply-select');
+      const placeVal = document.getElementById('place_of_supply_value');
+      if (placeSelect && placeVal && placeVal.value) {
+        const states = [
+          'Andaman and Nicobar Islands', 'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar',
+          'Chandigarh', 'Chhattisgarh', 'Dadra and Nagar Haveli', 'Daman and Diu', 'Delhi',
+          'Goa', 'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jharkhand', 'Karnataka', 'Kerala',
+          'Ladakh', 'Lakshadweep', 'Madhya Pradesh', 'Maharashtra', 'Manipur', 'Meghalaya',
+          'Mizoram', 'Nagaland', 'Odisha', 'Puducherry', 'Punjab', 'Rajasthan', 'Sikkim',
+          'Tamil Nadu', 'Telangana', 'Tripura', 'Uttar Pradesh', 'Uttarakhand', 'West Bengal'
+        ];
+        placeSelect.innerHTML = '<option value="">Select Place of Supply</option>';
+        const savedVal = placeVal.value.trim();
+        states.forEach(s => {
+          const o = document.createElement('option');
+          o.value = s;
+          o.text = s;
+          if (s === savedVal) o.selected = true;
+          placeSelect.appendChild(o);
+        });
+        if (savedVal) {
+          placeSelect.value = savedVal;
+          // Sync to hidden form field
+          const hiddenField = document.querySelector('input[name="place_of_supply"]');
+          if (hiddenField) hiddenField.value = savedVal;
+        }
+      }
+    }
+    prefillPlaceOfSupply();
+
+    // copy billing & save handlers reused from add template
+    const copyBtn = document.getElementById('copy-billing-btn');
+    if (copyBtn) {
+      copyBtn.addEventListener('click', function (e) {
+        e.preventDefault();
+        const bname = document.getElementById('billing-name') ? document.getElementById('billing-name').innerText : '';
+        const baddr = document.getElementById('billing-address') ? document.getElementById('billing-address').innerText : '';
+        const bcontact = document.getElementById('billing-contact') ? document.getElementById('billing-contact').innerText : '';
+        let email = '', phone = '';
+        if (bcontact) {
+          if (bcontact.includes('|')) { const parts = bcontact.split('|').map(p => p.trim()); email = parts[0] || ''; phone = parts[1] || ''; }
+          else if (bcontact.includes('@')) email = bcontact; else phone = bcontact;
+        }
+        document.getElementById('sa_attention').value = bname || '';
+        document.getElementById('sa_email').value = email || '';
+        document.getElementById('sa_phone').value = phone || '';
+        document.getElementById('sa_address1').value = baddr || '';
+        document.getElementById('sa_address2').value = '';
+        document.getElementById('sa_city').value = '';
+        document.getElementById('sa_state').value = '';
+        document.getElementById('sa_postal').value = '';
+      });
+    }
+    const saveBtn = document.getElementById('saveShippingBtn');
+    if (saveBtn) {
+      saveBtn.addEventListener('click', function (e) {
+        const att = document.getElementById('sa_attention').value || '';
+        const email = document.getElementById('sa_email').value || '';
+        const phone = document.getElementById('sa_phone').value || '';
+        const country = document.getElementById('sa_country').value || '';
+        const a1 = document.getElementById('sa_address1').value || '';
+        const a2 = document.getElementById('sa_address2').value || '';
+        const city = document.getElementById('sa_city').value || '';
+        const state = document.getElementById('sa_state').value || '';
+        const postal = document.getElementById('sa_postal').value || '';
+        const shipEl = document.getElementById('shipping-address');
+        const shipContactEl = document.getElementById('shipping-contact');
+        if (shipEl) {
+          const nameEl = document.getElementById('shipping-name');
+          let disp = att || '';
+          nameEl.innerText = disp;
+          let lines = [];
+          if (a1) lines.push(a1);
+          if (a2) lines.push(a2);
+          let loc = '';
+          if (city) loc += city;
+          if (state) loc += (loc ? ', ' : '') + state;
+          if (postal) loc += (loc ? ', ' : '') + postal;
+          if (country) loc += (loc ? ', ' : '') + country;
+          if (loc) lines.push(loc);
+          shipEl.innerText = lines.join('\n');
+        }
+        if (shipContactEl) {
+          shipContactEl.innerText = (email ? email + (phone ? ' | ' + phone : '') : (phone || ''));
+        }
+        try {
+          document.getElementById('shipping_attention').value = att;
+          document.getElementById('shipping_email').value = email;
+          document.getElementById('shipping_phone').value = phone;
+          document.getElementById('shipping_country').value = country;
+          document.getElementById('shipping_address1').value = a1;
+          document.getElementById('shipping_address2').value = a2;
+          document.getElementById('shipping_city').value = city;
+          document.getElementById('shipping_state').value = state;
+          document.getElementById('shipping_postal_code').value = postal;
+        } catch (err) { console.warn(err) }
+
+        // If shipping state is provided, update Place of Supply to that state
+        if (state) {
+          const placeOfSupplyDiv = document.getElementById('place-of-supply');
+          const placeOfSupplyHidden = document.querySelector('input[name="place_of_supply"]');
+          if (placeOfSupplyDiv) placeOfSupplyDiv.innerText = state;
+          if (placeOfSupplyHidden) placeOfSupplyHidden.value = state;
+          console.log('Updated Place of Supply to:', state);
+        }
+
+        if (bsModal) bsModal.hide();
+      });
+    }
+  });
+
+  //added on 17-2-26 to handle Bill action modal after save by neha
+
+  // Display error modal if period lock error exists
+  if ("{{ show_error_modal|lower|default:"false" }}" === "true") {
+    const errorModalEl = document.getElementById('billErrorModal');
+    const errorBody = document.getElementById('billErrorModalBody');
+    if (errorBody) {
+      const errorMsg = `{{ error_message }}`;
+      errorBody.innerHTML = errorMsg.replace(/\n/g, '<br>');
+    }
+    if (errorModalEl) {
+      new bootstrap.Modal(errorModalEl).show();
+    }
+  }
+
+  $(document).ready(function () {
+    console.log('Bill Action Modal Script Loaded');
+
+    let savedBillId = null;
+    let savedBillNumber = null;
+
+    // Check if form and modal exist
+    if ($('#bill-form').length === 0) {
+      console.error('ERROR: Form with id="bill-form" not found!');
+    } else {
+      console.log('✓ Form found');
+    }
+
+    if ($('#billActionModal').length === 0) {
+      console.error('ERROR: Modal with id="billActionModal" not found!');
+    } else {
+      console.log('✓ Modal found');
+    }
+
+    // Intercept form submission
+    $('#bill-form').on('submit', function (e) {
+      e.preventDefault();
+      console.log('=== Form Submitted ===');
+
+      // Get CSRF token
+      var csrftoken = $('[name=csrfmiddlewaretoken]').val();
+      console.log('CSRF Token:', csrftoken ? '✓ Found' : '✗ NOT FOUND');
+
+      var formData = new FormData(this);
+
+      // Show loading state on save button
+      var $saveBtn = $('.savebtn');
+      var originalBtnText = $saveBtn.html();
+      $saveBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Saving...');
+
+      console.log('Sending AJAX request...');
+
+      $.ajax({
+        url: $(this).attr('action'),
+        type: 'POST',
+        data: formData,
+        processData: false,
+        contentType: false,
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest',
+          'X-CSRFToken': csrftoken
+        },
+        success: function (response) {
+          console.log('=== AJAX Success ===');
+          console.log('Response:', response);
+
+          if (response.success) {
+            // Store Bill details
+            savedBillId = response.bill_id;
+            savedBillNumber = response.bill_number;
+
+            console.log('✓ Bill ID:', savedBillId);
+            console.log('✓ Bill Number:', savedBillNumber);
+            console.log('✓ Vendor:', response.vendor_name);
+            console.log('✓ Amount:', response.total_amount);
+
+            // Update modal with Bill details
+            $('#BillNumber').text(response.bill_number);
+            $('#VendorName').text(response.vendor_name || 'N/A');
+            const symbol = response.currency_symbol || $('.currency-symbol').first().text() || '₹';
+            $('#BillAmount').text(symbol + ' ' + parseFloat(response.total_amount).toFixed(2));
+
+            // Reset save button
+            $saveBtn.prop('disabled', false).html(originalBtnText);
+
+            // Show the modal
+            $('#billActionModal').modal('show');
+          } else {
+            const errorModal = document.getElementById('billErrorModal');
+            const errorBody = document.getElementById('billErrorModalBody');
+            if (errorBody) {
+              let errorMsg = response.error || 'An error occurred while saving the Bill';
+              errorBody.innerHTML = errorMsg.replace(/\n/g, '<br>');
+            }
+            new bootstrap.Modal(errorModal).show();
+            $saveBtn.prop('disabled', false).html(originalBtnText);
+          }
+        },
+        error: function (xhr, status, error) {
+          // Reset save button
+          $saveBtn.prop('disabled', false).html(originalBtnText);
+
+          // Try to parse error response and show in modal
+          const errorModal = document.getElementById('billErrorModal');
+          const errorBody = document.getElementById('billErrorModalBody');
+
+          try {
+            var errorResponse = JSON.parse(xhr.responseText);
+            if (errorBody) {
+              let errorMsg = errorResponse.error || 'An error occurred while saving the Bill';
+              errorBody.innerHTML = errorMsg.replace(/\n/g, '<br>');
+            }
+          } catch (e) {
+            if (errorBody) {
+              errorBody.innerHTML = 'An error occurred while saving the Bill. Check console for details.';
+            }
+          }
+          new bootstrap.Modal(errorModal).show();
+        }
+      });
+
+      return false;
+    });
+
+    // Print Bill Button
+    $('#printBillBtn').on('click', function () {
+      console.log('Print button clicked, Bill ID:', savedBillId);
+      if (savedBillId) {
+        // Update this URL to match your actual print URL pattern
+        // Common patterns: /Bills/print/<id>/ or /bill/Bill/print/<id>/
+        //window.location.href = '/bill/bill/Bill/' + savedBillId + '/print/?print=1';
+        window.open('/purchase/purchase/bill/' + savedBillId + '/print/?print=1', '_blank');
+
+        // Switch tab
+        new bootstrap.Tab(document.querySelector('#new-bill-tab')).show();
+
+      } else {
+        console.error('No bill ID saved!');
+        alert('Error: Bill ID not found');
+      }
+    });
+
+    // Pay Bill Button
+    $('#payBillBtn').on('click', function () {
+      console.log('Pay button clicked, Bill ID:', savedBillId);
+      if (savedBillId) {
+        // Update this URL to match your actual payment URL pattern
+        // Common patterns: /Bills/payment/<id>/ or /payments/add/<id>/
+        window.location.href = '/purchase/purchase/record_payment/' + savedBillId + '/';
+      } else {
+        console.error('No Bill ID saved!');
+        alert('Error: Bill ID not found');
+      }
+    });
+
+    // Close Button
+    $('#closeModalBtn').on('click', function () {
+      console.log('Close button clicked');
+      $('#billActionModal').modal('hide');
+      // Redirect to Bill list
+      window.location.href = "{% url 'bill_list' %}";
+    });
+
+    // Handle modal shown event
+    $('#billActionModal').on('shown.bs.modal', function () {
+      console.log('✓ Modal is now visible');
+    });
+
+    // Handle modal hidden event (when user closes modal)
+    $('#billActionModal').on('hidden.bs.modal', function () {
+      console.log('Modal closed - redirecting to list');
+      // Redirect to Bill list when modal is closed
+      window.location.href = "{% url 'bill_list' %}";
+    });
+  });
+</script>
+
+{% endblock %}

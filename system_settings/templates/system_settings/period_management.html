@@ -1,0 +1,1193 @@
+{% extends 'website/index.html' %}
+{% load static %}
+
+{% block page_title %}Period Management - Accounting Periods{% endblock %}
+
+{% block exstyle %}
+<link href="{% static 'style/general.css' %}" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+
+<style>
+/* ═══════════════════════════════════════════════
+   CSS Variables — matched to sidebar palette
+═══════════════════════════════════════════════ */
+:root {
+  --brand:        #55588b;
+  --brand-dark:   #3f4266;
+  --brand-deeper: #2e3055;
+  --brand-light:  #eeeef6;
+  --brand-muted:  #8385ae;
+  --sidebar-bg:   #1e2147;
+  --white:        #ffffff;
+  --surface:      #f4f5fb;
+  --border:       #dde0f2;
+  --text-main:    #2e3055;
+  --text-sub:     #6b6e9a;
+  --text-light:   #9699bf;
+  --success:      #2e7d32;
+  --success-bg:   #e8f5e9;
+  --danger:       #c62828;
+  --danger-bg:    #ffebee;
+  --warning:      #e65100;
+  --warning-bg:   #fff3e0;
+  --info:         #1565c0;
+  --info-bg:      #e3f2fd;
+  --radius:       8px;
+  --shadow-sm:    0 2px 8px rgba(85,88,139,.08);
+  --shadow-md:    0 4px 20px rgba(85,88,139,.14);
+  --shadow-lg:    0 8px 32px rgba(85,88,139,.18);
+}
+
+/* ─── Page Header ─── */
+.period-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+.period-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text-main);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.period-title-icon {
+  width: 44px; height: 44px;
+  border-radius: var(--radius);
+  background: linear-gradient(135deg, var(--brand), var(--brand-dark));
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 4px 14px rgba(85,88,139,.3);
+  flex-shrink: 0;
+}
+.period-title-icon i { color: #fff; font-size: 19px; }
+
+.period-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+
+/* ─── Action Buttons ─── */
+.btn-create-fy {
+  background: linear-gradient(135deg, var(--brand), var(--brand-dark));
+  color: #fff !important;
+  border: none;
+  padding: 9px 20px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  text-decoration: none;
+  transition: all .25s;
+  box-shadow: 0 3px 10px rgba(85,88,139,.25);
+}
+.btn-create-fy:hover {
+  background: linear-gradient(135deg, var(--brand-dark), var(--brand-deeper));
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+  color: #fff !important;
+}
+
+/* Reports button override - solid blue look */
+.btn-reports-override {
+  background: var(--info) !important; /* solid blue */
+  color: #fff !important;            /* white text */
+  border: none !important;
+  box-shadow: 0 3px 8px rgba(21,101,192,.18);
+  padding: 9px 18px;
+  border-radius: 10px;
+}
+.btn-reports-override:hover {
+  background: #0f4a8a !important; /* slightly darker */
+  color: #fff !important;
+  transform: translateY(-1px);
+}
+
+/* ─── Alerts ─── */
+.alert {
+  padding: 13px 18px;
+  border-radius: var(--radius);
+  margin-bottom: 20px;
+  border-left: 4px solid;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  font-weight: 500;
+  animation: fadeSlide .3s ease;
+}
+.alert-success { background: var(--success-bg); color: var(--success); border-left-color: var(--success); }
+.alert-warning  { background: var(--warning-bg); color: var(--warning); border-left-color: #f57c00; }
+.alert-error,
+.alert-danger   { background: var(--danger-bg);  color: var(--danger);  border-left-color: var(--danger); }
+.alert-info     { background: var(--info-bg);    color: var(--info);    border-left-color: var(--info); }
+
+/* ─── Tabs ─── */
+.period-tabs {
+  display: flex;
+  gap: 4px;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 5px;
+  margin-bottom: 26px;
+  box-shadow: var(--shadow-sm);
+  width: fit-content;
+}
+
+.period-tab {
+  text-decoration: none;
+  color: var(--text-sub);
+  font-weight: 500;
+  font-size: 13px;
+  padding: 8px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  transition: all .2s;
+  border: none;
+  background: none;
+}
+.period-tab:hover { color: var(--brand); background: var(--brand-light); }
+.period-tab.active {
+  color: #fff !important;
+  background: linear-gradient(135deg, var(--brand), var(--brand-dark));
+  box-shadow: 0 3px 10px rgba(85,88,139,.3);
+}
+
+/* ─── Tab Content ─── */
+.tab-content { display: none; }
+.tab-content.active {
+  display: block;
+  animation: fadeSlide .25s ease;
+}
+
+@keyframes fadeSlide {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Section label */
+.section-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-main);
+  margin-bottom: 18px;
+}
+.section-label i { color: var(--brand); }
+
+/* ─── Fiscal Year Cards ─── */
+.fiscal-year-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: 18px;
+  margin-bottom: 30px;
+}
+
+.fy-card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  box-shadow: var(--shadow-sm);
+  transition: all .25s;
+  position: relative;
+  overflow: hidden;
+}
+.fy-card::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 3px;
+  background: linear-gradient(90deg, var(--brand), var(--brand-muted));
+}
+.fy-card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
+.fy-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 14px;
+}
+
+.fy-name {
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.lock-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .4px;
+}
+.lock-badge.locked {
+  background: var(--danger-bg);
+  color: var(--danger);
+  border: 1px solid #f5c6cb;
+}
+.lock-badge.open {
+  background: var(--success-bg);
+  color: var(--success);
+  border: 1px solid #c3e6cb;
+}
+
+
+.fy-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  margin-bottom: 14px;
+}
+.fy-status.active   { background: #c8e6c9; color: var(--success); }
+.fy-status.closed   { background: #ffcccc; color: var(--danger); }
+.fy-status.archived { background: #eee;    color: #555; }
+
+.fy-details {
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--brand-light);
+}
+.detail-row:last-child { border-bottom: none; }
+
+.detail-label {
+  font-weight: 600;
+  color: var(--text-sub);
+  min-width: 100px;
+}
+.detail-value {
+  text-align: right;
+  color: var(--text-main);
+  font-weight: 500;
+}
+
+.fy-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+.btn-small {
+  flex: 1;
+  padding: 7px 10px;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all .2s;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+
+.btn-edit    { background: var(--info-bg);    color: var(--info); }
+.btn-edit:hover { background: var(--info); color: #fff; }
+.btn-lock    { background: var(--warning-bg); color: var(--warning); }
+.btn-lock:hover { background: #ff6d00; color: #fff; }
+.btn-unlock  { background: #f3e5f5; color: #7b1fa2; }
+.btn-unlock:hover { background: #7b1fa2; color: #fff; }
+.btn-delete  { background: var(--danger-bg);  color: var(--danger); }
+.btn-delete:hover { background: var(--danger); color: #fff; }
+
+/* ─── Table Container ─── */
+.table-container {
+  background: transparent;
+  border: none; /* remove outer border */
+  border-radius: 0;
+  overflow: visible;
+  margin: 0 0 20px;
+  box-shadow: none; /* remove outer shadow */
+}
+
+.history-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.history-table thead {
+  background: linear-gradient(135deg, var(--brand-deeper), var(--brand-dark));
+}
+
+/* When history tables should match sales `items-table` styling */
+/* Use global .items-table style so history tables match Sales lists */
+.history-table.items-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.history-table.items-table th,
+.history-table.items-table td {
+  padding: 8px 10px;
+  border: 1px solid #eee;
+  text-align: left;
+  font-size: 13px;
+  color: #55588b;
+}
+.history-table.items-table thead th {
+  background: #f8f8fa;
+  color: #7d7cad;
+}
+.history-table.items-table tbody tr:nth-child(even) { background: #fafafa; }
+.history-table.items-table tbody tr:hover { background: #f3f4fb; }
+
+
+/* fallback generic header/cell styles for non-items-table history tables */
+.history-table th {
+  padding: 13px 16px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: .5px;
+  text-transform: uppercase;
+  color: rgba(125,124,173,1);
+}
+
+.history-table td {
+  padding: 11px 16px;
+  color: var(--text-main);
+  font-size: 13px;
+}
+
+.history-table tbody tr:hover { background: var(--brand-light); }
+
+.action-lock   { color: var(--danger);  font-weight: 700; }
+.action-unlock { color: var(--success); font-weight: 700; }
+
+/* User badge in exemptions table */
+.user-tag {
+  display: inline-block;
+  background: var(--info-bg);
+  color: var(--info);
+  padding: 3px 9px;
+  border-radius: 4px;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+/* ─── Delete button in table ─── */
+.btn-delete-history {
+  background: var(--danger-bg);
+  color: var(--danger);
+  border: 1px solid #f5c6cb;
+  padding: 5px 10px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  transition: all .2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.btn-delete-history:hover {
+  background: var(--danger);
+  color: #fff;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(211,47,47,.3);
+}
+.btn-delete-history i { font-size: 13px; }
+
+/* Small outline delete icon used in Unit list and desired for History */
+.delete-btn {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: 8px;
+  background: #fff;
+  color: var(--text-sub) !important;
+  border: 1px solid var(--border);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background .12s, transform .12s;
+}
+.delete-btn:hover {
+  background: var(--brand-light);
+  color: var(--brand);
+  transform: translateY(-2px);
+}
+
+/* ─── Tab sub-header with action ─── */
+.tab-action-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 18px;
+}
+
+/* ─── Empty State ─── */
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  background: var(--white);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  color: var(--text-sub);
+}
+.empty-state-icon {
+  font-size: 56px;
+  margin-bottom: 18px;
+  opacity: .35;
+  display: block;
+}
+.empty-state-text    { font-size: 16px; font-weight: 600; margin-bottom: 6px; }
+.empty-state-subtext { font-size: 13px; color: var(--text-light); }
+
+/* ─── Pagination ─── */
+.pagination {
+  display: flex;
+  list-style: none;
+  padding: 0;
+  margin: 20px 0 0;
+  justify-content: center;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.page-item { margin: 0; }
+
+.page-link {
+  display: inline-block;
+  padding: 7px 13px;
+  background: var(--white);
+  color: var(--brand);
+  text-decoration: none;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  font-weight: 500;
+  font-size: 12px;
+  transition: all .2s;
+  cursor: pointer;
+}
+.page-link:hover { background: var(--brand); color: #fff; border-color: var(--brand); }
+.page-item.active .page-link {
+  background: var(--brand); color: #fff; border-color: var(--brand); cursor: default;
+}
+.page-item.disabled .page-link { color: #999; cursor: not-allowed; opacity: .5; }
+
+/* ─── Modal ─── */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(30,33,71,.55);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(3px);
+}
+.modal-overlay.active { display: flex; }
+
+.modal-content {
+  background: var(--white);
+  border-radius: 10px;
+  padding: 16px; /* reduced padding to save vertical space */
+  max-width: 580px; /* slightly wider so dialog content fits */
+  width: 92%;
+  /* keep no internal scrollbar; allow page to scroll if needed */
+  max-height: none;
+  overflow-y: visible;
+  box-shadow: var(--shadow-lg);
+  animation: fadeSlide .25s ease;
+}
+
+.modal-header {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text-main);
+  margin-bottom: 12px; /* tightened */
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+.modal-header i { color: var(--brand); }
+
+.form-group { margin-bottom: 12px; }
+
+.form-group label {
+  display: block;
+  margin-bottom: 7px;
+  font-weight: 600 !important;
+  color: var(--text-sub) !important;
+  font-size: 11px !important;
+  text-transform: uppercase;
+  letter-spacing: .4px;
+}
+
+.form-group textarea {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-family: 'Poppins', sans-serif;
+  font-size: 13px;
+  color: var(--text-main);
+  resize: vertical;
+  min-height: 56px; /* reduced height */
+  transition: border-color .2s;
+  background: var(--white);
+}
+.form-group textarea:focus {
+  outline: none;
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px rgba(85,88,139,.12);
+}
+
+.form-group select {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 13px;
+  color: var(--text-main);
+  background: var(--white);
+  transition: border-color .2s;
+}
+.form-group select:focus {
+  outline: none;
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px rgba(85,88,139,.12);
+}
+
+.modal-warning {
+  background: var(--danger-bg);
+  color: var(--danger);
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 12px;
+  margin-bottom: 12px;
+  border-left: 3px solid var(--danger);
+}
+.modal-info-box {
+  background: var(--success-bg);
+  color: var(--success);
+  border-radius: 6px;
+  padding: 10px 14px;
+  font-size: 12px;
+  margin-bottom: 18px;
+  border-left: 3px solid var(--success);
+}
+
+.modal-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 12px;
+}
+
+.btn-cancel {
+  padding: 9px 20px;
+  background: var(--surface);
+  color: var(--text-sub);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 13px;
+  transition: all .2s;
+}
+.btn-cancel:hover { background: var(--border); }
+
+.btn-submit {
+  padding: 9px 22px;
+  background: linear-gradient(135deg, var(--brand), var(--brand-dark));
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 13px;
+  box-shadow: 0 3px 10px rgba(85,88,139,.25);
+  transition: all .2s;
+}
+.btn-submit:hover {
+  background: linear-gradient(135deg, var(--brand-dark), var(--brand-deeper));
+  transform: translateY(-1px);
+}
+
+/* ─── Responsive ─── */
+@media (max-width: 768px) {
+  .fiscal-year-grid { grid-template-columns: 1fr; }
+  .period-header { flex-direction: column; align-items: flex-start; }
+  .period-actions { width: 100%; }
+  .btn-create-fy { width: 100%; justify-content: center; }
+  .fy-actions { flex-direction: column; }
+  .period-tabs { flex-wrap: wrap; width: 100%; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid" style="padding: 30px 20px;">
+
+  <!-- Header -->
+  <div class="period-header">
+    <div class="period-title">
+      <div class="period-title-icon"><i class="bi bi-calendar-range"></i></div>
+      Period Management
+    </div>
+    <div class="period-actions">
+      <a href="{% url 'fiscal_year_closing_dashboard' %}" class="btn btn-info" title="Fiscal Year Closing">
+        <i class="bi bi-diagram-3"></i> Year-End Closing
+      </a>
+      <a href="{% url 'period_lock_reports' %}" class="btn-create-fy" style="background: linear-gradient(135deg,#1565c0,#1976d2) !important;" title="View period lock reports">
+        <i class="bi bi-bar-chart"></i> Reports
+      </a>
+      <a href="{% url 'create_fiscal_year' %}" class="btn btn-success" title="Create a new fiscal year">
+        <i class="bi bi-plus-circle"></i> Create Fiscal Year
+      </a>
+    </div>
+  </div>
+
+  <!-- Messages -->
+  {% if messages %}
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags }}">
+      <i class="bi bi-info-circle-fill"></i> {{ message }}
+    </div>
+    {% endfor %}
+  {% endif %}
+
+  <!-- Tabs -->
+  <div class="period-tabs">
+    <a href="#periods" class="period-tab active" onclick="switchTab('periods', event)">
+      <i class="bi bi-calendar-range"></i> Fiscal Years
+    </a>
+    <a href="#exemptions" class="period-tab" onclick="switchTab('exemptions', event)">
+      <i class="bi bi-shield-check"></i> User Exemptions
+    </a>
+    <a href="#history" class="period-tab" onclick="switchTab('history', event)">
+      <i class="bi bi-clock-history"></i> Lock History
+    </a>
+  </div>
+
+  <!-- ══ TAB: FISCAL YEARS ══ -->
+  <div id="periods" class="tab-content active">
+    <div class="section-label"><i class="bi bi-calendar-range"></i> Fiscal Years</div>
+
+    {% if fiscal_years %}
+    <div class="fiscal-year-grid">
+      {% for fy in fiscal_years %}
+      <div class="fy-card">
+        <div class="fy-card-header">
+          <span class="fy-name">{{ fy.name }}</span>
+          <span class="lock-badge {% if fy.is_locked %}locked{% elif fy.locked_categories %}locked{% else %}open{% endif %}">
+            {% if fy.is_locked %}LOCKED
+            {% elif fy.locked_categories %}PARTIAL LOCK
+            {% else %}OPEN
+            {% endif %}
+          </span>
+        </div>
+
+        <div class="fy-status {{ fy.status }}">
+          {% if fy.status == 'active' %}<i class="bi bi-check-circle-fill"></i> Active FY
+          {% elif fy.status == 'closed' %}<i class="bi bi-x-circle-fill"></i> Closed FY
+          {% else %}<i class="bi bi-archive-fill"></i> Archived FY{% endif %}
+        </div>
+
+        <div class="fy-details">
+          <div class="detail-row">
+            <span class="detail-label">Start Date</span>
+            <span class="detail-value">{{ fy.start_date|date:"d M Y" }}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">End Date</span>
+            <span class="detail-value">{{ fy.end_date|date:"d M Y" }}</span>
+          </div>
+          {% if fy.is_locked %}
+          <div class="detail-row">
+            <span class="detail-label">Locked On</span>
+            <span class="detail-value">{{ fy.lock_date|date:"d M Y H:i" }}</span>
+          </div>
+          {% endif %}
+          {% if fy.locked_categories %}
+          <div class="detail-row">
+            <span class="detail-label">Locked Types</span>
+            <span class="detail-value">{{ fy.locked_categories|join:", " }}</span>
+          </div>
+          {% endif %}
+        </div>
+
+        {% if can_manage %}
+        <div class="fy-actions">
+          <a href="{% url 'edit_fiscal_year' fy.pk %}" class="btn-small btn-edit">
+            <i class="bi bi-pencil"></i> Edit
+          </a>
+          {% if fy.is_locked or fy.locked_categories %}
+          <button class="btn-small btn-unlock" onclick="showUnlockModal({{ fy.pk }}, '{{ fy.name }}', '{{ fy.locked_categories|join:',' }}')">
+            <i class="bi bi-unlock"></i> Unlock
+          </button>
+          {% else %}
+          <button class="btn-small btn-lock" onclick="showLockModal({{ fy.pk }}, '{{ fy.name }}', '{{ fy.locked_categories|join:',' }}')">
+            <i class="bi bi-lock"></i> Lock
+          </button>
+          {% endif %}
+        </div>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+
+    {% else %}
+    <div class="empty-state">
+      <span class="empty-state-icon">📅</span>
+      <div class="empty-state-text">No Fiscal Years Defined</div>
+      <div class="empty-state-subtext">Create your first fiscal year to manage accounting periods</div>
+      {% if can_manage %}
+      <a href="{% url 'create_fiscal_year' %}" class="btn btn-success" style="margin-top: 20px; display: inline-flex;">
+        <i class="bi bi-plus-circle"></i> Create Fiscal Year
+      </a>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- ══ TAB: USER EXEMPTIONS ══ -->
+  <div id="exemptions" class="tab-content">
+    <div class="tab-action-header">
+      <div class="section-label" style="margin:0"><i class="bi bi-shield-check"></i> User Exemptions</div>
+      <button class="btn btn-success" onclick="showAddExemptionModal()" title="Grant exemption to a user">
+        <i class="bi bi-plus-circle"></i> Grant New Exemption
+      </button>
+    </div>
+
+    {% if exemptions %}
+    <div class="table-container">
+      <table class="history-table items-table">
+        <thead>
+          <tr>
+            <th>Fiscal Year</th>
+            <th>User</th>
+            <th>Reason</th>
+            <th>Granted By</th>
+            <th>Granted On</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for exemption in exemptions %}
+          <tr>
+            <td><strong>{{ exemption.fiscal_year.name }}</strong></td>
+            <td>
+              <span class="user-tag">{{ exemption.user.get_full_name|default:exemption.user.username }}</span>
+            </td>
+            <td style="color:var(--text-sub); font-size:12px;">
+              {% if exemption.reason %}{{ exemption.reason|truncatewords:10 }}
+              {% else %}<em style="color:var(--text-light);">No reason provided</em>{% endif %}
+            </td>
+            <td><small>{{ exemption.granted_by.username }}</small></td>
+            <td><small>{{ exemption.granted_at|date:"d M Y H:i" }}</small></td>
+            <td>
+              <form id="deleteExemptionForm{{ exemption.pk }}" method="POST" action="{% url 'delete_exemption' exemption.pk %}" style="display:inline;">
+                {% csrf_token %}
+                <button type="submit" style="display:none;"></button>
+              </form>
+              <button type="button" class="btn btn-sm delete-btn" onclick="showExemptionDeletePrompt({{ exemption.pk }})" title="Revoke exemption">
+                <span class="bi bi-trash"></span>
+              </button>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+      <!-- Delete confirm modal for exemptions (single instance) -->
+      <div id="deleteExemptionPrompt" class="prompt-modal" style="display:none; position:fixed; inset:0; align-items:center; justify-content:center; background: rgba(30,33,71,.55); z-index:1000;">
+        <div class="prompt-modal-content" style="background:#fff; padding:22px; border-radius:8px; max-width:420px; width:90%; box-shadow:0 6px 20px rgba(0,0,0,.12);">
+          <p style="font-weight:600; margin-bottom:12px;">Revoke this exemption?</p>
+          <div style="display:flex; gap:10px; justify-content:flex-end;">
+            <button class="btn-cancel" onclick="hideExemptionDeletePrompt()">Cancel</button>
+            <button class="btn-submit" onclick="confirmExemptionDelete()">Revoke</button>
+          </div>
+        </div>
+      </div>
+
+    {% else %}
+    <div class="empty-state">
+      <span class="empty-state-icon">🛡️</span>
+      <div class="empty-state-text">No User Exemptions</div>
+      <div class="empty-state-subtext">Grant exemptions to allow users to edit locked periods</div>
+      <button class="btn-create-fy" onclick="showAddExemptionModal()" style="margin-top:20px;">
+        <i class="bi bi-plus-circle"></i> Grant First Exemption
+      </button>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- ══ TAB: LOCK HISTORY ══ -->
+  <div id="history" class="tab-content">
+    <div class="section-label"><i class="bi bi-clock-history"></i> Period Lock History</div>
+
+    {% if lock_history %}
+    <div class="table-container">
+      <table class="history-table items-table">
+        <thead>
+          <tr>
+            <th>Fiscal Year</th>
+            <th>Action</th>
+            <th>Categories</th>
+            <th>Performed By</th>
+            <th>Date / Time</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for log in lock_history %}
+          <tr>
+            <td><strong>{{ log.fiscal_year.name }}</strong></td>
+            <td>
+              <span class="{% if log.action == 'lock' %}action-lock{% else %}action-unlock{% endif %}">
+                {% if log.action == 'lock' %}LOCKED{% else %}UNLOCKED{% endif %}
+              </span>
+            </td>
+            <td>
+              {% if log.categories %}
+                {{ log.categories }}
+              {% else %}
+                {% if log.action == 'lock' %}all{% else %}all{% endif %}
+              {% endif %}
+            </td>
+            <td>{{ log.performed_by.username }}</td>
+            <td>{{ log.performed_at|date:"d M Y H:i" }}</td>
+            <td>
+              <form method="POST" id="deleteLockForm_{{ log.pk }}" style="display:inline;">
+                {% csrf_token %}
+                <button type="submit" style="display:none;"></button>
+              </form>
+              <button type="button" class="btn btn-sm delete-btn" onclick="submitDeleteLockById({{ log.pk }})" title="Delete entry">
+                <span class="bi bi-trash"></span>
+              </button>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination -->
+    {% if lock_history.has_other_pages %}
+    <nav aria-label="Page navigation">
+      <ul class="pagination">
+        {% if lock_history.has_previous %}
+          <li class="page-item"><a class="page-link" href="?page=1&tab=history">First</a></li>
+          <li class="page-item"><a class="page-link" href="?page={{ lock_history.previous_page_number }}&tab=history">Previous</a></li>
+        {% endif %}
+        {% for num in lock_history.paginator.page_range %}
+          {% if lock_history.number == num %}
+            <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+          {% else %}
+            <li class="page-item"><a class="page-link" href="?page={{ num }}&tab=history">{{ num }}</a></li>
+          {% endif %}
+        {% endfor %}
+        {% if lock_history.has_next %}
+          <li class="page-item"><a class="page-link" href="?page={{ lock_history.next_page_number }}&tab=history">Next</a></li>
+          <li class="page-item"><a class="page-link" href="?page={{ lock_history.paginator.num_pages }}&tab=history">Last</a></li>
+        {% endif %}
+      </ul>
+    </nav>
+    <div style="text-align:center; color:var(--text-light); margin-top:12px; font-size:12px;">
+      Page <strong>{{ lock_history.number }}</strong> of <strong>{{ lock_history.paginator.num_pages }}</strong>
+      (Total: <strong>{{ lock_history.paginator.count }}</strong> records)
+    </div>
+    {% endif %}
+
+    {% else %}
+    <div class="empty-state">
+      <span class="empty-state-icon">📋</span>
+      <div class="empty-state-text">No Lock History</div>
+      <div class="empty-state-subtext">Lock / unlock actions will appear here</div>
+    </div>
+    {% endif %}
+  </div>
+
+</div><!-- /container-fluid -->
+
+<!-- ══ LOCK MODAL ══ -->
+<div id="lockModal" class="modal-overlay">
+  <div class="modal-content">
+    <div class="modal-header"><i class="bi bi-lock-fill"></i> Lock Fiscal Year</div>
+    <form id="lockForm" method="POST">
+      {% csrf_token %}
+      <input type="hidden" id="lockFyId" name="fy_id">
+      <div class="form-group">
+        <label>Fiscal Year</label>
+        <strong id="lockFyName" style="color:var(--text-main); font-size:14px;"></strong>
+      </div>
+      <div class="form-group">
+        <label>Reason (Optional)</label>
+        <textarea id="lockReason" name="reason" placeholder="Why are you locking this period?"></textarea>
+      </div>
+      <div class="form-group">
+      <label>Lock Types</label>
+      <div style="display:grid; grid-template-columns: repeat(2, minmax(140px, 1fr)); gap:8px;">
+          <label><input type="checkbox" name="lock_types" value="items"> Items</label>
+          <label><input type="checkbox" name="lock_types" value="stock"> Stock</label>
+          <label><input type="checkbox" name="lock_types" value="invoice"> Invoice</label>
+          <label><input type="checkbox" name="lock_types" value="bill"> Bill</label>
+          <label><input type="checkbox" name="lock_types" value="payment"> Payment</label>
+          <label><input type="checkbox" name="lock_types" value="journal"> Journal</label>
+          <label><input type="checkbox" name="lock_types" value="expense"> Expense</label>
+          <label><input type="checkbox" name="lock_types" value="sales_return"> Sales Return</label>
+          <label><input type="checkbox" name="lock_types" value="purchase_return"> Purchase Return</label>
+          <label><input type="checkbox" name="lock_types" value="sales_delivery"> Sales Delivery</label>
+          <label><input type="checkbox" name="lock_types" value="purchase_delivery"> Purchase Delivery</label>
+          <label><input type="checkbox" name="lock_types" value="all"> All</label>
+        </div>
+      </div>
+      <div class="modal-warning">
+        <strong>⚠️ Warning:</strong> Locking this period will prevent the selected action categories from being edited in this period.
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn-cancel" onclick="closeModal('lockModal')">Cancel</button>
+        <button type="submit" class="btn-submit"><i class="bi bi-lock-fill"></i> Lock Period</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ══ UNLOCK MODAL ══ -->
+<div id="unlockModal" class="modal-overlay">
+  <div class="modal-content">
+    <div class="modal-header"><i class="bi bi-unlock-fill"></i> Unlock Fiscal Year</div>
+    <form id="unlockForm" method="POST">
+      {% csrf_token %}
+      <input type="hidden" id="unlockFyId" name="fy_id">
+      <div class="form-group">
+        <label>Fiscal Year</label>
+        <strong id="unlockFyName" style="color:var(--text-main); font-size:14px;"></strong>
+      </div>
+      <div class="form-group">
+        <label>Reason (Optional)</label>
+        <textarea id="unlockReason" name="reason" placeholder="Why are you unlocking this period?"></textarea>
+      </div>
+      <div class="form-group">
+      <label>Unlock Types</label>
+      <div style="display:grid; grid-template-columns: repeat(2, minmax(140px, 1fr)); gap:8px;">
+          <label><input type="checkbox" name="lock_types" value="items"> Items</label>
+          <label><input type="checkbox" name="lock_types" value="stock"> Stock</label>
+          <label><input type="checkbox" name="lock_types" value="invoice"> Invoice</label>
+          <label><input type="checkbox" name="lock_types" value="bill"> Bill</label>
+          <label><input type="checkbox" name="lock_types" value="payment"> Payment</label>
+          <label><input type="checkbox" name="lock_types" value="journal"> Journal</label>
+          <label><input type="checkbox" name="lock_types" value="expense"> Expense</label>
+          <label><input type="checkbox" name="lock_types" value="sales_return"> Sales Return</label>
+          <label><input type="checkbox" name="lock_types" value="purchase_return"> Purchase Return</label>
+          <label><input type="checkbox" name="lock_types" value="sales_delivery"> Sales Delivery</label>
+          <label><input type="checkbox" name="lock_types" value="purchase_delivery"> Purchase Delivery</label>
+          <label><input type="checkbox" name="lock_types" value="all"> All</label>
+        </div>
+      </div>
+      <div class="modal-info-box">
+        <strong>ℹ️ Info:</strong> Users will be able to edit the selected categories in this period once unlocked.
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn-cancel" onclick="closeModal('unlockModal')">Cancel</button>
+        <button type="submit" class="btn-submit"><i class="bi bi-unlock-fill"></i> Unlock Period</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ══ EXEMPTION MODAL ══ -->
+<div id="exemptionModal" class="modal-overlay">
+  <div class="modal-content">
+    <div class="modal-header"><i class="bi bi-shield-check"></i> Grant User Exemption</div>
+    <form id="exemptionForm" method="POST">
+      {% csrf_token %}
+      <div class="form-group">
+        <label>Fiscal Year <span style="color:var(--danger)">*</span></label>
+        <select id="exemptionFySelect" name="fy_id" required>
+          <option value="">— Select a fiscal year —</option>
+          {% for fy in fiscal_years %}
+          <option value="{{ fy.pk }}">{{ fy.name }} {% if fy.is_locked %}(LOCKED){% else %}(Open){% endif %}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label>User <span style="color:var(--danger)">*</span></label>
+        <select id="exemptionUser" name="user_id" required>
+          <option value="">— Select a user —</option>
+          {% for user in all_users %}
+          <option value="{{ user.id }}">{{ user.get_full_name|default:user.username }} ({{ user.username }})</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Reason (Optional)</label>
+        <textarea id="exemptionReason" name="reason" placeholder="Why is this user exempted from period locking?"></textarea>
+      </div>
+      <div class="modal-info-box">
+        <strong>ℹ️ Info:</strong> This user will be able to edit transactions even when this period is locked.
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn-cancel" onclick="closeModal('exemptionModal')">Cancel</button>
+        <button type="submit" class="btn-submit"><i class="bi bi-shield-fill-check"></i> Grant Exemption</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+// Init active tab from URL
+document.addEventListener('DOMContentLoaded', function () {
+  const urlParams = new URLSearchParams(window.location.search);
+  const activeTab = urlParams.get('tab') || 'periods';
+  if (activeTab !== 'periods') {
+    switchTab(activeTab, { preventDefault: () => {} });
+  }
+});
+
+function switchTab(tabId, event) {
+  if (event && event.preventDefault) event.preventDefault();
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.period-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(tabId).classList.add('active');
+  if (event && event.target) {
+    event.target.closest('.period-tab').classList.add('active');
+  } else {
+    document.querySelector(`.period-tab[href="#${tabId}"]`)?.classList.add('active');
+  }
+}
+
+function showLockModal(fyId, fyName) {
+  document.getElementById('lockFyId').value = fyId;
+  document.getElementById('lockFyName').textContent = fyName;
+  document.getElementById('lockModal').classList.add('active');
+}
+
+function showUnlockModal(fyId, fyName, lockedCategories) {
+  document.getElementById('unlockFyId').value = fyId;
+  document.getElementById('unlockFyName').textContent = fyName;
+  
+  // Reset all checkboxes
+  document.querySelectorAll('#unlockForm input[name="lock_types"]').forEach(cb => {
+    cb.checked = false;
+  });
+  
+  // Check only the categories that are actually locked
+  if (lockedCategories && lockedCategories.trim()) {
+    const categories = lockedCategories.split(',').map(c => c.trim());
+    categories.forEach(cat => {
+      const checkbox = document.querySelector(`#unlockForm input[name="lock_types"][value="${cat}"]`);
+      if (checkbox) {
+        checkbox.checked = true;
+      }
+    });
+  }
+  
+  document.getElementById('unlockModal').classList.add('active');
+}
+
+function closeModal(modalId) {
+  document.getElementById(modalId).classList.remove('active');
+}
+
+document.getElementById('lockForm').addEventListener('submit', function (e) {
+  e.preventDefault();
+  const fyId = document.getElementById('lockFyId').value;
+  const companyCode = window.location.pathname.split('/').filter(p => p)[0];
+  this.action = `/${companyCode}/system_settings/periods/${fyId}/lock/`;
+  this.submit();
+});
+
+document.getElementById('unlockForm').addEventListener('submit', function (e) {
+  e.preventDefault();
+  const fyId = document.getElementById('unlockFyId').value;
+  const companyCode = window.location.pathname.split('/').filter(p => p)[0];
+  this.action = `/${companyCode}/system_settings/periods/${fyId}/unlock/`;
+  this.submit();
+});
+
+document.getElementById('exemptionForm').addEventListener('submit', function (e) {
+  e.preventDefault();
+  const fyId = document.getElementById('exemptionFySelect').value;
+  const userId = document.getElementById('exemptionUser').value;
+  if (!fyId) { alert('Please select a fiscal year'); return; }
+  if (!userId) { alert('Please select a user'); return; }
+  const companyCode = window.location.pathname.split('/').filter(p => p)[0];
+  this.action = `/${companyCode}/system_settings/periods/${fyId}/exemption/?tab=exemptions`;
+  this.submit();
+});
+
+function showAddExemptionModal() {
+  document.getElementById('exemptionModal').classList.add('active');
+  document.getElementById('exemptionForm').reset();
+  document.getElementById('exemptionFySelect').focus();
+}
+
+function submitDeleteLock(event, lockId) {
+  event.preventDefault();
+  if (!confirm('Delete this lock history entry?')) return;
+  const companyCode = window.location.pathname.split('/').filter(p => p)[0];
+  const form = document.getElementById(`deleteLockForm_${lockId}`);
+  form.action = `/${companyCode}/system_settings/periods/history/${lockId}/delete/?tab=history`;
+  form.submit();
+}
+
+// Close modal on backdrop click
+document.querySelectorAll('.modal-overlay').forEach(modal => {
+  modal.addEventListener('click', function (e) {
+    if (e.target === this) this.classList.remove('active');
+  });
+});
+</script>
+<script>
+let exemptionToDelete = null;
+function showExemptionDeletePrompt(pk) {
+  exemptionToDelete = pk;
+  document.getElementById('deleteExemptionPrompt').style.display = 'flex';
+}
+function hideExemptionDeletePrompt() {
+  exemptionToDelete = null;
+  document.getElementById('deleteExemptionPrompt').style.display = 'none';
+}
+function confirmExemptionDelete() {
+  if (exemptionToDelete !== null) {
+    document.getElementById('deleteExemptionForm' + exemptionToDelete).submit();
+  }
+}
+
+// Helper to submit lock delete by id (used by small icon button)
+function submitDeleteLockById(lockId) {
+  if (!confirm('Delete this lock history entry?')) return;
+  const companyCode = window.location.pathname.split('/').filter(p => p)[0];
+  const form = document.getElementById(`deleteLockForm_${lockId}`);
+  form.action = `/${companyCode}/system_settings/periods/history/${lockId}/delete/?tab=history`;
+  form.submit();
+}
+</script>
+{% endblock %}

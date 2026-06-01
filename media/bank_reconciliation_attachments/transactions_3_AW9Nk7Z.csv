@@ -1,0 +1,8 @@
+Date,Description,Reference,Debit,Credit
+31/03/2026,Payment to Barca – Payment #3,Payment #3,2400.0,
+01/04/2026,Payment received from Chelsea – Payment #4,Payment #4,,1850.0
+01/04/2026,Bank charge – Payment #4,Payment #4,25.0,
+02/04/2026,Payment received from Arsenal – Payment #5,Payment #5,,3200.0
+02/04/2026,Fee reversal – Payment #5,Payment #5,50.0,
+02/04/2026,Payment received from Liverpool – Payment #6,Payment #6,,2750.0
+02/04/2026,Bank charge – Payment #6,Payment #6,25.0,

@@ -1,0 +1,824 @@
+{% extends 'website/index.html' %}
+{% load static %}
+
+{% block page_title %}Masters Dashboard{% endblock page_title %}
+
+{% block exstyle %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<style>
+:root {
+  --bg:#ffffff; --bg2:#f3f4f6; --surface:#ffffff; --border:#e2e6f3; --border2:#d0d6ee;
+  --brand:#55588b; --brand-lt:#dce2f9; --brand-mid:#7b7fd4;
+  --t1:#111827; --t2:#4b5563; --t3:#9ca3af;
+  --radius:16px;
+  --shadow-sm:0 1px 3px rgba(85,88,139,.06),0 2px 8px rgba(85,88,139,.05);
+  --shadow:   0 2px 8px rgba(85,88,139,.08),0 8px 24px rgba(85,88,139,.06);
+  --shadow-lg:0 4px 16px rgba(85,88,139,.13),0 16px 40px rgba(85,88,139,.09);
+}
+*{box-sizing:border-box;margin:0;padding:0;font-family:'Plus Jakarta Sans',sans-serif;}
+.home-section{background:#ffffff!important;min-height:100vh;}
+.home-section::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:radial-gradient(ellipse 800px 500px at 85% 0%,rgba(85,88,139,.06) 0%,transparent 60%),
+             radial-gradient(ellipse 600px 400px at 10% 100%,rgba(13,148,136,.04) 0%,transparent 60%);}
+.home-content{background-color:#dce2f9;padding:0 20px;position:relative;z-index:1;}
+.home-content .text{color:#55588b;margin-bottom:10px;font-size:1.25rem;font-weight:700;}
+.lyra-dash{position:relative;z-index:1;padding:20px 24px 28px;display:flex;flex-direction:column;gap:24px;width:100%;max-width:none;margin:0;}
+.s-head{display:flex;align-items:center;gap:10px;margin-bottom:16px;}
+.s-pip{width:4px;height:18px;border-radius:3px;background:linear-gradient(180deg,var(--brand) 0%,#0d9488 100%);}
+.s-lbl{font-size:.7rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--t3);}
+
+/* KPI CARDS */
+.kpi-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:14px;}
+.kpi-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+  padding:20px;text-decoration:none;color:inherit;display:flex;flex-direction:column;gap:13px;
+  position:relative;overflow:hidden;box-shadow:var(--shadow-sm);
+  transition:transform .2s,box-shadow .2s,border-color .2s;opacity:0;animation:riseIn .42s ease forwards;}
+.kpi-card:hover{transform:translateY(-3px);box-shadow:var(--shadow-lg);border-color:var(--border2);}
+.kpi-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;
+  background:linear-gradient(90deg,var(--kc1,var(--brand)),var(--kc2,var(--brand-mid)));
+  border-radius:var(--radius) var(--radius) 0 0;}
+.kpi-card::after{display:none;}
+.kpi-top{display:flex;align-items:center;justify-content:space-between;}
+.kpi-icon{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;
+  font-size:1.1rem;background:var(--kbg,var(--brand-lt));color:var(--kc1,var(--brand));border:1px solid var(--kborder,rgba(85,88,139,.13));}
+.kpi-pill{font-size:10px;font-weight:700;letter-spacing:.4px;padding:3px 9px;border-radius:20px;
+  background:var(--kbg,var(--brand-lt));color:var(--kc1,var(--brand));}
+.kpi-label{font-size:.7rem;font-weight:700;color:var(--t3);letter-spacing:.05em;text-transform:uppercase;}
+.kpi-value{font-size:2.1rem;font-weight:800;line-height:1;letter-spacing:-.04em;font-family:'JetBrains Mono',monospace;color:var(--t1);}
+.kpi-sub{font-size:11px;color:var(--t3);display:flex;align-items:center;gap:5px;}
+.kpi-sub i{color:var(--kc1,var(--brand));}
+.kpi-card:nth-child(1){animation-delay:.04s;}.kpi-card:nth-child(2){animation-delay:.08s;}
+.kpi-card:nth-child(3){animation-delay:.12s;}.kpi-card:nth-child(4){animation-delay:.16s;}
+.kpi-card:nth-child(5){animation-delay:.20s;}.kpi-card:nth-child(6){animation-delay:.24s;}
+@keyframes riseIn{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:translateY(0);}}
+
+/* MINI STRIP */
+.mini-strip{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;}
+.mini-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;
+  padding:14px 16px;display:flex;align-items:center;gap:12px;
+  opacity:0;animation:riseIn .42s .28s ease forwards;text-decoration:none;color:inherit;
+  transition:transform .18s,box-shadow .18s;}
+.mini-card:hover{transform:translateY(-2px);box-shadow:var(--shadow);}
+.mini-ico{width:36px;height:36px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:.9rem;flex-shrink:0;}
+.mini-val{font-family:'JetBrains Mono',monospace;font-size:1.3rem;font-weight:800;color:var(--t1);line-height:1;}
+.mini-lbl{font-size:.7rem;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.05em;margin-top:2px;}
+
+/* PANEL */
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+  padding:22px 24px;box-shadow:var(--shadow-sm);opacity:0;animation:riseIn .42s .22s ease forwards;}
+.panel-head{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:18px;gap:10px;}
+.panel-title{font-size:.9rem;font-weight:800;color:var(--t1);display:flex;align-items:center;gap:8px;}
+.panel-title i{color:var(--brand);font-size:.95rem;}
+.panel-sub{font-size:.7rem;color:var(--t3);margin-top:3px;font-weight:500;}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.three-col{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
+.charts-row{display:grid;grid-template-columns:1.6fr 1fr;gap:16px;}
+
+/* DONUT */
+.donut-wrap{display:flex;gap:20px;align-items:center;}
+.donut-wrap canvas{flex-shrink:0;}
+.legend-list{list-style:none;flex:1;display:flex;flex-direction:column;gap:9px;}
+.legend-item{display:flex;align-items:center;justify-content:space-between;font-size:.82rem;}
+.legend-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-right:9px;}
+.legend-lbl{display:flex;align-items:center;color:var(--t2);flex:1;font-weight:500;}
+.legend-val{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:.82rem;color:var(--t1);}
+.legend-hr{border:none;border-top:1px solid var(--border);margin:3px 0;}
+
+/* FUNNEL */
+.funnel-list{display:flex;flex-direction:column;gap:12px;}
+.funnel-item{display:flex;flex-direction:column;gap:5px;}
+.funnel-lbl{display:flex;justify-content:space-between;align-items:center;font-size:.78rem;color:var(--t2);font-weight:600;}
+.funnel-n{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:.8rem;color:var(--t1);}
+.funnel-track{height:6px;background:var(--bg2);border-radius:4px;overflow:hidden;}
+.funnel-bar{height:100%;border-radius:4px;transition:width .8s cubic-bezier(.4,0,.2,1);}
+
+/* SUMMARY ROWS */
+.summary-table{display:flex;flex-direction:column;}
+.summary-row{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--border);}
+.summary-row:last-child{border-bottom:none;}
+.summary-lbl{font-size:.82rem;color:var(--t2);font-weight:500;display:flex;align-items:center;gap:8px;}
+.summary-val{font-family:'JetBrains Mono',monospace;font-size:.82rem;font-weight:700;}
+
+/* DATA TABLE */
+.data-table{width:100%;border-collapse:collapse;}
+.data-table th{font-size:.68rem;font-weight:800;color:var(--t3);text-transform:uppercase;letter-spacing:.07em;padding:0 10px 10px;text-align:left;border-bottom:1px solid var(--border);}
+.data-table td{font-size:.8rem;color:var(--t2);padding:10px;border-bottom:1px solid var(--border);vertical-align:middle;font-weight:500;}
+.data-table tr:last-child td{border-bottom:none;}
+.data-table tr:hover td{background:#f9faff;}
+.tbl-name{font-weight:700;color:var(--t1);}
+.tbl-badge{font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;white-space:nowrap;}
+.badge-goods{background:#e0f2fe;color:#0284c7;}
+.badge-service{background:#d1fae5;color:#059669;}
+.badge-other{background:#f3f4f6;color:#6b7280;}
+.badge-active{background:#d1fae5;color:#059669;}
+.tbl-av{width:32px;height:32px;border-radius:8px;flex-shrink:0;
+  background:linear-gradient(135deg,var(--brand) 0%,var(--brand-mid) 100%);
+  color:#fff;font-size:11px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;}
+.tbl-mono{font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--t1);}
+.empty-box{display:flex;flex-direction:column;align-items:center;padding:28px;gap:8px;}
+.empty-box i{font-size:1.8rem;color:var(--t3);opacity:.5;}
+.empty-box p{font-size:12px;color:var(--t3);font-weight:500;}
+.stock-ok{color:#059669;font-family:'JetBrains Mono',monospace;font-weight:700;font-size:.8rem;}
+.stock-zero{color:var(--t3);font-family:'JetBrains Mono',monospace;font-size:.8rem;}
+
+/* MOD GRID */
+.mod-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
+.mod-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+  padding:18px 16px;text-decoration:none;color:inherit;display:flex;flex-direction:column;gap:10px;
+  position:relative;overflow:hidden;box-shadow:var(--shadow-sm);
+  transition:transform .2s,box-shadow .2s,border-color .2s;
+  opacity:0;animation:riseIn .42s .3s ease forwards;cursor:pointer;}
+.mod-card:hover{transform:translateY(-3px);box-shadow:var(--shadow-lg);border-color:var(--border2);}
+.mod-card::before{content:'';position:absolute;top:0;left:0;bottom:0;width:3px;
+  background:linear-gradient(180deg,var(--mc1,var(--brand)),var(--mc2,var(--brand-mid)));
+  border-radius:var(--radius) 0 0 var(--radius);}
+.mod-card::after{display:none;}
+.mod-icon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;
+  font-size:1rem;background:var(--mbg,var(--brand-lt));color:var(--mc1,var(--brand));border:1px solid var(--mborder,rgba(85,88,139,.13));}
+.mod-name{font-size:.88rem;font-weight:800;color:var(--t1);padding-left:3px;}
+.mod-desc{font-size:.7rem;color:var(--t3);line-height:1.5;padding-left:3px;font-weight:500;}
+.mod-foot{display:flex;align-items:center;padding-left:3px;margin-top:2px;}
+.mod-link{font-size:.7rem;font-weight:700;color:var(--mc1,var(--brand));display:flex;align-items:center;gap:4px;}
+.view-all{font-size:11px;font-weight:700;color:var(--brand);text-decoration:none;padding:4px 10px;
+  border-radius:7px;background:var(--brand-lt);border:1px solid rgba(85,88,139,.15);white-space:nowrap;}
+.view-all:hover{background:#cfd5f5;}
+
+@media(max-width:1200px){.kpi-grid{grid-template-columns:repeat(3,1fr);}.mod-grid{grid-template-columns:repeat(3,1fr);}.mini-strip{grid-template-columns:repeat(3,1fr);}}
+@media(max-width:960px){.kpi-grid,.mod-grid,.three-col,.mini-strip{grid-template-columns:repeat(2,1fr);}.two-col,.charts-row{grid-template-columns:1fr;}}
+@media(max-width:640px){.lyra-dash{padding:16px;}.kpi-grid,.mod-grid{grid-template-columns:repeat(2,1fr);}}
+</style>
+{% endblock exstyle %}
+
+
+{% block dashboard %}
+<section class="home-section bg-light">
+
+  <div class="home-content d-flex justify-content-between align-items-center mb-4"
+       style="background-color:#dce2f9;padding:0 20px;">
+    {% block head-title %}
+    <span class="text" style="color:#55588b;margin-bottom:10px;">Masters Dashboard</span>
+    {% endblock head-title %}
+    <span style="color:#55588b;margin-bottom:10px;font-weight:600;">LyraERP</span>
+  </div>
+
+  <div class="lyra-dash">
+
+    {# ── KPI CARDS ── #}
+    <div>
+      <div class="s-head"><div class="s-pip"></div><span class="s-lbl">Overview</span></div>
+      <div class="kpi-grid" id="masterKpiGrid">
+
+        {% if can_view_items %}
+        <a href="{% url 'items' %}" class="kpi-card"
+           style="--kc1:#0284c7;--kc2:#38bdf8;--kbg:#e0f2fe;--kborder:rgba(2,132,199,.15);">
+          <div class="kpi-top">
+            <div class="kpi-icon" style="background:#e0f2fe;color:#0284c7;border-color:rgba(2,132,199,.15);"><i class="bi bi-box-seam-fill"></i></div>
+            <span class="kpi-pill" style="background:#e0f2fe;color:#0284c7;">Inventory</span>
+          </div>
+          <div class="kpi-label">Items</div>
+          <div class="kpi-value">{{ item_count|default:"0" }}</div>
+          <div class="kpi-sub"><i class="bi bi-tags"></i>
+            {{ product_count|default:"0" }} goods · {{ service_count|default:"0" }} services
+          </div>
+        </a>
+        {% endif %}
+
+        {% if can_view_customers %}
+        <a href="{% url 'customer_list' %}" class="kpi-card"
+           style="--kc1:#059669;--kc2:#34d399;--kbg:#d1fae5;--kborder:rgba(5,150,105,.15);">
+          <div class="kpi-top">
+            <div class="kpi-icon" style="background:#d1fae5;color:#059669;border-color:rgba(5,150,105,.15);"><i class="bi bi-person-heart-fill"></i></div>
+            <span class="kpi-pill" style="background:#d1fae5;color:#059669;">Sales</span>
+          </div>
+          <div class="kpi-label">Customers</div>
+          <div class="kpi-value">{{ customer_count|default:"0" }}</div>
+          <div class="kpi-sub"><i class="bi bi-people"></i> Active accounts</div>
+        </a>
+        {% endif %}
+
+        {% if can_view_vendors %}
+        <a href="{% url 'vendor_list' %}" class="kpi-card"
+           style="--kc1:#d97706;--kc2:#fbbf24;--kbg:#fef3c7;--kborder:rgba(217,119,6,.15);">
+          <div class="kpi-top">
+            <div class="kpi-icon" style="background:#fef3c7;color:#d97706;border-color:rgba(217,119,6,.15);"><i class="bi bi-shop-window"></i></div>
+            <span class="kpi-pill" style="background:#fef3c7;color:#d97706;">Purchase</span>
+          </div>
+          <div class="kpi-label">Vendors</div>
+          <div class="kpi-value">{{ vendor_count|default:"0" }}</div>
+          <div class="kpi-sub"><i class="bi bi-truck"></i> Active suppliers</div>
+        </a>
+        {% endif %}
+
+        {% if can_view_warehouse %}
+        <a href="{% url 'warehouses_list' %}" class="kpi-card"
+           style="--kc1:#7c3aed;--kc2:#a78bfa;--kbg:#ede9fe;--kborder:rgba(124,58,237,.15);">
+          <div class="kpi-top">
+            <div class="kpi-icon" style="background:#ede9fe;color:#7c3aed;border-color:rgba(124,58,237,.15);"><i class="bi bi-building-fill"></i></div>
+            <span class="kpi-pill" style="background:#ede9fe;color:#7c3aed;">Stock</span>
+          </div>
+          <div class="kpi-label">Warehouses</div>
+          <div class="kpi-value">{{ warehouse_count|default:"0" }}</div>
+          <div class="kpi-sub"><i class="bi bi-geo-alt"></i> Storage locations</div>
+        </a>
+        {% endif %}
+
+        {% if can_view_stock %}
+        <a href="{% url 'stock_list' %}" class="kpi-card"
+           style="--kc1:#0d9488;--kc2:#2dd4bf;--kbg:#ccfbf1;--kborder:rgba(13,148,136,.15);">
+          <div class="kpi-top">
+            <div class="kpi-icon" style="background:#ccfbf1;color:#0d9488;border-color:rgba(13,148,136,.15);"><i class="bi bi-archive-fill"></i></div>
+            <span class="kpi-pill" style="background:#ccfbf1;color:#0d9488;">Store</span>
+          </div>
+          <div class="kpi-label">Stock Units</div>
+          <div class="kpi-value">{{ stock_count|default:"0" }}</div>
+          <div class="kpi-sub"><i class="bi bi-bar-chart"></i> Units on hand</div>
+        </a>
+        {% endif %}
+
+        {% if can_view_users %}
+        <a href="{% url 'user_list' %}" class="kpi-card"
+           style="--kc1:#55588b;--kc2:#7b7fd4;--kbg:#dce2f9;--kborder:rgba(85,88,139,.15);">
+          <div class="kpi-top">
+            <div class="kpi-icon"><i class="bi bi-person-fill-gear"></i></div>
+            <span class="kpi-pill">System</span>
+          </div>
+          <div class="kpi-label">Users</div>
+          <div class="kpi-value">{{ user_count|default:"0" }}</div>
+          <div class="kpi-sub"><i class="bi bi-people"></i>
+            {{ user_count|default:"0" }} user{{ user_count|pluralize }} active
+          </div>
+        </a>
+        {% endif %}
+
+        {% if can_view_payment_terms %}
+        <a href="{% url 'payterm_list' %}" class="kpi-card"
+           style="--kc1:#0284c7;--kc2:#38bdf8;--kbg:#e0f2fe;--kborder:rgba(2,132,199,.15);">
+          <div class="kpi-top">
+            <div class="kpi-icon" style="background:#e0f2fe;color:#0284c7;border-color:rgba(2,132,199,.15);">
+              <i class="bi bi-calendar-check-fill"></i>
+            </div>
+            <span class="kpi-pill" style="background:#e0f2fe;color:#0284c7;">Terms</span>
+          </div>
+          <div class="kpi-label">Payment Terms</div>
+          <div class="kpi-value">{{ payterm_count|default:"0" }}</div>
+          <div class="kpi-sub"><i class="bi bi-clock-history"></i>
+            {{ payterm_count|default:"0" }} term{{ payterm_count|pluralize }}
+          </div>
+        </a>
+        {% endif %}
+
+        {% if can_view_user_roles %}
+        <a href="{% url 'user_role_list' %}" class="kpi-card"
+           style="--kc1:#55588b;--kc2:#7b7fd4;--kbg:#dce2f9;--kborder:rgba(85,88,139,.15);">
+          <div class="kpi-top">
+            <div class="kpi-icon"><i class="bi bi-shield-lock-fill"></i></div>
+            <span class="kpi-pill">Roles</span>
+          </div>
+          <div class="kpi-label">User Roles</div>
+          <div class="kpi-value">{{ role_count|default:"0" }}</div>
+          <div class="kpi-sub"><i class="bi bi-shield-check"></i>
+            {{ role_count|default:"0" }} role{{ role_count|pluralize }} defined
+          </div>
+        </a>
+        {% endif %}
+
+      </div>
+    </div>
+
+    {# ── MINI STRIP ── #}
+    <div class="mini-strip" id="masterMiniStrip">
+      {% if can_view_taxes %}
+      <a href="{% url 'tax_list' %}" class="mini-card">
+        <div class="mini-ico" style="background:#fee2e2;color:#dc2626;border:1px solid rgba(220,38,38,.15);"><i class="bi bi-percent"></i></div>
+        <div><div class="mini-val">{{ tax_count|default:"0" }}</div><div class="mini-lbl">Taxes</div></div>
+      </a>
+      {% endif %}
+      {% if can_view_brands %}
+      <a href="{% url 'brand_list' %}" class="mini-card">
+        <div class="mini-ico" style="background:#ffedd5;color:#ea580c;border:1px solid rgba(234,88,12,.15);"><i class="bi bi-patch-check-fill"></i></div>
+        <div><div class="mini-val">{{ brand_count|default:"0" }}</div><div class="mini-lbl">Brands</div></div>
+      </a>
+      {% endif %}
+      {% if can_view_categories %}
+      <a href="{% url 'category_list' %}" class="mini-card">
+        <div class="mini-ico" style="background:#e0f2fe;color:#0284c7;border:1px solid rgba(2,132,199,.15);"><i class="bi bi-grid-fill"></i></div>
+        <div><div class="mini-val">{{ category_count|default:"0" }}</div><div class="mini-lbl">Categories</div></div>
+      </a>
+      {% endif %}
+      {% if can_view_types %}
+      <a href="{% url 'item_type_list' %}" class="mini-card">
+        <div class="mini-ico" style="background:#ccfbf1;color:#0d9488;border:1px solid rgba(13,148,136,.15);"><i class="bi bi-tag-fill"></i></div>
+        <div><div class="mini-val">{{ type_count|default:"0" }}</div><div class="mini-lbl">Item Types</div></div>
+      </a>
+      {% endif %}
+      {% if can_view_units %}
+      <a href="{% url 'unit_list' %}" class="mini-card">
+        <div class="mini-ico" style="background:#ede9fe;color:#7c3aed;border:1px solid rgba(124,58,237,.15);"><i class="bi bi-rulers"></i></div>
+        <div><div class="mini-val">{{ unit_count|default:"0" }}</div><div class="mini-lbl">Units</div></div>
+      </a>
+      {% endif %}
+    </div>
+
+    {# ── ANALYTICS ── #}
+    {% if can_view_items and can_view_categories or can_view_items and can_view_types %}
+    <div>
+      <div class="s-head"><div class="s-pip"></div><span class="s-lbl">Analytics</span></div>
+      <div class="charts-row" id="masterChartsRow">
+
+        {% if can_view_items and can_view_categories %}
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <div class="panel-title"><i class="bi bi-bar-chart-fill"></i> Items by Category</div>
+              <div class="panel-sub">Distribution of active items across categories</div>
+            </div>
+            <a href="{% url 'category_list' %}" class="view-all">View all</a>
+          </div>
+          <canvas id="catBar" height="140"></canvas>
+        </div>
+        {% endif %}
+
+        {% if can_view_items and can_view_types %}
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <div class="panel-title"><i class="bi bi-pie-chart-fill"></i> Item Types</div>
+              <div class="panel-sub">Goods · Services · Others</div>
+            </div>
+          </div>
+          <div class="donut-wrap">
+            <canvas id="itemDonut" width="130" height="130" style="max-width:130px;max-height:130px;"></canvas>
+            <ul class="legend-list">
+              <li class="legend-item">
+                <span class="legend-lbl"><span class="legend-dot" style="background:#0284c7;"></span>Goods</span>
+                <span class="legend-val" style="color:#0284c7;">{{ product_count|default:"0" }}</span>
+              </li>
+              <li class="legend-item">
+                <span class="legend-lbl"><span class="legend-dot" style="background:#059669;"></span>Services</span>
+                <span class="legend-val" style="color:#059669;">{{ service_count|default:"0" }}</span>
+              </li>
+              <li class="legend-item">
+                <span class="legend-lbl"><span class="legend-dot" style="background:#0d9488;"></span>Others</span>
+                <span class="legend-val" style="color:#0d9488;">{{ raw_material_count|default:"0" }}</span>
+              </li>
+              <hr class="legend-hr">
+              <li class="legend-item">
+                <span class="legend-lbl" style="font-weight:800;color:var(--t1);">Total</span>
+                <span class="legend-val" style="color:var(--brand);">{{ item_count|default:"0" }}</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+        {% endif %}
+
+      </div>
+    </div>
+    {% endif %}
+
+    {# ── RECENT ITEMS + MASTER SUMMARY ── #}
+    <div class="two-col" id="masterRecentSummaryRow">
+
+      {% if can_view_items %}
+      <div class="panel" style="padding:18px 22px;">
+        <div class="panel-head" style="margin-bottom:14px;">
+          <div>
+            <div class="panel-title"><i class="bi bi-box-seam-fill"></i> Recent Items</div>
+            <div class="panel-sub">Latest items added to the catalogue</div>
+          </div>
+          <a href="{% url 'items' %}" class="view-all">View all</a>
+        </div>
+        {% if recent_items %}
+        <table class="data-table">
+          <thead>
+            <tr><th>Item</th><th>Category</th><th>Type</th><th>Stock</th></tr>
+          </thead>
+          <tbody>
+            {% for item in recent_items %}
+            <tr>
+              <td>
+                <div style="display:flex;align-items:center;gap:8px;">
+                  <span class="tbl-av">{{ item.name|slice:":2"|upper }}</span>
+                  <span class="tbl-name">{{ item.name }}</span>
+                </div>
+              </td>
+              <td>{{ item.category.category_name|default:"—" }}</td>
+              <td>
+                {% if item.type == 'goods' %}<span class="tbl-badge badge-goods">Goods</span>
+                {% elif item.type == 'service' %}<span class="tbl-badge badge-service">Service</span>
+                {% else %}<span class="tbl-badge badge-other">{{ item.type|capfirst }}</span>{% endif %}
+              </td>
+              <td>
+                {% if item.stock_in_hand is not None %}
+                  {% if item.stock_in_hand > 0 %}<span class="stock-ok">{{ item.stock_in_hand }}</span>
+                  {% else %}<span class="stock-zero">0</span>{% endif %}
+                {% else %}<span class="stock-zero">—</span>{% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <div class="empty-box"><i class="bi bi-box-seam"></i><p>No items yet</p></div>
+        {% endif %}
+      </div>
+      {% endif %}
+
+      {% if can_view_items or can_view_customers or can_view_vendors or can_view_warehouse or can_view_taxes or can_view_brands or can_view_categories or can_view_users or can_view_user_roles %}
+      <div class="panel" style="padding:18px 22px;">
+        <div class="panel-head" style="margin-bottom:12px;">
+          <div>
+            <div class="panel-title"><i class="bi bi-clipboard-data-fill"></i> Master Data Summary</div>
+            <div class="panel-sub">Consolidated entity counts</div>
+          </div>
+        </div>
+        <div class="summary-table">
+          {% if can_view_items %}
+          <div class="summary-row">
+            <span class="summary-lbl"><i class="bi bi-box-seam" style="color:#0284c7;"></i> Items</span>
+            <span class="summary-val" style="color:#0284c7;">{{ item_count|default:"0" }}</span>
+          </div>
+          {% endif %}
+          {% if can_view_customers %}
+          <div class="summary-row">
+            <span class="summary-lbl"><i class="bi bi-person-heart" style="color:#059669;"></i> Customers</span>
+            <span class="summary-val" style="color:#059669;">{{ customer_count|default:"0" }}</span>
+          </div>
+          {% endif %}
+          {% if can_view_vendors %}
+          <div class="summary-row">
+            <span class="summary-lbl"><i class="bi bi-shop" style="color:#d97706;"></i> Vendors</span>
+            <span class="summary-val" style="color:#d97706;">{{ vendor_count|default:"0" }}</span>
+          </div>
+          {% endif %}
+          {% if can_view_warehouse %}
+          <div class="summary-row">
+            <span class="summary-lbl"><i class="bi bi-building-fill" style="color:#7c3aed;"></i> Warehouses</span>
+            <span class="summary-val" style="color:#7c3aed;">{{ warehouse_count|default:"0" }}</span>
+          </div>
+          {% endif %}
+          {% if can_view_taxes %}
+          <div class="summary-row">
+            <span class="summary-lbl"><i class="bi bi-percent" style="color:#dc2626;"></i> Individual Taxes</span>
+            <span class="summary-val" style="color:#dc2626;">{{ individual_taxes|default:"0" }}</span>
+          </div>
+          <div class="summary-row">
+            <span class="summary-lbl"><i class="bi bi-layers" style="color:#0d9488;"></i> Tax Groups</span>
+            <span class="summary-val" style="color:#0d9488;">{{ tax_groups|default:"0" }}</span>
+          </div>
+          {% endif %}
+          {% if can_view_brands %}
+          <div class="summary-row">
+            <span class="summary-lbl"><i class="bi bi-patch-check" style="color:#ea580c;"></i> Brands</span>
+            <span class="summary-val" style="color:#ea580c;">{{ brand_count|default:"0" }}</span>
+          </div>
+          {% endif %}
+          {% if can_view_categories %}
+          <div class="summary-row">
+            <span class="summary-lbl"><i class="bi bi-grid" style="color:#55588b;"></i> Categories</span>
+            <span class="summary-val" style="color:#55588b;">{{ category_count|default:"0" }}</span>
+          </div>
+          {% endif %}
+          {% if can_view_users %}
+          <div class="summary-row">
+            <span class="summary-lbl"><i class="bi bi-person-fill-gear" style="color:#059669;"></i> Users</span>
+            <span class="summary-val" style="color:#059669;">{{ user_count|default:"0" }}</span>
+          </div>
+          {% endif %}
+          {% if can_view_user_roles %}
+          <div class="summary-row">
+            <span class="summary-lbl"><i class="bi bi-shield-lock" style="color:#55588b;"></i> Roles</span>
+            <span class="summary-val" style="color:#55588b;">{{ role_count|default:"0" }}</span>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+      {% endif %}
+
+    </div>
+
+    {# ── CATALOGUE: Brands / Categories / Taxes ── #}
+    {% if can_view_brands or can_view_categories or can_view_taxes %}
+    <div>
+      <div class="s-head"><div class="s-pip"></div><span class="s-lbl">Catalogue</span></div>
+
+      {# ── Top row: summary stat cards for Brands, Categories, Taxes ── #}
+      <div id="masterCatalogueRow" style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:16px;">
+
+        {# Brands stat card #}
+        {% if can_view_brands %}
+        <div class="panel" style="padding:0;overflow:hidden;">
+          <div style="background:var(--brand-lt);padding:18px 20px 16px;position:relative;border-bottom:1px solid var(--border);">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+              <div style="width:38px;height:38px;border-radius:10px;background:var(--brand-lt);border:1px solid rgba(85,88,139,.2);display:flex;align-items:center;justify-content:center;color:var(--brand);font-size:.95rem;">
+                <i class="bi bi-patch-check-fill"></i>
+              </div>
+              <a href="{% url 'brand_list' %}" style="font-size:10px;font-weight:700;color:var(--brand);background:rgba(85,88,139,.1);border:1px solid rgba(85,88,139,.2);padding:3px 9px;border-radius:20px;text-decoration:none;">View all</a>
+            </div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:2rem;font-weight:800;color:var(--brand);line-height:1;letter-spacing:-.04em;">{{ brand_count|default:"0" }}</div>
+            <div style="font-size:.7rem;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.08em;margin-top:4px;">Brands</div>
+          </div>
+          <div style="padding:14px 20px 16px;">
+            <div style="font-size:.72rem;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;">Top by items</div>
+            <div style="display:flex;flex-direction:column;gap:8px;">
+              {% for brand in top_brands %}
+              <div style="display:flex;align-items:center;gap:9px;">
+                <div style="width:28px;height:28px;border-radius:7px;background:linear-gradient(135deg,#55588b,#7b7fd4);
+                  color:#fff;font-size:9px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                  {{ brand.brand_name|slice:":2"|upper }}
+                </div>
+                <div style="flex:1;min-width:0;">
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">
+                    <span style="font-size:.76rem;font-weight:600;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:110px;">{{ brand.brand_name }}</span>
+                    <span style="font-family:'JetBrains Mono',monospace;font-size:.72rem;font-weight:700;color:var(--brand);flex-shrink:0;margin-left:6px;">{{ brand.item_count }}</span>
+                  </div>
+                  <div style="height:4px;background:var(--bg2);border-radius:3px;overflow:hidden;">
+                    <div style="height:100%;width:{{ brand.pct }}%;background:linear-gradient(90deg,#55588b,#7b7fd4);border-radius:3px;transition:width .7s ease;"></div>
+                  </div>
+                </div>
+              </div>
+              {% empty %}
+              <div class="empty-box" style="padding:14px 0;"><i class="bi bi-patch-check"></i><p>No brands yet</p></div>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+        {% endif %}
+
+        {# Categories stat card #}
+        {% if can_view_categories %}
+        <div class="panel" style="padding:0;overflow:hidden;">
+          <div style="background:#e0f2fe;padding:18px 20px 16px;position:relative;border-bottom:1px solid var(--border);">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+              <div style="width:38px;height:38px;border-radius:10px;background:#bae6fd;border:1px solid rgba(2,132,199,.2);display:flex;align-items:center;justify-content:center;color:#0284c7;font-size:.95rem;">
+                <i class="bi bi-grid-fill"></i>
+              </div>
+              <a href="{% url 'category_list' %}" style="font-size:10px;font-weight:700;color:#0284c7;background:rgba(2,132,199,.1);border:1px solid rgba(2,132,199,.2);padding:3px 9px;border-radius:20px;text-decoration:none;">View all</a>
+            </div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:2rem;font-weight:800;color:#0284c7;line-height:1;letter-spacing:-.04em;">{{ category_count|default:"0" }}</div>
+            <div style="font-size:.7rem;font-weight:700;color:#0284c7cc;text-transform:uppercase;letter-spacing:.08em;margin-top:4px;">Categories</div>
+          </div>
+          <div style="padding:14px 20px 16px;">
+            <div style="font-size:.72rem;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;">Top by items</div>
+            <div style="display:flex;flex-direction:column;gap:8px;">
+              {% for cat in top_categories %}
+              <div style="display:flex;align-items:center;gap:9px;">
+                <div style="width:28px;height:28px;border-radius:7px;background:linear-gradient(135deg,#0284c7,#38bdf8);
+                  color:#fff;font-size:9px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                  {{ cat.category_name|slice:":2"|upper }}
+                </div>
+                <div style="flex:1;min-width:0;">
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">
+                    <span style="font-size:.76rem;font-weight:600;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:110px;">{{ cat.category_name }}</span>
+                    <span style="font-family:'JetBrains Mono',monospace;font-size:.72rem;font-weight:700;color:#0284c7;flex-shrink:0;margin-left:6px;">{{ cat.item_count }}</span>
+                  </div>
+                  <div style="height:4px;background:var(--bg2);border-radius:3px;overflow:hidden;">
+                    <div style="height:100%;width:{{ cat.pct }}%;background:linear-gradient(90deg,#0284c7,#38bdf8);border-radius:3px;transition:width .7s ease;"></div>
+                  </div>
+                </div>
+              </div>
+              {% empty %}
+              <div class="empty-box" style="padding:14px 0;"><i class="bi bi-grid"></i><p>No categories yet</p></div>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+        {% endif %}
+
+        {# Tax Rates stat card #}
+        {% if can_view_taxes %}
+        <div class="panel" style="padding:0;overflow:hidden;">
+          <div style="background:#fee2e2;padding:18px 20px 16px;position:relative;border-bottom:1px solid var(--border);">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+              <div style="width:38px;height:38px;border-radius:10px;background:#fecaca;border:1px solid rgba(220,38,38,.2);display:flex;align-items:center;justify-content:center;color:#dc2626;font-size:.95rem;">
+                <i class="bi bi-percent"></i>
+              </div>
+              <a href="{% url 'tax_list' %}" style="font-size:10px;font-weight:700;color:#dc2626;background:rgba(220,38,38,.08);border:1px solid rgba(220,38,38,.2);padding:3px 9px;border-radius:20px;text-decoration:none;">View all</a>
+            </div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:2rem;font-weight:800;color:#dc2626;line-height:1;letter-spacing:-.04em;">{{ individual_taxes|default:"0" }}</div>
+            <div style="font-size:.7rem;font-weight:700;color:#dc2626cc;text-transform:uppercase;letter-spacing:.08em;margin-top:4px;">Tax Rates</div>
+          </div>
+          <div style="padding:14px 20px 16px;">
+            <div style="font-size:.72rem;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;">Configured rates</div>
+            <div style="display:flex;flex-direction:column;gap:7px;">
+              {% for tax in tax_list %}
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 10px;background:var(--bg2);border-radius:8px;border:1px solid var(--border);">
+                <div style="display:flex;align-items:center;gap:8px;">
+                  <div style="width:24px;height:24px;border-radius:6px;background:linear-gradient(135deg,#dc2626,#f87171);
+                    color:#fff;font-size:8px;font-weight:800;display:flex;align-items:center;justify-content:center;">%</div>
+                  <div>
+                    <div style="font-size:.75rem;font-weight:700;color:var(--t1);line-height:1.2;">{{ tax.taxname }}</div>
+                    <div style="font-size:.65rem;color:var(--t3);font-weight:500;">{{ tax.taxtype }}</div>
+                  </div>
+                </div>
+                <div style="font-family:'JetBrains Mono',monospace;font-size:.85rem;font-weight:800;color:#dc2626;">{{ tax.rate }}%</div>
+              </div>
+              {% empty %}
+              <div class="empty-box" style="padding:14px 0;"><i class="bi bi-percent"></i><p>No taxes configured</p></div>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+        {% endif %}
+
+      </div>
+    </div>
+    {% endif %}
+
+    {# ── PARTIES: Recent Customers + Vendors ── #}
+    {% if can_view_customers or can_view_vendors %}
+    <div>
+      <div class="s-head"><div class="s-pip"></div><span class="s-lbl">Parties</span></div>
+      <div class="two-col" id="masterPartiesRow">
+
+        {% if can_view_customers %}
+        <div class="panel" style="padding:18px 22px;">
+          <div class="panel-head" style="margin-bottom:14px;">
+            <div><div class="panel-title"><i class="bi bi-person-heart-fill"></i> Recent Customers</div><div class="panel-sub">Latest active accounts</div></div>
+            <a href="{% url 'customer_list' %}" class="view-all">View all</a>
+          </div>
+          {% if recent_customers %}
+          <table class="data-table">
+            <thead><tr><th>Name</th><th>Email</th><th>Phone</th></tr></thead>
+            <tbody>
+              {% for cust in recent_customers %}
+              <tr>
+                <td>
+                  <div style="display:flex;align-items:center;gap:8px;">
+                    <span class="tbl-av">
+                      {% if cust.customer_type == 'company' %}{{ cust.company_name|slice:":2"|upper|default:"CO" }}
+                      {% else %}{{ cust.first_name|slice:":1"|upper }}{{ cust.last_name|slice:":1"|upper }}{% endif %}
+                    </span>
+                    <span class="tbl-name">
+                      {% if cust.customer_type == 'company' %}{{ cust.company_name|default:"—" }}
+                      {% else %}{{ cust.first_name }} {{ cust.last_name }}{% endif %}
+                    </span>
+                  </div>
+                </td>
+                <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ cust.email|default:"—" }}</td>
+                <td class="tbl-mono">{{ cust.phone|default:"—" }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          {% else %}
+          <div class="empty-box"><i class="bi bi-person-heart"></i><p>No customers yet</p></div>
+          {% endif %}
+        </div>
+        {% endif %}
+
+        {% if can_view_vendors %}
+        <div class="panel" style="padding:18px 22px;">
+          <div class="panel-head" style="margin-bottom:14px;">
+            <div><div class="panel-title"><i class="bi bi-shop-window"></i> Recent Vendors</div><div class="panel-sub">Latest active suppliers</div></div>
+            <a href="{% url 'vendor_list' %}" class="view-all">View all</a>
+          </div>
+          {% if recent_vendors %}
+          <table class="data-table">
+            <thead><tr><th>Name</th><th>Email</th><th>Phone</th></tr></thead>
+            <tbody>
+              {% for vendor in recent_vendors %}
+              <tr>
+                <td>
+                  <div style="display:flex;align-items:center;gap:8px;">
+                    <span class="tbl-av" style="background:linear-gradient(135deg,#d97706,#fbbf24);">
+                      {% if vendor.vendor_type == 'company' %}{{ vendor.company_name|slice:":2"|upper|default:"VN" }}
+                      {% else %}{{ vendor.first_name|slice:":1"|upper }}{{ vendor.last_name|slice:":1"|upper }}{% endif %}
+                    </span>
+                    <span class="tbl-name">
+                      {% if vendor.vendor_type == 'company' %}{{ vendor.company_name|default:"—" }}
+                      {% else %}{{ vendor.first_name }} {{ vendor.last_name }}{% endif %}
+                    </span>
+                  </div>
+                </td>
+                <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ vendor.email|default:"—" }}</td>
+                <td class="tbl-mono">{{ vendor.phone|default:"—" }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          {% else %}
+          <div class="empty-box"><i class="bi bi-shop"></i><p>No vendors yet</p></div>
+          {% endif %}
+        </div>
+        {% endif %}
+
+      </div>
+    </div>
+    {% endif %}
+
+    {# ── WAREHOUSE STOCK BREAKDOWN ── #}
+    {% if warehouse_stock and can_view_stock or warehouse_stock and can_view_warehouse %}
+    <div>
+      <div class="s-head"><div class="s-pip"></div><span class="s-lbl">Stock</span></div>
+      <div class="panel" id="masterStockPanel" style="padding:18px 22px;">
+        <div class="panel-head" style="margin-bottom:14px;">
+          <div><div class="panel-title"><i class="bi bi-archive-fill"></i> Stock by Warehouse</div><div class="panel-sub">Total units on hand per location</div></div>
+          <a href="{% url 'stock_list' %}" class="view-all">View all</a>
+        </div>
+        <div class="funnel-list" id="whStockFunnel"></div>
+      </div>
+    </div>
+    {% endif %}
+
+  </div>{# /lyra-dash #}
+
+</section>
+
+<script>
+var LYRA_LAYOUT_API = {
+  getUrl: "{% url 'dashboard_layout_get' %}",
+  saveUrl: "{% url 'dashboard_layout_save' %}",
+  csrf: "{{ csrf_token }}"
+};
+
+var LYRA_ARRANGE_CONFIG = {
+  storagePrefix: "master_dashboard:",
+  sectionContainer: ".lyra-dash",
+  arrangeLabel: "Arrange Layout",
+  doneLabel: "Done Arranging",
+  resetConfirm: "Reset master dashboard to default layout?",
+  cardGroups: [
+    { container: "#masterKpiGrid", child: ".kpi-card", key: "overview" },
+    { container: "#masterMiniStrip", child: ".mini-card", key: "quick" },
+    { container: "#masterChartsRow", child: ".panel", key: "analytics" },
+    { container: "#masterRecentSummaryRow", child: ".panel", key: "recent_summary" },
+    { container: "#masterCatalogueRow", child: ".panel", key: "catalogue" },
+    { container: "#masterPartiesRow", child: ".panel", key: "parties" },
+    { container: "#masterStockPanel", child: ".panel", key: "stock" }
+  ]
+};
+</script>
+<script src="{% static 'js/dashboard_dragdrop.js' %}"></script>
+
+<script>
+Chart.defaults.color       = "#9ca3af";
+Chart.defaults.borderColor = "#e2e6f3";
+Chart.defaults.font.family = "'Plus Jakarta Sans',sans-serif";
+
+/* Items by Category bar */
+(function(){
+  var el = document.getElementById("catBar"); if(!el) return;
+  var labels = {{ items_by_cat_labels|default:"[]"|safe }};
+  var data   = {{ items_by_cat_data|default:"[]"|safe }};
+  if(!labels.length){ labels=["No data"]; data=[0]; }
+  new Chart(el,{
+    type:"bar",
+    data:{
+      labels:labels,
+      datasets:[{
+        label:"Items", data:data,
+        backgroundColor:function(ctx){
+          var g=ctx.chart.ctx.createLinearGradient(0,0,0,200);
+          g.addColorStop(0,"rgba(2,132,199,.75)");g.addColorStop(1,"rgba(13,148,136,.25)");return g;},
+        borderColor:"#0284c7",borderWidth:1.5,borderRadius:7,borderSkipped:false,
+        hoverBackgroundColor:"rgba(2,132,199,.9)"}]},
+    options:{responsive:true,
+      plugins:{legend:{display:false},
+        tooltip:{backgroundColor:"#fff",titleColor:"#111827",bodyColor:"#6b7280",borderColor:"#e2e6f3",borderWidth:1,padding:10,
+          callbacks:{label:function(c){return " "+c.parsed.y+" item"+(c.parsed.y!==1?"s":"");}}}},
+      scales:{x:{grid:{display:false},ticks:{font:{size:11},color:"#9ca3af"}},
+              y:{beginAtZero:true,grid:{color:"#f0f2f9"},ticks:{font:{size:11},color:"#9ca3af",precision:0}}},
+      animation:{duration:900}}
+  });
+})();
+
+/* Item type donut */
+(function(){
+  var el = document.getElementById("itemDonut"); if(!el) return;
+  var goods  = parseInt("{{ product_count|default:0 }}")      ||0;
+  var svcs   = parseInt("{{ service_count|default:0 }}")      ||0;
+  var others = parseInt("{{ raw_material_count|default:0 }}") ||0;
+  var total  = goods+svcs+others;
+  new Chart(el,{
+    type:"doughnut",
+    data:{labels:["Goods","Services","Others"],datasets:[{
+      data:total?[goods,svcs,others]:[1,1,1],
+      backgroundColor:total?["#0284c7","#059669","#0d9488"]:["#f3f4f6","#f3f4f6","#f3f4f6"],
+      borderWidth:2,borderColor:"#ffffff",hoverOffset:5}]},
+    options:{cutout:"72%",
+      plugins:{legend:{display:false},tooltip:{backgroundColor:"#fff",titleColor:"#111827",bodyColor:"#6b7280",borderColor:"#e2e6f3",borderWidth:1}},
+      animation:{duration:900}}
+  });
+})();
+
+/* Warehouse stock funnel */
+(function(){
+  var wh = {{ warehouse_stock|default:"[]"|safe }};
+  var el = document.getElementById("whStockFunnel"); if(!el) return;
+  if(!wh.length){el.innerHTML='<div class="empty-box"><i class="bi bi-archive"></i><p>No stock data</p></div>';return;}
+  var max=Math.max.apply(null,wh.map(function(w){return w.total||0;}).concat([1]));
+  el.innerHTML=wh.map(function(w){
+    var pct=Math.round((w.total||0)/max*100);
+    return '<div class="funnel-item">'+
+      '<div class="funnel-lbl"><span>'+(w.warehouse__warehouse_name||"Unknown")+'</span>'+
+      '<span class="funnel-n">'+(w.total||0)+' units</span></div>'+
+      '<div class="funnel-track"><div class="funnel-bar" style="width:'+pct+'%;background:linear-gradient(90deg,#0d9488,#2dd4bf);"></div></div>'+
+      '</div>';
+  }).join('');
+})();
+</script>
+{% endblock dashboard %}
+{% block content %}{% endblock content %}

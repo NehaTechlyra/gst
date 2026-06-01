@@ -1,0 +1,40 @@
+{% extends "pricelists/base.html" %}
+{% block title %}Delete Price List{% endblock %}
+
+{% block content %}
+<div class="topbar">
+  <div>
+    <div class="breadcrumb">
+      <a href="{% url 'pricelists:index' company_code=request.resolver_match.kwargs.company_code %}">Price Lists</a> / <a href="{% url 'pricelists:detail' company_code=request.resolver_match.kwargs.company_code pk=price_list.pk %}">{{ price_list.name }}</a> / <span>Delete</span>
+    </div>
+    <h1 class="page-title">Delete Price List</h1>
+  </div>
+</div>
+
+<div style="max-width:480px;">
+  <div class="card" style="border-color:rgba(248,113,113,0.3);">
+    <div style="text-align:center;padding:16px 0 24px;">
+      <div style="width:56px;height:56px;border-radius:50%;background:var(--danger-soft);border:1px solid rgba(248,113,113,0.2);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
+        <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="var(--danger)"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+      </div>
+      <h2 style="font-size:17px;font-weight:700;margin-bottom:8px;">Delete "{{ price_list.name }}"?</h2>
+      <p style="color:var(--text-muted);font-size:13.5px;line-height:1.7;">
+        This will permanently delete the price list and all
+        <strong style="color:var(--danger);">{{ price_list.price_list_items.count }} item(s)</strong> associated with it.
+        This action cannot be undone.
+      </p>
+    </div>
+
+    <div style="display:flex;gap:10px;justify-content:center;padding-top:16px;border-top:1px solid var(--border);">
+      <a href="{% url 'pricelists:detail' company_code=request.resolver_match.kwargs.company_code pk=price_list.pk %}" class="btn btn-secondary">Cancel</a>
+      <form method="post" style="display:inline;">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger">
+          <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+          Yes, Delete Permanently
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

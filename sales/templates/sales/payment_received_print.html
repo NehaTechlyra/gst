@@ -1,0 +1,95 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Payment Receipt</title>
+  {% load static %}
+  <link href="{% static 'style/print.css' %}" rel="stylesheet">
+</head>
+<body>
+<div class="page">
+  <div class="header-wrap">
+    <table class="header-top">
+      <tr>
+        <td style="width:70%">
+          {% if show_logo_in_print and company and company.logo %}
+            <img src="{{ company.logo.url }}" style="max-height:52px; max-width:220px;" />
+          {% else %}
+            <div style="font-weight:700; font-size:18px;">{% if company and company.legal_name %}{{ company.legal_name }}{% elif company and company.name %}{{ company.name }}{% else %}Company{% endif %}</div>
+          {% endif %}
+        </td>
+        <td style="width:30%; text-align:right">
+          <div style="font-size:20px; font-weight:700;">PAYMENT RECEIPT</div>
+        </td>
+      </tr>
+    </table>
+    <table class="meta-table">
+      <tr>
+        <td class="meta-label">Payment No</td>
+        <td class="meta-value">: {{ payment.payment_number }}</td>
+        <td class="meta-label">Date</td>
+        <td class="meta-value">: {{ payment.payment_date }}</td>
+      </tr>
+      <tr>
+        <td class="meta-label">Paid By</td>
+        <td class="meta-value">: {% if payment.customer %}{% if payment.customer.customer_type == 'company' %}{{ payment.customer.company_name }}{% else %}{{ payment.customer.first_name }} {% if payment.customer.last_name %}{{ payment.customer.last_name }}{% endif %}{% endif %}{% else %}-{% endif %}</td>
+        <td class="meta-label">Paid Through</td>
+        <td class="meta-value">: {{ payment.paid_through.name }}</td>
+      </tr>
+    </table>
+  </div>
+
+  <div style="margin-top:12px;">
+    <table class="items" style="width:100%">
+      <thead>
+        <tr>
+          <th style="width:60%">Allocation</th>
+          <th style="width:40%" class="text-right">Amount</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if has_allocations %}
+          {% for a in allocated_invs %}
+          <tr>
+            <td>Bill #{{ a.inv.bill_number }}</td>
+            <td class="text-right">{{ a.allocated_amount|floatformat:2 }}</td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr><td colspan="2">Advance Payment</td></tr>
+        {% endif %}
+        <tr>
+          <td style="text-align:right; font-weight:700">Total</td>
+          <td class="text-right" style="font-weight:700">{{ payment.get_currency_symbol }}{{ payment.amount|floatformat:2 }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div style="margin-top:18px;">
+    <div style="font-weight:600">Notes</div>
+    <div style="margin-top:6px">{% if payment.notes %}{{ payment.notes|linebreaksbr }}{% else %}-{% endif %}</div>
+  </div>
+
+  <pdf:pageFooter>
+    <div class="footer">
+      <div class="footer-left">POWERED BY LyraERP</div>
+      <div class="footer-right">Page <pdf:pagenumber/> of <pdf:pagecount/></div>
+      <div style="clear:both"></div>
+    </div>
+  </pdf:pageFooter>
+
+</div>
+<script>
+  (function(){
+    try {
+      var params = new URLSearchParams(window.location.search);
+      if (params.get('print') === '1') {
+        window.print();
+      }
+    } catch (e) {}
+  })();
+</script>
+</body>
+</html>

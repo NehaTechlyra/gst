@@ -1,0 +1,473 @@
+{% extends 'website/index.html' %}
+{% load static %}
+
+{% block page_title %}
+  {% if obj %}Edit Email Template Style{% else %}Add Email Template Style{% endif %}
+{% endblock %}
+
+{% block exstyle %}
+<link href="{% static 'style/general.css' %}" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+
+<!-- SUMMERNOTE CSS -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/summernote/0.8.20/summernote-lite.min.css" rel="stylesheet">
+
+<style>
+/* ===== Layout ===== */
+.container {
+  max-width: 980px;
+}
+
+/* Card / form look */
+.form-section {
+  display: block;
+  background: #fff;
+  border-radius: 10px;
+  padding: 26px;
+  box-shadow: 0 4px 14px rgba(20,24,40,0.04);
+  margin-bottom: 18px;
+}
+
+.section-group {
+  background: #fafbfd;
+  padding: 18px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  border: 1px solid #eef0f6;
+}
+.section-group h6 {
+  font-weight: 600;
+  color: #3b4060;
+  margin-bottom: 12px;
+}
+
+/* Labels and inputs */
+.form-label {
+  font-weight: 600;
+  color: #333;
+}
+.required::after {
+  content: " *";
+  color: #d9534f;
+  font-weight: 700;
+}
+
+/* Buttons */
+.btn-right {
+  display:flex;
+  justify-content:flex-end;
+  gap:10px;
+  margin-top:18px;
+}
+
+/* Validation */
+.is-invalid {
+  border-color: #dc3545 !important;
+  box-shadow: 0 0 0 0.08rem rgba(220, 53, 69, 0.08);
+}
+
+.note-editor.is-invalid {
+  border-color: #dc3545 !important;
+  box-shadow: 0 0 0 0.08rem rgba(220, 53, 69, 0.08);
+  border-radius: 4px;
+}
+
+/* Toast */
+#topcenter-toast {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%) !important;
+  margin: 0 !important;
+  rotate: 0deg !important;
+  background-color: #f8d7da !important;
+  color: #721c24 !important;
+  border: 1px solid #f5c6cb !important;
+  border-radius: 6px;
+  padding: 10px 18px;
+  font-weight: 500;
+  text-align: center;
+  min-width: 300px;
+  z-index: 99999;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .25s ease-in-out;
+}
+
+/* Small help text and placeholder table */
+.placeholder-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+  font-size: 14px;
+  color: #444;
+}
+.placeholder-table td, .placeholder-table th {
+  border: 1px solid #eef0f6;
+  padding: 8px 10px;
+}
+.placeholder-table th {
+  background: #f6f8fb;
+  text-align: left;
+  font-weight: 600;
+}
+
+/* Responsive tweaks */
+@media (max-width: 576px) {
+  .btn-right { flex-direction: column-reverse; align-items: stretch; }
+  .btn-right a, .btn-right button { width: 100%; }
+}
+
+</style>
+{% endblock exstyle %}
+
+{% block content %}
+
+<div class="container mt-4">
+
+  <!-- Back Button -->
+  <div class="top-actions mb-3">
+    <a href="{% url 'email_template_list' %}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left"></i> Back</a>
+  </div>
+
+  <div class="form-section">
+    <form method="post" id="template_form"
+          action="{% if obj %}{% url 'email_template_edit' obj.id %}{% else %}{% url 'email_template_create' %}{% endif %}" novalidate>
+      {% csrf_token %}
+
+      <!-- BASIC DETAILS -->
+      <div class="section-group">
+        <h6>Template Details</h6>
+
+        <!-- Template Name -->
+        <div class="mb-3">
+          <label class="form-label required">Template Name</label>
+
+          {% if obj %}
+            <!-- Editing existing → show readonly -->
+            <input type="text" name="template_name" class="form-control"
+                   value="{{ obj.template_name }}" readonly style="background:#f5f7fb">
+                   
+          {% else %}
+            <!-- New template → show dropdown -->
+            <select name="template_name" class="form-control" required>
+              <option value="">Select Template Name</option>
+              {% for value, label in TEMPLATE_NAME_CHOICES %}
+                <option value="{{ value }}">{{ label }}</option>
+              {% endfor %}
+            </select>
+          {% endif %}
+
+          <small class="form-text text-muted">
+            The logical template grouping. Multiple variations may belong to the same template name.
+          </small>
+        </div>
+
+        <!-- Style / Variant -->
+        <div class="mb-3">
+          <label class="form-label">Style</label>
+          <input type="text" name="style" class="form-control"
+                 placeholder="e.g. Classic, Modern, Compact (leave blank for 'default')"
+                 value="{% if obj %}{{ obj.style }}{% else %}{{ '' }}{% endif %}">
+          <small class="form-text text-muted">Enter a style name for this template. Use <strong>default</strong> or leave blank to treat this as the default style.</small>
+        </div>
+
+        <!-- Subject -->
+        <div class="mb-3">
+          <label class="form-label required">Subject</label>
+          <input type="text" name="subject" class="form-control" required
+                 placeholder="Email subject"
+                 value="{% if obj %}{{ obj.subject }}{% else %}{{ '' }}{% endif %}">
+        </div>
+
+      </div> <!-- /section-group -->
+
+      <!-- BODY -->
+      <div class="section-group">
+        <h6>Email Body</h6>
+        <label class="form-label required">Body</label>
+
+        <!-- SUMMERNOTE EDITOR -->
+        <textarea id="summernote" name="body" required>{% if obj %}{{ obj.body }}{% else %}{{ '' }}{% endif %}</textarea>
+
+        <p class="mt-3" style="font-size:14px;color:#6b6f86;">
+          Use placeholders to inject dynamic values. Click <a href="#" id="open-placeholders">here</a> to view common placeholders.
+        </p>
+        
+        <!-- placeholders helper (hidden by default, can be toggled) -->
+        <div id="placeholders-box" style="display:none;margin-top:12px;">
+          <table class="placeholder-table">
+            <thead>
+              <tr><th>Placeholder</th><th>Description</th></tr>
+            </thead>
+            <tbody>
+            <tr><td><code>[[employee]]</code></td><td>Employee full name</td></tr>
+            <tr><td><code>[[doc]]</code></td><td>Document name</td></tr>
+            <tr><td><code>[[date]]</code></td><td>Relevant date (expiry/issue)</td></tr>
+            <tr><td><code>[[company]]</code></td><td>Company or organisation name</td></tr>
+            <tr><td><code>[[link]]</code></td><td>Action link (e.g. open document)</td></tr>
+            <tr><td><code>[[logo]]</code></td><td>Company or organisation logo</td></tr>
+          </tbody>
+          </table>
+
+          <p style="margin-top:10px;font-size:13px;color:#666;">
+            Tip: When sending the email, your send logic should replace these placeholders with actual values (e.g. Python `str.replace` or a templating engine).
+          </p>
+        </div>
+        
+        <p class="mt-3" style="font-size:14px;color:#6b6f86;">
+          Tip: If you have a full HTML document, paste only the <code>&lt;body&gt;</code> contents or paste in <strong>Code View</strong>. Pasting a full document can lead to HTML being escaped.
+        </p>
+      </div>
+
+      <!-- DEFAULT STYLE SWITCH -->
+      <div class="section-group">
+        <div class="form-check mb-2">
+          <input type="checkbox" name="is_default" class="form-check-input"
+                 id="id_is_default" {% if obj and obj.is_default %}checked{% endif %}>
+          <label class="form-check-label" for="id_is_default">
+            Set as Default Style
+          </label>
+        </div>
+        <small class="form-text text-muted">If checked, this style will be treated as the default for the template name.</small>
+      </div>
+
+      <!-- STATUS -->
+      <div class="section-group">
+        <div class="form-check mb-2">
+          <input type="checkbox" name="status" class="form-check-input"
+                 id="id_status"
+                 {% if obj and obj.status or not obj %}checked{% endif %}>
+          <label class="form-check-label" for="id_status">Active</label>
+        </div>
+        <small class="form-text text-muted">Uncheck to deactivate this style (it won't be visible in dropdowns).</small>
+      </div>
+
+      <!-- EXTRA: Preview area for small-screen / quick glance -->
+      <div class="section-group">
+        <h6>Quick Preview</h6>
+        <div id="quick-preview" style="min-height:80px;padding:12px;border-radius:6px;background:#fff;border:1px solid #eef0f6;">
+          <strong id="preview-subject">{% if obj %}{{ obj.subject }}{% else %}Subject preview{% endif %}</strong>
+          <div id="preview-body" style="margin-top:8px;font-size:14px;color:#444;">
+            {% if obj %}
+              {{ obj.body|safe }}
+            {% else %}
+              A short preview of the email body will appear here as you type.
+            {% endif %}
+          </div>
+        </div>
+        <p class="mt-2" style="font-size:13px;color:#666;">Preview updates automatically as you type subject/body.</p>
+      </div>
+
+      <!-- BUTTONS -->
+      <div class="btn-right">
+        <button type="submit" class="btn btn-primary">
+          {% if obj %}<i class="bi bi-pencil-square"></i> Update Style{% else %}<i class="bi bi-plus-circle"></i> Add Style{% endif %}
+        </button>
+        <a href="{% url 'email_template_list' %}" class="btn btn-secondary">Cancel</a>
+      </div>
+
+    </form>
+  </div> <!-- /form-section -->
+
+</div> <!-- /container -->
+
+{% endblock content %}
+
+{% block scripts %}
+<!-- jQuery & Summernote -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/summernote/0.8.20/summernote-lite.min.js"></script>
+
+<script>
+(function($){
+
+  // ==================== Toast Helper ==================== //
+  (function () {
+    function createTopCenterToastDOM() {
+      let el = document.getElementById("topcenter-toast");
+      if (!el) {
+        el = document.createElement("div");
+        el.id = "topcenter-toast";
+        el.className = "alert alert-danger";
+        el.style.position = "fixed";
+        el.style.top = "20px";
+        el.style.left = "50%";
+        el.style.transform = "translateX(-50%)";
+        el.style.zIndex = "99999";
+        el.style.minWidth = "320px";
+        el.style.textAlign = "center";
+        el.style.borderRadius = "6px";
+        el.style.fontWeight = "500";
+        el.style.padding = "12px 18px";
+        el.style.opacity = "0";
+        el.style.transition = "opacity .25s ease-in-out";
+        document.body.appendChild(el);
+      }
+      return el;
+    }
+
+    window.showToast = function (msg) {
+      const el = createTopCenterToastDOM();
+      el.innerHTML = `⚠️ ${msg}`;
+      el.style.display = "block";
+      el.style.opacity = "1";
+
+      setTimeout(() => {
+        el.style.opacity = "0";
+        setTimeout(() => el.style.display = "none", 300);
+      }, 2500);
+    };
+  })();
+
+  $(document).ready(function() {
+    // Initialize summernote
+    $('#summernote').summernote({
+      height: 420,
+      placeholder: "Write email content here...",
+      tabsize: 2,
+      focus: false,
+      callbacks: {
+        onInit: function() {},
+        onImageUpload: function(files) {
+          for (let i = 0; i < files.length; i++) {
+            uploadFile(files[i], 'image');
+          }
+        },
+        onPaste: function(e) {
+          let clipboardData = (e.originalEvent || e).clipboardData;
+          if (clipboardData && clipboardData.items) {
+            let items = clipboardData.items;
+            for (let i = 0; i < items.length; i++) {
+              if (items[i].type.indexOf("image") !== -1) {
+                let file = items[i].getAsFile();
+                uploadFile(file, 'image');
+                e.preventDefault();
+              }
+            }
+          }
+        }
+      },
+      toolbar: [
+        ['style', ['style', 'bold', 'italic', 'underline', 'clear']],
+        ['font', ['fontsize', 'color', 'fontname', 'superscript', 'subscript']],
+        ['para', ['ul', 'ol', 'paragraph', 'height']],
+        ['insert', ['link', 'picture', 'video', 'table', 'hr', 'file']],
+        ['view', ['fullscreen', 'codeview', 'help']],
+        ['misc', ['undo', 'redo']]
+      ],
+      buttons: {
+        file: function(context) {
+          let ui = $.summernote.ui;
+          let button = ui.button({
+            contents: '<i class="bi bi-file-earmark"></i>',
+            tooltip: 'Insert File',
+            click: function () {
+              let $fileInput = $('<input type="file" accept=".pdf,.doc,.docx,.txt" style="display:none">');
+              $fileInput.on('change', function(e) {
+                let file = e.target.files[0];
+                if (file) uploadFile(file, 'file');
+              });
+              $('body').append($fileInput);
+              $fileInput.trigger('click');
+            }
+          });
+          return button.render();
+        }
+      }
+    });
+
+    function uploadFile(file, type) {
+      let data = new FormData();
+      data.append('file', file);
+      data.append('type', type);
+
+      $.ajax({
+        url: '{% url "summernote_upload" %}',
+        method: 'POST',
+        headers: { 'X-CSRFToken': '{{ csrf_token }}' },
+        data: data,
+        processData: false,
+        contentType: false,
+        success: function(response) {
+          let url = (typeof response === 'string') ? response : (response.url || response.path || '');
+          if (!url) {
+            showToast("Upload succeeded but no URL returned.");
+            return;
+          }
+          if (type === 'image') {
+            $('#summernote').summernote('insertImage', url);
+          } else {
+            $('#summernote').summernote('pasteHTML',
+              '<a href="'+url+'" target="_blank" rel="noopener noreferrer">'+file.name+'</a>');
+          }
+          showToast("File uploaded successfully!");
+        },
+        error: function() {
+          showToast("File upload failed.");
+        }
+      });
+    }
+
+    $('#open-placeholders').on('click', function(e){
+      e.preventDefault();
+      $('#placeholders-box').slideToggle(160);
+    });
+
+    $('input[name="subject"]').on('input', function(){
+      $('#preview-subject').text($(this).val() || 'Subject preview');
+    });
+
+    $('#summernote').on('summernote.change', function(we, contents) {
+      $('#preview-body').html(contents || '<em>Body preview will appear here...</em>');
+    });
+
+    // ==================== Form Validation ==================== //
+    $('#template_form').submit(function (e) {
+
+      const templateName = $.trim($('select[name="template_name"]').val() || $('input[name="template_name"]').val());
+      const style = $.trim($('input[name="style"]').val());
+      const subject = $.trim($('input[name="subject"]').val());
+      const bodyCode = $('#summernote').summernote('code');
+      const bodyText = $('<div>').html(bodyCode).text().trim();
+      
+      let invalid = false;
+
+      // Validate template_name
+      if (!templateName) {
+        $('select[name="template_name"], input[name="template_name"]').addClass('is-invalid');
+        invalid = true;
+      } else {
+        $('select[name="template_name"], input[name="template_name"]').removeClass('is-invalid');
+      }
+
+      // Style is optional
+
+      if (!subject) {
+        $('input[name="subject"]').addClass('is-invalid');
+        invalid = true;
+      } else {
+        $('input[name="subject"]').removeClass('is-invalid');
+      }
+
+      if (!bodyText) {
+        $('#summernote').next('.note-editor').addClass('is-invalid');
+        invalid = true;
+      } else {
+        $('#summernote').next('.note-editor').removeClass('is-invalid');
+      }
+
+      if (invalid) {
+        e.preventDefault();
+        showToast("Please fill all required fields correctly.");
+        return false;
+      }
+
+      return true;
+    });
+  }); // ready
+
+})(jQuery);
+
+</script>
+{% endblock scripts %}

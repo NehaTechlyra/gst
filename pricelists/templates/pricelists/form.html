@@ -1,0 +1,234 @@
+{% extends "website/index.html" %}
+{% load static %}
+{% load pricelist_tags %}
+{% block page_title %}{{ action }} Price List{% endblock %}
+
+{% block exstyle %}
+<link href="{% static 'style/general.css' %}" rel="stylesheet">
+<style>
+  .section-label {
+    font-size: 10px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 1px; color: #9898b0; margin-bottom: 8px; margin-top: 4px;
+  }
+  .breadcrumb-bar { font-size: 12px; color: #9898b0; margin-bottom: 3px; }
+  .breadcrumb-bar a { color: #9898b0; text-decoration: none; }
+  .breadcrumb-bar a:hover { color: #55588b; }
+  .page-main-title { font-size: 19px; font-weight: 700; color: #55588b !important; margin: 0 0 16px; }
+  .radio-scheme-label {
+    cursor: pointer; display: flex; align-items: center;
+    padding: 8px 12px; border: 1px solid #dde0f2; border-radius: 6px;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .radio-scheme-label:hover { border-color: #55588b; background: #f7f7fa; }
+  .radio-scheme-label input { margin-right: 8px; accent-color: #55588b; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-3 px-4">
+  <div class="breadcrumb-bar mb-1">
+    <a href="{% url 'pricelists:index' company_code=request.resolver_match.kwargs.company_code %}">Price Lists</a>
+    {% if price_list %} / <a href="{% url 'pricelists:detail' company_code=request.resolver_match.kwargs.company_code pk=price_list.pk %}">{{ price_list.name }}</a>{% endif %}
+    / <span>{{ action }}</span>
+  </div>
+  <h1 class="page-main-title">{{ action }} Price List</h1>
+
+  <div class="row">
+    <div class="col-12 col-lg-8">
+      <div class="card" style="border:1px solid #dde0f2; border-radius:8px;">
+        <div class="card-body">
+
+          <form method="post" novalidate>
+            {% csrf_token %}
+
+            {% if form.non_field_errors %}
+              <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+            {% endif %}
+
+            <!-- Basic Info -->
+            <div class="section-label">Basic Information</div>
+            <div class="row g-3 mb-4">
+              <div class="col-md-6">
+                <label class="form-label">Price List Name *</label>
+                {{ form.name }}
+                {% if form.name.errors %}<div class="text-danger" style="font-size:12px; margin-top:3px;">{{ form.name.errors.0 }}</div>{% endif %}
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Price Type *</label>
+                {{ form.price_type }}
+                <div style="font-size:11px; color:#9898b0; margin-top:3px;">Sales = customers. Purchase = vendors.</div>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Currency</label>
+                {{ form.currency }}
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Rounding</label>
+                {{ form.rounding }}
+              </div>
+              <div class="col-12">
+                <label class="form-label d-block mb-2">Pricing Scheme (Item Rate) *</label>
+                <div class="d-flex flex-column gap-2">
+                  {% for radio in form.pricing_scheme %}
+                    <label class="radio-scheme-label">
+                      {{ radio.tag }}
+                      <span style="font-size:13px; color:#55588b;">{{ radio.choice_label }}</span>
+                    </label>
+                  {% endfor %}
+                </div>
+              </div>
+              <div class="col-md-6" id="percentageValueGroup" style="display:none;">
+                <label class="form-label">Percentage Value *</label>
+                {{ form.percentage_value }}
+                {% if form.percentage_value.errors %}<div class="text-danger" style="font-size:12px; margin-top:3px;">{{ form.percentage_value.errors.0 }}</div>{% endif %}
+              </div>
+              <div class="col-md-6" id="percentageTypeGroup" style="display:none;">
+                <label class="form-label">Markup / Markdown *</label>
+                {{ form.percentage_type }}
+                {% if form.percentage_type.errors %}<div class="text-danger" style="font-size:12px; margin-top:3px;">{{ form.percentage_type.errors.0 }}</div>{% endif %}
+              </div>
+              <div class="col-12">
+                <label class="form-label">Description</label>
+                {{ form.description }}
+              </div>
+            </div>
+
+            <!-- Individual Items Section -->
+            <div id="individualItemsSection" style="display:none; margin-bottom:24px;">
+              <div class="section-label">Individual Item Rates</div>
+              <div class="table-responsive" style="border:1px solid #dde0f2; border-radius:6px; overflow:hidden;">
+                <table class="items-table mb-0">
+                  <thead>
+                    <tr>
+                      <th>Item Name</th>
+                      <th>SKU / Barcode</th>
+                      <th class="text-end">Standard Rate</th>
+                      <th class="text-end" style="width:150px;">Custom Rate</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for item in items %}
+                    <tr>
+                      <td>{{ item.name }}</td>
+                      <td style="color:#9898b0;">{{ item.barcode|default:"-" }}</td>
+                      <td class="text-end base-price-cell"
+                          data-sales="{{ item.selling_price|default:0 }}"
+                          data-purchase="{{ item.cost_price|default:0 }}">0.00</td>
+                      <td class="text-end">
+                        <input type="number" step="0.01" name="item_rate_{{ item.id }}"
+                               class="form-control form-control-sm item-rate-input d-inline-block"
+                               style="width:120px; text-align:right;"
+                               value="{% with sku=item.barcode|default:item.name %}{{ existing_items|get_item:sku|default:'' }}{% endwith %}">
+                      </td>
+                    </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <hr style="border-color:#dde0f2; margin:20px 0;">
+
+            <!-- Validity -->
+            <div class="section-label">Validity Period (Optional)</div>
+            <div class="row g-3 mb-4">
+              <div class="col-md-6">
+                <label class="form-label">Valid From</label>
+                {{ form.valid_from }}
+                <div style="font-size:11px; color:#9898b0; margin-top:3px;">Leave blank for no start restriction.</div>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Valid To</label>
+                {{ form.valid_to }}
+                <div style="font-size:11px; color:#9898b0; margin-top:3px;">Leave blank for no end restriction.</div>
+              </div>
+            </div>
+
+            <hr style="border-color:#dde0f2; margin:20px 0;">
+
+            <!-- Status -->
+            <div class="mb-4">
+              <div class="form-check">
+                {{ form.is_active }}
+                <label class="form-check-label" style="cursor:pointer;">Enable this price list (Active)</label>
+              </div>
+              <div style="font-size:11px; color:#9898b0; margin-top:4px; margin-left:24px;">
+                When active, this price list can be applied to contacts and transactions.
+              </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="d-flex justify-content-end gap-2 pt-3" style="border-top:1px solid #dde0f2;">
+              <a href="{% if price_list %}{% url 'pricelists:detail' company_code=request.resolver_match.kwargs.company_code pk=price_list.pk %}{% else %}{% url 'pricelists:index' company_code=request.resolver_match.kwargs.company_code %}{% endif %}"
+                 class="commmombtn px-3 py-2" style="text-decoration:none;">Cancel</a>
+              <button type="submit" class="add-item-btn px-4 py-2">
+                {% if action == 'Create' %}Create Price List{% else %}Save Changes{% endif %}
+              </button>
+            </div>
+
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const schemeRadios = document.querySelectorAll('input[name="pricing_scheme"]');
+  const valGroup = document.getElementById('percentageValueGroup');
+  const typeGroup = document.getElementById('percentageTypeGroup');
+  const individualSection = document.getElementById('individualItemsSection');
+  const priceTypeSelect = document.querySelector('select[name="price_type"]');
+  const basePriceCells = document.querySelectorAll('.base-price-cell');
+  const radioLabels = document.querySelectorAll('.radio-scheme-label');
+
+  function toggleFields() {
+    let selectedScheme = null;
+    schemeRadios.forEach(r => { if (r.checked) selectedScheme = r.value; });
+
+    if (selectedScheme === 'percentage') {
+      valGroup.style.display = 'block';
+      typeGroup.style.display = 'block';
+      individualSection.style.display = 'none';
+    } else if (selectedScheme === 'individual') {
+      valGroup.style.display = 'none';
+      typeGroup.style.display = 'none';
+      individualSection.style.display = 'block';
+      updateBasePrices();
+    } else {
+      valGroup.style.display = 'none';
+      typeGroup.style.display = 'none';
+      individualSection.style.display = 'none';
+    }
+
+    radioLabels.forEach(label => {
+      const input = label.querySelector('input');
+      if (input && input.checked) {
+        label.style.borderColor = '#55588b';
+        label.style.backgroundColor = '#f0f1f8';
+      } else {
+        label.style.borderColor = '#dde0f2';
+        label.style.backgroundColor = 'transparent';
+      }
+    });
+  }
+
+  function updateBasePrices() {
+    if (!priceTypeSelect) return;
+    const type = priceTypeSelect.value;
+    basePriceCells.forEach(cell => {
+      const price = type === 'sales' ? cell.dataset.sales : cell.dataset.purchase;
+      cell.textContent = parseFloat(price).toFixed(2);
+    });
+  }
+
+  schemeRadios.forEach(r => r.addEventListener('change', toggleFields));
+  if (priceTypeSelect) priceTypeSelect.addEventListener('change', updateBasePrices);
+  toggleFields();
+});
+</script>
+{% endblock %}

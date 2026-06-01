@@ -1,0 +1,2437 @@
+{% extends 'website/index.html' %}
+<!-- VERSION: 2026-05-05-v2 -->
+{% load static %}
+{% load widget_tweaks %}
+
+{% block page_title %}Expense{% endblock %}
+
+{% block content %}
+<div class="container-fluid" style="max-width: 100%; overflow-x: hidden;">
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">{{ title|default:'Record Expense' }}</h5>
+        </div>
+        <div class="card-body">
+            <style>
+                /* FX box: flow within the form grid to avoid overlapping other columns */
+                #fx-rate-section { position: relative; }
+                #fx-rate-section .fx-box {
+                    position: static; /* keep in document flow so it pushes content */
+                    transform: none;
+                    display: block;
+                    width: 560px; /* reduced width as requested */
+                    max-width: calc(100% - 48px);
+                    margin: 8px auto; /* center within the form */
+                    border-radius: 6px; /* subtle rounding for rectangular look */
+                    padding: 12px !important;
+                    box-shadow: 0 6px 18px rgba(33,37,41,0.04);
+                    background-color: #f8fafc !important;
+                    z-index: 1;
+                }
+                @media (max-width: 768px) {
+                    #fx-rate-section .fx-box {
+                        width: 100%;
+                        box-shadow: none;
+                        margin-top: 8px;
+                    }
+                }
+            </style>
+            <form method="post" enctype="multipart/form-data" id="expenseForm" novalidate>
+                {% csrf_token %}
+
+                <!-- Hidden templates (used by JS to clone options for expense lines) -->
+                <div style="display:none; visibility:hidden; height:0; overflow:hidden;">
+                    {# Render account and tax selects as hidden templates so expense lines can clone their options #}
+                    {{ form.account }}
+                    {{ form.tax }}
+                </div>
+
+                <!-- FX row removed here; it will be rendered after the top row to keep layout tidy -->
+
+                <div class="form-section">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <label for="{{ form.date.id_for_label }}" class="form-label required">Date</label>
+                            {{ form.date|add_class:"form-control" }}
+                        </div>
+                        <div class="col-md-3">
+                            <label for="{{ form.currency.id_for_label }}" class="form-label required">Currency</label>
+                            <div style="display:flex; gap:8px; align-items:center;">
+                                {{ form.currency|add_class:"form-select" }}
+                                <button type="button" class="btn btn-outline-secondary btn-add-currency inline-add"
+                                    title="Add Currency">+</button>
+                            </div>
+                            <!-- Exchange Rate Fields are shown in a full-width row below to avoid overlap -->
+                        </div>
+                        <div class="col-md-3">
+                            <label for="{{ form.paid_through.id_for_label }}" class="form-label required">Paid through</label>
+                            {{ form.paid_through|add_class:"form-select" }}
+                            <div class="invalid-feedback">
+                                Paid through field is required
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="{{ form.gst_treatment.id_for_label }}" class="form-label">GST treatment</label>
+                            {{ form.gst_treatment|add_class:"form-select" }}
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Full-width FX row (placed here so it appears just under the Date/Currency row) -->
+                <div class="row">
+                    <div class="col-12">
+                        <div id="fx-rate-section" style="margin-top: 12px; display: none;">
+                            <div class="p-2 border rounded-3 bg-light fx-box mx-auto">
+                                <div class="row g-2">
+                                    <div class="col-7">
+                                        <label class="form-label small mb-1 fw-bold text-muted">Exchange Rate (1 <span id="selected-cur-code-label"></span> = ? {{ company_base_currency_code|default:"INR" }})</label>
+                                        {{ form.fx_rate_to_base|add_class:"form-control form-control-sm border-primary" }}
+                                    </div>
+                                    <div class="col-5">
+                                        <label class="form-label small mb-1 fw-bold text-muted">Rate Date</label>
+                                        {{ form.fx_rate_date|add_class:"form-control form-control-sm" }}
+                                    </div>
+                                </div>
+                                <div class="mt-1">
+                                    <small class="text-muted" style="font-size: 0.75rem;">Conversion used for accounting entries.</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <label for="{{ form.expense_type.id_for_label }}" class="form-label">Expense type</label>
+                            {{ form.expense_type }}
+                        </div>
+                        <div class="col-md-3">
+                            <label id="sac_hsn_label" for="{{ form.sac_hsn.id_for_label }}" class="form-label">HSN / SAC</label>
+                            {{ form.sac_hsn|add_class:"form-control" }}
+                        </div>
+                        <div class="col-md-3">
+                            <label for="{{ form.invoice_number.id_for_label }}" class="form-label">Invoice number</label>
+                            {{ form.invoice_number|add_class:"form-control" }}
+                        </div>
+                        <div class="col-md-3">
+                            <label for="{{ form.customer.id_for_label }}" class="form-label">Customer</label>
+                            <div style="display:flex; gap:8px; align-items:center;">
+                                {{ form.customer|add_class:"form-select" }}
+                                <button type="button" class="btn btn-outline-secondary btn-add-customer inline-add"
+                                    title="Add Customer">+</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <label for="{{ form.vendor.id_for_label }}" class="form-label">Vendor</label>
+                            <div style="display:flex; gap:8px; align-items:center;">
+                                {{ form.vendor|add_class:"form-select" }}
+                                <button type="button" class="btn btn-outline-secondary btn-add-vendor inline-add"
+                                    title="Add Vendor">+</button>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="{{ form.vendor_gstin.id_for_label }}" class="form-label">Vendor GSTIN</label>
+                            {{ form.vendor_gstin|add_class:"form-control"|attr:"maxlength:15"|attr:"pattern:^[0-9A-Z]{15}$" }}
+                            <div class="invalid-feedback">
+                                GSTIN must be exactly 15 characters long
+                            </div>
+                        </div>
+                        {% if is_indian_company %}
+                        <div class="col-md-3">
+                            <label for="{{ form.place_of_supply.id_for_label }}" class="form-label required">Place of Supply</label>
+                            {{ form.place_of_supply|add_class:"form-select" }}
+                        </div>
+                        <div class="col-md-3">
+                            <label for="{{ form.destination_of_supply.id_for_label }}" class="form-label required">Destination of supply</label>
+                            {{ form.destination_of_supply|add_class:"form-select" }}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <label for="{{ form.amount_is.id_for_label }}" class="form-label">Amount is</label>
+                            {{ form.amount_is }}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Itemized expense lines -->
+                <div class="form-section">
+                    {{ formset.management_form }}
+                    <div class="table-responsive">
+                        <table class="items-table table" id="expense-lines">
+                            <thead>
+                                <tr>
+                                    <th style="width:30%">EXPENSE ACCOUNT</th>
+                                    <th style="width:30%">NOTES</th>
+                                    <th style="width:20%">TAX</th>
+                                    <th style="width:20%" class="text-end">AMOUNT</th>
+                                    <th style="width:5%"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for form in formset.forms %}
+                                <tr class="expense-line">
+                                    <td>
+                                        {{ form.id }}
+                                        {{ form.account|add_class:"form-select line-account" }}
+                                    </td>
+                                    <td>{{ form.notes|add_class:"form-control line-notes" }}</td>
+                                    <td>
+                                        <div style="display:flex; gap:8px; align-items:center;">
+                                            {{ form.tax|add_class:"form-select line-tax" }}
+                                            {% comment %} <button type="button"
+                                                class="btn btn-outline-secondary btn-add-tax" title="Add Tax">+</button>
+                                            {% endcomment %}
+                                        </div>
+                                    </td>
+                                    <td class="text-end">
+                                        {{ form.amount|add_class:"form-control line-amount" }}
+                                    </td>
+                                    <td class="text-center">
+                                        {% if forloop.first %}
+                                        {{ form.DELETE|add_class:"d-none" }}
+                                        {% else %}
+                                        {{ form.DELETE }}
+                                        {% endif %}
+                                        <i class="bx bx-x remove-line"></i>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                            <tfoot>
+                                <tr>
+                                    <td colspan="5">
+                                        <button type="button" id="add-expense-line" class="add-item-btn">
+                                            <i class="bx bx-plus"></i> Add New Row
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr class="table-light">
+                                    <td colspan="3" class="text-end"><strong>Subtotal ( <span class="expense-currency-symbol">{{ selected_currency_symbol|default:company_base_currency_symbol|default:"₹" }}</span> )</strong></td>
+                                    <td class="text-end fw-bold" id="expense-subtotal">0.00</td>
+                                    <td></td>
+                                </tr>
+                                <tr class="table-light">
+                                    <td colspan="3" class="text-end"><strong>Tax Total ( <span class="expense-currency-symbol">{{ selected_currency_symbol|default:company_base_currency_symbol|default:"₹" }}</span> )</strong></td>
+                                    <td class="text-end fw-bold" id="expense-tax-total">0.00</td>
+                                    <td></td>
+                                </tr>
+                                <tr class="table-light">
+                                    <td colspan="3" class="text-end"><strong>Expense Total ( <span class="expense-currency-symbol">{{ selected_currency_symbol|default:company_base_currency_symbol|default:"₹" }}</span> )</strong></td>
+                                    <td class="text-end fw-bold" id="expense-total">0.00</td>
+                                    <td></td>
+                                </tr>
+                                <!-- Base Currency Summary -->
+                                <tr class="table-info base-currency-summary-row" style="display: none;">
+                                    <td colspan="3" class="text-end">
+                                        <div class="d-flex flex-column">
+                                            <strong>Total in Base Currency ( {{ company_base_currency_code|default:"INR" }} )</strong>
+                                            <small class="text-muted">Equivalent amount in company base currency</small>
+                                        </div>
+                                    </td>
+                                    <td class="text-end fw-bold">
+                                        <div class="d-flex flex-column">
+                                            <span id="base-currency-total">{{ company_base_currency_symbol|default:"₹" }} 0.00</span>
+                                            {{ form.total_amount_base|add_class:"d-none" }}
+                                        </div>
+                                    </td>
+                                    <td></td>
+                                </tr>
+                                <td></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <button type="submit" class="btn btn-primary">Save Expense</button>
+                        <a href="{% url 'expenses:expense_list' %}" class="btn btn-light" id="cancel-button">Cancel</a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block exstyle %}
+<link href="{% static 'Style/general.css' %}" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<style>
+    .select2-add-new {
+        border: none !important;
+        outline: none !important;
+        box-shadow: none !important;
+        background: transparent !important;
+    }
+
+        {
+        % comment %
+    }
+
+    .select2-add-new:hover {
+        background: rgba(255, 255, 255, 0.1) !important;
+    }
+
+        {
+        % endcomment %
+    }
+
+    .select2-add-new:focus,
+    .select2-add-new:active {
+        border: none !important;
+        outline: none !important;
+        box-shadow: none !important;
+    }
+
+    /* Card styles */
+    .card {
+        background: white;
+        border: 1px solid #e5e7eb;
+        box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
+        border-radius: 8px;
+    }
+
+    .card-header {
+        background: white;
+        border-bottom: 1px solid #e5e7eb;
+        padding: 1rem;
+    }
+
+    /* Form field styles */
+    .form-control,
+    .form-select,
+    .select2-container--default .select2-selection--single {
+        height: 38px !important;
+        padding: 0.375rem 0.75rem !important;
+        font-size: 0.875rem !important;
+        line-height: 1.5 !important;
+        border: 1px solid #e5e7eb !important;
+        border-radius: 0.25rem !important;
+        background-color: #fff !important;
+        width: 100% !important;
+        box-shadow: none !important;
+        transition: border-color 0.15s ease-in-out !important;
+    }
+
+    /* Select2 styling */
+    .select2-container {
+        width: 100% !important;
+    }
+
+    .select2-container--default .select2-selection--single {
+        display: flex !important;
+        align-items: center !important;
+    }
+
+    .select2-container--default .select2-selection--single .select2-selection__rendered {
+        line-height: 1.5 !important;
+        padding-left: 0.75rem !important;
+        padding-right: 30px !important;
+        color: #333 !important;
+    }
+
+    .select2-container--default .select2-selection--single .select2-selection__arrow {
+        height: 36px !important;
+        width: 25px !important;
+    }
+
+    .select2-container--default .select2-selection--single .select2-selection__clear {
+        position: absolute !important;
+        right: 30px !important;
+        font-size: 1.2rem !important;
+        color: #dc2626 !important;
+        margin: 0 !important;
+        padding: 0 3px !important;
+        cursor: pointer !important;
+    }
+
+    /* Modal sizing and scroll behaviour for large forms */
+    /* Target only our AJAX modals so we don't affect other modals unexpectedly */
+    #tax-modal .modal-dialog,
+    #vendor-modal .modal-dialog,
+    #customer-modal .modal-dialog {
+            {
+            % comment %
+        }
+
+        max-width: 1200px;
+        /* increase max width */
+        width: 95%;
+
+        /* responsive on small screens */
+            {
+            % endcomment %
+        }
+
+        overflow-x: hidden;
+        /* prevent horizontal overflow */
+    }
+
+    /* Use flex layout so modal-footer stays visible while modal-body scrolls */
+    #tax-modal .modal-content,
+    #vendor-modal .modal-content,
+    #customer-modal .modal-content {
+        display: flex;
+        flex-direction: column;
+
+            {
+            % comment %
+        }
+
+        height: calc(100vh - 80px);
+        max-height: calc(100vh - 80px);
+
+            {
+            % endcomment %
+        }
+
+        overflow-x: hidden;
+
+        /* block horizontal scrolling */
+            {
+            % comment %
+        }
+
+        padding:20px;
+
+            {
+            % endcomment %
+        }
+
+    }
+
+    #tax-modal .modal-body,
+    #vendor-modal .modal-body,
+    #customer-modal .modal-body {
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        /* hide horizontal scrollbar */
+        flex: 1 1 auto;
+        padding: 1.5rem 2rem;
+
+            {
+            % comment %
+        }
+
+        max-height: calc(100vh - 200px) !important;
+
+        /* Fixed height for scroll */
+            {
+            % endcomment %
+        }
+    }
+
+    /* Fix modal header and footer positioning */
+    #tax-modal .modal-header,
+    #vendor-modal .modal-header,
+    #customer-modal .modal-header {
+        flex: 0 0 auto;
+        background: #fff;
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    /* Ensure form inside modal body takes full height */
+    #vendor-modal .modal-body form,
+    #customer-modal .modal-body form {
+            {
+            % comment %
+        }
+
+        height: 100%;
+
+            {
+            % endcomment %
+        }
+
+        overflow: visible;
+    }
+
+    /* Keep footer fixed to bottom of modal-content */
+    #tax-modal .modal-footer,
+    #vendor-modal .modal-footer,
+    #customer-modal .modal-footer {
+        flex: 0 0 auto;
+        border-top: 1px solid #e5e7eb;
+        padding: 0.75rem 1.25rem;
+        background: #fff;
+    }
+
+    /* Ensure footer buttons are right-aligned and spaced like customer modal */
+    #vendor-modal .modal-footer,
+    #customer-modal .modal-footer {
+        display: flex !important;
+        justify-content: flex-end !important;
+        gap: 0.5rem;
+    }
+
+    /* Table styles */
+    .items-table {
+        width: 100% !important;
+        max-width: 100% !important;
+        margin-bottom: 0 !important;
+    }
+
+    .items-table td {
+        padding: 0.75rem !important;
+        vertical-align: middle !important;
+    }
+
+    .items-table thead th {
+        font-weight: 500;
+        color: #6b7280;
+        background-color: #f9fafb;
+        border-bottom: 1px solid #e5e7eb;
+        padding: 0.75rem;
+        text-transform: uppercase;
+        font-size: 0.875rem;
+    }
+
+    /* Form sections */
+    .form-section {
+        padding: 1.5rem 0;
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    .form-section:last-child {
+        border-bottom: none;
+    }
+
+    /* Form labels */
+    .form-label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 500;
+        color: #374151;
+        font-size: 0.875rem;
+    }
+
+    /* Required field indicator */
+    .required::after {
+        content: " *";
+        color: #dc2626;
+    }
+
+    /* Button styles */
+        {
+        % comment %
+    }
+
+    .btn-primary {
+        background-color: #4f46e5;
+        border-color: #4f46e5;
+    }
+
+    .btn-primary:hover {
+        background-color: #4338ca;
+        border-color: #4338ca;
+    }
+
+        {
+        % endcomment %
+    }
+
+    .btn-light {
+        background-color: #f9fafb;
+        border-color: #e5e7eb;
+        color: #374151;
+    }
+
+    #add-expense-line {
+        color: #ffffff;
+        background-color: #55588b;
+        border: none;
+        padding: 0.5rem 1rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        border-radius: 0.375rem;
+        font-weight: 500;
+    }
+
+    /* Number inputs */
+    input[type="number"] {
+        text-align: right !important;
+    }
+
+    /* Remove row button */
+    .remove-line {
+        color: #dc2626;
+        font-size: 1.25rem;
+        padding: 0;
+        margin: 0;
+        line-height: 1;
+    }
+
+    .remove-line:hover {
+        color: #b91c1c;
+    }
+
+    /* Validation styles */
+    .is-invalid {
+        border-color: #dc2626 !important;
+    }
+
+    .text-danger {
+        color: #dc2626 !important;
+    }
+
+    /* Consistent spacing */
+    .row+.row {
+        margin-top: 1rem;
+    }
+
+    hr {
+        margin: 1.5rem 0;
+        border-color: #e5e7eb;
+    }
+
+    /* GST treatment select2 dropdown */
+    .select2-results__option div small {
+        display: block;
+        color: #6b7280;
+        margin-top: 0.25rem;
+    }
+
+    /* Disabled tax fields with not-allowed cursor */
+    .line-tax:disabled,
+    .btn-add-tax:disabled {
+        cursor: not-allowed !important;
+    }
+
+    /* Additional style for disabled button */
+    .btn-add-tax.disabled {
+        opacity: 0.65;
+    }
+
+    /* Select2 container disabled state */
+    .select2-container--disabled .select2-selection {
+        cursor: not-allowed !important;
+        background-color: #e9ecef !important;
+    }
+
+    /* Select2 dropdown disabled state */
+    .line-tax:disabled+.select2-container .select2-selection {
+        cursor: not-allowed !important;
+        background-color: #e9ecef !important;
+    }
+
+    /* Hide the old inline '+' buttons (we'll show '+ New' in the Select2 dropdown) */
+    .inline-add {
+        display: inline-block;
+    }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script>
+    const isIndianCompany = {{ is_indian_company|yesno:"true,false" }};
+    const EXPENSE_BASE_CURRENCY_SYMBOL = '{{ company_base_currency_symbol|default:"₹"|escapejs }}' || '₹';
+    const expenseCurrencySymbolMap = {{ currency_symbol_map_json| safe }};
+    const gstDescriptions = {
+        'registered_regular': 'Business that is registered under GST',
+        'registered_composition': 'Business that is registered under the Composition Scheme in GST',
+        'unregistered': 'Business that has not been registered under GST',
+        'consumer': 'A customer who is a regular consumer',
+        'overseas': 'Persons with whom you do import or export of supplies outside India',
+        'sez': 'Business (Unit) that is located in a Special Economic Zone (SEZ) of India or a SEZ Developer',
+        'deemed_export': 'Supply of goods to an Export Oriented Unit or against Advanced Authorization/Export Promotion Capital Goods.',
+        'non_gst': 'Transactions with supplies that do not attract GST',
+        'out_of_scope': 'Transactions that do not come under the ambit of GST',
+        'tax_deductor': 'Departments of the State/Central government, governmental agencies or local authorities',
+        'sez_developer': 'A person/organisation who owns at least 26% of the equity in creating business units in a Special Economic Zone (SEZ)',
+        'input_service_distributor': 'Input Service Distributor (ISD) is an office that receives tax invoices for services used by the company in different states under the same PAN.'
+    };
+
+    $(document).ready(function () {
+        // Cache original select option HTML before Select2 mutates DOM
+        const accountOptionsTemplate = $('#id_account').length ? $('#id_account').html() : ($('#expense-lines tbody tr:first .line-account').html() || '');
+        const taxOptionsTemplate = $('#id_tax').length ? $('#id_tax').html() : ($('#expense-lines tbody tr:first .line-tax').html() || '');
+        // Initialize all select2 dropdowns with enhanced functionality
+        function initSelect2() {
+            // Initialize GST treatment select with descriptions
+            const $gstSelect = $('#id_gst_treatment');
+            if ($gstSelect.length) {
+                $gstSelect.find('option').each(function () {
+                    const value = $(this).val();
+                    if (value && gstDescriptions[value]) {
+                        $(this).attr('data-description', gstDescriptions[value]);
+                    }
+                });
+
+                $gstSelect.select2({
+                    width: '100%',
+                    templateResult: function (data) {
+                        if (!data.id) return data.text;
+
+                        const $option = $(data.element);
+                        const description = $option.data('description');
+
+                        if (description) {
+                            return $(`<div>
+                            <strong>${data.text}</strong>
+                            <br>
+                            <small class="text-muted">${description}</small>
+                        </div>`);
+                        }
+                        return data.text;
+                    }
+                });
+            }
+
+            // Initialize all other selects
+            $('select').not('#id_gst_treatment').each(function () {
+                var $select = $(this);
+                if ($select.hasClass('select2-hidden-accessible')) {
+                    $select.select2('destroy');
+                }
+
+                $select.select2({
+                    width: '100%',
+                    minimumResultsForSearch: 0,
+                    placeholder: $select.data('placeholder') || "Select...",
+                    allowClear: true,
+                    dropdownParent: $(document.body),
+                    matcher: function (params, data) {
+                        // Return all when no search term
+                        if ($.trim(params.term) === '') return data;
+
+                        // Recursive matcher to handle optgroups (children)
+                        function recursiveMatch(p, d) {
+                            if (!d) return null;
+
+                            // If this node has children, try matching children
+                            if (d.children && d.children.length) {
+                                var matchedChildren = [];
+                                for (var i = 0; i < d.children.length; i++) {
+                                    var childMatch = recursiveMatch(p, d.children[i]);
+                                    if (childMatch != null) matchedChildren.push(childMatch);
+                                }
+                                if (matchedChildren.length) {
+                                    var copied = $.extend({}, d, true);
+                                    copied.children = matchedChildren;
+                                    return copied;
+                                }
+                                return null;
+                            }
+
+                            if (typeof d.text === 'undefined') return null;
+
+                            var term = p.term.toLowerCase();
+                            var txt = (d.text || '').toLowerCase().trim();
+
+                            // Match anywhere in the option text (not just startsWith)
+                            if (txt.indexOf(term) > -1) {
+                                return d;
+                            }
+                            return null;
+                        }
+
+                        return recursiveMatch(params, data);
+                    }
+                });
+
+                // If this is the currency field, call updateFxVisibility after initialization
+                if ($select.attr('id') === 'id_currency') {
+                    setTimeout(function() {
+                        if (typeof updateFxVisibility === 'function') {
+                            console.log('Calling updateFxVisibility after currency Select2 init');
+                            updateFxVisibility();
+                        }
+                    }, 50);
+                }
+            });
+
+            // Fix focus issues
+            $(document).on('select2:open', () => {
+                // Focus the search field when dropdown opens
+                var $search = $('.select2-container--open .select2-search__field');
+                if ($search.length) $search.focus();
+
+                // Add '+ New' footer for specific selects (currency, vendor, customer)
+                try {
+                    var $openContainer = $('.select2-container--open');
+                    var $dropdown = $openContainer.find('.select2-dropdown');
+                    if (!$dropdown.length) return;
+
+                    // Determine which select opened by checking the live search input's closest select (fallback to focused element)
+                    var $active = $(document.activeElement).closest('.select2-container');
+                    // find the original select by matching ids stored on the container
+                    var $origSelect = null;
+                    if ($active.length) {
+                        // try to map using aria-controls or by matching rendered title
+                        var ariaControls = $openContainer.attr('aria-owns') || '';
+                        if (ariaControls) {
+                            $origSelect = $('#' + ariaControls).closest('select');
+                        }
+                    }
+
+                    // fallback: inspect the search field's parent to detect placeholder text
+                    if (!$origSelect || !$origSelect.length) {
+                        // try to detect by placeholder in the search field
+                        var placeholder = $openContainer.find('.select2-search__field').attr('placeholder') || '';
+                        if (/Search Vendor/i.test(placeholder)) $origSelect = $('#id_vendor');
+                        if (/Search Customer/i.test(placeholder)) $origSelect = $('#id_customer');
+                        if (/Select|Currency/i.test(placeholder)) $origSelect = $('#id_currency');
+                    }
+
+                    // If we detected currency/vendor/customer, append footer if not present
+                    if ($origSelect && $origSelect.length) {
+                        var id = $origSelect.attr('id');
+                        var footerSelector = '.select2-footer-add';
+                        if ($dropdown.find(footerSelector).length === 0) {
+                            var btnHtml = '<div class="select2-footer-add" style="padding:6px; border-top:1px solid #eee; background:#5897fb; text-align: center !important;"><button type="button" class="btn  select2-add-new" style="color:#fff;padding:0px;width:100%;text-align:left;">+ New</button></div>';
+                            $dropdown.append(btnHtml);
+
+                            // Wire click to open appropriate modal by triggering existing plus buttons
+                            $dropdown.find('.select2-add-new').on('click', function (e) {
+                                e.preventDefault();
+                                if (id === 'id_currency') {
+                                    $('.btn-add-currency').trigger('click');
+                                } else if (id === 'id_vendor') {
+                                    $('.btn-add-vendor').trigger('click');
+                                } else if (id === 'id_customer') {
+                                    $('.btn-add-customer').trigger('click');
+                                } else {
+                                    // fallback: click any nearby add button
+                                    $openContainer.closest('td, .col-md-3, .col-md-4').find('.btn-outline-secondary').first().trigger('click');
+                                }
+                            });
+                        }
+                    }
+                } catch (e) { console.debug('select2 footer error', e); }
+            });
+        }
+
+        // Toggle sac/hsn label based on expense type
+        function updateSacHsn() {
+            var $checked = $('input[name="expense_type"]:checked');
+            var val = $checked.val();
+            var labelText = $checked.closest('label').text() || '';
+            var $label = $('#sac_hsn_label');
+            var $input = $('#id_sac_hsn');
+
+            if (!$input.length) {
+                $input = $('input[name="sac_hsn"]');
+            }
+
+            $label.text('HSN / SAC');
+            $input.attr('placeholder', '');
+
+            if (val || labelText) {
+                if (/good/i.test(val) || /good/i.test(labelText)) {
+                    $label.text('HSN Code');
+                    $input.attr('placeholder', 'Enter HSN Code');
+                } else if (/service/i.test(val) || /service/i.test(labelText)) {
+                    $label.text('SAC');
+                    $input.attr('placeholder', 'Enter SAC');
+                }
+            }
+        }
+
+        // Expense lines management
+        function recalcExpenseTotal() {
+            var subtotal = 0;
+            var taxTotal = 0;
+
+            // Determine whether amounts are tax inclusive or exclusive
+            var amountIsMode = 'exclusive';
+            try {
+                var val = $('input[name="amount_is"]:checked').val();
+                if (val && String(val).toLowerCase().indexOf('inclusive') !== -1) {
+                    amountIsMode = 'inclusive';
+                } else if (val && String(val).toLowerCase().indexOf('exclusive') !== -1) {
+                    amountIsMode = 'exclusive';
+                } else {
+                    // Fallback: check label text near checked input
+                    var labelText = $('input[name="amount_is"]:checked').closest('label').text() || '';
+                    if (labelText.toLowerCase().indexOf('inclusive') !== -1) amountIsMode = 'inclusive';
+                }
+            } catch (e) { }
+
+            // Ensure tax rate map is available
+            if (typeof buildTaxRateMap === 'function') buildTaxRateMap();
+
+            $('#expense-lines tbody tr:visible').each(function () {
+                const $row = $(this);
+                // Only count if DELETE checkbox is not checked
+                if (!$row.find('input[type="checkbox"]').is(':checked')) {
+                    var total_amount = parseFloat($row.find('.line-amount').val()) || 0;
+
+                    // Get effective tax rate (single rate or combined GST rate)
+                    var taxId = $row.find('.line-tax').val();
+                    var tax = $row.find('.line-tax option:selected');
+                    var taxText = tax.text() || '';
+                    var effectiveRate = 0;
+
+                    // Check if this is a relabeled GST (e.g., "GST18")
+                    var gstMatch = taxText.match(/^GST([0-9.]+)/i);
+                    if (gstMatch) {
+                        // Direct combined rate from GST label
+                        effectiveRate = parseFloat(gstMatch[1]);
+                    } else {
+                        // Parse type and rate from verbose format
+                        var typeMatch = taxText.match(/-\s*([A-Z]+)\b/);
+                        var rateMatch = taxText.match(/\(([0-9.]+)%\)/);
+                        var taxType = typeMatch ? typeMatch[1] : '';
+                        var taxRate = rateMatch ? parseFloat(rateMatch[1]) : 0;
+
+                        if ((taxType === 'CGST' || taxType === 'SGST') && taxRate > 0) {
+                            effectiveRate = taxRate * 2;  // Combined rate for CGST+SGST
+                        } else {
+                            effectiveRate = taxRate;  // IGST or other tax types
+                        }
+                    }
+
+                    // Calculate base and tax based on inclusive/exclusive mode
+                    var base_amount, tax_amount;
+                    if (amountIsMode === 'inclusive') {
+                        // For tax inclusive: extract base and tax from total
+                        base_amount = (effectiveRate > 0) ? (total_amount / (1 + effectiveRate / 100)) : total_amount;
+                        tax_amount = total_amount - base_amount;
+                    } else {
+                        // For tax exclusive: compute tax from base
+                        base_amount = total_amount;
+                        tax_amount = total_amount * (effectiveRate / 100);
+                    }
+
+                    subtotal += base_amount;
+                    taxTotal += tax_amount;
+                }
+            });
+
+            updateExpenseCurrencyLabels();
+            var grand = amountIsMode === 'inclusive' ? (subtotal + taxTotal) : (subtotal + taxTotal);
+
+            $('#expense-subtotal').text(subtotal.toFixed(2));
+            $('#expense-tax-total').text(taxTotal.toFixed(2));
+            $('#expense-total').text(grand.toFixed(2));
+            // Ensure base-currency total is refreshed immediately after totals change
+            try { updateBaseCurrencyTotal(); } catch (e) { /* noop if not available yet */ }
+        }
+
+        function normalizeExpenseCurrencyCode(value) {
+            return (value || '').toString().trim().toUpperCase();
+        }
+
+        function getExpenseCurrencySymbol() {
+            const currencyField = document.getElementById('id_currency');
+            const currencyCode = normalizeExpenseCurrencyCode(currencyField ? currencyField.value : '');
+            return expenseCurrencySymbolMap[currencyCode] || EXPENSE_BASE_CURRENCY_SYMBOL || '₹';
+        }
+
+        function updateExpenseCurrencyLabels() {
+            const symbol = getExpenseCurrencySymbol();
+            document.querySelectorAll('.expense-currency-symbol').forEach(function (node) {
+                node.textContent = symbol;
+            });
+        }
+
+        function cleanupDeletedRows() {
+            // Remove any hidden deleted rows to prevent form index issues
+            $('#expense-lines tbody tr:hidden').remove();
+
+            // Re-number remaining rows to ensure sequential indexes
+            $('#expense-lines tbody tr').each(function (index) {
+                $(this).find(':input').each(function () {
+                    const name = $(this).attr('name');
+                    if (name) {
+                        const newName = name.replace(/-\d+-/, `-${index}-`);
+                        $(this).attr('name', newName);
+                        $(this).attr('id', newName);
+                    }
+                });
+            });
+
+            // Update total forms count
+            $('#id_lines-TOTAL_FORMS').val($('#expense-lines tbody tr').length);
+        }
+
+        function createEmptyRow(index) {
+            // Create a fresh row structure
+            const $row = $(`
+            <tr class="expense-line">
+                <td>
+                    <select name="lines-${index}-account" id="lines-${index}-account" class="form-select line-account" data-placeholder="Search Expense Account...">
+                        <option value="">Search Expense Account...</option>
+                    </select>
+                </td>
+                <td>
+                    <input type="text" name="lines-${index}-notes" id="lines-${index}-notes" class="form-control line-notes" value="">
+                </td>
+                <td>
+                    <div style="display:flex; gap:8px; align-items:center;">
+                        <select name="lines-${index}-tax" id="lines-${index}-tax" class="form-select line-tax" data-placeholder="Select Tax">
+                            <option value="">Select Tax</option>
+                        </select>
+                        {% comment %} <button type="button" class="btn btn-outline-secondary btn-add-tax" title="Add Tax">+</button> {% endcomment %}
+                    </div>
+                </td>
+                <td class="text-end">
+                    <input type="number" name="lines-${index}-amount" id="lines-${index}-amount" class="form-control line-amount" value="" step="0.01">
+                </td>
+                <td class="text-center">
+                    <input type="checkbox" name="lines-${index}-DELETE" id="lines-${index}-DELETE" style="display:none;">
+                    <i class="bx bx-x remove-line"></i>
+                </td>
+            </tr>
+        `);
+
+            return $row;
+        }
+
+        function addExpenseRow() {
+            const index = $('#expense-lines tbody tr').length;
+
+            // Use the createEmptyRow helper to ensure consistent placeholders
+            const $newRow = createEmptyRow(index);
+
+            // Fill selects using cached templates captured at page load
+            if (accountOptionsTemplate) {
+                $newRow.find('.line-account').html(accountOptionsTemplate);
+            }
+            if (taxOptionsTemplate) {
+                $newRow.find('.line-tax').html(taxOptionsTemplate);
+            }
+
+            // Debug: log option counts to help diagnose missing options
+            try {
+                const acctCount = $newRow.find('.line-account option').length;
+                const taxCount = $newRow.find('.line-tax option').length;
+                console.debug('addExpenseRow: options', { index: index, acctCount: acctCount, taxCount: taxCount });
+            } catch (e) { }
+
+            // Append and initialize
+            $('#expense-lines tbody').append($newRow);
+
+            // Apply current GST treatment rules to the new row
+            const gstValue = $('#id_gst_treatment').val();
+            if (gstValue === 'unregistered' ||
+                gstValue === 'consumer' ||
+                gstValue === 'registered_composition' ||
+                gstValue === 'overseas' ||
+                gstValue === 'non_gst' ||
+                gstValue === 'out_of_scope') {
+                $newRow.find('.line-tax').prop('disabled', true).val('').trigger('change');
+                $newRow.find('.btn-add-tax').prop('disabled', true).addClass('disabled');
+            }
+
+            $newRow.find('.line-account, .line-tax').each(function () {
+                const $select = $(this);
+                if ($select.hasClass('select2-hidden-accessible')) {
+                    $select.select2('destroy');
+                }
+
+                $select.select2({
+                    dropdownParent: $('body'),
+                    width: '100%',
+                    minimumResultsForSearch: 0,
+                    placeholder: $select.data('placeholder') || "Select...",
+                    allowClear: true
+                });
+            });
+
+            // rebuild tax-rate map now new row/options added
+            if (typeof buildTaxRateMap === 'function') buildTaxRateMap();
+
+            // Update tax options according to Place/Destination rules (IGST vs GST display)
+            if (typeof updateTaxOptionsByPlace === 'function') updateTaxOptionsByPlace();
+
+            // Update formset management form and total
+            $('#id_lines-TOTAL_FORMS').val(index + 1);
+            recalcExpenseTotal();
+        }
+
+        // Form validation
+        $('#expenseForm').on('submit', function (e) {
+            $('.is-invalid').removeClass('is-invalid');
+            let isValid = true;
+
+            // Validate required top-level fields (only Date remains at top)
+            const requiredFields = [
+                { elem: $('#id_date'), name: 'Date' },
+                { elem: $('#id_paid_through'), name: 'Paid through' }
+            ];
+
+            requiredFields.forEach(field => {
+                if (!field.elem.val()) {
+                    field.elem.addClass('is-invalid');
+                    isValid = false;
+                    showToast(`${field.name} is required`, 'warning');
+                }
+            });
+
+            // Validate Vendor GSTIN - must be exactly 15 characters
+            const vendorGstin = $('#id_vendor_gstin').val();
+            if (vendorGstin && vendorGstin.length !== 15) {
+                $('#id_vendor_gstin').addClass('is-invalid');
+                isValid = false;
+                showToast('Vendor GSTIN must be exactly 15 characters long', 'warning');
+            }
+
+            // Validate expense lines: require at least one line with amount > 0
+            let validLineCount = 0;
+            $('#expense-lines tbody tr').each(function () {
+                const amt = parseFloat($(this).find('.line-amount').val()) || 0;
+                if (amt > 0) validLineCount += 1;
+            });
+
+            if (validLineCount === 0) {
+                showToast('At least one expense line with amount > 0 is required', 'warning');
+                isValid = false;
+            }
+
+            if (!isValid) {
+                e.preventDefault();
+                return false;
+            }
+        });
+
+        // Initialize everything
+        initSelect2();
+        updateExpenseCurrencyLabels();
+        updateSacHsn();
+        handleGSTTreatmentChange(); // Run on initial load
+        updateTaxOptionsByPlace();
+
+        // Append '+ New' footer reliably for currency/vendor/customer when their Select2 opens
+        function attachAddFooter(selectId, addButtonClass) {
+            var $sel = $(selectId);
+            if (!$sel.length) return;
+            $sel.on('select2:open', function () {
+                try {
+                    var $dropdown = $('.select2-container--open .select2-dropdown');
+                    if (!$dropdown.length) return;
+                    if ($dropdown.find('.select2-footer-add').length) return;
+                    var btnHtml = '<div class="select2-footer-add" style="padding:6px; border-top:1px solid #eee; background:#5897fb;"><button type="button" class="btn  btn-block select2-add-new" style="color:#fff;padding:0px;width:100%;text-align:left;">+ New</button></div>';
+                    $dropdown.append(btnHtml);
+                    $dropdown.find('.select2-add-new').on('click', function (e) {
+                        e.preventDefault();
+                        // trigger existing hidden inline button which opens the modal
+                        try { $(addButtonClass).trigger('click'); } catch (e) { }
+                    });
+                } catch (e) { console.debug('attachAddFooter error', e); }
+            });
+        }
+
+        attachAddFooter('#id_currency', '.btn-add-currency');
+        attachAddFooter('#id_vendor', '.btn-add-vendor');
+        attachAddFooter('#id_customer', '.btn-add-customer');
+
+        // Function to handle GST treatment changes
+        function handleGSTTreatmentChange() {
+            console.log('GST Treatment changed');  // Debug log
+            const gstValue = $('#id_gst_treatment').val();
+            console.log('Selected value:', gstValue);  // Debug log
+            const $reverseCharge = $('#id_reverse_charge').closest('.col-md-3');
+            const $placeOfSupply = $('#id_place_of_supply').closest('.col-md-3');
+            const $destinationOfSupply = $('#id_destination_of_supply').closest('.col-md-3');
+            const $vendorGstin = $('#id_vendor_gstin').closest('.col-md-3');
+            const $taxFields = $('.line-tax, .btn-add-tax');
+
+            // Debug logs
+            console.log('Vendor GSTIN field found:', $vendorGstin.length > 0);
+
+            // Reset all fields to enabled state first
+            $placeOfSupply.show();
+            $destinationOfSupply.show();
+            $vendorGstin.show();
+            $('#id_sac_hsn').closest('.col-md-3').show();
+            $('#id_invoice_number').closest('.col-md-3').show();
+            $('.form-section:has(input[name="amount_is"])').show();
+
+            $taxFields.prop('disabled', false);
+            $('.btn-add-tax').prop('disabled', false);
+
+            // Apply specific rules based on GST treatment
+            switch (gstValue) {
+                case 'registered_composition':
+                    enableTaxFields(false);
+                    $('.form-section:has(input[name="amount_is"])').hide();
+                    break;
+                case 'unregistered':
+                    console.log('Unregistered business selected'); // Debug log
+                    enableTaxFields(false);
+                    $vendorGstin.hide().find('input').val('');
+                    break;
+                case 'consumer':
+                    console.log('Consumer selected'); // Debug log
+                    enableTaxFields(false);
+                    $vendorGstin.hide().find('input').val('');
+                    break;
+                case 'overseas':
+                    $placeOfSupply.hide();
+                    enableTaxFields(false);
+                    break;
+                case 'deemed_export':
+                    break;
+                case 'non_gst':
+                    enableTaxFields(false);
+                    $('.form-section:has(input[name="amount_is"])').hide();
+                    break;
+                case 'out_of_scope':
+                    $placeOfSupply.hide();
+                    $destinationOfSupply.hide();
+                    $vendorGstin.hide();
+                    $('#id_sac_hsn').closest('.col-md-3').hide();
+                    $('#id_invoice_number').closest('.col-md-3').hide();
+                    $('.form-section:has(input[name="amount_is"])').hide();
+                    enableTaxFields(false);
+                    break;
+                case 'input_service_distributor':
+                    $vendorGstin.hide();
+                    break;
+            }
+
+            // Trigger recalculation
+            recalcExpenseTotal();
+        }
+
+        function enableTaxFields(enabled) {
+            const $rows = $('#expense-lines tbody tr.expense-line');
+
+            $rows.each(function () {
+                const $row = $(this);
+                const $taxField = $row.find('.line-tax');
+                const $addTaxBtn = $row.find('.btn-add-tax');
+                const $taxContainer = $taxField.next('.select2-container');
+
+                // Disable/enable the tax field
+                $taxField.prop('disabled', !enabled);
+                if (!enabled) {
+                    $taxField.val('').trigger('change');
+                }
+
+                // Disable/enable the add tax button
+                $addTaxBtn.prop('disabled', !enabled);
+                if (!enabled) {
+                    $addTaxBtn.addClass('disabled');
+                    if ($taxContainer.length) {
+                        $taxContainer.addClass('select2-container--disabled');
+                    }
+                } else {
+                    $addTaxBtn.removeClass('disabled');
+                    if ($taxContainer.length) {
+                        $taxContainer.removeClass('select2-container--disabled');
+                    }
+                }
+            });
+        }
+
+        // Event bindings
+        $(document).on('change', 'input[name="expense_type"]', updateSacHsn);
+
+        // Bind GST treatment change event both ways
+        $('#id_gst_treatment').on('change', handleGSTTreatmentChange);
+        $(document).on('change', '#id_gst_treatment', handleGSTTreatmentChange);
+
+        // Handle vendor change to auto-populate GSTIN
+        $('#id_vendor').on('change', function () {
+            const selectedOption = $(this).find('option:selected');
+            const gstinMatch = selectedOption.text().match(/GSTIN:\s*([A-Z0-9]{15})/);
+            if (gstinMatch) {
+                $('#id_vendor_gstin').val(gstinMatch[1]);
+            } else {
+                $('#id_vendor_gstin').val('');
+            }
+        });
+
+        // Recompute tax options whenever place or destination changes
+        $('#id_place_of_supply, #id_destination_of_supply').on('change', function () {
+            updateTaxOptionsByPlace();
+            recalcExpenseTotal();
+        });
+
+        // Handle GSTIN input
+        $('#id_vendor_gstin').on('input', function () {
+            $(this).val($(this).val().toUpperCase());
+        });
+
+        // Validate Vendor GSTIN in real-time
+        $('#id_vendor_gstin').on('blur', function () {
+            const gstin = $(this).val();
+            if (gstin && gstin.length !== 15) {
+                $(this).addClass('is-invalid');
+                showToast('Vendor GSTIN must be exactly 15 characters long', 'warning');
+            } else {
+                $(this).removeClass('is-invalid');
+                // Remove any existing toast if the field is now valid
+                $('#expense-toast').remove();
+            }
+        });
+
+        // Also validate on input to provide immediate feedback when user starts typing
+        $('#id_vendor_gstin').on('input', function () {
+            const gstin = $(this).val();
+            if (gstin && gstin.length === 15) {
+                $(this).removeClass('is-invalid');
+                // Remove any existing toast when field becomes valid
+                $('#expense-toast').remove();
+            }
+        });
+
+        // Validate Paid through in real-time
+        $('#id_paid_through').on('blur', function () {
+            const paidThrough = $(this).val();
+            if (!paidThrough) {
+                $(this).addClass('is-invalid');
+                showToast('Paid through field is required', 'warning');
+            } else {
+                $(this).removeClass('is-invalid');
+                // Remove any existing toast if the field is now valid
+                $('#expense-toast').remove();
+            }
+        });
+
+        // Also validate on change to provide immediate feedback
+        $('#id_paid_through').on('change', function () {
+            const paidThrough = $(this).val();
+            if (paidThrough) {
+                $(this).removeClass('is-invalid');
+                // Remove any existing toast when field becomes valid
+                $('#expense-toast').remove();
+            }
+        });
+
+        $('#add-expense-line').on('click', addExpenseRow);
+        // Recalculate totals when amount_is (Tax Inclusive/Exclusive) changes
+        $(document).on('change', 'input[name="amount_is"]', function () {
+            recalcExpenseTotal();
+        });
+
+        // Handle expense line removal
+        $(document).on('click', '.remove-line', function () {
+            const $row = $(this).closest('tr');
+
+            // Check if this is the only row
+            if ($('#expense-lines tbody tr:visible').length > 1) {
+                // Destroy select2 instances first
+                $row.find('.select2-hidden-accessible').each(function () {
+                    $(this).select2('destroy');
+                });
+
+                // Remove the row completely from DOM
+                $row.remove();
+
+                // Renumber remaining rows
+                $('#expense-lines tbody tr').each(function (index) {
+                    const $tr = $(this);
+
+                    // Destroy existing select2 instances
+                    $tr.find('.select2-hidden-accessible').each(function () {
+                        $(this).select2('destroy');
+                    });
+
+                    // Update all input names and ids
+                    $tr.find(':input').each(function () {
+                        const name = $(this).attr('name');
+                        if (name) {
+                            const newName = name.replace(/-\d+-/, `-${index}-`);
+                            $(this).attr('name', newName);
+                            $(this).attr('id', newName);
+                        }
+                    });
+
+                    // Reinitialize select2
+                    $tr.find('.line-account, .line-tax').each(function () {
+                        $(this).select2({
+                            width: '100%',
+                            dropdownParent: $(this).parent(),
+                            minimumResultsForSearch: 0,
+                            placeholder: $(this).data('placeholder') || "Select...",
+                            allowClear: true
+                        });
+                    });
+                });
+
+                // Update formset management form
+                $('#id_lines-TOTAL_FORMS').val($('#expense-lines tbody tr').length);
+                recalcExpenseTotal();
+            } else {
+                showToast('Cannot remove the last expense line', 'warning');
+            }
+        });
+
+        // Monitor amount changes
+        $(document).on('input', '.line-amount', recalcExpenseTotal);
+
+        // ADD THIS LINE: Monitor tax changes to recalculate totals
+        $(document).on('change', '.line-tax', recalcExpenseTotal);
+
+        // Add initial row if none exist
+        if ($('#expense-lines tbody tr').length === 0) {
+            addExpenseRow();
+        }
+
+        // Build tax rate map from hidden tax select (parses option text for '%')
+        function buildTaxRateMap() {
+            window._taxRates = window._taxRates || {};
+            try {
+                $('#id_tax option').each(function () {
+                    var val = $(this).attr('value');
+                    var txt = $(this).text() || '';
+                    var m = txt.match(/\(([0-9.]+)%\)/);
+                    if (val && m) {
+                        window._taxRates[val] = parseFloat(m[1]);
+                    }
+                });
+            } catch (e) { }
+        }
+
+        // Update tax option visibility/labels based on Place/Destination of supply
+        function updateTaxOptionsByPlace() {
+            try {
+                var place = $('#id_place_of_supply').val() || '';
+                var dest = $('#id_destination_of_supply').val() || '';
+                var sameState = place && dest && (place === dest);
+
+                // Helper to process a select element (either template or line select)
+                function processSelect($select) {
+                    // Store the current selected value
+                    var currentVal = $select.val();
+
+                    // Store original options if not already stored
+                    if (!$select.data('original-options')) {
+                        $select.data('original-options', $select.html());
+                    }
+
+                    // Restore original options first
+                    $select.html($select.data('original-options'));
+
+                    if (!isIndianCompany) {
+                        if (currentVal && $select.find('option[value="' + currentVal + '"]').length > 0) {
+                            $select.val(currentVal);
+                        }
+                    } else {
+                        $select.find('option').each(function () {
+                            var $opt = $(this);
+                            var txt = $opt.text() || '';
+
+                            // parse type and rate from the verbose label: 'NAME - TYPE (12.00%)'
+                            var typeMatch = txt.match(/-\s*([A-Z]+)\b/);
+                            var rateMatch = txt.match(/\(([0-9.]+)%\)/);
+                            var taxtype = typeMatch ? typeMatch[1] : '';
+                            var rate = rateMatch ? parseFloat(rateMatch[1]) : null;
+
+                            if (sameState) {
+                                // Intra-state India: show GST view by keeping CGST and relabeling it as combined GST.
+                                if (taxtype === 'IGST' || taxtype === 'SGST') {
+                                    $opt.remove();
+                                }
+                                if (taxtype === 'CGST' && rate !== null) {
+                                    var combined = (rate * 2);
+                                    var combinedLabel = (Math.floor(combined) === combined) ? String(Math.floor(combined)) : String(combined);
+                                    $opt.text('GST' + combinedLabel);
+                                }
+                            } else if (place && dest) {
+                                // Inter-state India: only IGST should remain selectable.
+                                if (taxtype !== 'IGST') {
+                                    $opt.remove();
+                                }
+                            }
+                        });
+
+                        if (currentVal && $select.find('option[value="' + currentVal + '"]').length > 0) {
+                            $select.val(currentVal);
+                        } else if (!currentVal) {
+                            $select.val('');
+                        } else {
+                            $select.val('');
+                        }
+                        if (!place || !dest) {
+                            $select.val(currentVal || '');
+                        }
+                    }
+
+                    if (!currentVal) {
+                        $select.val('');
+                    }
+
+                    // If select2 is applied, refresh it by destroying and reinitializing
+                    if ($select.hasClass('select2-hidden-accessible')) {
+                        try { $select.select2('destroy'); } catch (e) { }
+                        $select.select2({
+                            dropdownParent: $(document.body),
+                            width: '100%',
+                            minimumResultsForSearch: 0,
+                            placeholder: $select.data('placeholder') || "Select...",
+                            allowClear: true
+                        });
+                    }
+
+                    // Trigger change to update Select2 display
+                    $select.trigger('change');
+                }
+
+                // Process template and all line selects
+                if ($('#id_tax').length) processSelect($('#id_tax'));
+                $('.line-tax').each(function () { processSelect($(this)); });
+            } catch (e) {
+                console.error('updateTaxOptionsByPlace error', e);
+            }
+        }
+
+        // Call updateTaxOptionsByPlace when supply locations change
+        $('#id_place_of_supply, #id_destination_of_supply').on('change', function () {
+            updateTaxOptionsByPlace();
+        });
+
+        // Bind currency change events (must be here where updateExpenseCurrencyLabels is in scope)
+        $('#id_currency').on('change', function () {
+            console.log('🔔 Currency CHANGE event triggered');
+            updateExpenseCurrencyLabels();
+            updateFxVisibility();
+            fetchExchangeRate();
+        });
+
+        // Also listen to Select2's select event
+        $('#id_currency').on('select2:select', function (e) {
+            console.log('🔔 Select2:SELECT event triggered for currency', e.params);
+            updateExpenseCurrencyLabels();
+            updateFxVisibility();
+            fetchExchangeRate();
+        });
+
+        // Initialize currency/FX display after a small delay to ensure DOM is ready
+        setTimeout(function () {
+            if (typeof updateFxVisibility === 'function') {
+                console.log('Calling updateFxVisibility from initial setTimeout');
+                updateFxVisibility();
+            }
+        }, 100);
+    });
+
+    // Handler: add new Tax via AJAX modal
+    $(document).ready(function () {
+        // Handler: add new Tax via AJAX modal
+        $(document).on('click', '.btn-add-tax', function (e) {
+            e.preventDefault();
+            // Close any open Select2 dropdowns
+            try { $('.select2').each(function () { if ($(this).hasClass('select2-hidden-accessible')) { $(this).select2('close'); } }); } catch (err) { }
+
+            // Load the tax modal content via AJAX
+            $.get('{% url "tax_add_modal" %}')
+                .done(function (data) {
+                    // Remove any existing modal
+                    $('#tax-modal').remove();
+
+                    // Create modal wrapper (content will be filled with the form only)
+                    const modalWrapper = $(
+                        '<div class="modal fade" id="tax-modal" tabindex="-1" aria-hidden="true">' +
+                        '  <div class="modal-dialog modal-xl modal-dialog-centered">' +
+                        '    <div class="modal-content"></div>' +
+                        '  </div>' +
+                        '</div>'
+                    );
+
+                    // Append to body
+                    $('body').append(modalWrapper);
+
+                    // Extract only the relevant fragment (form or modal-body) from server response
+                    try {
+                        const $resp = $($.parseHTML(data));
+                        let innerHtml = '';
+                        if ($resp.find('.modal-content').length) {
+                            innerHtml = $resp.find('.modal-content').html();
+                        } else if ($resp.find('.modal-body').length) {
+                            innerHtml = $resp.find('.modal-body').html();
+                        } else if ($resp.find('form').length) {
+                            innerHtml = $resp.find('form').prop('outerHTML');
+                        } else {
+                            innerHtml = $resp.html();
+                        }
+                        modalWrapper.find('.modal-content').html(innerHtml);
+                    } catch (err) {
+                        // Fallback: insert raw response
+                        modalWrapper.find('.modal-content').html(data);
+                    }
+
+                    // Initialize the modal
+                    var modalEl = document.getElementById('tax-modal');
+                    var bsModal = new bootstrap.Modal(modalEl, { backdrop: true });
+
+                    // Handle form submission
+                    modalWrapper.find('#taxForm').on('submit', function (e) {
+                        e.preventDefault();
+                        const form = $(this);
+                        const formData = form.serialize();
+
+                        $.post('{% url "tax_add_modal" %}', formData)
+                            .done(function (response) {
+                                if (response.success) {
+                                    // Close modal
+                                    bsModal.hide();
+
+                                    // Show success message
+                                    showToast('Tax added successfully', 'success');
+
+                                    // Add the new tax to the tax dropdown
+                                    const newTaxOption = new Option(response.tax_name, response.tax_id, true, true);
+                                    // Add the new tax to both the hidden template and all tax dropdowns
+                                    const $taxTemplate = $('#id_tax');
+                                    $taxTemplate.append(newTaxOption);
+                                    $('.line-tax').each(function () {
+                                        $(this).append(newTaxOption.clone()).trigger('change');
+                                    });
+
+                                    // If server returned rate, update tax map; otherwise rebuild map
+                                    if (response.tax_rate !== undefined) {
+                                        window._taxRates = window._taxRates || {};
+                                        window._taxRates[response.tax_id] = parseFloat(response.tax_rate) || 0;
+                                    } else if (typeof buildTaxRateMap === 'function') {
+                                        buildTaxRateMap();
+                                    }
+                                } else {
+                                    // Update form with errors
+                                    modalWrapper.find('.modal-content').html(response.html_form);
+                                }
+                            })
+                            .fail(function () {
+                                showToast('Error adding tax', 'error');
+                            });
+                    });
+
+                    // Show the modal
+                    bsModal.show();
+
+                    // Focus first input after shown
+                    modalEl.addEventListener('shown.bs.modal', function () {
+                        modalWrapper.find('input:first').focus();
+                    }, { once: true });
+                })
+                .fail(function () {
+                    showToast('Error loading tax form', 'error');
+                });
+        });
+        function openVendorCreateModal(options = {}) {
+            const {
+                prefillText = '',
+                onSuccess = function () { }
+            } = options;
+
+            // Close any open Select2 dropdowns
+            try {
+                $('.select2-hidden-accessible').select2('close');
+            } catch (e) { }
+
+            // Extract company code from URL path
+            var pathParts = window.location.pathname.split('/');
+            var companyCode = pathParts[1] || '';
+            var vendorFormUrl = '/' + companyCode + '/purchase/vendor_createform/';
+
+            $.get(vendorFormUrl)
+                .done(function (data) {
+
+                    // Remove old modal if exists
+                    $('#vendor-modal').remove();
+
+                    const modalWrapper = $(`
+                <div class="modal fade" id="vendor-modal" tabindex="-1">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header border-0 pb-1">
+                                <h5 class="modal-title fw-semibold">Add New Vendor</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <!-- Your form content will be loaded here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `);
+
+                    $('body').append(modalWrapper);
+                    modalWrapper.find('.modal-body').html(data);
+
+                    const modalEl = document.getElementById('vendor-modal');
+                    const bsModal = new bootstrap.Modal(modalEl);
+
+                    // Init Select2 inside modal
+                    modalWrapper.find('.select2').each(function () {
+                        const $el = $(this);
+                        try { $el.select2('destroy'); } catch (e) { }
+                        $el.select2({
+                            width: '100%',
+                            allowClear: true,
+                            dropdownParent: modalWrapper,
+                            placeholder: $el.data('placeholder') || 'Select...'
+                        });
+                    });
+
+                    // Prefill
+                    if (prefillText) {
+                        modalWrapper.find('input[name="first_name"]').val(prefillText);
+                        modalWrapper.find('input[name="company_name"]').val(prefillText);
+                    }
+
+                    // Submit handler
+                    modalWrapper.on('submit', 'form', function (e) {
+                        e.preventDefault();
+                        const form = $(this);
+
+                        // Use add_vendor endpoint for saving (returns JSON)
+                        var vendorSaveUrl = '/' + pathParts[1] + '/purchase/add_vendor/';
+
+                        $.ajax({
+                            method: 'POST',
+                            url: vendorSaveUrl,
+                            data: form.serialize(),
+                            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                            success: function (response) {
+                                if (response.success) {
+                                    bsModal.hide();
+                                    onSuccess(response);
+                                } else {
+                                    modalWrapper.find('.modal-content').html(response.html_form);
+                                    // Reinitialize Select2 after form reload
+                                    modalWrapper.find('select').each(function () {
+                                        const $el = $(this);
+                                        try { $el.select2('destroy'); } catch (e) { }
+                                        $el.select2({
+                                            width: '100%',
+                                            allowClear: true,
+                                            dropdownParent: modalWrapper,
+                                            placeholder: $el.data('placeholder') || 'Select...'
+                                        });
+                                    });
+                                }
+                            },
+                            error: function (xhr) {
+                                alert('Error saving vendor');
+                            }
+                        });
+                    });
+
+                    bsModal.show();
+                });
+        }
+
+        function openCustomerCreateModal(options = {}) {
+            const {
+                prefillText = '',
+                onSuccess = function () { }
+            } = options;
+
+            // Close any open Select2 dropdowns
+            try {
+                $('.select2-hidden-accessible').select2('close');
+            } catch (e) { }
+
+            // Extract company code from URL path
+            var pathParts = window.location.pathname.split('/');
+            var companyCode = pathParts[1] || '';
+            var customerFormUrl = '/' + companyCode + '/sales/customer_createform/';
+
+            $.get(customerFormUrl)
+                .done(function (data) {
+
+                    // Remove old modal if exists
+                    $('#customer-modal').remove();
+
+                    const modalWrapper = $(`
+
+                <div class="modal fade" id="customer-modal" tabindex="-1">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header border-0 pb-1">
+                                <h5 class="modal-title fw-semibold">Add New Customer</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <!-- Your form content will be loaded here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `);
+
+                    $('body').append(modalWrapper);
+                    modalWrapper.find('.modal-body').html(data);
+
+                    const modalEl = document.getElementById('customer-modal');
+                    const bsModal = new bootstrap.Modal(modalEl);
+
+                    // Init Select2 inside modal
+                    modalWrapper.find('.select2').each(function () {
+                        const $el = $(this);
+                        try { $el.select2('destroy'); } catch (e) { }
+                        $el.select2({
+                            width: '100%',
+                            allowClear: true,
+                            dropdownParent: modalWrapper,
+                            placeholder: $el.data('placeholder') || 'Select...'
+                        });
+                    });
+
+                    // Prefill
+                    if (prefillText) {
+                        modalWrapper.find('input[name="first_name"]').val(prefillText);
+                        modalWrapper.find('input[name="company_name"]').val(prefillText);
+                    }
+
+                    // Submit handler
+                    modalWrapper.on('submit', 'form', function (e) {
+                        e.preventDefault();
+                        const form = $(this);
+
+                        // Use add_customer endpoint for saving (returns JSON)
+                        var customerSaveUrl = '/' + pathParts[1] + '/sales/add_customer/';
+
+                        $.ajax({
+                            method: 'POST',
+                            url: customerSaveUrl,
+                            data: form.serialize(),
+                            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                            success: function (response) {
+                                if (response.success) {
+                                    bsModal.hide();
+                                    onSuccess(response);
+                                } else {
+                                    modalWrapper.find('.modal-content').html(response.html_form);
+                                    // Reinitialize Select2 after form reload with errors
+                                    modalWrapper.find('select').each(function () {
+                                        const $el = $(this);
+                                        try { $el.select2('destroy'); } catch (e) { }
+                                        $el.select2({
+                                            width: '100%',
+                                            allowClear: true,
+                                            dropdownParent: modalWrapper,
+                                            placeholder: $el.data('placeholder') || 'Select...'
+                                        });
+                                    });
+                                }
+                            },
+                            error: function (xhr) {
+                                try {
+                                    const errorData = xhr.responseJSON || {};
+                                    const errors = errorData.errors || {};
+                                    let errorMsg = 'Error saving customer: ';
+                                    if (Object.keys(errors).length > 0) {
+                                        errorMsg += Object.entries(errors).map(([key, val]) => {
+                                            return Array.isArray(val) ? val.join(', ') : val;
+                                        }).join(' | ');
+                                    } else {
+                                        errorMsg += 'Validation failed';
+                                    }
+                                    alert(errorMsg);
+                                    console.log('Validation errors:', errors);
+                                } catch (e) {
+                                    alert('Error saving customer');
+                                    console.log('Error response:', xhr.responseText);
+                                }
+                            }
+                        });
+                    });
+
+                    bsModal.show();
+                });
+        }
+        // Handler: add new Vendor via AJAX modal
+        $(document).on('click', '.btn-add-vendor', function (e) {
+            e.preventDefault();
+            // Close any open Select2 dropdowns
+            openVendorCreateModal({
+                onSuccess: function (response) {
+                    const opt = new Option(
+                        response.name,
+                        response.id,
+                        true,
+                        true
+                    );
+                    $('#id_vendor').append(opt).trigger('change');
+                    showToast('Vendor added successfully', 'success');
+                }
+            });
+        });
+
+        // Handler: add new Customer via AJAX modal
+        $(document).on('click', '.btn-add-customer', function (e) {
+            e.preventDefault();
+            // Close any open Select2 dropdowns
+            openCustomerCreateModal({
+                onSuccess: function (response) {
+                    const opt = new Option(
+                        response.name,
+                        response.id,
+                        true,
+                        true
+                    );
+                    $('#id_customer').append(opt).trigger('change');
+                    showToast('Customer added successfully', 'success');
+                }
+            });
+        });
+
+        // Handler: add new Currency via AJAX modal
+        $(document).on('click', '.btn-add-currency', function (e) {
+            e.preventDefault();
+            try { $('.select2').each(function () { if ($(this).hasClass('select2-hidden-accessible')) { $(this).select2('close'); } }); } catch (err) { }
+
+            $.get('{% url "expenses:currency_add" %}')
+                .done(function (html) {
+                    $('#currency-modal').remove();
+                    const modalWrapper = $(
+                        '<div class="modal fade" id="currency-modal" tabindex="-1" aria-hidden="true">' +
+                        '  <div class="modal-dialog modal-md modal-dialog-centered">' +
+                        '    <div class="modal-content"></div>' +
+                        '  </div>' +
+                        '</div>'
+                    );
+                    $('body').append(modalWrapper);
+                    // Insert returned fragment
+                    try {
+                        const $resp = $($.parseHTML(html));
+                        let inner = '';
+                        if ($resp.find('.modal-content').length) inner = $resp.find('.modal-content').html();
+                        else inner = html;
+                        modalWrapper.find('.modal-content').html(inner);
+                    } catch (err) {
+                        modalWrapper.find('.modal-content').html(html);
+                    }
+
+                    var modalEl = document.getElementById('currency-modal');
+                    var bsModal = new bootstrap.Modal(modalEl, { backdrop: true });
+
+                    // Save handler
+                    modalWrapper.on('click', '#currencySaveBtn', function (ev) {
+                        ev.preventDefault();
+                        const $form = modalWrapper.find('#currencyForm');
+                        const data = $form.serialize();
+                        $.post('{% url "expenses:currency_add" %}', data)
+                            .done(function (resp) {
+                                if (resp.success) {
+                                    // Close modal
+                                    bsModal.hide();
+                                    // Add new option and select it
+                                    const display = resp.display || resp.code;
+                                    const code = resp.code;
+                                    const symbol = resp.symbol || resp.code || EXPENSE_BASE_CURRENCY_SYMBOL;
+                                    // If select2 is applied, destroy then re-create after change
+                                    try {
+                                        var $select = $('#id_currency');
+                                        var option = new Option(display, code, true, true);
+                                        option.setAttribute('data-symbol', symbol);
+                                        expenseCurrencySymbolMap[normalizeExpenseCurrencyCode(code)] = symbol;
+                                        $select.append(option);
+                                        $select.trigger('change');
+                                        updateExpenseCurrencyLabels();
+                                    } catch (err) {
+                                        console.error(err);
+                                    }
+                                    showToast('Currency added', 'success');
+                                } else {
+                                    showToast(resp.error || 'Error adding currency', 'error');
+                                }
+                            }).fail(function (xhr) {
+                                try { showToast(xhr.responseJSON.error || 'Error adding currency', 'error'); } catch (e) { showToast('Error adding currency', 'error'); }
+                            });
+                    });
+
+                    bsModal.show();
+                    modalEl.addEventListener('shown.bs.modal', function () { $(modalWrapper).find('input:first').focus(); }, { once: true });
+                })
+                .fail(function () { showToast('Error loading currency form', 'error'); });
+        });
+    });
+
+    // Toast notification system
+    function showToast(msg, type = 'info') {
+        // Remove any existing toast
+        $('#expense-toast').remove();
+
+        // Set colors based on type
+        const colors = {
+            warning: { bg: '#fff3cd', border: '#ffeeba', text: '#856404' },
+            error: { bg: '#f8d7da', border: '#f5c6cb', text: '#721c24' },
+            success: { bg: '#d4edda', border: '#c3e6cb', text: '#155724' },
+            info: { bg: '#d1ecf1', border: '#bee5eb', text: '#0c5460' }
+        };
+
+        const style = colors[type];
+
+        // Create toast with fixed positioning to prevent jumping
+        const toastHtml = `
+        <div id="expense-toast" style="
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 9999;
+            min-width: 300px;
+            max-width: 500px;
+            padding: 15px;
+            border-radius: 6px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            background-color: ${style.bg};
+            border: 1px solid ${style.border};
+            color: ${style.text};
+            font-size: 14px;
+            font-weight: 500;
+            text-align: center;
+            margin: 0;
+            opacity: 0;
+            transition: opacity 0.3s ease-out;
+        ">
+            ${msg}
+        </div>
+    `;
+
+        $('body').append(toastHtml);
+
+        // Fade in the toast
+        $('#expense-toast').animate({ opacity: 1 }, 300);
+
+        // Remove toast after 5 seconds
+        setTimeout(() => {
+            $('#expense-toast').animate({ opacity: 0 }, 300, function () {
+                $(this).remove();
+            });
+        }, 5000);
+    }
+
+    // Confirmation dialog for cancel button
+    document.addEventListener('DOMContentLoaded', function () {
+        const cancelButton = document.getElementById('cancel-button');
+
+        if (cancelButton) {
+            cancelButton.addEventListener('click', function (e) {
+                e.preventDefault();
+
+                // Create the confirmation modal
+                const modalHtml = `
+                <div class="modal fade" id="cancelConfirmationModal" tabindex="-1" role="dialog" aria-labelledby="cancelConfirmationLabel" aria-hidden="true">
+                    <div class="modal-dialog" role="document">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="cancelConfirmationLabel">Confirm Navigation</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <p>Are you sure you want to go back? All unsaved data will be lost.</p>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                <button type="button" class="btn btn-primary" id="confirm-cancel">OK</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+                // Add modal to body
+                document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+                // Show the modal
+                const modal = new bootstrap.Modal(document.getElementById('cancelConfirmationModal'));
+                modal.show();
+
+                // Handle the confirmation
+                document.getElementById('confirm-cancel').addEventListener('click', function () {
+                    window.location.href = '{% url 'expenses:expense_list' %}';
+                });
+
+                // Clean up modal when it's hidden
+                document.getElementById('cancelConfirmationModal').addEventListener('hidden.bs.modal', function () {
+                    document.getElementById('cancelConfirmationModal').remove();
+                });
+            });
+        }
+    });
+
+    // Track form changes - Global variable
+    let formChanged = false;
+    const expForm = document.querySelector('form');
+
+    if (expForm) {
+        // Track all form input changes
+        expForm.addEventListener('change', function (e) {
+            formChanged = true;
+            console.log('Form changed via change event');
+        });
+
+        expForm.addEventListener('input', function (e) {
+            formChanged = true;
+            console.log('Form changed via input event');
+        });
+    }
+
+    // Track Select2 changes globally using jQuery delegation
+    if (window.$) {
+        $(document).on('change', 'select.select2, .select2-hidden-accessible', function () {
+            formChanged = true;
+            console.log('Form changed via Select2 change event');
+        });
+    }
+
+    // Also track any select element changes
+    const selects = document.querySelectorAll('select');
+    selects.forEach(select => {
+        select.addEventListener('change', function () {
+            formChanged = true;
+            console.log('Form changed via select change event');
+        });
+    });
+
+    // Global click interceptor for all links - Outside of form check
+    document.addEventListener('click', function (e) {
+        // Check if clicked element is a link
+        let link = e.target.closest('a');
+
+        console.log('Link clicked:', link ? link.href : 'not a link');
+
+        if (link && formChanged) {
+            // Get the href
+            const href = link.getAttribute('href');
+
+            console.log('Checking href:', href, 'formChanged:', formChanged);
+
+            // Check if it's a navigation link (not modal, not anchor, not javascript)
+            if (href && !href.startsWith('#') && !link.getAttribute('data-bs-toggle') && !href.startsWith('javascript:')) {
+                console.log('Preventing navigation to:', href);
+                e.preventDefault();
+                e.stopPropagation();
+
+                // Show confirmation modal
+                const navModalHtml = `
+                <div class="modal fade" id="navConfirmationModal" tabindex="-1" role="dialog" aria-labelledby="navConfirmationLabel" aria-hidden="true">
+                    <div class="modal-dialog" role="document">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="navConfirmationLabel">Confirm Navigation</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <p>Are you sure you want to leave this page? All unsaved data will be lost.</p>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                <button type="button" class="btn btn-primary" id="confirm-nav">OK</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+                // Remove any existing modal
+                const existingModal = document.getElementById('navConfirmationModal');
+                if (existingModal) existingModal.remove();
+
+                // Add new modal to body
+                document.body.insertAdjacentHTML('beforeend', navModalHtml);
+
+                // Show the modal
+                const navModal = new bootstrap.Modal(document.getElementById('navConfirmationModal'));
+                navModal.show();
+
+                // Store the target URL
+                const targetUrl = href;
+
+                // Handle the confirmation
+                document.getElementById('confirm-nav').addEventListener('click', function () {
+                    formChanged = false; // Reset to allow navigation
+                    window.location.href = targetUrl;
+                });
+
+                // Clean up modal when it's hidden
+                document.getElementById('navConfirmationModal').addEventListener('hidden.bs.modal', function () {
+                    document.getElementById('navConfirmationModal').remove();
+                });
+            }
+        }
+    }, true); // Use capture phase for better event handling
+
+    // Form submission validation for required fields
+    document.addEventListener('DOMContentLoaded', function () {
+        const expenseForm = document.getElementById('expenseForm');
+
+        if (expenseForm) {
+            expenseForm.addEventListener('submit', function (e) {
+                const errors = [];
+
+                // Check Date field
+                const dateField = document.getElementById('id_date');
+                if (!dateField || !dateField.value.trim()) {
+                    errors.push('Date is required');
+                }
+
+                // Check Currency field
+                const currencyField = document.getElementById('id_currency');
+                if (!currencyField || !currencyField.value.trim()) {
+                    errors.push('Currency is required');
+                }
+
+                // Check Paid through field
+                const paidThroughField = document.getElementById('id_paid_through');
+                if (!paidThroughField || !paidThroughField.value.trim()) {
+                    errors.push('Paid through is required');
+                }
+
+                // Get GST treatment value to determine conditional requirements
+                const gstTreatmentField = document.getElementById('id_gst_treatment');
+                const gstTreatment = gstTreatmentField ? gstTreatmentField.value : '';
+
+                // Check Place of Supply if it's visible (not hidden for out_of_scope)
+                const placeOfSupplyContainer = document.querySelector('#id_place_of_supply')?.closest('.col-md-3');
+                const placeOfSupplyField = document.getElementById('id_place_of_supply');
+                if (placeOfSupplyContainer && placeOfSupplyContainer.style.display !== 'none') {
+                    if (!placeOfSupplyField || !placeOfSupplyField.value.trim()) {
+                        errors.push('Place of Supply is required');
+                    }
+                }
+
+                // Check Destination of Supply if it's visible (not hidden for out_of_scope)
+                const destinationOfSupplyContainer = document.querySelector('#id_destination_of_supply')?.closest('.col-md-3');
+                const destinationOfSupplyField = document.getElementById('id_destination_of_supply');
+                if (destinationOfSupplyContainer && destinationOfSupplyContainer.style.display !== 'none') {
+                    if (!destinationOfSupplyField || !destinationOfSupplyField.value.trim()) {
+                        errors.push('Destination of Supply is required');
+                    }
+                }
+
+                // Check Vendor - only required if GST treatment is NOT 'out_of_scope'
+                const vendorContainer = document.querySelector('#id_vendor')?.closest('.col-md-3');
+                const vendorField = document.getElementById('id_vendor');
+                if (vendorContainer && vendorContainer.style.display !== 'none' && gstTreatment !== 'out_of_scope') {
+                    if (!vendorField || !vendorField.value.trim()) {
+                        errors.push('Vendor is required');
+                    }
+                }
+
+                // Check Customer - only required if GST treatment is NOT 'out_of_scope'
+                const customerContainer = document.querySelector('#id_customer')?.closest('.col-md-3');
+                const customerField = document.getElementById('id_customer');
+                if (customerContainer && customerContainer.style.display !== 'none' && gstTreatment !== 'out_of_scope') {
+                    if (!customerField || !customerField.value.trim()) {
+                        errors.push('Customer is required');
+                    }
+                }
+
+                // Check that at least one expense line exists with account and amount
+                const expenseLines = document.querySelectorAll('#expense-lines tbody tr.expense-line');
+                let hasValidLine = false;
+
+                expenseLines.forEach(function (line) {
+                    const accountSelect = line.querySelector('.line-account');
+                    const amountInput = line.querySelector('.line-amount');
+
+                    if (accountSelect && accountSelect.value.trim() &&
+                        amountInput && amountInput.value.trim() &&
+                        parseFloat(amountInput.value) > 0) {
+                        hasValidLine = true;
+                    }
+                });
+
+                if (!hasValidLine) {
+                    errors.push('At least one expense line with account and amount is required');
+                }
+
+                // If there are validation errors, prevent submission and show toast
+                if (errors.length > 0) {
+                    e.preventDefault();
+                    const errorMessage = errors.join(', ');
+                    showToast(errorMessage, 'error');
+                }
+            });
+        }
+    });
+
+    // Show error modal if there's an error message
+    document.addEventListener('DOMContentLoaded', function () {
+        const showErrorModal = {{ show_error_modal|lower|default:"false" }};
+    const errorMessage = `{{ error_message|escapejs }}`;
+
+    if (showErrorModal && errorMessage) {
+        const errorModal = document.getElementById('errorModal');
+        if (errorModal) {
+            const errorBodyElement = document.getElementById('errorModalBody');
+            errorBodyElement.innerHTML = errorMessage.replace(/\n/g, '<br>');
+            const modal = new bootstrap.Modal(errorModal);
+            modal.show();
+        }
+    }
+});
+
+    // --- CURRENCY FX LOGIC ---
+    const companyBaseCurrencyCode = '{{ company_base_currency_code|default:"INR"|escapejs }}';
+    const companyBaseCurrencySymbol = '{{ company_base_currency_symbol|default:"₹"|escapejs }}';
+
+    console.log('🏢 COMPANY BASE CURRENCY CODE SET TO:', companyBaseCurrencyCode);
+
+    // Ensure small helper functions exist in the global scope so calls from other
+    // script blocks won't throw ReferenceError during initialization.
+    if (typeof window.normalizeExpenseCurrencyCode !== 'function') {
+        window.normalizeExpenseCurrencyCode = function (value) {
+            return (value || '').toString().trim().toUpperCase();
+        };
+    }
+
+    if (typeof window.recalcExpenseTotal !== 'function') {
+        // Provide a safe stub that will be replaced by the full implementation
+        // when the main form script initializes. The stub keeps the page from
+        // throwing errors during early initialization (Select2, timeouts, etc.).
+        window.recalcExpenseTotal = function () {
+            try { updateBaseCurrencyTotal(); } catch (e) { /* noop */ }
+        };
+    }
+
+    function updateFxVisibility() {
+        const $cur = $('#id_currency');
+        const rawValue = $cur.val();
+        const selectedCode = normalizeExpenseCurrencyCode(rawValue);
+        const fxSection = document.getElementById('fx-rate-section');
+        const baseSummaryRow = document.querySelector('.base-currency-summary-row');
+        
+        console.log('=== updateFxVisibility DEBUG ===', {
+            rawValue: rawValue,
+            selectedCode: selectedCode,
+            companyBaseCurrencyCode: companyBaseCurrencyCode,
+            isMatch: selectedCode === companyBaseCurrencyCode,
+            fxSectionExists: !!fxSection,
+            fxSectionDisplay: fxSection ? fxSection.style.display : 'N/A'
+        });
+
+        if (selectedCode && selectedCode !== companyBaseCurrencyCode) {
+            // Different currency: show exchange rate box
+            console.log('✅ SHOWING FX section for currency:', selectedCode);
+            if (fxSection) {
+                fxSection.style.display = 'block';
+                console.log('After show:', fxSection.style.display);
+            }
+            $('#selected-cur-code-label').text(selectedCode);
+            if (baseSummaryRow) {
+                baseSummaryRow.style.display = 'table-row';
+            }
+        } else {
+            // Base currency selected: hide exchange rate box and reset to 1.0
+            console.log('❌ HIDING FX section - base currency selected or no value');
+            if (fxSection) {
+                fxSection.style.display = 'none';
+                console.log('After hide:', fxSection.style.display);
+            }
+            $('#id_fx_rate_to_base').val('1.000000');
+            if (baseSummaryRow) {
+                baseSummaryRow.style.display = 'none';
+            }
+        }
+        updateBaseCurrencyTotal();
+    }
+
+    function fetchExchangeRate() {
+        const curCode = $('#id_currency').val();
+        const date = $('#id_date').val();
+        if (!curCode || curCode === companyBaseCurrencyCode) return;
+
+        // Use the vendor currency API as a proxy since it allows passing currency_id (if we had it)
+        // or just rely on the fact that we can fetch by currency code if we add an endpoint.
+        // For now, let's assume we use the vendor one and pass the code as a fallback if the API supports it.
+        // Actually, let's just use a simple fetch if we can.
+
+        $.ajax({
+            url: '{% url "currencies:api_get_vendor_currency" %}',
+            data: {
+                'currency_id': $('#id_currency').val(), // Select2 might have ID or Code
+                'date': date
+            },
+            success: function (data) {
+                if (data.ok) {
+                    $('#id_fx_rate_to_base').val(data.rate);
+                    $('#id_fx_rate_date').val(data.date);
+                    updateBaseCurrencyTotal();
+                }
+            }
+        });
+    }
+
+    function updateBaseCurrencyTotal() {
+        // Read displayed total text, strip any currency symbols, spaces or thousands separators
+        try {
+            let raw = $('#expense-total').text() || '';
+            // Remove anything that's not digit, dot, minus or comma
+            raw = String(raw).replace(/[^0-9.,\-]/g, '').trim();
+            // If commas are used as thousands separators, remove them. If locale uses comma for decimal
+            // this is a best-effort: prefer dot as decimal separator. Remove thousands commas.
+            raw = raw.replace(/,/g, '');
+            const totalDoc = parseFloat(raw) || 0;
+            const rate = parseFloat($('#id_fx_rate_to_base').val()) || 1.0;
+            const totalBase = totalDoc * rate;
+
+            $('#base-currency-total').text(companyBaseCurrencySymbol + ' ' + totalBase.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+            $('#id_total_amount_base').val(totalBase.toFixed(2));
+        } catch (err) {
+            console.error('updateBaseCurrencyTotal error', err);
+            $('#base-currency-total').text(companyBaseCurrencySymbol + ' 0.00');
+            try { $('#id_total_amount_base').val('0.00'); } catch (e) { }
+        }
+    }
+
+    // Note: Currency change event handlers are now in the main $(document).ready) block above
+
+    $(document).on('change', '#id_date', function () {
+        fetchExchangeRate();
+    });
+
+    $(document).on('input', '#id_fx_rate_to_base', function () {
+        updateBaseCurrencyTotal();
+    });
+
+    // Intercept the original recalcExpenseTotal to also update base total
+    const originalRecalc = recalcExpenseTotal;
+    recalcExpenseTotal = function () {
+        originalRecalc();
+        updateBaseCurrencyTotal();
+    };
+
+    // Initial check
+    $(document).ready(function () {
+        updateFxVisibility();
+
+        // Sync rate date with expense date on load if empty
+        if (!$('#id_fx_rate_date').val()) {
+            $('#id_fx_rate_date').val($('#id_date').val());
+        }
+
+        // Also check if currency field is disabled for some reason
+        if ($('#id_currency').is(':disabled')) {
+            console.warn('Currency field was disabled, enabling it.');
+            $('#id_currency').prop('disabled', false);
+        }
+
+    });
+    // -------------------------
+</script>
+
+<!-- ERROR MODAL FOR PERIOD LOCK AND OTHER ERRORS -->
+<div class="modal fade" id="errorModal" tabindex="-1" aria-labelledby="errorModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border: 2px solid #d9534f; border-radius: 8px;">
+            <div class="modal-header" style="background-color: #f8d7da; border-bottom: 2px solid #d9534f;">
+                <h5 class="modal-title" id="errorModalLabel" style="color: #721c24;">
+                    <i class="bi bi-exclamation-circle" style="color: #d9534f;"></i> Cannot Save Expense
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="errorModalBody" style="color: #721c24; padding: 20px; line-height: 1.6;">
+                <!-- Error message will be inserted here -->
+            </div>
+            <div class="modal-footer" style="border-top: 1px solid #dee2e6;">
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">OK</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

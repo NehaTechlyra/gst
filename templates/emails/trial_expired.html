@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trial Expired - Lyra ERP</title>
+</head>
+<body style="margin:0;padding:0;background-color:#f7f8fc;font-family:Arial,Helvetica,sans-serif;">
+
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f7f8fc;padding:40px 16px;">
+  <tr>
+    <td align="center">
+      <table width="580" cellpadding="0" cellspacing="0" border="0" style="max-width:580px;width:100%;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+
+        <!-- Stripe -->
+        <tr>
+          <td style="background-color:#c0392b;padding:32px 40px 28px;">
+            <table cellpadding="0" cellspacing="0" border="0">
+              <tr>
+                <td style="background:rgba(255,255,255,0.2);border-radius:8px;width:36px;height:36px;text-align:center;vertical-align:middle;font-size:18px;">⚡</td>
+                <td style="padding-left:10px;font-size:22px;font-weight:700;color:#ffffff;font-family:Georgia,serif;">Lyra ERP</td>
+              </tr>
+            </table>
+            <div style="margin-top:20px;font-size:26px;font-weight:700;color:#ffffff;line-height:1.25;">Your trial has expired</div>
+            <div style="margin-top:6px;font-size:14px;color:rgba(255,255,255,0.8);">Your access to Lyra ERP has been temporarily restricted</div>
+            <table cellpadding="0" cellspacing="0" border="0" style="margin-top:16px;">
+              <tr>
+                <td style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);border-radius:100px;padding:6px 14px;font-size:13px;color:#ffffff;">
+                  ● &nbsp;Expired on {{ trial_expired_date }}
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- Body -->
+        <tr>
+          <td style="padding:36px 40px;">
+            <p style="margin:0 0 16px;font-size:15px;color:#1a1a2e;">Dear <strong>{{ contact_person }}</strong>,</p>
+            <p style="margin:0 0 24px;font-size:15px;line-height:1.7;color:#444444;">
+              Your 15-day trial expired on <strong>{{ trial_expired_date }}</strong>.
+              Your account is currently in restricted mode — to continue using Lyra ERP, you'll need to activate a license key.
+            </p>
+
+            <!-- Data safe -->
+            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:24px;">
+              <tr>
+                <td style="background:#fdf0ef;border:1px solid #f5c6c2;border-radius:8px;padding:14px 16px;">
+                  <table cellpadding="0" cellspacing="0" border="0">
+                    <tr>
+                      <td style="font-size:20px;vertical-align:top;padding-right:10px;">🔒</td>
+                      <td style="font-size:14px;color:#7a2020;line-height:1.55;"><strong style="color:#5c1515;">Your data is completely safe.</strong> All your data has been preserved and will be available immediately once you activate a license.</td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+
+            <!-- Steps card -->
+            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#dce2f9;border-radius:10px;margin-bottom:24px;">
+              <tr>
+                <td style="padding:22px 24px;">
+                  <div style="font-size:17px;font-weight:700;color:#55588b;margin-bottom:16px;font-family:Georgia,serif;">How to Get Your License Key</div>
+                  <!-- Step 1 -->
+                  <table cellpadding="0" cellspacing="0" border="0" style="margin-bottom:10px;">
+                    <tr>
+                      <td style="background:#55588b;color:#fff;border-radius:50%;width:24px;height:24px;text-align:center;vertical-align:middle;font-size:12px;font-weight:700;">1</td>
+                      <td style="padding-left:12px;font-size:14px;color:#3a3d6b;line-height:1.5;">Contact our sales team at <strong style="color:#55588b;">{{ contact_email }}</strong></td>
+                    </tr>
+                  </table>
+                  <table cellpadding="0" cellspacing="0" border="0" style="margin-bottom:10px;">
+                    <tr>
+                      <td style="background:#55588b;color:#fff;border-radius:50%;width:24px;height:24px;text-align:center;vertical-align:middle;font-size:12px;font-weight:700;">2</td>
+                      <td style="padding-left:12px;font-size:14px;color:#3a3d6b;line-height:1.5;">Request a license key for your account</td>
+                    </tr>
+                  </table>
+                  <table cellpadding="0" cellspacing="0" border="0" style="margin-bottom:10px;">
+                    <tr>
+                      <td style="background:#55588b;color:#fff;border-radius:50%;width:24px;height:24px;text-align:center;vertical-align:middle;font-size:12px;font-weight:700;">3</td>
+                      <td style="padding-left:12px;font-size:14px;color:#3a3d6b;line-height:1.5;">Mention your company code: <strong style="color:#55588b;">{{ company_code }}</strong></td>
+                    </tr>
+                  </table>
+                  <table cellpadding="0" cellspacing="0" border="0" style="margin-bottom:10px;">
+                    <tr>
+                      <td style="background:#55588b;color:#fff;border-radius:50%;width:24px;height:24px;text-align:center;vertical-align:middle;font-size:12px;font-weight:700;">4</td>
+                      <td style="padding-left:12px;font-size:14px;color:#3a3d6b;line-height:1.5;">Receive your license key via email — usually within 24 hours</td>
+                    </tr>
+                  </table>
+                  <table cellpadding="0" cellspacing="0" border="0">
+                    <tr>
+                      <td style="background:#55588b;color:#fff;border-radius:50%;width:24px;height:24px;text-align:center;vertical-align:middle;font-size:12px;font-weight:700;">5</td>
+                      <td style="padding-left:12px;font-size:14px;color:#3a3d6b;line-height:1.5;">Activate the license in your account settings</td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+
+            <!-- CTA -->
+            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:24px;">
+              <tr>
+                <td align="center">
+                  <a href="mailto:{{ contact_email }}?subject=License%20Request&body=Hello,%0D%0A%0D%0AI%20would%20like%20to%20request%20a%20license%20key.%0D%0A%0D%0ACompany%20Code:%20{{ company_code }}%0D%0A%0D%0AThank%20you!"
+                     style="display:inline-block;background-color:#55588b;color:#ffffff;text-decoration:none;padding:14px 34px;border-radius:8px;font-size:15px;font-weight:700;font-family:Arial,Helvetica,sans-serif;">Request License Key &rarr;</a>
+                </td>
+              </tr>
+            </table>
+
+            <!-- Contact -->
+            <table width="100%" cellpadding="0" cellspacing="0" border="0">
+              <tr>
+                <td style="background:#f7f8fc;border-radius:8px;padding:16px;text-align:center;">
+                  <p style="margin:0 0 4px;font-size:13px;color:#6b6f9a;">Need help? Our team is ready.</p>
+                  <a href="mailto:{{ contact_email }}" style="display:inline-block;font-size:15px;font-weight:700;color:#55588b;text-decoration:none;margin:6px 0;">{{ contact_email }}</a>
+                  <p style="margin:4px 0 0;font-size:13px;color:#6b6f9a;">We're here to help you get back up and running!</p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- Footer -->
+        <tr>
+          <td style="background:#f7f8fc;border-top:1px solid #e8eaf0;padding:18px 40px;text-align:center;">
+            <p style="margin:0 0 4px;font-size:12px;color:#9b9dc4;">© 2025 Lyra ERP. All rights reserved.</p>
+            <p style="margin:0;font-size:12px;color:#9b9dc4;">This email will be sent daily until your license is activated. To stop receiving these emails, please activate a license key.</p>
+          </td>
+        </tr>
+
+      </table>
+    </td>
+  </tr>
+</table>
+
+</body>
+</html>

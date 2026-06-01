@@ -1,0 +1,165 @@
+{% extends 'website/index.html' %}
+{% load widget_tweaks %}
+{% load static %}
+{% block exstyle %}
+<link href="{% static 'style/general.css' %}" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.9.1/font/bootstrap-icons.css" rel="stylesheet">
+{% endblock exstyle %}
+{% block page_title %}{{ title }}{% endblock page_title %}
+{% block content %}
+<div class="container mt-4">
+  <div class="card p-4 shadow-sm border-0">
+    <h4 class="mb-4">{{ title }}</h4>
+    <form method="POST" novalidate>
+      {% csrf_token %}
+      <div class="row">
+        <div class="col-md-6 mb-3">
+          <label for="{{ form.name.id_for_label }}" class="form-label">Name *</label>
+          {{ form.name|add_class:"form-control" }}
+          {% if form.name.help_text %}
+            <div class="form-text">{{ form.name.help_text }}</div>
+          {% endif %}
+          {% for error in form.name.errors %}
+            <div class="text-danger small">{{ error }}</div>
+          {% endfor %}
+        </div>
+
+        <div class="col-md-6 mb-3">
+          <label for="{{ form.type.id_for_label }}" class="form-label">Type *</label>
+          {{ form.type|add_class:"form-select" }}
+          {% for error in form.type.errors %}
+            <div class="text-danger small">{{ error }}</div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col-md-6 mb-3">
+          <label for="{{ form.currency.id_for_label }}" class="form-label">Currency</label>
+          {{ form.currency|add_class:"form-control" }}
+          {% if form.currency.help_text %}
+            <div class="form-text">{{ form.currency.help_text }}</div>
+          {% endif %}
+          {% for error in form.currency.errors %}
+            <div class="text-danger small">{{ error }}</div>
+          {% endfor %}
+        </div>
+
+        <div class="col-md-6 mb-3">
+          <label for="{{ form.rounding.id_for_label }}" class="form-label">Rounding</label>
+          {{ form.rounding|add_class:"form-select" }}
+          {% for error in form.rounding.errors %}
+            <div class="text-danger small">{{ error }}</div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col-md-6 mb-3">
+          <label for="{{ form.valid_from.id_for_label }}" class="form-label">Valid From</label>
+          {{ form.valid_from|add_class:"form-control" }}
+          {% if form.valid_from.help_text %}
+            <div class="form-text">{{ form.valid_from.help_text }}</div>
+          {% endif %}
+          {% for error in form.valid_from.errors %}
+            <div class="text-danger small">{{ error }}</div>
+          {% endfor %}
+        </div>
+
+        <div class="col-md-6 mb-3">
+          <label for="{{ form.valid_to.id_for_label }}" class="form-label">Valid To</label>
+          {{ form.valid_to|add_class:"form-control" }}
+          {% if form.valid_to.help_text %}
+            <div class="form-text">{{ form.valid_to.help_text }}</div>
+          {% endif %}
+          {% for error in form.valid_to.errors %}
+            <div class="text-danger small">{{ error }}</div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="mb-3">
+        <label for="{{ form.description.id_for_label }}" class="form-label">Description</label>
+        {{ form.description|add_class:"form-control" }}
+        {% if form.description.help_text %}
+          <div class="form-text">{{ form.description.help_text }}</div>
+        {% endif %}
+        {% for error in form.description.errors %}
+          <div class="text-danger small">{{ error }}</div>
+        {% endfor %}
+      </div>
+
+      <div class="mb-3">
+        {{ form.is_active }}
+        <label for="{{ form.is_active.id_for_label }}" class="form-label ms-2">Active</label>
+        {% if form.is_active.help_text %}
+          <div class="form-text">{{ form.is_active.help_text }}</div>
+        {% endif %}
+        {% for error in form.is_active.errors %}
+          <div class="text-danger small">{{ error }}</div>
+        {% endfor %}
+      </div>
+
+      <div class="mt-4">
+        <button type="submit" class="btn btn-primary">Save Price List</button>
+        <a href="{% url 'pricelist:price_list_index' %}" class="btn btn-outline-secondary ms-2">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Navigation confirmation modal -->
+<div class="modal fade" id="unsavedChangesModal" tabindex="-1" aria-labelledby="unsavedChangesLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="unsavedChangesLabel">Unsaved Changes</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        You have unsaved changes. Are you sure you want to leave this page?
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Stay</button>
+        <button type="button" class="btn btn-primary" id="confirmLeave">Leave</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Form change detection
+let formChanged = false;
+const form = document.querySelector('form');
+
+form.addEventListener('input', () => {
+  formChanged = true;
+});
+
+form.addEventListener('change', () => {
+  formChanged = true;
+});
+
+// Intercept navigation
+window.addEventListener('beforeunload', (e) => {
+  if (formChanged) {
+    e.preventDefault();
+    e.returnValue = '';
+  }
+});
+
+// Handle link clicks
+document.addEventListener('click', (e) => {
+  if (formChanged && e.target.closest('a')) {
+    e.preventDefault();
+    const href = e.target.closest('a').href;
+    const modal = new bootstrap.Modal(document.getElementById('unsavedChangesModal'));
+    modal.show();
+
+    document.getElementById('confirmLeave').onclick = () => {
+      window.location.href = href;
+    };
+  }
+});
+</script>
+{% endblock %}

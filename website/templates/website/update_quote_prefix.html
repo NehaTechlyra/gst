@@ -1,0 +1,14 @@
+<form method="post">
+  {% csrf_token %}
+  <label for="id_prefix">Quote Prefix:</label>
+  <input type="text" id="id_prefix" name="prefix" value="{{ quote_prefix.prefix }}">
+  <button type="submit">Update</button>
+</form>
+
+{% if messages %}
+  <ul>
+  {% for message in messages %}
+    <li>{{ message }}</li>
+  {% endfor %}
+  </ul>
+{% endif %}

@@ -1,0 +1,32 @@
+{% extends 'website/index.html' %}
+
+{% block page_title %}Personal Document Types{% endblock %}
+
+{% block content %}
+<div class="container mt-3">
+  <h3>
+    Personal Document Types
+    <a href="{% url 'personal_document_type_add' %}" class="btn btn-sm btn-primary">Add</a>
+  </h3>
+  <table class="table table-sm">
+    <thead>
+      <tr><th>Name</th><th>Example Format</th><th>Status</th><th>Actions</th></tr>
+    </thead>
+    <tbody>
+      {% for it in items %}
+      <tr>
+        <td>{{ it.name }}</td>
+        <td>{{ it.example_format }}</td>
+        <td>{% if it.status %}Active{% else %}Inactive{% endif %}</td>
+        <td>
+          <a href="{% url 'personal_document_type_edit' it.id %}" class="btn btn-sm btn-outline-primary">Edit</a>
+          <a href="{% url 'personal_document_type_deactivate' it.id %}" class="btn btn-sm btn-outline-danger">Deactivate</a>
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="4">No personal document types</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

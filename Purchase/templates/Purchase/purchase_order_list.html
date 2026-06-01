@@ -1,0 +1,461 @@
+{% extends 'website/index.html' %}
+{% load static %}
+{% block exstyle %}
+<link href="{% static 'style/general.css' %}" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.9.1/font/bootstrap-icons.css" rel="stylesheet">
+{% endblock exstyle %}
+{% block page_title %}Purchase Orders{% endblock page_title %}
+{% block content %}
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+   
+  <!-- Left side: Add New button -->
+    {% if can_create_purchase_orders %}
+    <a href="{% if company_code %}{% url 'purchase_order_add' company_code %}{% else %}{% url 'purchase_order_add' %}{% endif %}" class="btn btn-success">+ Add New </a>
+    {% endif %}
+  
+  <!-- Search + Filters on right -->
+  <form method="get" class="d-flex gap-2 mb-3" id="purchaseSearchForm">
+    <input type="text" name="q" id="purchaseSearchInput" class="form-control me-2"
+           placeholder="&#x1F50D;&#xFE0E; Search purchase..."
+           value="{{ search_query }}">
+    <select name="status" class="form-control">
+        <option value="">All Status</option>
+        <option value="Draft" {% if status_filter == 'Draft' %}selected{% endif %}>Draft</option>
+        <option value="Submitted" {% if status_filter == 'Submitted' %}selected{% endif %}>Submitted</option>
+        <option value="Confirmed" {% if status_filter == 'Confirmed' %}selected{% endif %}>Confirmed</option>
+        <option value="Rejected" {% if status_filter == 'Rejected' %}selected{% endif %}>Rejected</option>
+    </select>
+    <button type="submit" class="btn btn-secondary">Filter</button>
+    <a href="{% url 'purchase_order_list' %}" class="btn btn-outline-secondary">Clear</a>
+    {% csrf_token %}
+  </form>
+
+  </div>
+  {% if purchase_orders %}
+<table class="items-table" id="purchaseTableContainer">
+    <thead>
+        <tr>
+            <th scope="col" class="si-no">No.</th>
+            <th>Order Number</th>
+            <th>Vendor</th>
+            <th>Payment Terms</th>
+            <th>Date</th>
+            <th>Status</th>
+            <th>Total Amount</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for po in purchase_orders %}
+        <tr>
+            <td class="si-no">
+                {{ purchase_orders.start_index|add:forloop.counter0 }}
+{% comment %} {{ po.order_number }} {% endcomment %}
+            </td>
+            <td>
+            <a href="{% if company_code %}{% url 'purchaseorder_detail' company_code po.pk %}{% else %}{% url 'purchaseorder_detail' po.pk %}{% endif %}" class="primary-link">
+                {{ po.order_number }}
+            </a>
+            </td>
+
+            <td>
+                {% if po.vendor.vendor_type == 'company' %}
+                                {{ po.vendor.company_name }}
+                            {% else %}
+                                {{ po.vendor.first_name }}
+                            {% if po.vendor.last_name %}
+                                {{ po.vendor.last_name }}
+                            {% endif %}
+                            {% endif %}
+            </td>
+            
+            <td>{% if po.payment_term %}{{ po.payment_term.name }} ({{ po.payment_term.days }}){% else %}-{% endif %}</td>
+            <td>{{ po.date }}</td>
+            <td>
+                <span class="badge bg-secondary">{{ po.status }}</span>
+            </td>
+            <td>{{ po.get_currency_symbol }}{{ po.total_amount|floatformat:2 }}</td>
+
+            <td>
+                {% comment %} <a href="{% url 'create_purchase_order' %}?po_id={{ po.id }}" class="btn btn-sm btn-primary">Edit</a> {% endcomment %}
+                <!-- You can add view/delete buttons as needed -->
+                <div class="purchase-actions" style="margin-top: 5px;">
+                    {% if can_view_purchase_orders %}
+                        <a href="{% if company_code %}{% url 'purchaseorder_detail' company_code po.pk %}{% else %}{% url 'purchaseorder_detail' po.pk %}{% endif %}" class="btn add-item-btn">View</a>
+                    {% endif %}
+                    {% if can_edit_purchase_orders %}
+                        <a href="{% if company_code %}{% url 'purchase_order_edit' company_code po.id %}{% else %}{% url 'purchase_order_edit' po.id %}{% endif %}" class="btn add-item-btn">Edit</a>
+                    {% endif %}
+                    {% if can_delete_purchase_orders %}
+                    <form style="display:inline;">
+                    {% csrf_token %}
+                    <button
+                      type="button"
+                      class="btn btn-sm delete-btn delete-purchase-order-btn"
+                      data-order-id="{{ po.pk }}">
+                        <span class="bi bi-trash"></span>
+                    </button>
+                    </form>
+                    {% comment %} <a href="{% url 'model_object_activity_log_list' 'PurchaseOrder' po.id %}"
+                        <span class="bi bi-clock-history"></span>
+                    </a> {% endcomment %}
+                    {% endif %}
+                    <!-- For other revisions 1 option -->
+                    {% comment %} {% if po.older_revisions %}
+            <button class="btn btn-sm btn-outline-secondary ms-2" type="button" data-bs-toggle="collapse" data-bs-target="#collapseRevisions{{ po.id }}" aria-expanded="false" aria-controls="collapseRevisions{{ po.id }}">
+                Other Revisions
+            </button>
+            {% endif %} {% endcomment %}
+
+            <!-- For other revisions 2nd option -->
+            {% if po.older_revisions %}
+            <div class="dropdown d-inline ms-2">
+                <button class="btn btn-sm btn-secondary dropdown-toggle" type="button" id="dropdownMenuButton{{ po.id }}" data-bs-toggle="dropdown" aria-expanded="false">
+                   <i class="bi bi-clock-history"></i> 
+                </button>
+                <ul class="dropdown-menu" aria-labelledby="dropdownMenuButton{{ po.id }}">
+                    {% for rev in po.older_revisions %}
+                        <li>
+                            <a class="dropdown-item" href="{% if company_code %}{% url 'purchase_order_edit' company_code rev.id %}{% else %}{% url 'purchase_order_edit' rev.id %}{% endif %}">
+                                {{ rev.order_number }} - {{ rev.date }} - {{ rev.get_currency_symbol }}{{ rev.total_amount|floatformat:2 }}
+                            </a>
+                        </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %} 
+                </div>
+                
+            </td>
+        </tr>
+<!-- For other revisions 1 option -->
+        {% comment %} {% if po.older_revisions %}
+  <tr class="collapse" id="collapseRevisions{{ po.id }}">
+    <td colspan="8" class="inner-table-td" >
+      <table class="table mb-0 inner-table">
+         <thead class="table-light">
+          <tr >
+            <th scope="col" class="si-no" >No.</th>
+            <th scope="col" >order Number</th>
+            <th scope="col">vendor</th>
+            <th scope="col">purchase Person</th>
+            <th scope="col">Date</th>
+            <th scope="col">Status</th>
+            <th scope="col">Total Amount</th>
+            <th scope="col">Actions</th>
+          </tr>
+        </thead> 
+        <tbody>
+          {% for rev in po.older_revisions %}
+          <tr>
+            <td class="si-no">{{ forloop.counter }}</td>
+            <td >{{ rev.order_number }}</td>
+            <td>{{ rev.vendor.first_name }}</td>
+            <td>{{ rev.purchase_person.name }}</td>
+            <td>{{ rev.date }}</td>
+            <td>{{ rev.status }}</td>
+            <td>{{ rev.total_amount }}</td>
+            <td>
+            <div class="purchase-actions" style="margin-top: 5px;">
+                <a href="{% url 'order_edit' rev.id %}" class="btn add-item-btn">View/Edit</a>
+                <form action="" method="post" style="display:inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-sm delete-btn"
+                    onclick="return confirm('Are you sure you want to delete this purchase?');">
+                        <span class="bi bi-trash"></span>
+                    </button>
+                </form>
+                {% if po.older_revisions %}
+            <button class="btn btn-sm btn-outline-secondary ms-2" type="button" data-bs-toggle="collapse" data-bs-target="#collapseRevisions{{ po.id }}" aria-expanded="false" aria-controls="collapseRevisions{{ po.id }}">
+                O
+            </button>
+            {% endif %}
+            </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </td>
+  </tr>
+  {% endif %} {% endcomment %}
+        
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+    <div class="alert alert-info text-center">
+        No Purchase found.
+        {% if can_create_orders %}
+            <a href="{% if company_code %}{% url 'purchase_order_add' company_code %}{% else %}{% url 'purchase_order_add' %}{% endif %}" class="alert-link">Add your first Purchase order</a>.
+        {% endif %}
+    </div> 
+  {% endif %} 
+</div>
+  <!-- Pagination -->
+{% if purchase_orders.paginator.num_pages > 1 %}
+<nav aria-label="Page navigation" class="mt-3 Page-navigation">
+    <ul class="pagination">
+        {% if purchase_orders.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?q={{ search_query }}&page={{ purchase_orders.previous_page_number }}">&laquo;</a>
+            </li>
+        {% else %}
+            <li class="page-item disabled"><span class="page-link">&laquo;</span></li>
+        {% endif %}
+
+        {% for num in purchase_orders.paginator.page_range %}
+
+            {% if num <= 1 %}
+                {% if num == purchase_orders.number %}
+                    <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                {% else %}
+                    <li class="page-item">
+                        <a class="page-link" href="?q={{ search_query }}&page={{ num }}">{{ num }}</a>
+                    </li>
+                {% endif %}
+
+            {% elif num >= purchase_orders.number|add:'-1' and num <= purchase_orders.number|add:'1' %}
+                {% if num == purchase_orders.number %}
+                    <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                {% else %}
+                    <li class="page-item">
+                        <a class="page-link" href="?q={{ search_query }}&page={{ num }}">{{ num }}</a>
+                    </li>
+                {% endif %}
+
+            {% elif num > purchase_orders.paginator.num_pages|add:'-1' %}
+                {% if num == purchase_orders.number %}
+                    <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                {% else %}
+                    <li class="page-item">
+                        <a class="page-link" href="?q={{ search_query }}&page={{ num }}">{{ num }}</a>
+                    </li>
+                {% endif %}
+
+            {% elif num == 2 and purchase_orders.number > 2 %}
+                <li class="page-item disabled"><span class="page-link">...</span></li>
+
+            {% elif num == purchase_orders.paginator.num_pages|add:'-1' and purchase_orders.number < purchase_orders.paginator.num_pages|add:'-1' %}
+                <li class="page-item disabled"><span class="page-link">...</span></li>
+
+            {% endif %}
+
+        {% endfor %}
+
+        {% if purchase_orders.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?q={{ search_query }}&page={{ purchase_orders.next_page_number }}">&raquo;</a>
+            </li>
+        {% else %}
+            <li class="page-item disabled"><span class="page-link">&raquo;</span></li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+
+
+
+<script>
+
+function submitDeletePurchaseOrder(orderId, rowToRemove) {
+  const csrfToken = document.querySelector('input[name="csrfmiddlewaretoken"]')?.value;
+  
+  const pathParts = window.location.pathname.split('/').filter(p => p);
+  const companyCode = pathParts[0];
+  
+  const deleteUrl = `/${companyCode}/purchase/purchase/delete/${orderId}/`;
+  
+  const formData = new FormData();
+  if (csrfToken) {
+    formData.append('csrfmiddlewaretoken', csrfToken);
+  }
+  
+  return fetch(deleteUrl, {
+    method: 'POST',
+    headers: {
+      'X-Requested-With': 'XMLHttpRequest'
+    },
+    body: formData
+  })
+  .then(function(response) {
+    if (!response.ok) {
+      throw new Error('Error deleting purchase order. Status: ' + response.status);
+    }
+
+    if (rowToRemove) {
+      rowToRemove.remove();
+    } else {
+      location.reload();
+    }
+  });
+}
+
+ document.addEventListener('DOMContentLoaded', function () {
+    const toastContainer = document.getElementById('toastContainer');
+    {% if messages %}
+      {% for message in messages %}
+        const toastEl = document.createElement('div');
+        toastEl.className = 'toast align-items-center text-bg-{{ message.tags }} border-0';
+        toastEl.setAttribute('role', 'alert');
+        toastEl.setAttribute('aria-live', 'assertive');
+        toastEl.setAttribute('aria-atomic', 'true');
+        toastEl.innerHTML = `
+          <div class="d-flex">
+            <div class="toast-body">
+              {{ message|escapejs }}
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+          </div>
+        `;
+        toastContainer.appendChild(toastEl);
+
+        const toast = new bootstrap.Toast(toastEl, { delay: 3000 });
+        toast.show();
+      {% endfor %}
+    {% endif %}
+    let pendingDelete = {
+      orderId: null,
+      row: null
+    };
+
+    function showDeleteModal(orderId, row) {
+      pendingDelete.orderId = orderId;
+      pendingDelete.row = row || null;
+      const modal = document.getElementById('deletePromptPurchaseOrder');
+      if (modal) modal.style.display = 'flex';
+    }
+
+    function hideDeleteModal() {
+      const modal = document.getElementById('deletePromptPurchaseOrder');
+      if (modal) modal.style.display = 'none';
+      pendingDelete.orderId = null;
+      pendingDelete.row = null;
+    }
+
+    function showToast(message, type) {
+      try {
+        if (typeof bootstrap !== 'undefined' && bootstrap.Toast && toastContainer) {
+          const toastEl = document.createElement('div');
+          toastEl.className = `toast align-items-center text-bg-${type || 'success'} border-0`;
+          toastEl.setAttribute('role', 'alert');
+          toastEl.setAttribute('aria-live', 'assertive');
+          toastEl.setAttribute('aria-atomic', 'true');
+          toastEl.innerHTML = `
+            <div class="d-flex">
+              <div class="toast-body">${message}</div>
+              <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+          `;
+          toastContainer.appendChild(toastEl);
+          const toast = new bootstrap.Toast(toastEl, { delay: 3000 });
+          toast.show();
+          toastEl.addEventListener('hidden.bs.toast', function () {
+            try { toastEl.remove(); } catch (e) {}
+          });
+          return;
+        }
+      } catch (e) {}
+
+      const el = document.createElement('div');
+      el.textContent = message;
+      el.style.position = 'fixed';
+      el.style.right = '20px';
+      el.style.bottom = '20px';
+      el.style.background = type === 'danger' ? '#d9534f' : '#28a745';
+      el.style.color = '#fff';
+      el.style.padding = '10px 14px';
+      el.style.borderRadius = '6px';
+      el.style.zIndex = 20000;
+      el.style.boxShadow = '0 4px 10px rgba(0,0,0,0.12)';
+      document.body.appendChild(el);
+      setTimeout(function () { try { el.remove(); } catch (e) {} }, 3500);
+    }
+
+    document.addEventListener('click', function (e) {
+      const btn = e.target.closest('.delete-purchase-order-btn');
+      if (!btn) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+
+      const orderId = btn.getAttribute('data-order-id');
+      if (!orderId) return;
+      const row = btn.closest('tr');
+      showDeleteModal(orderId, row);
+    });
+
+    const confirmBtn = document.getElementById('confirmDeletePurchaseOrder');
+    const cancelBtn = document.getElementById('cancelDeletePurchaseOrder');
+
+    if (confirmBtn) {
+      confirmBtn.addEventListener('click', function () {
+        if (!pendingDelete.orderId) {
+          hideDeleteModal();
+          return;
+        }
+
+        submitDeletePurchaseOrder(pendingDelete.orderId, pendingDelete.row)
+          .then(function () {
+            showToast('Purchase order deleted successfully.', 'success');
+          })
+          .catch(function (error) {
+            showToast(error.message || 'Error deleting purchase order.', 'danger');
+          })
+          .finally(function () {
+            hideDeleteModal();
+          });
+      });
+    }
+
+    if (cancelBtn) {
+      cancelBtn.addEventListener('click', function () {
+        hideDeleteModal();
+      });
+    }
+  });
+document.addEventListener("DOMContentLoaded", function() {
+    const searchInput = document.getElementById("purchaseSearchInput");
+    const tableContainer = document.getElementById("purchaseTableContainer");
+
+    let timeout = null;
+
+    searchInput.addEventListener("keyup", function() {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => {
+            const query = searchInput.value;
+
+            fetch(`?q=${encodeURIComponent(query)}`, {
+                headers: {
+                    "X-Requested-With": "XMLHttpRequest"
+                }
+            })
+            .then(response => response.text())
+                    .then(html => {
+                // Create a temporary DOM to extract the table only
+                const tempDiv = document.createElement("div");
+                tempDiv.innerHTML = html;
+                const newTable = tempDiv.querySelector("#purchaseTableContainer");
+                if (newTable) {
+                    tableContainer.innerHTML = newTable.innerHTML;
+                }
+            });
+        }, 300); // Wait 300ms after typing
+    });
+
+    // (status dropdown removed from list view; status changes handled in detail view)
+});
+</script>
+
+<div id="deletePromptPurchaseOrder" class="prompt-modal">
+  <div class="prompt-modal-content">
+    <p>Are you sure you want to delete this purchase order?</p>
+    <div class="prompt-buttons">
+      <button id="confirmDeletePurchaseOrder" class="prompt-btn prompt-ok-btn">OK</button>
+      <button id="cancelDeletePurchaseOrder" class="prompt-btn prompt-cancel-btn">Cancel</button>
+    </div>
+  </div>
+</div>
+{% endblock %}

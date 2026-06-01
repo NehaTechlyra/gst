@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome to Lyra ERP</title>
+</head>
+<body style="margin:0;padding:0;background-color:#f7f8fc;font-family:Arial,Helvetica,sans-serif;">
+
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f7f8fc;padding:40px 16px;">
+  <tr>
+    <td align="center">
+      <table width="580" cellpadding="0" cellspacing="0" border="0" style="max-width:580px;width:100%;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+
+        <!-- Stripe -->
+        <tr>
+          <td style="background-color:#2e7d32;padding:32px 40px 28px;">
+            <table cellpadding="0" cellspacing="0" border="0">
+              <tr>
+                <td style="background:rgba(255,255,255,0.2);border-radius:8px;width:36px;height:36px;text-align:center;vertical-align:middle;font-size:18px;">⚡</td>
+                <td style="padding-left:10px;font-size:22px;font-weight:700;color:#ffffff;font-family:Georgia,serif;">Lyra ERP</td>
+              </tr>
+            </table>
+            <div style="margin-top:20px;font-size:26px;font-weight:700;color:#ffffff;line-height:1.25;">Welcome to Lyra ERP!</div>
+            <div style="margin-top:6px;font-size:14px;color:rgba(255,255,255,0.8);">Account Registration Confirmation</div>
+            <table cellpadding="0" cellspacing="0" border="0" style="margin-top:16px;">
+              <tr>
+                <td style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);border-radius:100px;padding:6px 14px;font-size:13px;color:#ffffff;">
+                  ● &nbsp;Registration Successful — your account is ready
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- Body -->
+        <tr>
+          <td style="padding:36px 40px;">
+            <p style="margin:0 0 16px;font-size:15px;color:#1a1a2e;">Dear <strong>{{ company_name }}</strong>,</p>
+            <p style="margin:0 0 24px;font-size:15px;line-height:1.7;color:#444444;">
+              Your Lyra ERP account has been created successfully. Below are your account details — please save this email for your records.
+            </p>
+
+            <!-- Details card -->
+            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#dce2f9;border-radius:10px;margin-bottom:24px;">
+              <tr>
+                <td style="padding:22px 24px;">
+                  <div style="font-size:17px;font-weight:700;color:#55588b;margin-bottom:16px;font-family:Georgia,serif;">Your Account Details</div>
+                  <!-- Row 1 -->
+                  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-bottom:1px solid rgba(85,88,139,0.12);padding-bottom:10px;margin-bottom:10px;">
+                    <tr>
+                      <td style="font-size:14px;color:#6b6f9a;font-weight:500;">Company Name</td>
+                      <td style="font-size:14px;color:#55588b;font-weight:700;text-align:right;">{{ company_name }}</td>
+                    </tr>
+                  </table>
+                  <!-- Row 2 -->
+                  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-bottom:1px solid rgba(85,88,139,0.12);padding-bottom:10px;margin-bottom:10px;">
+                    <tr>
+                      <td style="font-size:14px;color:#6b6f9a;font-weight:500;">Username</td>
+                      <td style="font-size:14px;color:#55588b;font-weight:700;text-align:right;">{{ username }}</td>
+                    </tr>
+                  </table>
+                  <!-- Row 3 -->
+                  <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                    <tr>
+                      <td style="font-size:14px;color:#6b6f9a;font-weight:500;">Company Code</td>
+                      <td style="font-size:14px;color:#55588b;font-weight:700;text-align:right;">{{ company_code }}</td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+
+            <!-- Login URL -->
+            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f7f8fc;border:1.5px dashed #c5c8e8;border-radius:8px;margin-bottom:24px;">
+              <tr>
+                <td style="padding:14px 16px;">
+                  <p style="margin:0 0 6px;font-size:11px;color:#6b6f9a;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;">Your Unique Login URL</p>
+                  <a href="{{ login_url }}" style="font-size:14px;font-weight:700;color:#55588b;word-break:break-all;">{{ login_url }}</a>
+                </td>
+              </tr>
+            </table>
+
+            <!-- CTA -->
+            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:24px;">
+              <tr>
+                <td align="center">
+                  <a href="{{ login_url }}" style="display:inline-block;background-color:#55588b;color:#ffffff;text-decoration:none;padding:14px 34px;border-radius:8px;font-size:15px;font-weight:700;font-family:Arial,Helvetica,sans-serif;">Log In to Your Account &rarr;</a>
+                </td>
+              </tr>
+            </table>
+
+            <!-- Notice banner -->
+            <table width="100%" cellpadding="0" cellspacing="0" border="0">
+              <tr>
+                <td style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:14px 16px;">
+                  <table cellpadding="0" cellspacing="0" border="0">
+                    <tr>
+                      <td style="font-size:18px;vertical-align:top;padding-right:10px;">⚠️</td>
+                      <td>
+                        <div style="font-size:13px;font-weight:700;color:#5c4500;margin-bottom:4px;">First Login Notice</div>
+                        <div style="font-size:13px;color:#7a5f00;line-height:1.55;">Your company workspace will be created automatically when you log in for the first time. This may take a few moments — please be patient.</div>
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- Footer -->
+        <tr>
+          <td style="background:#f7f8fc;border-top:1px solid #e8eaf0;padding:18px 40px;text-align:center;">
+            <p style="margin:0 0 4px;font-size:12px;color:#9b9dc4;">© 2025 Lyra ERP. All rights reserved.</p>
+            <p style="margin:0 0 4px;font-size:12px;color:#9b9dc4;">Please save this email — your unique login URL will not be sent again.</p>
+            <p style="margin:0;font-size:12px;color:#9b9dc4;">Need help? Contact us at <a href="mailto:{{ contact_email }}" style="color:#55588b;">{{ contact_email }}</a></p>
+          </td>
+        </tr>
+
+      </table>
+    </td>
+  </tr>
+</table>
+
+</body>
+</html>

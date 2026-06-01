@@ -1,0 +1,233 @@
+{% extends "website/index.html" %}
+{% load static %}
+{% load widget_tweaks %}
+{% block exstyle %}
+<link href="{% static 'style/general.css' %}" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Ubuntu&display=swap" rel="stylesheet">
+
+
+
+<link href="{% static 'style/record_payments.css' %}" rel="stylesheet">
+
+{% endblock exstyle %}
+{% block page_title %}Record Payment - Bill #{{ bill.bill_number }}{% endblock page_title %}<!--add title-->
+{% block scripts %}
+
+{% comment %} <script src="{% static 'js/purchase_order.js' %}"></script> {% endcomment %}
+{% endblock scripts%}
+
+{% block content %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    
+    <style>
+        
+    </style>
+</head>
+<body>
+    <div class="container">
+        
+        <form method="POST" action="{% url 'record_payment' bill.id %}">
+            {% csrf_token %} 
+            <div class="form-row">
+                <!-- Hidden field to pass vendor_id -->
+                <input type="hidden" name="vendor_id" value="{{ bill.vendor.id }}">
+                <div class="form-group">
+                        <label for="amount" class="required">Amount</label>
+                        <input type="number" id="amount" name="amount" step="0.01" class="form-control"
+                            value="{{ final_total }}" required>
+                        {% comment %} <div class="amount-display">₹ {{ final_total|floatformat:2 }}</div> {% endcomment %}
+                    </div>
+                <!-- Payment Mode -->
+                <div class="form-group">
+                    <label for="payment_mode">Payment Mode</label>
+                    <select id="payment_mode" name="payment_mode" class="select2-search" required>
+                        <option value="">Select Payment Mode</option>
+                        {% for mode in payment_modes %}
+                            <option value="{{ mode.id }}" {% if mode.name == 'Cash' %}selected{% endif %}>
+                                {{ mode.name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            
+
+            <!-- Payment Date and Payment Number -->
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="payment_date" class="required">Payment Date</label>
+                    <input type="date" id="payment_date" name="payment_date" class="form-control"
+                           value="{{ request.POST.payment_date|default:'27/12/2025' }}" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="payment_number" class="required">Payment #</label>
+                    <div class="payment-number-wrapper">
+                        <input type="text" id="payment_number" name="payment_number" class="form-control"
+                               value="{{ next_payment_number }}" required>
+                        {% comment %} <span class="refresh-icon" onclick="generatePaymentNumber()" title="Generate new number">↻</span> {% endcomment %}
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="payment_made_on">Payment Made on</label>
+                    <input type="date" id="payment_made_on" name="payment_made_on" class="form-control"
+                           value="{{ request.POST.payment_made_on|default:'' }}" placeholder="dd/MM/yyyy">
+                </div>
+            </div>
+
+            <!-- Payment Made On and Paid Through -->
+            <div class="form-row">
+                
+
+                <div class="form-group">
+                    <label for="paid_through" class="required">Paid Through</label>
+                    <select id="paid_through" name="paid_through" class="select2-search" required>
+                        <option value="">Select Payment Account</option>
+                        {% for account in payment_accounts %}
+                            <option value="{{ account.id }}">{{ account.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="reference">Reference#</label>
+                    <input type="text" id="reference" name="reference" class="form-control"
+                           value="{{ request.POST.reference|default:'' }}" placeholder="Enter reference number">
+                </div>
+            </div>
+
+            <!-- Notes -->
+            <div class="form-group">
+                <label for="notes">Notes</label>
+                <textarea id="notes" name="notes" placeholder="Add any additional notes...">{{ request.POST.notes|default:'' }}</textarea>
+            </div>
+
+            <!-- Attachments -->
+            <div class="upload-section">
+                <label>Attachments</label>
+                <label class="upload-button">
+                    <span>📎</span>
+                    <span>Upload File</span>
+                    <input type="file" name="attachments" multiple hidden class="form-control"
+                           accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" onchange="displayFileNames(this)">
+                </label>
+                {% comment %} <div class="upload-info">You can upload a maximum of 5 files, 10MB each</div> {% endcomment %}
+                <div id="file-list" style="margin-top: 10px; font-size: 13px; color: #374151;"></div>
+            </div>
+
+            <!-- Email Notification -->
+            <div class="checkbox-wrapper">
+                <input type="checkbox" id="send_email" name="send_email" value="1" class="form-control">
+                <label for="send_email">Send a Payment Made email notification.</label>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="button-group">
+                <button type="submit" name="action" value="save_paid" class="btn-primary">Save as Paid</button>
+                {% comment %} <button type="submit" name="action" value="save_draft" class="btn-secondary">Save as Draft</button> {% endcomment %}
+                <button type="button" class="btn-cancel" onclick="window.history.back()">Cancel</button>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        
+
+        // Display selected file names
+        function displayFileNames(input) {
+            const fileList = document.getElementById('file-list');
+            fileList.innerHTML = '';
+            
+            if (input.files.length > 0) {
+                const files = Array.from(input.files);
+                files.forEach((file, index) => {
+                    const fileSize = (file.size / 1024 / 1024).toFixed(2);
+                    fileList.innerHTML += `<div>${index + 1}. ${file.name} (${fileSize} MB)</div>`;
+                });
+            }
+        }
+
+        // Update amount display when input changes
+        document.getElementById('amount').addEventListener('input', function(e) {
+            const value = parseFloat(e.target.value) || 0;
+            document.querySelector('.amount-display').textContent = '₹ ' + value.toFixed(2);
+        });
+
+        // Set today's date as default for payment_date
+        document.addEventListener('DOMContentLoaded', function() {
+            const today = new Date().toISOString().split('T')[0];
+            const paymentDateInput = document.getElementById('payment_date');
+            if (!paymentDateInput.value) {
+                paymentDateInput.value = today;
+            }
+        });
+
+    {% comment %} <!-- Initialize Select2 --> {% endcomment %}
+
+    $(document).ready(function() {
+        
+        // Initialize Select2 on all elements with class 'select2-search'
+        $('.select2-search').select2({
+            placeholder: "Search...",
+            allowClear: true,
+            width: '100%'
+        });
+
+        // Or initialize individually with custom settings
+        $('#paid_through').select2({
+            placeholder: "Search and select account",
+            allowClear: true,
+            width: '100%'
+        });
+
+        $('#payment_mode').select2({
+            placeholder: "Search and select payment mode",
+            allowClear: true,
+            width: '100%'
+        });
+        
+        // Show error modal if there's an error message
+        const showErrorModal = {{ show_error_modal|lower|default:"false" }};
+        const errorMessage = `{{ error_message|escapejs }}`;
+        
+        if (showErrorModal && errorMessage) {
+          const errorModal = document.getElementById('errorModal');
+          if (errorModal) {
+            const errorBodyElement = document.getElementById('errorModalBody');
+            errorBodyElement.innerHTML = errorMessage.replace(/\n/g, '<br>');
+            const modal = new bootstrap.Modal(errorModal);
+            modal.show();
+          }
+        }
+    });
+
+    </script>
+    
+    <!-- ERROR MODAL FOR PERIOD LOCK AND OTHER ERRORS -->
+    <div class="modal fade" id="errorModal" tabindex="-1" aria-labelledby="errorModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border: 2px solid #d9534f; border-radius: 8px;">
+          <div class="modal-header" style="background-color: #f8d7da; border-bottom: 2px solid #d9534f;">
+            <h5 class="modal-title" id="errorModalLabel" style="color: #721c24;">
+              <i class="bi bi-exclamation-circle" style="color: #d9534f;"></i> Cannot Record Payment
+            </h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body" id="errorModalBody" style="color: #721c24; padding: 20px; line-height: 1.6;">
+            <!-- Error message will be inserted here -->
+          </div>
+          <div class="modal-footer" style="border-top: 1px solid #dee2e6;">
+            <button type="button" class="btn btn-primary" data-bs-dismiss="modal">OK</button>
+          </div>
+        </div>
+      </div>
+    </div>
+</body>
+</html>
+{% endblock %}
+    

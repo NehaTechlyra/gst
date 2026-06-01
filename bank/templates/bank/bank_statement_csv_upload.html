@@ -1,0 +1,299 @@
+{% extends 'website/index.html' %}
+{% load static %}
+
+{% block page_title %}Upload Bank Statement{% endblock %}
+
+{% block exstyle %}
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+{% endblock %}
+
+{% block content %}
+<style>
+  :root {
+    --bg:           #f5f6fa;
+    --surface:      #ffffff;
+    --border:       #e4e8f0;
+    --text-primary: #111827;
+    --text-muted:   #6b7280;
+    --accent:       #4f46e5;
+    --accent-light: #eef2ff;
+    --green:        #059669;
+    --green-light:  #ecfdf5;
+    --red:          #dc2626;
+    --radius:       12px;
+    --shadow:       0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.05);
+  }
+
+  body { background: var(--bg); font-family: 'DM Sans', sans-serif; color: var(--text-primary); margin: 0; }
+
+  /* ── Topbar ── */
+  .hr-topbar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    display: flex; align-items: stretch;
+    min-height: 52px;
+  }
+  .hr-breadcrumb {
+    display: flex; align-items: center;
+    font-size: 13px; gap: 4px; color: var(--text-muted);
+  }
+  .hr-breadcrumb a {
+    color: var(--accent); text-decoration: none;
+    padding: 16px 8px; display: block;
+  }
+  .hr-breadcrumb a:hover { text-decoration: underline; }
+  .hr-breadcrumb .sep { color: #d1d5db; }
+  .hr-breadcrumb .current {
+    color: var(--text-primary); font-weight: 600;
+    padding: 16px 8px;
+    border-bottom: 2px solid var(--accent);
+  }
+
+  /* ── Content ── */
+  .hr-content { padding: 28px 24px; }
+
+  /* ── Form card ── */
+  .hr-form-card {
+    background: var(--surface);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+    max-width: 600px;
+    overflow: hidden;
+  }
+  .hr-form-card-header {
+    padding: 18px 24px;
+    border-bottom: 1px solid var(--border);
+  }
+  .hr-form-card-header h5 {
+    font-size: 16px; font-weight: 700; color: var(--text-primary); margin: 0;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .hr-form-card-header h5 i { color: var(--accent); }
+  .hr-form-card-header p { font-size: 12px; color: var(--text-muted); margin: 4px 0 0; }
+  .hr-form-card-body { padding: 24px; }
+  .hr-form-card-footer {
+    padding: 16px 24px;
+    border-top: 1px solid var(--border);
+    display: flex; gap: 10px; background: #fafafa;
+  }
+
+  /* ── Info box ── */
+  .hr-info-box {
+    background: var(--accent-light);
+    border: 1px solid #c7d2fe;
+    border-radius: 8px; padding: 12px 16px;
+    font-size: 13px; color: #3730a3;
+    margin-bottom: 22px;
+    display: flex; gap: 9px; align-items: flex-start;
+    line-height: 1.5;
+  }
+  .hr-info-box i { margin-top: 2px; flex-shrink: 0; }
+
+  /* ── Error box ── */
+  .hr-error-box {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 8px; padding: 12px 16px;
+    font-size: 13px; color: var(--red);
+    margin-bottom: 18px;
+  }
+  .hr-error-box strong { display: block; margin-bottom: 6px; }
+  .hr-error-box ul { margin: 0; padding-left: 18px; }
+  .hr-error-box li { margin-bottom: 3px; }
+
+  /* ── Drop zone ── */
+  .hr-dropzone {
+    border: 2px dashed var(--border);
+    border-radius: 10px;
+    padding: 36px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    position: relative;
+    background: #fafafa;
+  }
+  .hr-dropzone:hover     { border-color: var(--accent); background: var(--accent-light); }
+  .hr-dropzone.dragover  { border-color: var(--accent); background: var(--accent-light); }
+  .hr-dropzone.selected  { border-color: var(--green); background: var(--green-light); }
+  .hr-dropzone input[type="file"] {
+    position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+  }
+  .hr-dropzone-icon      { font-size: 38px; color: #9ca3af; margin-bottom: 10px; }
+  .hr-dropzone-icon.ok   { color: var(--green); }
+  .hr-dropzone h6  { font-size: 14px; font-weight: 700; color: var(--text-primary); margin: 0 0 4px; }
+  .hr-dropzone p   { font-size: 12px; color: var(--text-muted); margin: 0; }
+  .hr-dropzone .file-name { font-size: 13px; color: var(--green); font-weight: 600; }
+
+  /* ── CSV example ── */
+  .hr-csv-example {
+    background: #f9fafb;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-top: 20px;
+    overflow: hidden;
+  }
+  .hr-csv-example-header {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px; font-weight: 700; color: var(--text-primary);
+    display: flex; align-items: center; gap: 6px;
+  }
+  .hr-csv-example-header i { color: var(--accent); }
+  .hr-csv-example pre {
+    margin: 0; padding: 14px 16px;
+    font-size: 12px; color: #374151;
+    font-family: 'DM Mono', monospace;
+    overflow-x: auto; white-space: pre;
+  }
+  .hr-csv-notes {
+    padding: 10px 16px;
+    border-top: 1px solid var(--border);
+    font-size: 12px; color: var(--text-muted);
+  }
+  .hr-csv-notes li { margin-bottom: 3px; }
+
+  /* ── Buttons ── */
+  .btn-hr {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 9px 20px; border-radius: 8px;
+    font-size: 13px; font-weight: 600; cursor: pointer;
+    border: none; text-decoration: none;
+    transition: background 0.15s, box-shadow 0.15s; line-height: 1;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .btn-hr-primary { background: var(--accent); color: #fff; }
+  .btn-hr-primary:hover { background: #4338ca; color: #fff; text-decoration: none; box-shadow: 0 4px 12px rgba(79,70,229,0.2); }
+  .btn-hr-ghost { background: var(--surface); color: var(--text-muted); border: 1.5px solid var(--border); }
+  .btn-hr-ghost:hover { background: var(--bg); color: var(--text-primary); text-decoration: none; }
+</style>
+
+<div>
+  <!-- Topbar -->
+  <div class="hr-topbar">
+    <nav class="hr-breadcrumb">
+      <a href="{% url 'reconciliation_list' reconciliation.bank_account.id %}">{{ reconciliation.bank_account.account_number }}</a>
+      <span class="sep">&rsaquo;</span>
+      <a href="{% url 'reconciliation_working_screen' reconciliation.id %}">Reconciliation</a>
+      <span class="sep">&rsaquo;</span>
+      <span class="current">Upload Bank Statement</span>
+    </nav>
+  </div>
+
+  <div class="hr-content">
+    <div class="hr-form-card">
+
+      <div class="hr-form-card-header">
+        <h5><i class="bi bi-upload"></i> Upload Bank Statement</h5>
+        <p>
+          {{ reconciliation.bank_account.bank.bank_name }} — {{ reconciliation.bank_account.account_number }}
+          &bull; Period: {{ reconciliation.start_date|date:"d/m/Y" }} to {{ reconciliation.end_date|date:"d/m/Y" }}
+        </p>
+      </div>
+
+      <div class="hr-form-card-body">
+
+        <div class="hr-info-box">
+          <i class="bi bi-info-circle-fill"></i>
+          <span>
+            Upload your bank statement as a CSV or Excel (XLS/XLSX) file and the system will parse it
+            to try matching transactions by date and amount. Auto-matched rows are pre-ticked.
+          </span>
+        </div>
+
+        {% if errors %}
+        <div class="hr-error-box">
+          <strong>Upload failed:</strong>
+          <ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul>
+        </div>
+        {% endif %}
+
+        {% if form.non_field_errors %}
+        <div class="hr-error-box">{% for e in form.non_field_errors %}{{ e }}{% endfor %}</div>
+        {% endif %}
+
+        <form method="post" enctype="multipart/form-data" novalidate>
+          {% csrf_token %}
+
+          <div class="hr-dropzone" id="dropZone">
+            <input type="file" name="{{ form.statement_file.html_name }}"
+                   id="{{ form.statement_file.id_for_label }}"
+                   accept=".csv,.xls,.xlsx" required>
+            <div id="drop_content">
+              <div class="hr-dropzone-icon"><i class="bi bi-cloud-arrow-up-fill"></i></div>
+              <h6>Drag and drop a CSV/Excel file</h6>
+              <p>or click to browse &nbsp;&bull;&nbsp; Max 10 MB &nbsp;&bull;&nbsp; CSV/XLS/XLSX for auto-match</p>
+            </div>
+          </div>
+
+        {% if form.statement_file.errors %}
+        <div style="font-size:12px;color:var(--red);margin-top:6px;">
+          {{ form.statement_file.errors|join:", " }}
+        </div>
+        {% endif %}
+
+          <!-- CSV Format Example -->
+          <div class="hr-csv-example">
+            <div class="hr-csv-example-header">
+              <i class="bi bi-table"></i> CSV Format Example
+            </div>
+            <pre>Date,Description,Reference,Debit,Credit
+01/03/2026,Opening Balance,,5000.00,
+05/03/2026,Invoice Payment Received,INV-001,,2500.00
+10/03/2026,Vendor Payment,BILL-042,3500.00,
+15/03/2026,Bank Charge,,50.00,
+20/03/2026,Interest Credit,,,125.00</pre>
+            <div class="hr-csv-notes">
+              <ul style="padding-left:16px;margin:0;">
+                <li>Supported date formats: DD/MM/YYYY, DD-MM-YYYY, YYYY-MM-DD</li>
+                <li>Debit = money going out (payments, charges)</li>
+                <li>Credit = money coming in (receipts, interest)</li>
+                <li>Reference column is optional</li>
+                <li>A single "Amount" column is also supported (negative = debit, positive = credit)</li>
+              </ul>
+            </div>
+          </div>
+
+        </div><!-- /body -->
+
+        <div class="hr-form-card-footer">
+          <button type="submit" class="btn-hr btn-hr-primary">
+            <i class="bi bi-upload"></i> Upload &amp; Auto-Match
+          </button>
+          <a href="{% url 'reconciliation_working_screen' reconciliation.id %}"
+             class="btn-hr btn-hr-ghost">
+            Skip
+          </a>
+        </div>
+
+        </form>
+    </div>
+  </div>
+</div>
+
+<script>
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('{{ form.statement_file.id_for_label }}');
+
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault(); dropZone.classList.remove('dragover');
+  if (e.dataTransfer.files.length > 0) { fileInput.files = e.dataTransfer.files; showSelected(e.dataTransfer.files[0]); }
+});
+fileInput.addEventListener('change', function () { if (this.files.length > 0) showSelected(this.files[0]); });
+
+function showSelected(file) {
+  dropZone.classList.add('selected');
+  const kb = (file.size / 1024).toFixed(1);
+  document.getElementById('drop_content').innerHTML = `
+    <div class="hr-dropzone-icon ok"><i class="bi bi-check-circle-fill"></i></div>
+    <h6>File selected</h6>
+    <p class="file-name">${file.name} (${kb} KB)</p>
+    <p style="margin-top:4px;color:var(--text-muted);">Click "Upload &amp; Auto-Match" to continue</p>
+  `;
+}
+</script>
+{% endblock %}

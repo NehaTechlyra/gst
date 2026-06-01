@@ -1,0 +1,2021 @@
+{% extends "website/index.html" %}
+{% load static %}
+{% block exstyle %}
+<link href="{% static 'style/general.css' %}" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Ubuntu&display=swap" rel="stylesheet">
+
+<script src="{% static 'css/paytermmodal.css' %}"></script>
+
+{% endblock exstyle %}
+{% block page_title %}Revise Purchase Order{% endblock page_title %}<!--add title-->
+{% block scripts %}
+<script>
+  // ✅ Make company_is_india flag available to JavaScript
+  const COMPANY_IS_INDIA = {{ company_is_india|lower }};
+  const COMPANY_TAX_TYPE = String("{{ company_tax_type|default:'' }}").trim().toUpperCase();
+</script>
+<script>
+//  THIS MUST RUN BEFORE ANY OTHER SCRIPTS
+(function() {
+  console.log('=== EARLY SHIPPING SETUP ===');
+  
+  // Immediately store the saved shipping data BEFORE DOMContentLoaded
+  const savedShippingData = {
+    attention: '{{ shipping_attention|escapejs }}',
+    email: '{{ shipping_email|escapejs }}',
+    phone: '{{ shipping_phone|escapejs }}',
+    country: '{{ shipping_country|escapejs }}',
+    address1: '{{ shipping_address1|escapejs }}',
+    address2: '{{ shipping_address2|escapejs }}',
+    city: '{{ shipping_city|escapejs }}',
+    state: '{{ shipping_state|escapejs }}',
+    postal: '{{ shipping_postal_code|escapejs }}'
+  };
+  
+  console.log('Saved shipping data from Django:', savedShippingData);
+  
+  // Check if we have saved shipping data
+  const hasSavedShipping = Object.values(savedShippingData).some(val => val !== '');
+  console.log('Has saved shipping:', hasSavedShipping);
+  
+  // Store globally IMMEDIATELY so loadVendorDetails can see it
+  window.hasSavedShippingData = hasSavedShipping;
+  window.savedShippingData = savedShippingData;
+  
+  console.log('Set window.hasSavedShippingData:', window.hasSavedShippingData);
+  console.log('=== EARLY SHIPPING SETUP COMPLETE ===');
+})();
+
+document.addEventListener('DOMContentLoaded', function() {
+  console.log('=== DOM LOADED - SHIPPING SETUP ===');
+  console.log('window.hasSavedShippingData:', window.hasSavedShippingData);
+  console.log('window.savedShippingData:', window.savedShippingData);
+  
+  // Function to display shipping address - MAKE IT GLOBAL
+  window.displayShippingAddress = function(data) {
+    console.log('displayShippingAddress called with:', data);
+    
+    const shipNameEl = document.getElementById('shipping-name');
+    const shipAddrEl = document.getElementById('shipping-address');
+    const shipContactEl = document.getElementById('shipping-contact');
+    
+    if (shipNameEl) {
+      shipNameEl.innerText = data.attention || '';
+      console.log('Set shipping-name to:', data.attention);
+    }
+    
+    if (shipAddrEl) {
+      let lines = [];
+      if (data.address1) lines.push(data.address1);
+      if (data.address2) lines.push(data.address2);
+      let loc = '';
+      if (data.city) loc += data.city;
+      if (data.state) loc += (loc ? ', ' : '') + data.state;
+      if (data.postal) loc += (loc ? ' - ' : '') + data.postal;
+      if (data.country) loc += (loc ? ', ' : '') + data.country;
+      if (loc) lines.push(loc);
+      const displayText = lines.length > 0 ? lines.join('\n') : 'New Address';
+      shipAddrEl.innerText = displayText;
+      console.log('Set shipping-address to:', displayText);
+    }
+    if (shipContactEl) {
+      shipContactEl.innerText = (data.email ? data.email + (data.phone ? ' | ' + data.phone : '') : (data.phone || ''));
+    }
+    
+    // Update place of supply if state is present
+    if (data.state) {
+      const placeDiv = document.getElementById('place-of-supply');
+      const placeHidden = document.querySelector('input[name="place_of_supply"]');
+      if (placeDiv) placeDiv.innerText = data.state;
+      if (placeHidden) placeHidden.value = data.state;
+      console.log('Set place of supply to:', data.state);
+    }
+  };
+  
+  //  NEW: Display saved shipping immediately when vendor info is visible
+  const vendorInfo = document.getElementById('vendor-info');
+  if (vendorInfo && window.hasSavedShippingData) {
+    // Watch for vendor info to become visible
+    const checkVendorVisible = setInterval(() => {
+      if (vendorInfo.style.display !== 'none') {
+        console.log('Vendor info is visible, displaying saved shipping');
+        window.displayShippingAddress(window.savedShippingData);
+        clearInterval(checkVendorVisible);
+      }
+    }, 100);
+    
+    // Stop checking after 5 seconds
+    setTimeout(() => clearInterval(checkVendorVisible), 5000);
+  }
+  
+  //  Get modal instance once
+  const modalEl = document.getElementById('shippingAddressModal');
+  let shippingModal = null;
+  
+  if (modalEl) {
+    shippingModal = new bootstrap.Modal(modalEl, {
+      backdrop: true,
+      keyboard: true
+    });
+  }
+  
+  //  Helper function to properly close modal
+  function closeShippingModal() {
+    console.log('Closing shipping modal...');
+    
+    if (shippingModal) {
+      shippingModal.hide();
+    }
+    
+    // Force cleanup of backdrop
+    requestAnimationFrame(() => {
+      const backdrops = document.querySelectorAll('.modal-backdrop');
+      backdrops.forEach(backdrop => backdrop.remove());
+      document.body.classList.remove('modal-open');
+      document.body.style.overflow = '';
+      document.body.style.paddingRight = '';
+    });
+  }
+  
+  // Edit shipping button handler
+  const editShippingBtn = document.getElementById('edit-shipping-btn');
+  if (editShippingBtn) {
+    editShippingBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      console.log('Edit shipping clicked');
+      
+      // Populate modal with saved data
+      if (window.savedShippingData) {
+        document.getElementById('sa_attention').value = window.savedShippingData.attention;
+        document.getElementById('sa_email').value = window.savedShippingData.email;
+        document.getElementById('sa_phone').value = window.savedShippingData.phone;
+        document.getElementById('sa_country').value = window.savedShippingData.country;
+        document.getElementById('sa_address1').value = window.savedShippingData.address1;
+        document.getElementById('sa_address2').value = window.savedShippingData.address2;
+        document.getElementById('sa_city').value = window.savedShippingData.city;
+        document.getElementById('sa_state').value = window.savedShippingData.state;
+        document.getElementById('sa_postal').value = window.savedShippingData.postal;
+      }
+      
+      // Show modal
+      if (shippingModal) {
+        shippingModal.show();
+      }
+    });
+  }
+  
+  // Save shipping button handler
+  const saveShippingBtn = document.getElementById('saveShippingBtn');
+  if (saveShippingBtn) {
+    saveShippingBtn.addEventListener('click', function() {
+      console.log('Save shipping clicked');
+      
+      const newData = {
+        attention: document.getElementById('sa_attention').value || '',
+        email: document.getElementById('sa_email').value || '',
+        phone: document.getElementById('sa_phone').value || '',
+        country: document.getElementById('sa_country').value || '',
+        address1: document.getElementById('sa_address1').value || '',
+        address2: document.getElementById('sa_address2').value || '',
+        city: document.getElementById('sa_city').value || '',
+        state: document.getElementById('sa_state').value || '',
+        postal: document.getElementById('sa_postal').value || ''
+      };
+      
+      // Update window variables
+      window.savedShippingData = newData;
+      window.hasSavedShippingData = Object.values(newData).some(val => val !== '');
+      
+      // Update hidden inputs
+      document.getElementById('shipping_attention').value = newData.attention;
+      document.getElementById('shipping_email').value = newData.email;
+      document.getElementById('shipping_phone').value = newData.phone;
+      document.getElementById('shipping_country').value = newData.country;
+      document.getElementById('shipping_address1').value = newData.address1;
+      document.getElementById('shipping_address2').value = newData.address2;
+      document.getElementById('shipping_city').value = newData.city;
+      document.getElementById('shipping_state').value = newData.state;
+      document.getElementById('shipping_postal_code').value = newData.postal;
+      
+      // Update display
+      window.displayShippingAddress(newData);
+      
+      // Close modal properly
+      closeShippingModal();
+    });
+  }
+  
+  //  Cleanup when modal is hidden (backup safety net)
+  if (modalEl) {
+    modalEl.addEventListener('hidden.bs.modal', function() {
+      requestAnimationFrame(() => {
+        const backdrops = document.querySelectorAll('.modal-backdrop');
+        backdrops.forEach(backdrop => backdrop.remove());
+        document.body.classList.remove('modal-open');
+        document.body.style.overflow = '';
+        document.body.style.paddingRight = '';
+      });
+    });
+  }
+  
+  console.log('=== SHIPPING SETUP COMPLETE ===');
+});
+</script>
+<script>
+window.initialPurchaseCurrencyId = "{{ order.document_currency_id|default:''|escapejs }}";
+window.initialPurchaseFxRate = "{{ order.fx_rate_to_base|default:'1.000000'|escapejs }}";
+window.initialPurchaseFxDate = "{% if order.fx_rate_date %}{{ order.fx_rate_date|date:'Y-m-d' }}{% endif %}";
+window.initialPurchaseVendorId = "{{ order.vendor_id|default:''|escapejs }}";
+window.isExistingPurchaseOrderEdit = true;
+window.preserveInitialPurchaseFx = true;
+window.lockPurchaseOrderCurrency = true;
+</script>
+<script src="{% static 'js/purchase_order.js' %}?v={{ today }}"></script>
+<script src="{% static 'js/location_selects.js' %}?v={{ today }}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  if (typeof setDocumentCurrencyLocked === 'function') {
+    setDocumentCurrencyLocked(true);
+  }
+});
+</script>
+<script src="{% static 'js/cancel_confirm.js' %}"></script>
+
+<script>
+// Initialize item modal Select2 dropdowns
+function initializeItemModalSelects() {
+  // Unit select
+  $('#item_unit_select').select2({
+    placeholder: 'Choose unit',
+    allowClear: true,
+    minimumInputLength: 0,
+    dropdownParent: $('#addItemModal'),
+    ajax: {
+      url: (function() {
+        var pathParts = window.location.pathname.split('/');
+        var companyCode = pathParts[1] || '';
+        return '/' + companyCode + '/Items/unit/';
+      })(),
+      dataType: 'json',
+      delay: 250,
+      data: function(params) {
+        return { q: params.term };
+      },
+        processResults: function(data) {
+        let results = data.map(function(item) {
+          return { id: item.id, text: item.name };
+        });
+        // Add "+New" option at the end
+        results.push({
+          id: 'new',
+          text: '+ New Unit',
+          isNew: true
+        });
+        return { results: results };
+      },
+      cache: true
+    }
+  });
+
+  // Intra Tax select
+  $('#item_intra_tax_select').select2({
+    placeholder: 'Choose Intra State Tax Rate',
+    allowClear: true,
+    dropdownParent: $('#addItemModal'),
+    ajax: {
+      url: (function() {
+        var pathParts = window.location.pathname.split('/');
+        var companyCode = pathParts[1] || '';
+        return '/' + companyCode + '/Items/tax-groups/';
+      })(),
+      dataType: 'json',
+      delay: 250,
+      data: function (params) {
+        return { q: params.term };
+      },
+        processResults: function (data) {
+        return data;
+      },
+      cache: true
+    }
+  });
+
+  // Inter Tax select
+  $('#item_inter_tax_select').select2({
+    placeholder: 'Choose Inter State Tax Rate',
+    allowClear: true,
+    dropdownParent: $('#addItemModal'),
+    ajax: {
+      url: (function() {
+        var pathParts = window.location.pathname.split('/');
+        var companyCode = pathParts[1] || '';
+        return '/' + companyCode + '/Items/inter-state-taxes/';
+      })(),
+      dataType: 'json',
+      delay: 250,
+      data: function (params) { return { q: params.term, scope: 'inter' }; },
+        processResults: function (data) {
+        return data;
+      },
+      cache: true
+    }
+  });
+
+  // Default Tax select (for non-India countries)
+  $('#item_default_tax_select').select2({
+    placeholder: 'Choose Tax Rate',
+    allowClear: true,
+    dropdownParent: $('#addItemModal'),
+    ajax: {
+      url: (function() {
+        var pathParts = window.location.pathname.split('/');
+        var companyCode = pathParts[1] || '';
+        return '/' + companyCode + '/Items/inter-state-taxes/';
+      })(),
+      dataType: 'json',
+      delay: 250,
+      data: function (params) {
+        const scope = COMPANY_TAX_TYPE === 'TURNOVER' ? 'local' : 'default';
+        return { q: params.term, scope: scope };
+      },
+        processResults: function (data) {
+        return data;
+      },
+      cache: true
+    }
+  });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  let currentRowIndex = null;
+  //const addItemModal = new bootstrap.Modal(document.getElementById('addItemModal'));
+
+  // Toggle tax fields based on tax preference AND company country
+  $('#addItemModal').on('change', '#item_tax_pref', function() {
+    updateTaxFieldsVisibility();
+  });
+
+  function updateTaxFieldsVisibility() {
+    const taxPref = $('#item_tax_pref').val();
+    if (COMPANY_TAX_TYPE === 'NONE') {
+      $('#item_tax_pref').val('non_taxable').prop('disabled', true);
+      $('#item_tax_fields, #item_indian_tax_fields, #item_default_tax_fields, #item_sales_purchase_tax_fields').hide();
+      $('#item_intra_tax_select, #item_inter_tax_select, #item_default_tax_select, #item_sales_tax_select, #item_purchase_tax_select').attr('required', false);
+      return;
+    }
+    $('#item_tax_pref').prop('disabled', false);
+    if (taxPref === 'taxable') {
+      $('#item_tax_fields').show();
+      // Show appropriate tax fields based on company tax type
+      if (COMPANY_TAX_TYPE === 'GST') {
+        $('#item_indian_tax_fields').show();
+        $('#item_default_tax_fields').hide();
+        $('#item_sales_purchase_tax_fields').hide();
+        $('#item_intra_tax_select').attr('required', true);
+        $('#item_inter_tax_select').attr('required', true);
+        $('#item_default_tax_select').attr('required', false);
+        $('#item_sales_tax_select, #item_purchase_tax_select').attr('required', false);
+      } else if (COMPANY_TAX_TYPE === 'SALES') {
+        $('#item_indian_tax_fields').hide();
+        $('#item_default_tax_fields').hide();
+        $('#item_sales_purchase_tax_fields').show();
+        $('#item_intra_tax_select, #item_inter_tax_select, #item_default_tax_select').attr('required', false);
+        $('#item_sales_tax_select, #item_purchase_tax_select').attr('required', true);
+      } else {
+        $('#item_indian_tax_fields').hide();
+        $('#item_default_tax_fields').show();
+        $('#item_sales_purchase_tax_fields').hide();
+        $('#item_intra_tax_select').attr('required', false);
+        $('#item_inter_tax_select').attr('required', false);
+        $('#item_default_tax_select').attr('required', true);
+        $('#item_sales_tax_select, #item_purchase_tax_select').attr('required', false);
+      }
+    } else {
+      $('#item_tax_fields').hide();
+      $('#item_intra_tax_select').attr('required', false);
+      $('#item_inter_tax_select').attr('required', false);
+      $('#item_default_tax_select').attr('required', false);
+      $('#item_sales_tax_select, #item_purchase_tax_select').attr('required', false);
+    } else {
+      $('#item_tax_fields').hide();
+      $('#item_intra_tax_select').attr('required', false);
+      $('#item_inter_tax_select').attr('required', false);
+      $('#item_default_tax_select').attr('required', false);
+    }
+
+    $('#item_sales_tax_select').select2({
+      placeholder: 'Choose Sales Tax Rate',
+      allowClear: true,
+      dropdownParent: $('#addItemModal'),
+      ajax: {
+        url: (typeof salesCompanyPrefix !== 'undefined' ? salesCompanyPrefix : '/' + (window.location.pathname.split('/')[1] || '')) + '/Items/inter-state-taxes/',
+        dataType: 'json',
+        delay: 250,
+        data: function (params) { return { q: params.term, scope: 'sales' }; },
+        processResults: function (data) { return data; },
+        cache: true
+      }
+    });
+    $('#item_purchase_tax_select').select2({
+      placeholder: 'Choose Purchase Tax Rate',
+      allowClear: true,
+      dropdownParent: $('#addItemModal'),
+      ajax: {
+        url: (typeof salesCompanyPrefix !== 'undefined' ? salesCompanyPrefix : '/' + (window.location.pathname.split('/')[1] || '')) + '/Items/inter-state-taxes/',
+        dataType: 'json',
+        delay: 250,
+        data: function (params) { return { q: params.term, scope: 'purchase' }; },
+        processResults: function (data) { return data; },
+        cache: true
+      }
+    });
+  }
+
+  
+
+  // Save new item
+  $('#saveNewItemBtn').on('click', function() {
+    const form = $('#addItemForm')[0];
+
+
+    // ✅ Use native HTML5 validation
+    if (!form.checkValidity()) {
+      form.reportValidity(); // Shows native browser validation messages
+      return;
+    }
+    
+    // Basic validation
+    const itemName = $('#item_name').val().trim();
+    const itemUnit = $('#item_unit_select').val();
+    const costPrice = $('#item_cost_price').val();
+    
+    if (!itemName) {
+      alert('Please enter item name');
+      $('#item_name').focus();
+      return;
+    }
+    
+    if (!itemUnit) {
+      $('#item_unit_select').next('.select2-container').addClass('is-invalid');
+      if (!$('#item_unit_select').next().next('.invalid-feedback').length) {
+        $('#item_unit_select').next('.select2-container').after(
+          '<div class="invalid-feedback d-block">Please select a unit</div>'
+        );
+      }
+      return;
+
+    }
+
+    if (!costPrice || parseFloat(costPrice) <= 0) {
+      alert('Please enter a valid cost price');
+      $('#item_cost_price').focus();
+      return;
+    }
+
+
+    // ✅ Validate tax fields when taxable
+    const taxPref = $('#item_tax_pref').val();
+    if (taxPref === 'taxable' && COMPANY_TAX_TYPE !== 'NONE') {
+      if (COMPANY_TAX_TYPE === 'GST') {
+        const intraState = $('#item_intra_tax_select').val();
+        const interState = $('#item_inter_tax_select').val();
+        
+        if (!intraState || !interState) {
+          if (!intraState) {
+            $('#item_intra_tax_select').next('.select2-container').addClass('is-invalid');
+            if (!$('#item_intra_tax_select').next().next('.invalid-feedback').length) {
+              $('#item_intra_tax_select').next('.select2-container').after(
+                '<div class="invalid-feedback d-block">Please select intra state tax rate</div>'
+              );
+            }
+          }
+          if (!interState) {
+            $('#item_inter_tax_select').next('.select2-container').addClass('is-invalid');
+            if (!$('#item_inter_tax_select').next().next('.invalid-feedback').length) {
+              $('#item_inter_tax_select').next('.select2-container').after(
+                '<div class="invalid-feedback d-block">Please select inter state tax rate</div>'
+              );
+            }
+          }
+          return;
+        }
+      } else if (COMPANY_TAX_TYPE === 'SALES') {
+        const salesTax = $('#item_sales_tax_select').val();
+        const purchaseTax = $('#item_purchase_tax_select').val();
+        if (!salesTax || !purchaseTax) {
+          if (!salesTax) {
+            $('#item_sales_tax_select').next('.select2-container').addClass('is-invalid');
+            if (!$('#item_sales_tax_select').next().next('.invalid-feedback').length) {
+              $('#item_sales_tax_select').next('.select2-container').after(
+                '<div class="invalid-feedback d-block">Please select sales tax rate</div>'
+              );
+            }
+          }
+          if (!purchaseTax) {
+            $('#item_purchase_tax_select').next('.select2-container').addClass('is-invalid');
+            if (!$('#item_purchase_tax_select').next().next('.invalid-feedback').length) {
+              $('#item_purchase_tax_select').next('.select2-container').after(
+                '<div class="invalid-feedback d-block">Please select purchase tax rate</div>'
+              );
+            }
+          }
+          return;
+        }
+      } else {
+        const defaultTax = $('#item_default_tax_select').val();        
+        if (!defaultTax) {
+          $('#item_default_tax_select').next('.select2-container').addClass('is-invalid');
+          if (!$('#item_default_tax_select').next().next('.invalid-feedback').length) {
+            $('#item_default_tax_select').next('.select2-container').after(
+              '<div class="invalid-feedback d-block">Please select tax rate</div>'
+            );
+          }
+          return;
+        }
+      }
+    }
+
+    // Prepare form data
+    //const formData = new FormData(form[0]);
+    const formData = new FormData(form);
+    if (COMPANY_TAX_TYPE === 'NONE') {
+      formData.set('tax_pref', 'non_taxable');
+    }
+
+    // Add CSRF token
+    formData.append('csrfmiddlewaretoken', $('[name=csrfmiddlewaretoken]').first().val());
+
+    // Send AJAX request to save item
+    var pathParts = window.location.pathname.split('/');
+    var companyCode = pathParts[1] || '';
+    $.ajax({
+      url: '/' + companyCode + '/Items/create-item-ajax/',
+      method: 'POST',
+      data: formData,
+      processData: false,
+      contentType: false,
+      headers: {
+        'X-Requested-With': 'XMLHttpRequest'
+      },
+      success: function(response) {
+        if (response.success) {
+          const item = response.item;
+          const $row = $('tr').eq(currentRowIndex + 1); // +1 because of header row
+          
+          // Alternative: Find the row by select name
+          const productSelect = $('select[name="form-' + currentRowIndex + '-product"]');
+          const $targetRow = productSelect.closest('tr');
+          
+          if ($targetRow.length) {
+            console.log('Processing newly created item:', item);
+            
+            // Create option with item ID and barcode
+            const itemValue = item.id + '_' + (item.barcode || '');
+            const itemText = item.name + ' ' + (item.unit || '');
+            
+            const newOption = new Option(itemText, itemValue, true, true);
+            
+            // Create complete item data object
+            const gstIncludeValue = item.taxincld_costprice ? 'true' : 'false';
+            const taxRateValue = parseFloat(item.tax_rate) || 0;
+
+            // Calculate the tax-exclusive price (o_price) if GST is inclusive
+            let costPrice = parseFloat(item.cost_price) || 0;
+            let taxExclusivePrice = costPrice; // Default to same price
+
+            if (item.taxincld_costprice && taxRateValue > 0) {
+              console.log("item.taxincld_costprice && taxRateValue > 0");
+              // If price includes GST, calculate the base price without tax
+              // Formula: base_price = inclusive_price / (1 + tax_rate/100)
+              //taxExclusivePrice = sellingPrice / (1 + (taxRateValue / 100));
+              taxExclusivePrice = Math.round((costPrice / (1 + (taxRateValue / 100))) * 100) / 100;
+
+              console.log('GST Inclusive - cost Price:', costPrice, 
+                          'Tax Rate:', taxRateValue, 
+                          'Tax-Exclusive Price:', taxExclusivePrice);
+            }
+            
+            const completeItemData = {
+              id: itemValue,
+              text: itemText,
+              description: item.hsn_code || item.sac_code || '',
+              price: costPrice,
+              gstinclude: gstIncludeValue,
+              o_price: taxExclusivePrice,
+              uom: item.unit || '',
+              tax_id: item.tax_id || '',
+              tax_name: item.tax_name || '',
+              tax_rate: taxRateValue,
+              tax_pref: item.tax_pref || 'taxable',
+              isNew: false
+            };
+            
+            console.log('Complete item data:', completeItemData);
+            
+            // Attach data to the option element
+            $(newOption).data(completeItemData);
+            
+            // Add option to select and select it
+            productSelect.empty().append(newOption).trigger('change');
+            
+            // ========================================
+            // CRITICAL FIX: Manually populate the row
+            // ========================================
+            productSelect.trigger('select2:select', { params: { data: completeItemData } });
+
+            // 1. Set description
+            $targetRow.find('.desc').val(completeItemData.description || '');
+            
+            // 2. Set hidden fields
+            $targetRow.find('.gstinclude').val(completeItemData.gstinclude);
+            $targetRow.find('.o_price').val(completeItemData.o_price);
+            
+            // 3. Set price and quantity
+            $targetRow.find('.price').val(completeItemData.o_price);
+            $targetRow.find('.qty').val(1);
+            
+            // 4. Store tax_pref as data attribute on the row
+            $targetRow.data('tax-pref', completeItemData.tax_pref || '');
+            
+            // 5. Handle tax select based on tax preference
+            let $taxSelect = $targetRow.find('.tax-select');
+            $taxSelect.empty();
+            
+            console.log('Tax preference:', completeItemData.tax_pref);
+            console.log('Tax ID:', completeItemData.tax_id);
+            console.log('Tax Rate:', completeItemData.tax_rate);
+            
+            if (completeItemData.tax_pref === 'non_taxable') {
+              // For non-taxable items: disable tax select and show "Non-Taxable"
+              let nonTaxOption = new Option('Non-taxable', '', true, true);
+              $(nonTaxOption).data('rate', 0);
+              $taxSelect.append(nonTaxOption);
+              $taxSelect.prop('disabled', true);
+              $taxSelect.addClass('bg-light');
+              $taxSelect.data('rate', 0);
+              
+              // Disable select2 if initialized
+              if ($taxSelect.hasClass('select2-hidden-accessible')) {
+                $taxSelect.select2('destroy');
+              }
+            } else {
+              // For taxable items: enable and populate tax
+              $taxSelect.prop('disabled', false);
+              $taxSelect.removeClass('bg-light');
+              
+              if (completeItemData.tax_id && completeItemData.tax_name) {
+                // Create the tax option with the rate attached
+                let taxOption = new Option(
+                  completeItemData.tax_name, 
+                  completeItemData.tax_id, 
+                  true, 
+                  true
+                );
+                
+                // ✅ CRITICAL: Attach rate to option using jQuery data AND data-rate attribute
+                $(taxOption).data('rate', completeItemData.tax_rate);
+                $(taxOption).attr('data-rate', completeItemData.tax_rate);
+                
+                $taxSelect.append(taxOption);
+                
+                // ✅ CRITICAL: Also set rate on the select itself
+                $taxSelect.data('rate', completeItemData.tax_rate);
+                
+                console.log('Tax option created with rate:', completeItemData.tax_rate);
+                console.log('Tax select data-rate:', $taxSelect.data('rate'));
+              } else {
+                $taxSelect.data('rate', 0);
+              }
+              
+              // Re-initialize select2 if needed
+              if (!$taxSelect.hasClass('select2-hidden-accessible')) {
+                initTaxSelect($taxSelect);
+              } else {
+                $taxSelect.trigger('change');
+              }
+            }
+            
+            // 6. Set discount to 0
+            $targetRow.find('.item-discount').val(0);
+            $targetRow.find('.discount-type').val('flat');
+            
+            // 7. Update HSN if present
+            if (item.hsn_code) {
+              $targetRow.find('.hsn-input').val(item.hsn_code);
+              $targetRow.find('.hsn-display').text(item.hsn_code);
+            }
+            
+            // ========================================
+            // 8. CRITICAL: Update row amount and totals
+            // ========================================
+            console.log('Calling updateRowAmount...');
+            updateRowAmount($targetRow);
+            
+            console.log('Calling calculateTotals...');
+            calculateTotals();
+            
+            console.log('Row amount:', $targetRow.find('.amount').text());
+          }
+
+          // CRITICAL FIX: Trigger validation after item is populated
+          setTimeout(function() {
+            if (typeof validateForm === 'function') {
+              validateForm();
+            }
+          }, 100);
+          
+          const closeAddItemModal = function() {
+            const modalEl = document.getElementById('addItemModal');
+            const forceHideIfNeeded = function() {
+              if (!modalEl || !modalEl.classList.contains('show')) return;
+              modalEl.classList.remove('show');
+              modalEl.style.display = 'none';
+              modalEl.setAttribute('aria-hidden', 'true');
+              modalEl.removeAttribute('aria-modal');
+              modalEl.removeAttribute('role');
+              document.body.classList.remove('modal-open');
+              document.body.style.removeProperty('overflow');
+              document.body.style.removeProperty('padding-right');
+              $('.modal-backdrop').remove();
+            };
+
+            if (typeof window.hideSalesItemModal === 'function') {
+              window.hideSalesItemModal();
+            } else if (window.bootstrap && bootstrap.Modal) {
+              bootstrap.Modal.getOrCreateInstance(modalEl).hide();
+            } else {
+              $('#addItemModal').modal('hide');
+            }
+            setTimeout(forceHideIfNeeded, 250);
+          };
+
+          closeAddItemModal();
+          
+          // Show success message
+          //alert('Item created successfully!');
+        } else {
+          alert('Error: ' + (response.error || 'Failed to create item'));
+        }
+      },
+      error: function(xhr) {
+        console.error('Error:', xhr);
+        const errorMsg = xhr.responseJSON?.error || 'An error occurred while saving the item';
+        alert(errorMsg);
+      }
+    });
+  });
+
+  // Initialize modal when shown
+  $('#addItemModal').on('shown.bs.modal', function() {
+    console.log("addItemModal shown.bs.modal is calling");
+    // Initialize tax field visibility based on country when modal opens
+    updateTaxFieldsVisibility();
+    
+    // Reset Select2 instances to ensure fresh data
+    if ($('#item_intra_tax_select').hasClass('select2-hidden-accessible')) {
+      $('#item_intra_tax_select').val(null).trigger('change');
+    }
+    if ($('#item_inter_tax_select').hasClass('select2-hidden-accessible')) {
+      $('#item_inter_tax_select').val(null).trigger('change');
+    }
+    if ($('#item_default_tax_select').hasClass('select2-hidden-accessible')) {
+      $('#item_default_tax_select').val(null).trigger('change');
+    }
+  });
+  // Close modal cleanup
+  $('#addItemModal').on('hidden.bs.modal', function() {
+    // Destroy all Select2 instances in the modal
+    $(this).find('.select2-hidden-accessible').each(function() {
+      $(this).select2('destroy');
+    });
+    // ✅ Also reset the form when modal closes
+      document.getElementById('addItemForm').reset();
+  });
+  // ✅ Make currentRowIndex accessible globally for the initItemSelect function
+    window.currentRowIndex = currentRowIndex;
+    window.setCurrentRowIndex = function(index) {
+      currentRowIndex = index;
+    };
+});
+</script>
+
+{% endblock scripts%}
+
+{% block content %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Purchase Order</title>
+  <style>
+    input[type="checkbox"][name$="-DELETE"] {
+  display: none;
+    }
+    button {
+    position: relative;
+  }
+
+  .savebtn:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+
+  .savebtn:disabled:hover::after {
+    content: "\26D4"; /* 🚫 block sign */
+    position: absolute;
+    color: red;
+    font-size: 1.5em;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+  }
+
+  .savebtn-wrapper {
+  display: inline-block;
+  position: relative;
+  cursor: not-allowed;
+}
+
+.savebtn:disabled {
+  opacity: 0.6;
+}
+
+
+    {% comment %} body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: #f8f8fb;
+      margin: 0;
+      padding: 0;
+      color: #43425d;
+    }
+    .container {
+      /* max-width: 800px; */
+      margin: 4px 17px;
+      padding: 8px 10px;
+      /* align-items:center; */
+      background: #fff;
+      /* border-radius: 10px; */
+      /* box-shadow: 0 2px 8px rgba(0,0,0,0.07); */
+    }
+    h2 {
+      margin-bottom: 0.2em;
+      font-size: 1.2rem;
+    }
+    .section-title {
+      font-size: 1.25rem;
+      margin-bottom: 1em;
+      color: #43425d;
+    }
+    .grid {
+      display: flex;
+      flex-wrap: wrap;
+      /* gap: 32px;
+      margin-bottom: 32px; */
+    }
+    .column {
+      flex: 1;
+      min-width: 250px;
+    }
+    label {
+      font-size: 0.92em;
+      margin-bottom: 6px;
+      display: block;
+      margin-top: 12px;
+      color: #777;
+      font-weight: 500;
+    } {% endcomment %}
+
+    label {
+      display:block;
+     }
+    
+    input, select, textarea {
+      width: 100%;
+      padding: 5px 12px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      margin-bottom: 10px;
+      font-size: 1rem;
+      outline: none;
+    }
+    .totals-row span {
+      color:#7d7cad;
+      font-size: 15px;
+      font-weight:bold;
+    }
+
+
+    
+    .purchase-edit-form {
+      padding-bottom: 24px;
+    }
+    .purchase-edit-form .grid {
+      margin-bottom: 18px;
+    }
+    .purchase-edit-form .section-title {
+      font-size: 1.05rem;
+      font-weight: 600;
+      color: #56588d;
+      margin-bottom: 14px;
+    }
+    .purchase-edit-form .items-table {
+      margin-bottom: 16px;
+    }
+    .purchase-edit-form .items-table th {
+      white-space: nowrap;
+    }
+    .purchase-edit-form .items-table td {
+      vertical-align: middle;
+    }
+    .purchase-edit-form .items-table .price,
+    .purchase-edit-form .items-table .qty,
+    .purchase-edit-form .items-table .item-discount,
+    .purchase-edit-form .items-table .tax-select {
+      min-width: 84px;
+    }
+    .purchase-edit-form .items-table .base-price .o_price_display {
+      min-width: 130px;
+    }
+    .purchase-edit-form .items-table td.amount {
+      white-space: nowrap;
+      min-width: 96px;
+      font-family: 'Ubuntu', sans-serif !important;
+    }
+    .purchase-edit-form .add-item-btn {
+      margin-bottom: 0;
+    }
+    .totals-section {
+      max-width: 380px;
+      float: right;
+      margin-top: 24px;
+      margin-bottom: 36px;
+      padding: 16px 20px;
+      background: #f7f7fa;
+      border-radius: 12px;
+      box-shadow: 0 1px 4px rgba(200,200,255,0.1);
+    }
+    .totals-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 1.01em;
+      margin-bottom: 8px;
+      align-items: center;
+      gap: 12px;
+    }
+    .totals-row strong {
+      color: #43425d;
+    }
+    .totals-section select {
+      width: 90px;
+      margin-left: 12px;
+    }
+    .notes-box {
+      margin-top: 0;
+      font-size: 1rem;
+    }
+    .notes-box label {
+      display: block;
+      margin-bottom: 8px;
+      color: #5f618f;
+      font-weight: 600;
+    }
+    .notes-box textarea {
+      width: 100%;
+      max-width: 100%;
+      height: 115px;
+      border-radius: 6px;
+      padding: 12px 14px;
+      font-size: 1rem;
+      margin-bottom: 0;
+      resize: vertical;
+    }
+    .po-bottom-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 380px;
+      gap: 28px;
+      align-items: start;
+      margin-top: 28px;
+    }
+    .po-main-panel,
+    .po-side-panel {
+      min-width: 0;
+    }
+    .po-main-panel {
+      grid-column: 1;
+      grid-row: 1;
+    }
+    .po-side-panel {
+      grid-column: 2;
+      grid-row: 1;
+    }
+    .po-side-panel .totals-section {
+      float: none;
+      width: 100%;
+      max-width: none;
+      margin: 0 0 20px;
+    }
+    .po-side-panel .totals-section:last-child {
+      margin-bottom: 0;
+    }
+    .savebtn-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 18px !important;
+    }
+    .savebtn-wrapper .btn {
+      min-width: 140px;
+    }
+    @media (max-width: 700px) {
+      .container { padding: 12px; }
+      .grid { gap: 16px; }
+      .totals-section { float: none; max-width: 100%; }
+    }
+    @media (max-width: 991.98px) {
+      .po-bottom-layout {
+        grid-template-columns: 1fr;
+        gap: 22px;
+      }
+      .po-main-panel,
+      .po-side-panel {
+        grid-column: auto;
+        grid-row: auto;
+      }
+    }
+    @media (max-width: 768px) {
+      .savebtn-wrapper .btn {
+        width: 100%;
+        min-width: 0;
+      }
+    }
+    tbody tr:hover .delete-row {
+      display: inline-block !important;
+      cursor: pointer;
+    }
+
+    .amount {
+  font-family: 'Ubuntu', sans-serif !important;
+}
+.rupee-sign
+{
+    font-family: 'Ubuntu', sans-serif !important;
+
+}
+
+
+
+    /* Vendor info styling to match design (copied from order_add) */
+    #vendor-info {
+      background: #ffffff;
+      border: 1px solid #e9ecef;
+      padding: 16px;
+      border-radius: 8px;
+      color: #333;
+      margin-top: 8px;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+    }
+    #vendor-info strong {
+      color: #515966ff;
+      font-size: 0.95rem;
+      display: block;
+      margin-bottom: 6px;
+    }
+    #vendor-info #billing-block { width: 60%; }
+    #vendor-info #shipping-block { width: 40%; }
+    #vendor-info > div { display: flex; }
+    #billing-name, #shipping-name { color: #515966ff; font-weight: 700; font-size: 1.02rem; }
+    #billing-address { color: #444; margin-top: 6px; white-space: pre-line; }
+    #billing-contact, #billing-gst { color: #666; margin-top: 6px; }
+    #shipping-address { color: #444; margin-top: 6px; text-decoration: none; cursor: default; }
+    #place-of-supply-select { max-width: 320px; margin-top: 6px; }
+    @media (max-width: 768px) {
+      #vendor-info > div { flex-direction: column; }
+      #vendor-info #billing-block, #vendor-info #shipping-block { width: 100%; }
+    }
+
+    /* Shipping modal scrollbar styling */
+    #shippingAddressModal .modal-body {
+      max-height: 70vh;
+      overflow-y: auto;
+    }
+
+    /* Hide body scrollbar when modal is open */
+    body.modal-open {
+      overflow: hidden !important;
+      padding-right: 0 !important;
+    }
+
+    #shippingAddressModal {
+      overflow: hidden;
+    }
+
+  </style>
+  {% if debug_post %}
+  <div style="background:#fff0f0;border:1px solid #ffcccc;padding:10px;margin:10px 0;">
+    <strong>Debug POST payload (server):</strong>
+    <pre style="white-space:pre-wrap;word-break:break-word;">{% for k,v in debug_post.items %}{{ k }}: {{ v }}
+{% endfor %}</pre>
+  </div>
+  {% endif %}
+
+
+  </style>
+</head>
+<body>
+  <div class="container mt-4">
+    
+    <!-- <form> -->
+    <form id="purchaseorder-form" class="purchase-edit-form" method="POST" action="{% if company_code %}{% url 'purchase_order_duplicate' company_code order.pk %}{% else %}{% url 'purchase_order_duplicate' order.pk %}{% endif %}">
+    {% csrf_token %}
+      {{ purchase_formset.management_form }}
+        <input type="hidden" name="form-INITIAL_FORMS" value="0">
+
+      <div class="grid">
+      
+          <p class="text-danger"><span >*</span>This field is required</p>
+
+        <div class="row">
+
+            <div class="col-md-6 mb-3">
+                    
+                <label for="{{ order_form.vendor.id_for_label }}">Vendor <span class="text-danger">*</span></label>
+                {% with form_field=order_form.vendor %}
+                  {{ form_field }}
+                  <script>
+                    document.addEventListener('DOMContentLoaded', function(){
+                      const sel = document.querySelector('select[name="vendor"]');
+                      if(sel && !sel.id) sel.id = 'vendor_select';
+                    });
+                  </script>
+                {% endwith %}
+
+                <div class="vendor-info" id="vendor-info" style="display:none; background:#f7f7fb; padding:10px; border-radius:6px;">
+                  <div style="display:flex; gap:24px; align-items:flex-start;">
+                    <div id="billing-block">
+                      <strong>BILLING ADDRESS</strong>
+                      <div id="billing-name" style="margin-top:6px;"></div>
+                      <div id="billing-address" style="color:#444; margin-top:6px;"></div>
+                      <div id="billing-contact" style="color:#666; margin-top:6px;"></div>
+                      <div id="billing-gst" style="color:#666; margin-top:6px;"></div>
+                    </div>
+                    <div id="shipping-block">
+                      <div class="shipping-header" style="display:flex; justify-content:space-between; align-items:center;">
+                        <strong>SHIPPING ADDRESS</strong>
+                        <a href="#" id="edit-shipping-btn" title="Edit shipping address" style="color:#3a7bd5; text-decoration:none;">✎</a>
+                      </div>
+                      <div id="shipping-name" style="margin-top:6px; color:#515966ff; font-weight:700; font-size:1.02rem;">&nbsp;</div>
+                      <div id="shipping-address" style="color:#444; margin-top:6px; white-space:pre-line;">New Address</div>
+                      <div id="shipping-contact" style="color:#666; margin-top:6px;"></div>
+                    </div>
+                  </div>
+                  <div style="margin-top:6px; display:flex; align-items:center; gap:10px;">
+                    <label style="font-weight:600; margin:0;">Place of Supply:</label>
+                    <div id="place-of-supply" style="color:#444;"></div>
+                    <input type="hidden" name="place_of_supply" id="place_of_supply_hidden" value="{{ place_of_supply|default:'' }}">
+                  </div>
+                </div>
+                <!-- Hidden inputs to store shipping address values for form submission -->
+                <input type="hidden" name="shipping_attention" id="shipping_attention" value="{{ shipping_attention|default:'' }}">
+                <input type="hidden" name="shipping_email" id="shipping_email" value="{{ shipping_email|default:'' }}">
+                <input type="hidden" name="shipping_phone" id="shipping_phone" value="{{ shipping_phone|default:'' }}">
+                <input type="hidden" name="shipping_country" id="shipping_country" value="{{ shipping_country|default:'' }}">
+                <input type="hidden" name="shipping_address1" id="shipping_address1" value="{{ shipping_address1|default:'' }}">
+                <input type="hidden" name="shipping_address2" id="shipping_address2" value="{{ shipping_address2|default:'' }}">
+                <input type="hidden" name="shipping_city" id="shipping_city" value="{{ shipping_city|default:'' }}">
+                <input type="hidden" name="shipping_state" id="shipping_state" value="{{ shipping_state|default:'' }}">
+                <input type="hidden" name="shipping_postal_code" id="shipping_postal_code" value="{{ shipping_postal_code|default:'' }}">
+                
+                
+                
+                {% comment %} <a href="#" style="font-size:0.96em; text-decoration:underline; color:#7988e8;">Choose a different vendor</a> {% endcomment %}
+            </div>
+            
+        </div>
+        </div>
+
+        <div class="row">
+            {% comment %} <div class="col-md-4 mb-3">
+                <label for="{{ order_form.order_number.id_for_label }}">order# <span class="text-danger">*</span></label>
+                {{ order_form.order_number}}
+            </div> {% endcomment %}
+            <div class="col-md-4 mb-3">
+                <label for="{{ order_form.date.id_for_label }}">Order Date <span class="text-danger">*</span></label>
+                {{ order_form.date}}
+            </div>
+            <div class="col-md-4 mb-3">
+              <label for="pay-terms">Payment Terms</label>
+              <select id="pay-terms" name="payment_term" style="width:100%;">
+                {% if order.payment_term %}
+                  <option value="{{ order.payment_term.id }}" selected>{{ order.payment_term.name }} ({{ order.payment_term.days }})</option>
+                {% endif %}
+              </select>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-4 mb-3">
+                <label for="document_currency">Document Currency</label>
+                <select
+                    id="document_currency"
+                    class="form-select select2 document-currency-locked"
+                    data-base-symbol="{{ company_base_currency_symbol }}"
+                    data-base-code="{{ company_base_currency_code }}"
+                    data-locked-by-vendor="1"
+                    disabled
+                >
+                    {% for currency in company_currencies %}
+                        <option value="{{ currency.id }}" 
+                                data-code="{{ currency.code }}" 
+                                data-symbol="{{ currency.symbol|default:currency.code }}" 
+                                data-base-symbol="{{ company_base_currency_symbol }}" 
+                                {% if order.document_currency_id == currency.id or not order.document_currency_id and currency.code == company_base_currency_code %}selected{% endif %}>
+                            {{ currency.code }}
+                        </option>
+                    {% endfor %}
+                </select>
+                <input type="hidden" name="document_currency" id="document_currency_locked_value" value="{{ order.document_currency_id|default:'' }}">
+            </div>
+            <div class="col-md-4 mb-3" id="exchange_rate_container" {% if not order.document_currency or order.document_currency.code == company_base_currency_code %}style="display: none;"{% endif %}>
+                <label for="fx_rate_to_base">Exchange Rate (1 <span class="doc-currency-code">{{ order.document_currency.code|default:company_base_currency_code }}</span> = ? <span class="base-currency-code">{{ company_base_currency_code }}</span>)</label>
+                <input type="number" name="fx_rate_to_base" id="fx_rate_to_base" step="0.000001" class="form-control" value="{{ order.fx_rate_to_base|default:'1.000000' }}">
+            </div>
+            <div class="col-md-4 mb-3" id="exchange_rate_date_container" {% if not order.document_currency or order.document_currency.code == company_base_currency_code %}style="display: none;"{% endif %}>
+                <label for="fx_rate_date">Exchange Rate Date</label>
+                <input type="date" name="fx_rate_date" id="fx_rate_date" class="form-control" value="{{ order.fx_rate_date|date:'Y-m-d'|default:today }}">
+            </div>
+        </div>
+
+      <div class="section-title" style="margin-top:30px;">Item Details<span class="text-danger"> *</span></div>
+      {% comment %} <p>item.name: {{ item_formset.name }}</p>  {% endcomment %}
+      <table class="items-table" id="items-table">
+  <thead>
+    <tr>
+      <th class="col-md-3">Item</th>
+      <th>Description</th>
+      <th>Quantity</th>
+      <th>Price</th>
+      <th>Base Currency Price</th>
+      <th style="display:none;"></th>
+
+      <th class="col-md-2">Tax</th>
+      <th class="col-md-2">Discount</th>
+      <th>Amount</th>
+      <th></th>
+    </tr>
+  </thead>
+<tbody>
+   
+    {% for form in purchase_formset %}
+      <tr>
+      <td>
+        {{ form.product }}
+        <div style="margin-top:6px;">
+          <a href="#" class="open-hsn-btn">HSN: <span class="hsn-display">{% if form.instance and form.instance.hsn_code %}{{ form.instance.hsn_code }}{% elif form.instance and form.instance.product and form.instance.product.hsn_code %}{{ form.instance.product.hsn_code }}{% endif %}</span> <small style="color:#3a7bd5;">Update</small></a>
+          <input type="hidden" name="{{ form.prefix }}-hsn_code" class="hsn-input" value="{% if form.instance and form.instance.hsn_code %}{{ form.instance.hsn_code }}{% elif form.instance and form.instance.product and form.instance.product.hsn_code %}{{ form.instance.product.hsn_code }}{% endif %}">
+        </div>
+      </td>
+         
+          <td>{{ form.description }}</td>
+          <td>{{ form.quantity }}</td>
+          <td>{{ form.price }}</td>
+          <td class="base-price">
+            <input type="text" class="form-control form-control-sm o_price_display" name="{{ form.prefix }}-o_price_display" value="{% if form.o_price.value %}{{ form.o_price.value|floatformat:2 }}{% endif %}" readonly>
+          </td>
+          <td>{{ form.prd_tax }}</td>
+          
+
+          <td class="discount-item"><div style="display:flex;align-items:center; gap:4px;">{{ form.prd_disvalue }}{{ form.prd_distype }}</div></td>
+          <td style="display:none;">
+            <input type="hidden" name="{{ form.prefix }}-gstinclude" class="gstinclude" value="{{ form.gstinclude.value|default:'false' }}">
+          </td>
+          <td style="display:none;">
+            <input type="hidden" name="{{ form.prefix }}-o_price" class="o_price" value="{{ form.o_price.value|default:0 }}">
+          </td>
+          <td class="amount">{{ order.document_currency.symbol|default:order.document_currency.code|default:company_base_currency_symbol }}0.00</td>
+          
+          <td>
+            {{ form.DELETE }}
+            <button type="button" class="remove-item-btn">X</button>
+          </td>
+        </tr>
+      {% endfor %}
+  
+  </tbody> 
+
+
+
+</table>
+
+      <button type="button" id="add-item-btn" class="add-item-btn">+ Add an Item</button>
+
+    <div class="po-bottom-layout">
+      <div class="po-side-panel">
+  <div class="totals-section">
+      <div class="totals-row">
+        <span>Subtotal</span>
+        <strong id="subtotal" style="font-family:Ubuntu;" name="subtotal" class="amount">₹ 0.00</strong>
+      </div>
+      
+      <div class="totals-row">
+        
+      </div>
+      
+      {% if company_tax_type|default:''|upper != 'NONE' %}
+      {% if company_tax_type == 'GST' %}
+        <div class="totals-row">
+          <span>Total CGST</span>
+          <strong id="tax-total-cgst" class="amount">₹ 0.00</strong>
+        </div>
+        <div class="totals-row">
+          <span>Total SGST</span>
+          <strong id="tax-total-sgst" class="amount">₹ 0.00</strong>
+        </div>
+      {% else %}
+        <div class="totals-row">
+          {% if company_tax_type|default:''|upper == 'VAT' or company_tax_type|default:''|upper == 'SALES' or company_tax_type|default:''|upper == 'TURNOVER' %}
+            <span>Total Tax</span>
+          {% else %}<br/>            <span>Total VAT</span>
+          {% endif %}
+          <strong id="tax-total-vat" class="amount">₹0.00</strong>
+        </div>
+      {% endif %}
+      {% endif %}
+      <div class="totals-row">
+        <span>Add Discount</span>
+          <input type="number" id="grand-discount" value="{% if order.discount_value %}{{ order.discount_value }}{% else %}0{% endif %}" name="grand-discount-value" step="0.01" style="width:70px; margin-left:10px;">
+          <select id="grand-discount-type" name="discount_type" class="rupee-sign" >
+            <option value="percent" {% if order.discount_type == 'percent' %}selected{% endif %}>%</option>
+            <option value="flat" class="amount" {% if order.discount_type == 'flat' %}selected{% endif %}>&#x20B9;</option>
+          </select>
+          <strong id="grandDiscountValue" class="rupee-sign" style="padding-left:5px;">₹ 0.00</strong>
+          
+      </div>
+      <div class="totals-row">
+        <span>Total Discount</span>
+        <strong id="discount-amount" class="amount">₹ 0.00</strong>
+      </div>
+      <hr>
+      <div class="totals-row" style="margin-top:14px;">
+        <span style="font-size:1.2em; font-weight:600;">Total</span>
+        <strong style="font-size:1.18em; color:#5a5c8a;" id="grand-total" class="amount">₹ 0.00</strong>
+        <input style="font-size:1.18em; color:#5a5c8a;" type="hidden" class="amount" name="grandTotal" id="grandTotal" value="0.00">
+
+      </div>
+    </div>
+    <!-- ===== BASE CURRENCY TRANSACTION - RESTYLED TO MATCH TOTALS SECTION ===== -->
+    <div class="totals-section" id="base-transaction-summary"
+         data-base-symbol="{{ company_base_currency_symbol|default:"&#x20B9;" }}"
+         data-base-code="{{ company_base_currency_code }}"
+         style="clear:both; margin-top:12px; {% if not order.document_currency or order.document_currency.code == company_base_currency_code %}display: none;{% endif %}">
+
+      <!-- Clickable header row with toggle arrow -->
+      <div class="totals-row"
+           id="base-transaction-toggle"
+           style="cursor:pointer; user-select:none;"
+           onclick="
+             var body = document.getElementById('base-transaction-body');
+             var arrow = document.getElementById('base-transaction-arrow');
+             if (body.style.display === 'none') {
+               body.style.display = 'block';
+               arrow.textContent = '▲';
+             } else {
+               body.style.display = 'none';
+               arrow.textContent = '▼';
+             }
+           ">
+        <span style="font-size:1.05em; font-weight:600;">
+          Base Currency Transaction{% if company_base_currency_code %} ({{ company_base_currency_code }}){% endif %}
+        </span>
+        <span id="base-transaction-arrow" style="color:#7d7cad; font-size:0.9em;">▲</span>
+      </div>
+
+      <!-- Collapsible body -->
+      <div id="base-transaction-body">
+        <div class="totals-row">
+          <span>Subtotal</span>
+          <strong id="base-subtotal" class="amount">{{ company_base_currency_symbol|default:"&#x20B9;" }} 0.00</strong>
+        </div>
+        {% if company_tax_type|default:''|upper != 'NONE' %}
+        {% if company_tax_type == 'GST' %}
+          <div class="totals-row">
+            <span>CGST</span>
+            <strong id="base-tax-cgst" class="amount">{{ company_base_currency_symbol|default:"&#x20B9;" }} 0.00</strong>
+          </div>
+          <div class="totals-row">
+            <span>SGST</span>
+            <strong id="base-tax-sgst" class="amount">{{ company_base_currency_symbol|default:"&#x20B9;" }} 0.00</strong>
+          </div>
+        {% else %}
+          <div class="totals-row">
+            {% if company_tax_type|default:''|upper == 'VAT' or company_tax_type|default:''|upper == 'SALES' or company_tax_type|default:''|upper == 'TURNOVER' %}
+              <span>Tax</span>
+            {% else %}
+              <span>Tax</span>
+            {% endif %}
+            <strong id="base-tax-vat" class="amount">{{ company_base_currency_symbol|default:"&#x20B9;" }}0.00</strong>
+          </div>
+        {% endif %}
+        {% endif %}
+        <div class="totals-row">
+          <span>Total Discount</span>
+          <strong id="base-total-discount" class="amount">{{ company_base_currency_symbol|default:"&#x20B9;" }} 0.00</strong>
+        </div>
+        <hr>
+        <div class="totals-row" style="margin-top:14px;">
+          <span style="font-size:1.2em; font-weight:600;">Grand Total</span>
+          <strong id="base-grand-total" class="amount" style="font-size:1.18em; color:#5a5c8a;">
+            {{ company_base_currency_symbol|default:"&#x20B9;" }} 0.00
+          </strong>
+        </div>
+      </div>
+
+    </div>
+    <!-- ===== END BASE CURRENCY TRANSACTION ===== -->
+      </div>
+
+      <div class="po-main-panel">
+    <div class="notes-box">
+      <label for="notes">Notes</label>
+      <textarea name="notes" id="notes" placeholder="Enter Notes">{% if order.notes %}{{ order.notes }}{% endif %}</textarea>
+    </div>
+    
+    <div class="mt-3 savebtn-wrapper" title="Please fill all the required fields">
+        {% comment %} {% if is_edit %}
+        <a href="{% url 'order_add' %}" class="savebtn btn btn-primary">Revise order</a>
+        {% else %} {% endcomment %}
+          <button type="submit" class="savebtn btn btn-primary">Save Order</button>
+        {% comment %} {% endif %} {% endcomment %}
+        <a href="{% if company_code %}{% url 'purchase_order_list' company_code %}{% else %}{% url 'purchase_order_list' %}{% endif %}" class="btn btn-secondary">Cancel</a>
+        
+
+    </div>
+      </div>
+    </div>
+  </form>
+</div>
+{% comment %} {% for form in purchase_formset %}
+  <p>Form {{ forloop.counter }} fields:</p>
+  <ul>
+    {% for field in form %}
+      <li>{{ field.name }}: {{ field }}</li>
+    {% endfor %}
+  </ul>
+{% endfor %} {% endcomment %}
+
+{% comment %} Pay terms list modal {% endcomment %}
+<div class="modal fade" id="paymentTermsModal" tabindex="-1" aria-labelledby="paymentTermsLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="paymentTermsLabel">Configure Payment Terms</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>TERM NAME</th>
+              <th>NUMBER OF DAYS</th>
+            </tr>
+          </thead>
+          <tbody>
+            
+          </tbody>
+        </table>
+        <button class="btn btn-link" id="addNew">+ Add New</button>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-primary" type="button">Save</button>
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<div class="modal fade" id="vendorCreateModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog ">
+    <div class="modal-content custom-modal-content">
+      <form id="vendorCreateForm" method="post" autocomplete="off">
+        <div class="modal-header border-0 pb-1">
+          <h5 class="modal-title fw-semibold">New Vendor</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <!-- Form loaded dynamically via AJAX -->
+        </div>
+        <div class="modal-footer border-0 pt-1 d-flex">
+          <button type="submit" class="btn btn-primary">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+
+
+
+
+  <script>
+document.addEventListener('DOMContentLoaded', function () {
+    const toastContainer = document.getElementById('toastContainer');
+    {% if messages %}
+      {% for message in messages %}
+        const toastEl = document.createElement('div');
+        toastEl.className = 'toast align-items-center text-bg-{{ message.tags }} border-0';
+        toastEl.setAttribute('role', 'alert');
+        toastEl.setAttribute('aria-live', 'assertive');
+        toastEl.setAttribute('aria-atomic', 'true');
+        toastEl.innerHTML = `
+          <div class="d-flex">
+            <div class="toast-body">
+              {{ message|escapejs }}
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+          </div>
+        `;
+        toastContainer.appendChild(toastEl);
+
+        const toast = new bootstrap.Toast(toastEl, { delay: 3000 });
+        toast.show();
+      {% endfor %}
+    {% endif %}
+  });
+
+
+
+
+</script>
+
+
+</body>
+
+<!-- Add Unit Modal -->
+<div class="modal fade" id="addUnitModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Add New Unit</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="addUnitForm">
+          <div class="mb-3">
+            <label for="unit_name" class="form-label">Unit Name <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" id="unit_name" name="name" required>
+            {% comment %} <small class="text-muted">Enter the unit of measurement</small> {% endcomment %}
+          </div>
+         
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="saveUnitBtn">Save Unit</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- Simplified Add New Item Modal - Only Essential Fields -->
+<div class="modal fade" id="addItemModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Add New Item</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="addItemForm" novalidate>
+          
+          <!-- Type Selection -->
+          <div class="row mb-3">
+            <div class="col-md-12">
+              <label class="form-label">Type<span class="text-danger">*</span></label>
+              <div class="d-flex gap-3" style="align-items: center;">
+
+                <div style="display: flex; align-items: center;">
+                  <input type="radio" name="type" value="goods" checked id="type_goods">
+                  <label for="type_goods" style="margin: 0; line-height: 1; cursor: pointer;">Goods</label>
+                </div>
+                <div style="display: flex; align-items: center;">
+
+                  {% comment %} <label for="type_goods" class="me-3"></label> {% endcomment %}
+                  <input type="radio" class="ms-3" name="type" value="service" id="type_service">
+                  <label for="type_service" style="margin: 0; line-height: 1; cursor: pointer;">Service</label>
+
+                  {% comment %} <label for="type_service"></label> {% endcomment %}
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- Basic Information -->
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <label for="item_name" class="form-label">Name<span class="text-danger">*</span></label>
+              <input type="text" class="form-control" name="name" id="item_name" required>
+            </div>
+            <div class="col-md-6">
+              <label for="item_unit_select" class="form-label">Default Unit<span class="text-danger">*</span></label>
+              <select class="form-select" name="unit" id="item_unit_select" style="width: 100%;" required>
+                <option value="">Choose...</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <label for="item_barcode" class="form-label">Barcode</label>
+              <input type="text" class="form-control" name="barcode" id="item_barcode">
+            </div>
+            <div class="col-md-6">
+              <label for="item_tax_pref" class="form-label">Tax Preference<span class="text-danger">*</span></label>
+              <select class="form-select" name="tax_pref" id="item_tax_pref">
+                <option value="taxable">Taxable</option>
+                <option value="non_taxable">Non-Taxable</option>
+              </select>
+            </div>
+          </div>
+
+          <hr>
+
+          <!-- Purchase Information Section -->
+          <div class="card p-3 mb-3">
+            {% comment %} <h6 class="mb-3">Purchase Information</h6> {% endcomment %}
+            <div class="row mb-2">
+              <div class="col-md-5">
+                <label class="form-label">Cost Price<span class="text-danger">*</span></label>
+                <div class="input-group">
+                  <span class="input-group-text">{{ company_base_currency_code|default:"INR" }}</span>
+                  <input type="number" class="form-control" name="cost_price" id="item_cost_price" step="0.01" required>
+                </div>
+              </div>
+              <div class="col-md-7" id="item_tax_fields">
+                <div class="row mb-2" id="item_indian_tax_fields">
+                  <div class="col-md-6">
+                    <label for="item_intra_tax_select" class="form-label">Intra State Tax Rate</label>
+                    <select class="form-select" name="intra_tax" id="item_intra_tax_select" style="width: 100%;">
+                      <option value="">Choose...</option>
+                    </select>
+                  </div>
+                  <div class="col-md-6">
+                    <label for="item_inter_tax_select" class="form-label">Inter State Tax Rate</label>
+                    <select class="form-select" name="inter_tax_group" id="item_inter_tax_select" style="width: 100%;">
+                      <option value="">Choose...</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="row mb-2" id="item_default_tax_fields" style="display: none;">
+                  <div class="col-md-12">
+                    <label for="item_default_tax_select" class="form-label">Tax Rate</label>
+                    <select class="form-select" name="tax" id="item_default_tax_select" style="width: 100%;">
+                      <option value="">Choose...</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+                <div class="row mb-2" id="item_sales_purchase_tax_fields" style="display: none;">
+                  <div class="col-md-6">
+                    <label for="item_sales_tax_select" class="form-label">Sales Tax Rate</label>
+                    <select class="form-select" name="sales_tax" id="item_sales_tax_select" style="width: 100%;">
+                      <option value="">Choose...</option>
+                    </select>
+                  </div>
+                  <div class="col-md-6">
+                    <label for="item_purchase_tax_select" class="form-label">Purchase Tax Rate</label>
+                    <select class="form-select" name="purchase_tax" id="item_purchase_tax_select" style="width: 100%;">
+                      <option value="">Choose...</option>
+                    </select>
+                  </div>
+                </div>
+              {% comment %} <div class="col-md-6">
+                <label class="form-label">Selling Price</label>
+                <div class="input-group">
+                  <span class="input-group-text">{{ company_base_currency_code|default:"INR" }}</span>
+                  <input type="number" class="form-control" name="selling_price" id="item_selling_price" step="0.01">
+                </div>
+              </div> {% endcomment %}
+            </div>
+            <div class="row mb-2" id="item_gst_inclusive_row">
+              <div class="col-md-12">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" id="item_taxincld_costprice" name="taxincld_costprice">
+                  <label class="form-check-label" for="item_taxincld_costprice">
+                    Price is inclusive of Tax
+                  </label>
+                </div>
+              </div>
+            </div>
+            {% comment %} <div class="row mb-2">
+              <div class="col-md-12">
+                <label for="item_purchase_desc" class="form-label">Description</label>
+                <textarea class="form-control" name="purchase_desc" id="item_purchase_desc" rows="2"></textarea>
+              </div>
+            </div> {% endcomment %}
+          </div>
+
+          <!-- Tax Rates Section -->
+          {% comment %} <div id="item_tax_fields" class="card p-3">
+            <h6 class="mb-3">Tax Rates</h6>
+            <div class="row mb-2">
+              <div class="col-md-6">
+                <label for="item_intra_tax_select" class="form-label">Intra State Tax Rate</label>
+                <select class="form-select" name="intra_tax" id="item_intra_tax_select" style="width: 100%;">
+                  <option value="">Choose...</option>
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label for="item_inter_tax_select" class="form-label">Inter State Tax Rate</label>
+                <select class="form-select" name="inter_tax_group" id="item_inter_tax_select" style="width: 100%;">
+                  <option value="">Choose...</option>
+                </select>
+              </div>
+            </div>
+          </div> {% endcomment %}
+
+          <!-- Hidden fields to satisfy backend validation -->
+          <input type="hidden" name="sales_info" value="on">
+          <input type="hidden" name="purchase_info" value="on">
+
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" id="saveNewItemBtn" class="btn btn-primary">Save Item</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- HSN Modal for items (added so HSN Update link works on revise/edit pages) -->
+<div class="modal fade" id="hsnModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">HSN Code</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <label for="hsn_select">HSN Code</label>
+        <select id="hsn_select" style="width:100%"></select>
+      </div>
+      <div class="modal-footer">
+        <button type="button" id="hsn_save_btn" class="btn btn-primary">Save</button>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+</html>
+
+
+<div class="modal fade" id="addVendorModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog ">
+    <div class="modal-content custom-modal-content">
+      <div id="addVendorContainer">
+        <div class="modal-header border-0 pb-1">
+          <h5 class="modal-title fw-semibold">Add New Vendor</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <!-- vendor form fields will be loaded here dynamically via AJAX -->
+        </div>
+      </div>
+    <script>
+    // Show Add vendor Modal on +New click
+    document.addEventListener('DOMContentLoaded', function() {
+      var addVendorBtn = document.getElementById('addVendorBtn');
+      if (addVendorBtn) {
+        addVendorBtn.addEventListener('click', function() {
+          var modal = new bootstrap.Modal(document.getElementById('addVendorModal'));
+          modal.show();
+        });
+      }
+    });
+    </script>
+    </div>
+  </div>
+</div>
+
+
+    <!-- Shipping Address Modal (copied from add template) -->
+    <div class="modal fade" id="shippingAddressModal" tabindex="-1" aria-hidden="true"
+         data-location-load-countries-url="{% if company_code %}{% url 'load_countries' company_code %}{% else %}#{% endif %}"
+         data-location-load-states-url="{% if company_code %}{% url 'load_states' company_code %}{% else %}#{% endif %}"
+         data-location-load-cities-url="{% if company_code %}{% url 'load_cities' company_code %}{% else %}#{% endif %}">
+      <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Shipping Address</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <p><a href="#" id="copy-billing-btn" class="text-primary"><i class="bi bi-arrow-down"></i> Copy billing address</a></p>
+            <form id="shippingAddressForm">
+              <div class="mb-2">
+                <label>Attention</label>
+                <input type="text" id="sa_attention" class="form-control" placeholder="Attention">
+              </div>
+              <div class="mb-2">
+                <label>Email</label>
+                <input type="email" id="sa_email" class="form-control" placeholder="Email">
+              </div>
+              <div class="mb-2">
+                <label>Phone</label>
+                <input type="text" id="sa_phone" class="form-control" placeholder="Phone">
+              </div>
+              <div class="mb-2">
+                <label>Country/Region</label>
+                <select id="sa_country" class="form-control select2 location-country-select" data-current-value="{{ shipping_country|default:'' }}">
+                  <option value="">Select Country</option>
+                  {% if shipping_country %}<option value="{{ shipping_country }}" selected>{{ shipping_country }}</option>{% endif %}
+                </select>
+              </div>
+              <div class="mb-2">
+                <label>Address Line 1</label>
+                <textarea id="sa_address1" class="form-control" rows="2" placeholder="Address Line 1"></textarea>
+              </div>
+              <div class="mb-2">
+                <label>Address Line 2</label>
+                <textarea id="sa_address2" class="form-control" rows="2" placeholder="Address Line 2"></textarea>
+              </div>
+              <div class="row">
+                <div class="col-md-4 mb-2">
+                  <label>State</label>
+                  <select id="sa_state" class="form-control select2 sa-state-select location-state-select"
+                          data-country-field="sa_country"
+                          data-city-field="sa_city"
+                          data-current-value="{{ shipping_state|default:'' }}">
+                    <option value="">Select State</option>
+                    {% if shipping_state %}<option value="{{ shipping_state }}" selected>{{ shipping_state }}</option>{% endif %}
+                  </select>
+                </div>
+                <div class="col-md-6 mb-2">
+                  <label>City</label>
+                  <select id="sa_city" class="form-control select2 location-city-select"
+                          data-country-field="sa_country"
+                          data-state-field="sa_state"
+                          data-current-value="{{ shipping_city|default:'' }}"
+                          data-initial-value="{{ shipping_city|default:'' }}">
+                    <option value="">Select City</option>
+                    {% if shipping_city %}<option value="{{ shipping_city }}" selected>{{ shipping_city }}</option>{% endif %}
+                  </select>
+                </div>
+                <div class="col-md-2 mb-2">
+                  <label>Pin Code</label>
+                  <input type="text" id="sa_postal" class="form-control">
+                </div>
+              </div>
+            </form>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="button" class="btn btn-primary" id="saveShippingBtn">Save</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Store the saved shipping data from the purchase order
+  const savedShippingData = {
+    attention: document.getElementById('shipping_attention').value || '',
+    email: document.getElementById('shipping_email').value || '',
+    phone: document.getElementById('shipping_phone').value || '',
+    country: document.getElementById('shipping_country').value || '',
+    address1: document.getElementById('shipping_address1').value || '',
+    address2: document.getElementById('shipping_address2').value || '',
+    city: document.getElementById('shipping_city').value || '',
+    state: document.getElementById('shipping_state').value || '',
+    postal: document.getElementById('shipping_postal_code').value || ''
+  };
+  
+  // Check if we have saved shipping data from the purchase order
+  const hasSavedShipping = Object.values(savedShippingData).some(val => val !== '');
+  
+  // Function to display shipping address
+  function displayShippingAddress(data) {
+    console.log("displayShippingAddress is called");
+    const shipNameEl = document.getElementById('shipping-name');
+    const shipAddrEl = document.getElementById('shipping-address');
+    const shipContactEl = document.getElementById('shipping-contact');
+    
+    if (shipNameEl) {
+      shipNameEl.innerText = data.attention || '';
+    }
+    
+    if (shipAddrEl) {
+      let lines = [];
+      if (data.address1) lines.push(data.address1);
+      if (data.address2) lines.push(data.address2);
+      let loc = '';
+      if (data.city) loc += data.city;
+      if (data.state) loc += (loc ? ', ' : '') + data.state;
+      if (data.postal) loc += (loc ? ', ' : '') + data.postal;
+      if (data.country) loc += (loc ? ', ' : '') + data.country;
+      if (loc) lines.push(loc);
+      shipAddrEl.innerText = lines.length > 0 ? lines.join('\n') : 'New Address';
+    }
+    if (shipContactEl) {
+      shipContactEl.innerText = (data.email ? data.email + (data.phone ? ' | ' + data.phone : '') : (data.phone || ''));
+    }
+    
+    // Update place of supply if state is present
+    if (data.state) {
+      const placeDiv = document.getElementById('place-of-supply');
+      const placeHidden = document.querySelector('input[name="place_of_supply"]');
+      if (placeDiv) placeDiv.innerText = data.state;
+      if (placeHidden) placeHidden.value = data.state;
+    }
+  }
+  
+  // If we have saved shipping data, display it immediately
+  if (hasSavedShipping) {
+    displayShippingAddress(savedShippingData);
+  }
+  
+  // When vendor is changed, only override shipping if no saved data exists
+  const vendorSelect = document.querySelector('select[name="vendor"]');
+  if (vendorSelect) {
+    vendorSelect.addEventListener('change', function() {
+      // If we have saved shipping data from the order, don't override it with vendor defaults
+      if (!hasSavedShipping) {
+        // Let the existing vendor loading logic handle it
+        // (from purchase_order.js)
+      }
+    });
+  }
+  
+  // Populate modal fields when edit button is clicked
+  const editShippingBtn = document.getElementById('edit-shipping-btn');
+  if (editShippingBtn) {
+    editShippingBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      
+      // Populate modal with saved data
+      document.getElementById('sa_attention').value = savedShippingData.attention;
+      document.getElementById('sa_email').value = savedShippingData.email;
+      document.getElementById('sa_phone').value = savedShippingData.phone;
+      document.getElementById('sa_country').value = savedShippingData.country;
+      document.getElementById('sa_address1').value = savedShippingData.address1;
+      document.getElementById('sa_address2').value = savedShippingData.address2;
+      document.getElementById('sa_city').value = savedShippingData.city;
+      document.getElementById('sa_state').value = savedShippingData.state;
+      document.getElementById('sa_postal').value = savedShippingData.postal;
+      
+      // Show modal
+      const modalEl = document.getElementById('shippingAddressModal');
+      if (modalEl) {
+        const bsModal = new bootstrap.Modal(modalEl);
+        bsModal.show();
+      }
+    });
+  }
+  
+  // Save shipping button handler
+  const saveShippingBtn = document.getElementById('saveShippingBtn');
+  if (saveShippingBtn) {
+    saveShippingBtn.addEventListener('click', function() {
+      const newData = {
+        attention: document.getElementById('sa_attention').value || '',
+        email: document.getElementById('sa_email').value || '',
+        phone: document.getElementById('sa_phone').value || '',
+        country: document.getElementById('sa_country').value || '',
+        address1: document.getElementById('sa_address1').value || '',
+        address2: document.getElementById('sa_address2').value || '',
+        city: document.getElementById('sa_city').value || '',
+        state: document.getElementById('sa_state').value || '',
+        postal: document.getElementById('sa_postal').value || ''
+      };
+      
+      // Update hidden inputs
+      document.getElementById('shipping_attention').value = newData.attention;
+      document.getElementById('shipping_email').value = newData.email;
+      document.getElementById('shipping_phone').value = newData.phone;
+      document.getElementById('shipping_country').value = newData.country;
+      document.getElementById('shipping_address1').value = newData.address1;
+      document.getElementById('shipping_address2').value = newData.address2;
+      document.getElementById('shipping_city').value = newData.city;
+      document.getElementById('shipping_state').value = newData.state;
+      document.getElementById('shipping_postal_code').value = newData.postal;
+      
+      // Update display
+      displayShippingAddress(newData);
+      
+      // Close modal
+      const modalEl = document.getElementById('shippingAddressModal');
+const bsModal = bootstrap.Modal.getInstance(modalEl);
+if (bsModal) {
+  bsModal.hide();
+}
+    });
+  }
+});
+</script>
+{% endblock %}

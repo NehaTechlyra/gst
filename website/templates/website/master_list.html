@@ -1,0 +1,14 @@
+{% extends 'website/index.html' %}
+
+{% block content %}
+<h1>Masters</h1>
+
+<a href="{% url 'tax_list' %}">Tax</a>
+<a href="{% url 'user_list' %}">Users</a>
+<a href="{% url 'roles_list' %}">Roles</a>
+<a href="{% url 'customer_list' %}">Customers</a>
+<a href="{% url 'brand_list' %}">Brands</a>
+<a href="{% url 'items' %}">Items</a>
+
+
+{% endblock %}

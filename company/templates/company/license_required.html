@@ -1,0 +1,32 @@
+<!-- templates/company/license_required.html -->
+{% extends 'website/index.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow-lg border-0">
+                <div class="card-body text-center p-5">
+                    <div class="mb-4">
+                        <i class="bi bi-shield-exclamation text-danger" style="font-size: 5rem;"></i>
+                    </div>
+                    
+                    <h2 class="card-title mb-3">License Required</h2>
+                    
+                    <p class="text-muted mb-4">
+                        No valid license found for your company. 
+                        Please contact your administrator to obtain a license.
+                    </p>
+                    
+                    <div class="mt-4">
+                        <a href="{% url 'logout' %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-box-arrow-left"></i> Logout
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

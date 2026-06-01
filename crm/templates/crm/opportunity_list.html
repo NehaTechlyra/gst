@@ -1,0 +1,182 @@
+{% extends 'website/index.html' %}
+{% load static %}
+
+{% block title %}Opportunities - Lyra CRM{% endblock %}
+{% block page_title %}Opportunities{% endblock %}
+{% block exstyle %}
+<link href="{% static 'style/general.css' %}" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.9.1/font/bootstrap-icons.css" rel="stylesheet">
+{% endblock exstyle %}
+
+{% block content %}
+<div class="container mt-4">
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
+
+        <!-- Left side: Back button -->
+        <div class="d-flex gap-2">
+            <button class="btn btn-secondary" onclick="window.history.back()" title="Go back to previous page">
+                <i class="bi bi-arrow-left"></i> Back
+            </button>
+        </div>
+
+        <!-- Right side: Status filter + Search -->
+        <form method="get" class="d-flex gap-2 align-items-center mb-0" id="oppFilterForm">
+            <select name="status" class="form-control" onchange="this.form.submit()">
+                <option value="">All Status</option>
+                <option value="Open" {% if request.GET.status == 'Open' %}selected{% endif %}>Open</option>
+                <option value="Discussion" {% if request.GET.status == 'Discussion' %}selected{% endif %}>Discussion</option>
+                <option value="Quotation Created" {% if request.GET.status == 'Quotation Created' %}selected{% endif %}>Quotation Created</option>
+                <option value="Closed Won" {% if request.GET.status == 'Closed Won' %}selected{% endif %}>Closed Won</option>
+                <option value="Closed Lost" {% if request.GET.status == 'Closed Lost' %}selected{% endif %}>Closed Lost</option>
+            </select>
+            <input type="text" name="q" id="oppSearchInput" class="form-control me-2"
+                   placeholder="&#x1F50D;&#xFE0E; Search opportunities..."
+                   value="{{ request.GET.q }}">
+        </form>
+
+    </div>
+
+    {% if opportunities %}
+    <table class="items-table" id="oppTableContainer">
+        <thead>
+            <tr>
+                <th>Lead</th>
+                <th>Opportunity</th>
+                <th>Deal Value</th>
+                <th>Status</th>
+                <th>Priority</th>
+                <th>Expected Closing</th>
+                <th>Assigned To</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for opp in opportunities %}
+            <tr>
+                <td><a href="{% url 'lead_detail' opp.lead.pk %}" class="primary-link">{{ opp.lead.customer_name }}</a></td>
+                <td><a href="{% url 'opportunity_detail' opp.pk %}" class="primary-link">{{ opp.opportunity_number|default:opp.pk }}</a></td>
+                <td>₹{{ opp.estimated_deal_value }}</td>
+                <td><span class="badge bg-info">{{ opp.status }}</span></td>
+                <td>
+                    {% if opp.priority == 'Hot' %}
+                        <span class="badge bg-danger">Hot</span>
+                    {% elif opp.priority == 'Warm' %}
+                        <span class="badge bg-warning">Warm</span>
+                    {% else %}
+                        <span class="badge bg-secondary">Cold</span>
+                    {% endif %}
+                </td>
+                <td>{{ opp.expected_closing_date }}</td>
+                <td>{% if opp.assigned_employee %}{{ opp.assigned_employee }}{% else %}-{% endif %}</td>
+                <td>
+                    <div class="opportunity-actions" style="margin-top: 5px;">
+                        <a href="{% url 'opportunity_detail' opp.pk %}" class="btn add-item-btn">View</a>
+                        {% if request.user.is_superuser or can_edit_crm_opportunities %}
+                        <a href="{% url 'opportunity_edit' opp.pk %}" class="btn add-item-btn">Edit</a>
+                        {% endif %}
+                        {% if request.user.is_superuser or can_delete_crm_opportunities %}
+                        <button type="button" class="btn btn-sm delete-btn btn-delete"
+                            data-action="{% url 'opportunity_delete' opp.pk %}"
+                            data-name="{{ opp.opportunity_number|default:opp.pk|escapejs }}">
+                            <span class="bi bi-trash"></span>
+                        </button>
+                        {% endif %}
+                        <a href="{% url 'model_object_activity_log_list' 'Opportunity' opp.id %}">
+                            <span class="bi bi-clock-history"></span>
+                        </a>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="alert alert-info text-center">
+        No opportunities found.
+    </div>
+    {% endif %}
+
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div id="confirmDeleteModal" class="prompt-modal">
+    <div class="prompt-modal-content">
+        <p id="confirmDeleteMessage">Are you sure?</p>
+        <form id="confirmDeleteForm" method="post">
+            {% csrf_token %}
+            <div class="prompt-buttons">
+                <button type="submit" class="prompt-btn prompt-ok-btn">OK</button>
+                <button type="button" class="prompt-btn prompt-cancel-btn" id="cancelDeleteBtn">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+(function(){
+    var deleteModal = document.getElementById('confirmDeleteModal');
+    var form = document.getElementById('confirmDeleteForm');
+    var msg = document.getElementById('confirmDeleteMessage');
+
+    function showDeletePrompt() {
+        if (deleteModal) deleteModal.style.display = 'flex';
+    }
+
+    function hideDeletePrompt() {
+        if (deleteModal) deleteModal.style.display = 'none';
+    }
+
+    document.addEventListener('click', function(e){
+        var el = e.target.closest('.btn-delete');
+        if(!el) return;
+        var action = el.getAttribute('data-action');
+        var name = el.getAttribute('data-name') || 'this opportunity';
+        msg.textContent = 'Are you sure you want to delete opportunity: "' + name + '"? This will only delete the opportunity.';
+        form.action = action;
+        showDeletePrompt();
+    });
+
+    document.getElementById('cancelDeleteBtn').addEventListener('click', function(){
+        hideDeletePrompt();
+    });
+
+    deleteModal.addEventListener('click', function(e){
+        if (e.target === deleteModal) hideDeletePrompt();
+    });
+
+    document.addEventListener('keydown', function(e){
+        if (e.key === 'Escape' && deleteModal.style.display === 'flex') hideDeletePrompt();
+    });
+})();
+
+// Live search
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('oppSearchInput');
+    const tableContainer = document.getElementById('oppTableContainer');
+    if (!searchInput || !tableContainer) return;
+
+    let timeout = null;
+    searchInput.addEventListener('keyup', function() {
+        clearTimeout(timeout);
+        timeout = setTimeout(function() {
+            const query = searchInput.value;
+            const status = document.querySelector('[name="status"]')?.value || '';
+            fetch('?q=' + encodeURIComponent(query) + '&status=' + encodeURIComponent(status), {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(function(response) { return response.text(); })
+            .then(function(html) {
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = html;
+                const newTable = tempDiv.querySelector('#oppTableContainer');
+                if (newTable) {
+                    tableContainer.innerHTML = newTable.innerHTML;
+                }
+            });
+        }, 300);
+    });
+});
+</script>
+
+{% endblock %}

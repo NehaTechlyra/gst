@@ -1,0 +1,500 @@
+{% extends 'website/index.html' %}
+{% load static %}
+
+{% block exstyle %}
+<link href="{% static 'style/general.css' %}" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.9.1/font/bootstrap-icons.css" rel="stylesheet">
+<style>
+  /* ── Base ── */
+  .sd-page {
+    padding: 0.5rem 0;
+    font-size: 14px;
+    color: #1a1a1a;
+  }
+
+  /* ── Page header ── */
+  .sd-page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1.5rem;
+  }
+  .sd-page-header h1 {
+    font-size: 26px;
+    font-weight: 600;
+    margin: 0 0 3px;
+    color: #111;
+    letter-spacing: -0.3px;
+  }
+  .sd-page-header .subtitle {
+    font-size: 13px;
+    color: #888;
+    margin: 0;
+  }
+  .sd-back-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: #555;
+    text-decoration: none;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 7px 16px;
+    background: #fff;
+    transition: background 0.15s, border-color 0.15s;
+    white-space: nowrap;
+  }
+  .sd-back-btn:hover {
+    background: #f5f5f5;
+    border-color: #ccc;
+    color: #333;
+  }
+
+  /* ── Cards ── */
+  .sd-card {
+    background: #fff;
+    border: 1px solid #ebebeb;
+    border-radius: 12px;
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1rem;
+  }
+  .sd-card-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid #f2f2f2;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+  }
+  .sd-card-title i {
+    font-size: 15px;
+    color: #999;
+  }
+
+  /* ── Item info grid ── */
+  .info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 2.5rem;
+  }
+  .info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 9px 0;
+    border-bottom: 1px solid #f5f5f5;
+  }
+  .info-row:last-child {
+    border-bottom: none;
+  }
+  .info-label {
+    font-size: 13px;
+    color: #888;
+    font-weight: 400;
+  }
+  .info-value {
+    font-size: 13px;
+    font-weight: 500;
+    color: #222;
+    text-align: right;
+  }
+  .info-value.na {
+    color: #bbb;
+    font-weight: 400;
+  }
+  .badge-track {
+    display: inline-block;
+    background: #ecfdf5;
+    color: #15803d;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 20px;
+    letter-spacing: 0.2px;
+  }
+  .badge-track.no {
+    background: #f3f4f6;
+    color: #6b7280;
+  }
+
+  /* ── Metric cards ── */
+  .metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .metric-card {
+    background: #f9f9f9;
+    border-radius: 10px;
+    padding: 1rem 1.1rem;
+    border: 1px solid #f0f0f0;
+  }
+  .metric-label {
+    font-size: 11px;
+    font-weight: 500;
+    color: #999;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+  }
+  .metric-value {
+    font-size: 22px;
+    font-weight: 700;
+    color: #1a1a1a;
+    line-height: 1.1;
+    margin-bottom: 4px;
+    letter-spacing: -0.5px;
+  }
+  .metric-sub {
+    font-size: 11px;
+    color: #aaa;
+  }
+  .metric-card.blue .metric-value  { color: #1d6fca; }
+  .metric-card.green .metric-value { color: #15803d; }
+  .metric-card.purple .metric-value { color: #6d28d9; }
+
+  /* ── Tables ── */
+  .sd-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  .sd-table thead th {
+    text-align: left;
+    font-size: 11px;
+    font-weight: 600;
+    color: #999;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 8px 12px;
+    border-bottom: 1px solid #f0f0f0;
+    background: #fafafa;
+  }
+  .sd-table thead th:first-child { border-radius: 6px 0 0 6px; }
+  .sd-table thead th:last-child  { border-radius: 0 6px 6px 0; }
+  .sd-table tbody td {
+    padding: 10px 12px;
+    border-bottom: 1px solid #f5f5f5;
+    color: #222;
+    vertical-align: middle;
+  }
+  .sd-table tbody tr:last-child td {
+    border-bottom: none;
+  }
+  .sd-table tbody tr:hover td {
+    background: #fafafa;
+  }
+  .text-end { text-align: right; }
+  .text-muted-cell { color: #ccc; }
+
+  /* ── Journal badge ── */
+  .jbadge {
+    display: inline-block;
+    background: #eff6ff;
+    color: #1d6fca;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 9px;
+    border-radius: 20px;
+    letter-spacing: 0.2px;
+  }
+  .status-badge {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 9px;
+    border-radius: 20px;
+  }
+  .status-badge.posted  { background: #ecfdf5; color: #15803d; }
+  .status-badge.draft   { background: #fffbeb; color: #b45309; }
+  .status-badge.default { background: #f3f4f6; color: #6b7280; }
+
+  .narration-text {
+    font-size: 12px;
+    color: #666;
+    max-width: 260px;
+  }
+
+  /* ── Financial impact ── */
+  .fin-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+  }
+  .fin-card {
+    border-radius: 10px;
+    padding: 1rem 1.25rem;
+    border-left: 3px solid transparent;
+    border-radius: 0 10px 10px 0;
+  }
+  .fin-card.gains  { background: #f0fdf4; border-left-color: #22c55e; }
+  .fin-card.losses { background: #fef2f2; border-left-color: #ef4444; }
+  .fin-card.net    { background: #fffbeb; border-left-color: #f59e0b; }
+  .fin-label {
+    font-size: 11px;
+    font-weight: 500;
+    color: #999;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+  }
+  .fin-value {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    margin-bottom: 4px;
+  }
+  .fin-card.gains  .fin-value { color: #16a34a; }
+  .fin-card.losses .fin-value { color: #dc2626; }
+  .fin-card.net    .fin-value { color: #d97706; }
+  .fin-card.net    .fin-value.positive { color: #16a34a; }
+  .fin-card.net    .fin-value.negative { color: #dc2626; }
+  .fin-sub {
+    font-size: 11px;
+    color: #aaa;
+  }
+
+  /* ── Empty state ── */
+  .empty-state {
+    text-align: center;
+    padding: 2rem;
+    color: #aaa;
+    font-size: 13px;
+  }
+
+  /* ── Responsive ── */
+  @media (max-width: 768px) {
+    .info-grid    { grid-template-columns: 1fr; }
+    .metrics-grid { grid-template-columns: repeat(2, 1fr); }
+    .fin-grid     { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 480px) {
+    .metrics-grid { grid-template-columns: 1fr; }
+  }
+</style>
+{% endblock exstyle %}
+
+{% block page_title %}Stock Details — {{ item.name }}{% endblock page_title %}
+
+{% block content %}
+<div class="container-fluid">
+<div class="sd-page">
+
+  <!-- ── Page header ── -->
+  <div class="sd-page-header">
+    {% comment %} <div>
+      <h1>Stock details</h1>
+      <p class="subtitle">{{ item.name }}</p>
+    </div> {% endcomment %}
+    <a href="{% url 'stock_list' %}" class="sd-back-btn">
+      <i class="bi bi-arrow-left"></i> Back to list
+    </a>
+  </div>
+
+  <!-- ── Item information ── -->
+  <div class="sd-card">
+    <div class="sd-card-title">
+      <i class="bi bi-box"></i> Item information
+    </div>
+    <div class="info-grid">
+      <div>
+        <div class="info-row">
+          <span class="info-label">Item name</span>
+          <span class="info-value">{{ item.name }}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Item type</span>
+          <span class="info-value {% if not item.item_type %}na{% endif %}">{{ item.item_type.type_name|default:"N/A" }}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Category</span>
+          <span class="info-value {% if not item.category %}na{% endif %}">{{ item.category.category_name|default:"N/A" }}</span>
+        </div>
+      </div>
+      <div>
+        <div class="info-row">
+          <span class="info-label">Unit</span>
+          <span class="info-value {% if item.unit_name == 'N/A' %}na{% endif %}">{{ item.unit_name }}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">HSN code</span>
+          <span class="info-value {% if not item.hsn_code %}na{% endif %}">{{ item.hsn_code|default:"N/A" }}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Track inventory</span>
+          <span class="info-value">
+            {% if item.track_inventory %}
+              <span class="badge-track">Yes</span>
+            {% else %}
+              <span class="badge-track no">No</span>
+            {% endif %}
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Current stock summary ── -->
+  <div class="sd-card">
+    <div class="sd-card-title">
+      <i class="bi bi-graph-up"></i> Current stock summary
+    </div>
+    <div class="metrics-grid">
+      <div class="metric-card blue">
+        <div class="metric-label">Total quantity</div>
+        <div class="metric-value">{{ total_quantity }}</div>
+        <div class="metric-sub">units</div>
+      </div>
+      <div class="metric-card blue">
+        <div class="metric-label">Cost per unit</div>
+        <div class="metric-value">₹{{ cost_per_unit }}</div>
+        <div class="metric-sub">Opening rate</div>
+      </div>
+      <div class="metric-card green">
+        <div class="metric-label">Inventory asset value</div>
+        <div class="metric-value">₹{{ total_value }}</div>
+        <div class="metric-sub">Stock in hand</div>
+      </div>
+      <div class="metric-card purple">
+        <div class="metric-label">Valuation method</div>
+        <div class="metric-value">FIFO</div>
+        <div class="metric-sub">Opening rate based</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Stock by warehouse ── -->
+  {% if warehouse_summary %}
+  <div class="sd-card">
+    <div class="sd-card-title">
+      <i class="bi bi-building"></i> Stock by warehouse
+    </div>
+    <div class="table-responsive">
+      <table class="sd-table">
+        <thead>
+          <tr>
+            <th>Warehouse</th>
+            <th class="text-end">Quantity</th>
+            <th class="text-end">Asset value</th>
+            <th>Batch #</th>
+            <th>Expiration</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for warehouse in warehouse_summary %}
+          <tr>
+            <td>{{ warehouse.warehouse }}</td>
+            <td class="text-end">{{ warehouse.quantity }}</td>
+            <td class="text-end">₹{{ warehouse.value }}</td>
+            <td>
+              {% if warehouse.batch %}{{ warehouse.batch }}{% else %}<span class="text-muted-cell">—</span>{% endif %}
+            </td>
+            <td>
+              {% if warehouse.expiration %}
+                {{ warehouse.expiration|date:"d-M-Y" }}
+              {% else %}
+                <span class="text-muted-cell">—</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- ── Financial impact summary ── -->
+  <div class="sd-card">
+    <div class="sd-card-title">
+      <i class="bi bi-calculator"></i> Financial impact summary
+    </div>
+    <div class="fin-grid">
+      <div class="fin-card gains">
+        <div class="fin-label">Total stock gains</div>
+        <div class="fin-value">₹{{ total_gains }}</div>
+        <div class="fin-sub">From stock adjustment (Cr)</div>
+      </div>
+      <div class="fin-card losses">
+        <div class="fin-label">Total stock losses</div>
+        <div class="fin-value">₹{{ total_losses }}</div>
+        <div class="fin-sub">From stock adjustment (Dr)</div>
+      </div>
+      <div class="fin-card net">
+        <div class="fin-label">Net adjustment impact</div>
+        <div class="fin-value {% if net_impact >= 0 %}positive{% else %}negative{% endif %}">
+          ₹{{ net_impact }}
+        </div>
+        <div class="fin-sub">P&amp;L impact</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Stock movements & journal entries ── -->
+  {% if journal_entries %}
+  <div class="sd-card">
+    <div class="sd-card-title">
+      <i class="bi bi-clock-history"></i> Stock movements &amp; journal entries
+    </div>
+    <div class="table-responsive">
+      <table class="sd-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Journal #</th>
+            <th>Narration</th>
+            <th>Account</th>
+            <th class="text-end">Debit</th>
+            <th class="text-end">Credit</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for line in journal_lines %}
+          <tr>
+            <td style="white-space:nowrap;">{{ line.date|date:"d-M-Y" }}</td>
+            <td><span class="jbadge">{{ line.entry_number }}</span></td>
+            <td><span class="narration-text">{{ line.narration }}</span></td>
+            <td>{{ line.account }}</td>
+            <td class="text-end">
+              {% if line.debit > 0 %}₹{{ line.debit }}{% else %}<span class="text-muted-cell">—</span>{% endif %}
+            </td>
+            <td class="text-end">
+              {% if line.credit > 0 %}₹{{ line.credit }}{% else %}<span class="text-muted-cell">—</span>{% endif %}
+            </td>
+            <td>
+              {% if line.status == 'posted' %}
+                <span class="status-badge posted">Posted</span>
+              {% elif line.status == 'draft' %}
+                <span class="status-badge draft">Draft</span>
+              {% else %}
+                <span class="status-badge default">{{ line.status }}</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% else %}
+  <div class="sd-card">
+    <div class="empty-state">
+      <i class="bi bi-inbox" style="font-size:24px; display:block; margin-bottom:8px; color:#ddd;"></i>
+      No journal entries found for this item.
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- ── Footer actions ── -->
+  
+
+</div>
+</div>
+{% endblock content %}

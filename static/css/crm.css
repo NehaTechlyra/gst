@@ -1,0 +1,87 @@
+/* CRM shared styles (scoped under .crm-page) */
+.crm-page h2, .crm-page h4 {
+  color: #55588b !important;
+}
+
+.crm-page .stat-card .card-body {
+  padding: 1rem;
+}
+
+.crm-page .crm-card {
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(20,20,40,0.04);
+  overflow: hidden;
+  transition: transform .15s ease, box-shadow .15s ease;
+  background: #fff;
+  border: 1px solid rgba(0,0,0,0.04);
+}
+.crm-page .crm-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 8px 24px rgba(20,20,40,0.08);
+}
+.crm-page .crm-card .card-body {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.1rem;
+}
+.crm-page .crm-card .icon {
+  width: 54px;
+  height: 54px;
+  border-radius: 8px;
+  background: rgba(0,0,0,0.03);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size: 22px;
+  color: var(--accent, #55588b);
+  flex-shrink: 0;
+  transition: color 0.2s ease;
+}
+.crm-page .crm-card .meta { 
+  color: var(--accent, #6b7280); 
+  font-size: 0.95rem; 
+  margin-bottom: 0.25rem; 
+  transition: color 0.2s ease;
+}
+.crm-page .crm-card .value { 
+  font-weight: 600; 
+  font-size: 1.6rem; 
+  color: var(--accent, #55588b) !important; 
+}
+
+/* Theme classes overriding --accent variable */
+.crm-page .crm-theme-1 { --accent: #FF4F0F !important; }
+.crm-page .crm-theme-2 { --accent: #27ae60 !important; }
+.crm-page .crm-theme-3 { --accent: #55588b !important; }
+
+/* Detailed CRM theme palette */
+.crm-page .crm-theme-total-leads { --accent: #511D43 !important; }
+.crm-page .crm-theme-hot-leads { --accent: #FF4F0F !important; }
+.crm-page .crm-theme-warm-leads { --accent: #FFC107 !important; }
+.crm-page .crm-theme-cold-leads { --accent: #60c4f3 !important; }
+.crm-page .crm-theme-new { --accent: #328E6E !important; }
+.crm-page .crm-theme-contacted { --accent: #143D60 !important; }
+.crm-page .crm-theme-interested { --accent: #BF3131 !important; }
+.crm-page .crm-theme-lost { --accent: #3D3D3D !important; }
+.crm-page .crm-theme-total-quotations { --accent: #003161 !important; }
+.crm-page .crm-theme-sent { --accent: #328E6E !important; }
+.crm-page .crm-theme-accepted { --accent: #5CB338 !important; }
+.crm-page .crm-theme-rejected { --accent: #FF2929 !important; }
+.crm-page .crm-theme-followups-today { --accent: #4B4376 !important; }
+.crm-page .crm-theme-followups-overdue { --accent: #B03052 !important; }
+.crm-page .crm-theme-followups-upcoming { --accent: #4CC9FE !important; }
+
+/* keep stat-card accent variables available, but do not render a colored left stripe */
+.crm-page .stat-card { --accent: #3498db; border-left: none; }
+.crm-page .stat-card.success { --accent: #27ae60; }
+.crm-page .stat-card.warning { --accent: #f39c12; }
+.crm-page .stat-card.danger { --accent: #e74c3c; }
+
+/* Theme classes should override stat-card accent colors */
+.crm-page .crm-theme-1.stat-card,
+.crm-page .stat-card.crm-theme-1 { --accent: #FF4F0F !important; }
+.crm-page .crm-theme-2.stat-card,
+.crm-page .stat-card.crm-theme-2 { --accent: #27ae60 !important; }
+.crm-page .crm-theme-3.stat-card,
+.crm-page .stat-card.crm-theme-3 { --accent: #55588b !important; }

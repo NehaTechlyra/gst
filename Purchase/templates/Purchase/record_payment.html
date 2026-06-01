@@ -1,0 +1,692 @@
+{% extends "website/index.html" %}
+{% load static %}
+{% load widget_tweaks %}
+{% block exstyle %}
+<link href="{% static 'style/general.css' %}" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Ubuntu&display=swap" rel="stylesheet">
+<link href="{% static 'style/record_payments.css' %}" rel="stylesheet">
+{% endblock exstyle %}
+
+{% block page_title %}Record Payment - Bill #{{ bill.bill_number }}{% endblock page_title %}
+
+{% block content %}
+<div class="container">
+    <form method="POST" action="{% url 'record_payment' bill.id %}" enctype="multipart/form-data">
+        {% csrf_token %}
+        
+        <!-- Hidden field to pass vendor_id -->
+        <input type="hidden" name="vendor_id" value="{{ bill.vendor.id }}">
+        
+        <!-- Show advance balance if available -->
+        {% if has_advance %}
+        <div class="advance-balance-info">
+            <div class="advance-header">
+                <i class="bi bi-wallet2"></i>
+                <strong>Vendor Advance Balance Available</strong>
+            </div>
+            <div class="advance-details">
+                <div class="advance-row highlight">
+                    <span>Current Advance Balance:</span>
+                    <span class="advance-value">₹{{ advance_balance|floatformat:2 }}</span>
+                </div>
+                <div class="advance-row">
+                    <span>Bill Amount Due:</span>
+                    <span>₹{{ final_total|floatformat:2 }}</span>
+                </div>
+                <div class="advance-row">
+                    <span>Advance to be Used:</span>
+                    <span class="advance-used">-₹{{ advance_to_use|floatformat:2 }}</span>
+                </div>
+                <div class="advance-row total-row">
+                    <span><strong>Cash to Pay Now:</strong></span>
+                    <span class="net-amount"><strong>₹{{ net_amount_to_pay|floatformat:2 }}</strong></span>
+                </div>
+                {% if remaining_advance > 0 %}
+                <div class="advance-row">
+                    <span>Remaining Advance After Payment:</span>
+                    <span class="remaining-advance">₹{{ remaining_advance|floatformat:2 }}</span>
+                </div>
+                {% endif %}
+                {% if net_amount_to_pay == 0 %}
+                <div class="advance-note success">
+                    <i class="bi bi-check-circle"></i>
+                    Bill will be fully paid using advance balance. No cash payment needed!
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+        
+        <div class="form-row">
+            <div class="form-group">
+                <label for="amount" class="required">Amount</label>
+                <input type="number" id="amount" name="amount" step="0.01" class="form-control"
+                    value="{{ net_amount_to_pay}}" required>
+                <small class="form-text text-muted" id="amount-help">
+                    {% if has_advance %}
+                        {% if net_amount_to_pay == 0 %}
+                            Bill fully covered by advance. You can enter additional amount to add as new advance.
+                        {% else %}
+                            Minimum: ₹{{ net_amount_to_pay|floatformat:2 }} (after ₹{{ advance_to_use|floatformat:2 }} advance). Enter more to add as advance.
+                        {% endif %}
+                    {% else %}
+                        You can enter any amount. Excess amount will be saved as advance payment.
+                    {% endif %}
+                </small>
+            </div>
+
+            {% comment %} <div class="form-group">
+                <label for="payment_mode">Payment Mode</label>
+                <select id="payment_mode" name="payment_mode" class="select2-search">
+                    <option value="">Select Payment Mode</option>
+                    {% for mode in payment_modes %}
+                        <option value="{{ mode.id }}" {% if mode.name == 'Cash' %}selected{% endif %}>
+                            {{ mode.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div> {% endcomment %}
+            <div class="form-group">
+                <label for="payment_date" class="required">Payment Date</label>
+                <input type="date" id="payment_date" name="payment_date" class="form-control" required>
+            </div>
+        </div>
+
+        <div class="form-row">
+            
+
+            <div class="form-group">
+                <label for="payment_number" class="required">Payment #</label>
+                <div class="payment-number-wrapper">
+                    <input type="text" id="payment_number" name="payment_number" class="form-control"
+                           value="{{ next_payment_number }}" required>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="payment_made_on">Payment Made on</label>
+                <input type="date" id="payment_made_on" name="payment_made_on" class="form-control">
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="paid_through" class="required">Paid Through</label>
+                <select id="paid_through" name="paid_through" class="select2-search" required>
+                    <option value="">Select Payment Account</option>
+                    {% comment %} changed on 18-2-26 by neha {% endcomment %}
+                        {% for group in payment_accounts_grouped %}
+                        
+                            {# Only 'Bank Accounts' header is non-selectable #}
+                            <option value="{{ group.header.id }}" data-is-header="true" {% if group.header.name == "Bank Accounts" %}disabled{% endif %}>
+                                {{ group.header.name }}
+                            </option>
+                            {% for child in group.children %}
+                                <option value="{{ child.id }}">{{ child.name }}</option>
+                            {% endfor %}
+                        
+                        {% endfor %}
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="reference">Reference#</label>
+                <input type="text" id="reference" name="reference" class="form-control"
+                       placeholder="Enter reference number">
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="notes">Notes</label>
+            <textarea id="notes" name="notes" placeholder="Add any additional notes..."></textarea>
+        </div>
+
+        <div class="upload-section">
+            <label>Attachments</label>
+            <label class="upload-button">
+                <span><i class="bi bi-upload"></i></span>
+                <span>Upload File</span>
+                <input type="file" id="file-input" name="attachments" multiple hidden class="form-control"
+                    accept=".pdf,.jpg,.jpeg,.png,.doc,.docx">
+            </label>
+            <div class="upload-info">You can upload a maximum of 5 files, 10MB each</div>
+            <div id="error-message" class="error-message"></div>
+            <div id="file-list"></div>
+        </div>
+
+        <div class="checkbox-wrapper">
+            <input type="checkbox" id="send_email" name="send_email" value="1" class="form-check-input">
+            <label for="send_email">Send a Payment Made email notification.</label>
+        </div>
+
+        <div class="button-group">
+            <button type="submit" name="action" value="save_paid" class="btn-primary">Save as Paid</button>
+            <button type="button" class="btn-cancel" onclick="window.history.back()">Cancel</button>
+        </div>
+    </form>
+
+    <!-- Add Account Modal  added on 18-2-26 by neha-->
+    <div class="modal fade" id="addAccountModal" tabindex="-1" aria-labelledby="addAccountLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addAccountLabel">Add New Account</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form id="addAccountForm">
+                    <div class="modal-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <label class="form-label required">Name</label>
+                                <input type="text" name="name" id="modal-account-name" class="form-control" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label required">Account Type</label>
+                                <select id="modal-account-type" name="type" class="form-select">
+                                    <option value="">Select Account Type</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row mt-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Parent</label>
+                                <select id="modal-parent" name="parent" class="form-select">
+                                    <option value="">Select or search parent</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Account Code (optional)</label>
+                                <input type="text" name="search_code" id="modal-search-code" class="form-control">
+                            </div>
+                        </div>
+                        <div class="row mt-3">
+                            <div class="col-12">
+                                <label class="form-label">Description</label>
+                                <textarea name="description" id="modal-description" class="form-control" rows="3"></textarea>
+                            </div>
+                        </div>
+                        <div class="row mt-3">
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="modal-is-header" name="is_header">
+                                    <label class="form-check-label" for="modal-is-header">Is header</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="modal-active" name="active" checked>
+                                    <label class="form-check-label" for="modal-active">Active</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary" id="modal-save-account">Save Account</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<style>
+/* Advance Balance Info Styling */
+.advance-balance-info {
+    background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+    border: 2px solid #4caf50;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 8px rgba(76, 175, 80, 0.1);
+    animation: slideDown 0.3s ease-out;
+}
+
+.advance-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: #2e7d32;
+    font-size: 15px;
+    margin-bottom: 12px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #4caf50;
+}
+
+.advance-header i {
+    font-size: 20px;
+}
+
+.advance-details {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.advance-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 0;
+    font-size: 14px;
+    color: #1b5e20;
+}
+
+.advance-row.highlight {
+    background-color: rgba(255, 255, 255, 0.5);
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-weight: 600;
+}
+
+.advance-row.total-row {
+    margin-top: 8px;
+    padding-top: 12px;
+    border-top: 2px solid #4caf50;
+    font-size: 16px;
+}
+
+.advance-value {
+    color: #2e7d32;
+    font-weight: 600;
+    font-size: 15px;
+}
+
+.advance-used {
+    color: #f57c00;
+    font-weight: 600;
+}
+
+.net-amount {
+    color: #1565c0;
+    font-size: 18px;
+}
+
+.remaining-advance {
+    color: #558b2f;
+    font-weight: 600;
+}
+
+.advance-note {
+    padding: 10px;
+    background-color: rgba(255, 255, 255, 0.5);
+    border-radius: 4px;
+    font-size: 13px;
+    color: #1b5e20;
+    font-style: italic;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.advance-note.success {
+    background-color: rgba(76, 175, 80, 0.2);
+    color: #1b5e20;
+    font-weight: 500;
+    font-style: normal;
+}
+
+.advance-note i {
+    font-size: 16px;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@media (max-width: 992px) {
+    .advance-balance-info {
+        padding: 12px;
+    }
+    
+    .advance-row {
+        font-size: 13px;
+    }
+}
+</style>
+
+<script>
+// File upload handling
+let uploadedFiles = [];
+const maxFiles = 5;
+const maxFileSize = 10 * 1024 * 1024;
+
+const fileInput = document.getElementById('file-input');
+const fileList = document.getElementById('file-list');
+const errorMessage = document.getElementById('error-message');
+const form = document.querySelector('form');
+
+fileInput.addEventListener('change', function(e) {
+    const newFiles = Array.from(e.target.files);
+    errorMessage.textContent = '';
+
+    if (uploadedFiles.length + newFiles.length > maxFiles) {
+        errorMessage.textContent = `You can only upload a maximum of ${maxFiles} files.`;
+        fileInput.value = '';
+        return;
+    }
+
+    for (let file of newFiles) {
+        if (file.size > maxFileSize) {
+            errorMessage.textContent = `File "${file.name}" exceeds 10MB limit.`;
+            fileInput.value = '';
+            return;
+        }
+    }
+
+    uploadedFiles = uploadedFiles.concat(newFiles);
+    fileInput.value = '';
+    displayFileList();
+});
+
+function displayFileList() {
+    fileList.innerHTML = '';
+    if (uploadedFiles.length === 0) return;
+
+    uploadedFiles.forEach((file, index) => {
+        const fileSize = (file.size / 1024 / 1024).toFixed(2);
+        const fileItem = document.createElement('div');
+        fileItem.className = 'file-item';
+        fileItem.innerHTML = `
+            <div class="file-info">
+                ${index + 1}. ${file.name} (${fileSize} MB)
+            </div>
+            <button type="button" class="delete-btn" onclick="deleteFile(${index})">
+                <i class="bi bi-trash" title="Remove file"></i>
+            </button>
+        `;
+        fileList.appendChild(fileItem);
+    });
+}
+
+function deleteFile(index) {
+    uploadedFiles.splice(index, 1);
+    errorMessage.textContent = '';
+    displayFileList();
+}
+
+// Handle form submission with files
+form.addEventListener('submit', function(e) {
+    if (uploadedFiles.length > 0) {
+        e.preventDefault();
+        
+        const formAction = form.getAttribute('action') || window.location.href;
+        const formData = new FormData(form);
+        
+        formData.delete('attachments');
+        uploadedFiles.forEach((file) => {
+            formData.append('attachments', file);
+        });
+        
+        fetch(formAction, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            credentials: 'same-origin'
+        })
+        .then(response => {
+            if (response.redirected) {
+                window.location.href = response.url;
+            } else if (response.ok) {
+                return response.text().then(html => {
+                    document.open();
+                    document.write(html);
+                    document.close();
+                });
+            } else {
+                throw new Error('Form submission failed');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred while submitting the form. Please try again.');
+        });
+    }
+});
+
+// Set today's date as default
+document.addEventListener('DOMContentLoaded', function() {
+    const today = new Date().toISOString().split('T')[0];
+    const paymentDateInput = document.getElementById('payment_date');
+    const paymentMadeOnInput = document.getElementById('payment_made_on');
+    if (!paymentMadeOnInput.value) {
+            paymentMadeOnInput.value = today;
+        }
+    if (!paymentDateInput.value) {
+        paymentDateInput.value = today;
+    }
+});
+// Initialize Select2 for parent account dropdown in modal added on 18-2-26 by neha
+    function initParentSelect2() {
+        if ($('#modal-parent').hasClass('select2-hidden-accessible')) {
+            $('#modal-parent').select2('destroy');
+        }
+        $('#modal-parent').select2({
+            width: '100%',
+            minimumResultsForSearch: 0,
+            placeholder: "Select or search parent",
+            allowClear: true,
+            dropdownParent: $('#addAccountModal')  // important — keeps it inside the modal
+        });
+    }
+// Initialize Select2
+$(document).ready(function() {
+    //add focus to search field when dropdown opens by neha on 18-2-26
+    $(document).on('select2:open', function() {
+        document.querySelector('.select2-container--open .select2-search__field')?.focus();
+    });
+    $('.select2-search').select2({
+        placeholder: "Search...",
+        allowClear: true,
+        width: '100%'
+    });
+    // Custom rendering for payment account select added on 18-2-26 by neha
+    $('#paid_through').select2({
+        width: '100%',
+        minimumResultsForSearch: 0,
+        placeholder: "Search Payment Account...",
+        allowClear: true,
+        templateResult: function(data) {
+        if (!data.element) return data.text;
+
+        // Bold + styled for header options
+        if ($(data.element).data('is-header')) {
+            return $('<span style="font-weight:600; color:#111827;">' + data.text + '</span>');
+        }
+
+        // Indent children
+        return $('<span style="padding-left:10px;">' + data.text + '</span>');
+        },
+        templateSelection: function(data) {
+            return data.text;
+        }
+        }).on('select2:open', function() {
+            window.activeAccountSelect = $('#paid_through');
+
+            setTimeout(function() {
+                var $dropdown = $('.select2-dropdown');
+                var $results = $dropdown.find('.select2-results__options');
+                if ($results.length && $('.select2-add-item').length === 0) {
+                    var $addItem = $("<li class='select2-results__option select2-add-item' role='treeitem' aria-selected='false'>+ New Account</li>");
+                    $results.prepend($addItem);
+                }
+            }, 0);
+        });
+
+       
+
+        $('#payment_mode').select2({
+            placeholder: "Search and select payment mode",
+            allowClear: true,
+            width: '100%'
+        });
+});
+
+// Open modal when "+ New Account" is clicked inside the dropdown added on 18-2-26 by neha
+$(document).on('click', '.select2-add-item', function(e) {
+    e.preventDefault();
+    try { $('#paid_through').select2('close'); } catch(err) {}
+
+    $('#addAccountForm')[0].reset();
+    $('#modal-parent').html('<option value="">Select or search parent</option>');
+    initParentSelect2();
+    loadAccountTypes();
+    var modal = new bootstrap.Modal(document.getElementById('addAccountModal'));
+    modal.show();
+});
+//added on 18-2-26 by neha
+function loadAccountTypes() {
+    console.log("Loading account types for modal...");
+    $.get("{% url 'get_account_types' %}", function(resp) {
+        console.log("Received account types:", resp);
+        var types = resp.types || [];
+        var $type = $('#modal-account-type');
+        $type.empty().append($('<option>').val('').text('Select Account Type'));
+        types.forEach(function(t) {
+            $type.append($('<option>').val(t.code).text(t.name));
+        });
+    });
+}
+
+// Submit the modal form and inject the new account into paid_through added on 18-2-26 by neha
+$('#addAccountForm').on('submit', function(e) {
+    e.preventDefault();
+    var data = {
+        name: $('#modal-account-name').val(),
+        type: $('#modal-account-type').val(),
+        parent: $('#modal-parent').val(),
+        description: $('#modal-description').val(),
+        search_code: $('#modal-search-code').val(),
+        is_header: $('#modal-is-header').is(':checked') ? 1 : 0,
+        active: $('#modal-active').is(':checked') ? 1 : 0,
+    };
+
+    $.ajax({
+        url: "{% url 'ajax-create-account' %}",
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCookie('csrftoken') },
+        data: data,
+        success: function(resp) {
+            if (resp.success) {
+                // Inject new account into the paid_through dropdown and select it
+                var newOption = new Option(resp.name, resp.id, true, true);
+                $('#paid_through').append(newOption).val(resp.id).trigger('change');
+
+                var modal = bootstrap.Modal.getInstance(document.getElementById('addAccountModal'));
+                if (modal) modal.hide();
+                showToast('Account created successfully', 'success');
+            } else {
+                showToast(resp.error || 'Failed to create account', 'error');
+            }
+        },
+        error: function(xhr) {
+            var err = xhr.responseJSON?.error || 'Error creating account';
+            showToast(err, 'error');
+        }
+    });
+});
+// Open modal from +New button; ensure we have an active select added on 18-2-26 by neha
+$('#open-add-account-modal').on('click', function() {
+    if (!window.activeAccountSelect || !window.activeAccountSelect.length) {
+        window.activeAccountSelect = $('select[name*="-account"]').first();
+    }
+    // Clear modal fields
+    $('#addAccountForm')[0].reset();
+    $('#modal-parent').html('<option value="">Select or search parent</option>');
+    initParentSelect2();
+    // Load account types
+    loadAccountTypes();
+    var modal = new bootstrap.Modal(document.getElementById('addAccountModal'));
+    modal.show();
+});
+//added on 18-2-26 by neha
+$('#modal-account-type').on('change', function() {
+    var code = $(this).val();
+    var $parent = $('#modal-parent');
+
+    // Destroy existing Select2 before modifying options
+    if ($parent.hasClass('select2-hidden-accessible')) {
+        $parent.select2('destroy');
+    }
+
+    $parent.html('<option value="">Loading...</option>');
+    if (!code) {
+        $parent.html('<option value="">Select or search parent</option>');
+        initParentSelect2();
+        return;
+    }
+    $.get("{% url 'get_parents_for_type' %}", {type_code: code}, function(resp) {
+        var parents = resp.parents || [];
+        $parent.empty();
+        $parent.append($('<option>').val('').text('Select or search parent'));
+        parents.forEach(function(p) {
+            $parent.append($('<option>').val(p.id).text(p.name));
+        });
+        // Initialize Select2 AFTER options are loaded
+        initParentSelect2();
+    });
+});
+// Utility: get CSRF token from cookie added on 18-2-26 by neha
+function getCookie(name) {
+    var cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        var cookies = document.cookie.split(';');
+        for (var i = 0; i < cookies.length; i++) {
+            var cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+// Show error modal if there's an error message
+document.addEventListener('DOMContentLoaded', function() {
+  const showErrorModal = {{ show_error_modal|lower|default:"false" }};
+  const errorMessage = `{{ error_message|escapejs }}`;
+  
+  if (showErrorModal && errorMessage) {
+    const errorModal = document.getElementById('errorModal');
+    if (errorModal) {
+      const errorBodyElement = document.getElementById('errorModalBody');
+      errorBodyElement.innerHTML = errorMessage.replace(/\n/g, '<br>');
+      const modal = new bootstrap.Modal(errorModal);
+      modal.show();
+    }
+  }
+});
+
+</script>
+
+<!-- Error Modal for Period Lock and Other Errors -->
+<div class="modal fade" id="errorModal" tabindex="-1" aria-labelledby="errorModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="border: 2px solid #d9534f; border-radius: 8px;">
+      <div class="modal-header" style="background-color: #f8d7da; border-bottom: 2px solid #d9534f;">
+        <h5 class="modal-title" id="errorModalLabel" style="color: #721c24;">
+          <i class="bi bi-exclamation-circle" style="color: #d9534f;"></i> Cannot Record Payment
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="errorModalBody" style="color: #721c24; padding: 20px; line-height: 1.6;">
+        <!-- Error message will be inserted here -->
+      </div>
+      <div class="modal-footer" style="border-top: 1px solid #dee2e6;">
+        <button type="button" class="btn btn-primary" data-bs-dismiss="modal">OK</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,230 @@
+{% extends "pricelists/base.html" %}
+{% block title %}Assign Contacts — {{ price_list.name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+  .contact-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    margin-top: 20px;
+  }
+  .contact-column {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .contact-card {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    transition: var(--transition);
+  }
+  .contact-card:hover {
+    border-color: var(--accent);
+    background: var(--surface-3);
+  }
+  .contact-card.selected {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+  }
+  .contact-info {
+    flex: 1;
+  }
+  .contact-name {
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--text-primary);
+  }
+  .contact-meta {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+  .sticky-footer {
+    position: sticky;
+    bottom: -32px;
+    margin: 32px -32px -32px;
+    padding: 20px 32px;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    z-index: 50;
+    backdrop-filter: blur(10px);
+  }
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 4px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 12px;
+  }
+  .section-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .select-all-btn {
+    font-size: 11px;
+    color: var(--accent);
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-weight: 500;
+  }
+  .select-all-btn:hover {
+    text-decoration: underline;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="topbar">
+  <div>
+    <div class="breadcrumb">
+      <a href="{% url 'pricelists:index' company_code=request.resolver_match.kwargs.company_code %}">Price Lists</a> / 
+      <a href="{% url 'pricelists:detail' company_code=request.resolver_match.kwargs.company_code pk=price_list.pk %}">{{ price_list.name }}</a> / 
+      <span>Assign Contacts</span>
+    </div>
+    <h1 class="page-title">Assign Contacts <span>Map this price list to customers and vendors</span></h1>
+  </div>
+</div>
+
+<form method="post" id="assignment-form">
+  {% csrf_token %}
+  
+  <div class="card">
+    <div class="filters-row">
+      <div class="search-wrap">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0"/></svg>
+        <input type="text" id="contact-search" class="search-input" placeholder="Search by name or company...">
+      </div>
+      <div class="ml-auto text-muted">
+        {% if price_list.price_type == 'sales' %}
+          <span class="badge badge-blue">Sales Price List</span>
+        {% else %}
+          <span class="badge" style="background:rgba(192,132,252,0.12);color:#c084fc;">Purchase Price List</span>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="contact-grid">
+      <!-- Customers Column -->
+      <div class="contact-column">
+        <div class="section-header">
+          <div class="section-title">Customers ({{ customers|length }})</div>
+          <button type="button" class="select-all-btn" onclick="toggleSelectAll('customers')">Select All</button>
+        </div>
+        <div id="customers-list" class="contact-column">
+          {% for c in customers %}
+            <label class="contact-card {% if c.id in assigned_customer_ids %}selected{% endif %}" data-search="{{ c.first_name }} {{ c.last_name }} {{ c.company_name }}">
+              <input type="checkbox" name="customers" value="{{ c.id }}" class="form-check-input" {% if c.id in assigned_customer_ids %}checked{% endif %} onchange="handleCardChange(this)">
+              <div class="contact-info">
+                <div class="contact-name">
+                  {% if c.customer_type == 'company' %}
+                    {{ c.company_name }}
+                  {% else %}
+                    {{ c.first_name }} {{ c.last_name|default:"" }}
+                  {% endif %}
+                </div>
+                <div class="contact-meta">
+                  {{ c.customer_code }} • {{ c.city }}, {{ c.state }}
+                </div>
+              </div>
+            </label>
+          {% empty %}
+            <div class="text-muted" style="padding:20px;text-align:center;font-size:13px;">No customers found.</div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Vendors Column -->
+      <div class="contact-column">
+        <div class="section-header">
+          <div class="section-title">Vendors ({{ vendors|length }})</div>
+          <button type="button" class="select-all-btn" onclick="toggleSelectAll('vendors')">Select All</button>
+        </div>
+        <div id="vendors-list" class="contact-column">
+          {% for v in vendors %}
+            <label class="contact-card {% if v.id in assigned_vendor_ids %}selected{% endif %}" data-search="{{ v.first_name }} {{ v.last_name }} {{ v.company_name }}">
+              <input type="checkbox" name="vendors" value="{{ v.id }}" class="form-check-input" {% if v.id in assigned_vendor_ids %}checked{% endif %} onchange="handleCardChange(this)">
+              <div class="contact-info">
+                <div class="contact-name">
+                  {% if v.vendor_type == 'company' %}
+                    {{ v.company_name }}
+                  {% else %}
+                    {{ v.first_name }} {{ v.last_name|default:"" }}
+                  {% endif %}
+                </div>
+                <div class="contact-meta">
+                  {{ v.vendor_code }} • {{ v.city }}, {{ v.state }}
+                </div>
+              </div>
+            </label>
+          {% empty %}
+            <div class="text-muted" style="padding:20px;text-align:center;font-size:13px;">No vendors found.</div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sticky-footer">
+    <a href="{% url 'pricelists:detail' company_code=request.resolver_match.kwargs.company_code pk=price_list.pk %}" class="btn btn-secondary">Cancel</a>
+    <button type="submit" class="btn btn-primary">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+      Save Assignments
+    </button>
+  </div>
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  function handleCardChange(input) {
+    const card = input.closest('.contact-card');
+    if (input.checked) {
+      card.classList.add('selected');
+    } else {
+      card.classList.remove('selected');
+    }
+  }
+
+  function toggleSelectAll(name) {
+    const container = document.getElementById(`${name}-list`);
+    const inputs = container.querySelectorAll(`input[name="${name}"]`);
+    const visibleInputs = Array.from(inputs).filter(i => i.closest('.contact-card').style.display !== 'none');
+    
+    // If all visible are checked, uncheck all. Otherwise check all.
+    const allChecked = visibleInputs.every(i => i.checked);
+    visibleInputs.forEach(i => {
+      i.checked = !allChecked;
+      handleCardChange(i);
+    });
+  }
+
+  // Search logic
+  const searchInput = document.getElementById('contact-search');
+  searchInput.addEventListener('input', function() {
+    const q = this.value.toLowerCase();
+    document.querySelectorAll('.contact-card').forEach(card => {
+      const text = card.getAttribute('data-search').toLowerCase();
+      if (text.includes(q)) {
+        card.style.display = 'flex';
+      } else {
+        card.style.display = 'none';
+      }
+    });
+  });
+</script>
+{% endblock %}

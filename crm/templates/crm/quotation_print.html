@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quotation {{ quotation.quote_number }}</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .header { text-align: center; margin-bottom: 30px; }
+        .info { margin-bottom: 20px; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        .total-row { font-weight: bold; }
+        .text-right { text-align: right; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>QUOTATION</h1>
+        <h2>{{ quotation.quote_number }}</h2>
+    </div>
+    
+    <div class="info">
+        {% if quotation.lead %}
+        <p><strong>Customer:</strong> {{ quotation.lead.customer_name }}</p>
+        <p><strong>Phone:</strong> {{ quotation.lead.phone|default:"-" }}</p>
+        <p><strong>Email:</strong> {{ quotation.lead.email|default:"-" }}</p>
+        {% elif quotation.opportunity %}
+        <p><strong>Customer:</strong> {{ quotation.opportunity.lead.customer_name }}</p>
+        <p><strong>Phone:</strong> {{ quotation.opportunity.lead.phone|default:"-" }}</p>
+        <p><strong>Email:</strong> {{ quotation.opportunity.lead.email|default:"-" }}</p>
+        {% endif %}
+        <p><strong>Date:</strong> {{ quotation.created_at|date:"Y-m-d" }}</p>
+        <p><strong>Validity:</strong> {{ quotation.validity_date }}</p>
+    </div>
+    
+    <table>
+        <thead>
+            <tr>
+                <th>Product</th>
+                <th>Quantity</th>
+                <th>Price</th>
+                <th>Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in items %}
+            <tr>
+                <td>{{ item.product_name }}</td>
+                <td>{{ item.quantity }}</td>
+                <td>${{ item.price }}</td>
+                <td>${{ item.total }}</td>
+            </tr>
+            {% endfor %}
+            <tr>
+                <td colspan="3" class="text-right">Subtotal:</td>
+                <td>${{ quotation.subtotal }}</td>
+            </tr>
+            <tr>
+                <td colspan="3" class="text-right">Discount:</td>
+                <td>-${{ quotation.discount }}</td>
+            </tr>
+            <tr>
+                <td colspan="3" class="text-right">Tax:</td>
+                <td>${{ quotation.tax }}</td>
+            </tr>
+            <tr>
+                <td colspan="3" class="text-right">Additional Charges:</td>
+                <td>${{ quotation.additional_charges }}</td>
+            </tr>
+            <tr class="total-row">
+                <td colspan="3" class="text-right">Total:</td>
+                <td>${{ quotation.total }}</td>
+            </tr>
+        </tbody>
+    </table>
+    
+    {% if quotation.terms_conditions %}
+    <div>
+        <h3>Terms & Conditions</h3>
+        <p>{{ quotation.terms_conditions }}</p>
+    </div>
+    {% endif %}
+    
+    <script>
+        window.onload = function() {
+            window.print();
+        }
+    </script>
+</body>
+</html>
+

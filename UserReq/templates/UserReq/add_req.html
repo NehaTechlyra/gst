@@ -1,0 +1,105 @@
+{% extends "website/index.html" %}
+
+{% block content %}
+<div class="container">
+    <form action="" method="post">
+        {% csrf_token %}
+        <div class="row">
+            {% if data.name %}
+            <input type="hidden" class="form-control" name="name" value="{{data.name}}" id="exampleFormControlInput1" >
+            {% else %}
+            <input type="hidden" class="form-control" name="name" value="{{user.username}}" id="exampleFormControlInput1" >
+
+            {% endif %}
+          <div class="mb-3 col-md-3">
+            <label for="exampleFormControlInput1" class="form-label">Item*</label>
+            <input type="text" name="item" class="form-control" id="exampleFormControlInput1" value="{{data.item}}">
+          </div>
+          <div class="mb-3 col-md-3">
+            <label for="exampleFormControlInput1" class="form-label">Quantity*</label>
+            <input type="number" name="qty" class="form-control" id="exampleFormControlInput1" value="{{data.qty}}">
+          </div>
+      
+          <div class="mb-3 col-md-3">
+            <label for="exampleFormControlInput1" class="form-label">Description</label>
+            <input type="text" name="desc" class="form-control" id="exampleFormControlInput1" value="{{data.desc}}">
+          </div>
+          <div class="col-md-6">
+            <input type="submit" value="submit" class="btn btn-outline-success">
+          </div>
+    </form>
+</div>
+
+<!-- Navigation confirmation modal -->
+<div class="modal fade" id="unsavedChangesModal" tabindex="-1" aria-labelledby="unsavedChangesLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="unsavedChangesLabel">Unsaved Changes</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        You have unsaved changes. Do you want to leave without saving?
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" id="confirmNavigation" class="btn btn-primary">Leave</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+    // Track form changes - Global variable
+    let formChanged = false;
+    const form = document.querySelector('form');
+
+    if (form) {
+        form.addEventListener('change', () => { formChanged = true; });
+        form.addEventListener('input', () => { formChanged = true; });
+    }
+    
+    // Track Select2 changes using jQuery delegation (works regardless of initialization timing)
+    if (window.$ && window.jQuery) {
+        $(document).on('change', 'select.select2, .select2-hidden-accessible', function() {
+            formChanged = true;
+            console.log('Form changed via Select2 change event (delegation)');
+        });
+    }
+    
+    // Direct select element change listeners as fallback
+    document.addEventListener('change', function(e) {
+        if (e.target.tagName === 'SELECT') {
+            formChanged = true;
+            console.log('Form changed via direct select change event');
+        }
+    }, true);
+
+    // Global click interceptor for all links
+    document.addEventListener('click', function(e) {
+        let link = e.target.closest('a');
+        if (link && formChanged) {
+            const href = link.getAttribute('href');
+            if (href && !href.startsWith('#') && !link.getAttribute('data-bs-toggle') && !href.startsWith('javascript:')) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                const modal = new bootstrap.Modal(document.getElementById('unsavedChangesModal'));
+                const confirmBtn = document.getElementById('confirmNavigation');
+                
+                // Remove previous click handlers
+                const newConfirmBtn = confirmBtn.cloneNode(true);
+                confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+                
+                // Add new click handler
+                newConfirmBtn.addEventListener('click', () => {
+                    formChanged = false;
+                    window.location.href = href;
+                });
+                
+                modal.show();
+            }
+        }
+    }, true);
+</script>
+{% endblock content %}

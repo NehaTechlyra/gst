@@ -1,0 +1,382 @@
+{% extends 'website/index.html' %}
+{% load static %}
+
+{% block exstyle %}
+<link href="{% static 'style/general.css' %}" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@500&display=swap" rel="stylesheet">
+{% endblock exstyle %}
+
+{% block page_title %}HR Dashboard{% endblock page_title %}
+
+{% block content %}
+
+{% block style %}
+<style>
+    :root {
+        --bg: #f5f6fa;
+        --surface: #ffffff;
+        --border: #e4e8f0;
+        --text-primary: #111827;
+        --text-muted: #6b7280;
+        --accent: #4f46e5;
+        --accent-light: #eef2ff;
+        --radius: 12px;
+        --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.05);
+    }
+
+    body {
+        background: var(--bg);
+        font-family: 'DM Sans', sans-serif;
+        color: var(--text-primary);
+        margin: 0;
+    }
+
+    /* ── Dashboard shell ── */
+    .dashboard-shell {
+        padding: 16px 24px;
+        min-height: calc(100vh - 48px);
+    }
+
+    /* ── Chart section ── */
+    .chart-section {
+        background: var(--surface);
+        border-radius: var(--radius);
+        border: 1px solid var(--border);
+        box-shadow: var(--shadow);
+        padding: 16px 20px 20px;
+        margin: 0 0 16px 0;
+    }
+    .chart-section-title {
+        font-size: 0.875rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 7px;
+    }
+    .chart-section-title i { color: var(--accent); font-size: 1rem; }
+
+    /* ── Bar chart ── */
+    .simple-bar-chart {
+        --line-count: 10;
+        --line-color: currentcolor;
+        --line-opacity: 0.15;
+        --item-gap: 2%;
+        --item-default-color: var(--accent);
+        height: 18rem;
+        display: grid;
+        grid-auto-flow: column;
+        gap: 1rem;
+        align-items: end;
+        padding-inline: var(--item-gap);
+        --padding-block: 1.5rem;
+        padding-block: var(--padding-block);
+        position: relative;
+        isolation: isolate;
+        overflow: visible;
+    }
+    .simple-bar-chart::after {
+        content: "";
+        position: absolute;
+        inset: var(--padding-block) 0;
+        z-index: -1;
+        --line-width: 1px;
+        --line-spacing: calc(100% / var(--line-count));
+        background-image: repeating-linear-gradient(to top, transparent 0 calc(var(--line-spacing) - var(--line-width)), var(--line-color) 0 var(--line-spacing));
+        box-shadow: 0 var(--line-width) 0 var(--line-color);
+        opacity: var(--line-opacity);
+    }
+    .simple-bar-chart > .item {
+        height: calc(1% * var(--val));
+        background-color: var(--clr, var(--item-default-color));
+        position: relative;
+        animation: item-height 0.8s cubic-bezier(.4,0,.2,1) forwards;
+        width: 100%;
+        border-radius: 5px 5px 0 0;
+    }
+    @keyframes item-height { from { height: 0 } }
+    .simple-bar-chart > .item > * { position: absolute; text-align: center; }
+    .simple-bar-chart > .item > .label { inset: 100% 0 auto 0; }
+    .simple-bar-chart > .item > .value { inset: auto 0 100% 0; }
+    .simple-bar-chart .label {
+        font-size: 0.72rem;
+        font-weight: 600;
+        color: var(--text-muted);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        width: 100%;
+        left: 0;
+        padding-top: 4px;
+    }
+    .simple-bar-chart .value {
+        font-size: 0.72rem;
+        font-weight: 700;
+        font-family: 'DM Mono', monospace;
+        color: var(--text-primary);
+        padding-bottom: 4px;
+    }
+    .simple-bar-chart .item .chart-tooltip {
+        display: none;
+        position: absolute;
+        bottom: calc(100% + 8px);
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(17,24,39,0.92);
+        color: #fff;
+        padding: 6px 10px;
+        border-radius: 6px;
+        font-size: 0.82rem;
+        line-height: 1.3;
+        max-width: 220px;
+        white-space: normal;
+        box-shadow: 0 6px 18px rgba(0,0,0,0.18);
+        z-index: 9999;
+        text-align: left;
+        font-family: 'DM Sans', sans-serif;
+    }
+    .simple-bar-chart .item:focus .chart-tooltip,
+    .simple-bar-chart .item:hover .chart-tooltip { display: block; }
+    .simple-bar-chart .item .chart-tooltip::after {
+        content: '';
+        position: absolute;
+        left: 50%;
+        transform: translateX(-50%);
+        bottom: -6px;
+        border-width: 6px 6px 0 6px;
+        border-style: solid;
+        border-color: rgba(17,24,39,0.92) transparent transparent transparent;
+    }
+    .simple-bar-chart .item:focus { outline: 3px solid rgba(79,70,229,0.2); border-radius: 6px; }
+    .chart-wrapper { width: 100%; }
+    .chart-inner { width: 100%; }
+
+    /* ── Success toast ── */
+    .success-toast {
+        position: fixed;
+        bottom: 24px;
+        right: 24px;
+        min-width: 280px;
+        max-width: 420px;
+        padding: 0;
+        border-radius: 10px;
+        display: none;
+        z-index: 12000;
+        box-shadow: 0 8px 30px rgba(0,0,0,0.13);
+        pointer-events: auto;
+    }
+    .success-toast.show {
+        display: block;
+        animation: toastIn 0.2s ease;
+    }
+    .success-toast-content {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 14px 16px;
+        border-radius: 10px;
+        background: #10b981;
+    }
+    .success-icon { font-size: 18px; }
+    .success-message { flex: 1; color: #fff; font-weight: 600; font-family: 'DM Sans', sans-serif; font-size: 0.9rem; }
+    .success-close { background: transparent; border: 0; color: rgba(255,255,255,0.8); font-size: 16px; cursor: pointer; padding: 4px 6px; transition: color 0.15s; }
+    .success-close:hover { color: #fff; }
+    @keyframes toastIn {
+        from { transform: translateY(8px); opacity: 0; }
+        to   { transform: translateY(0);   opacity: 1; }
+    }
+</style>
+{% endblock style %}
+
+<div class="dashboard-shell">
+
+    <!-- Nav Cards -->
+    {% include 'hr_cards.html' %}
+
+    <!-- Chart -->
+    <div class="chart-section">
+        <div class="chart-section-title">
+            <i class="bi bi-bar-chart-fill"></i> Department Wise Employee Count
+        </div>
+        <div class="chart-wrapper">
+            <div class="chart-inner">
+                {% if dept_chart %}
+                    {% with dept_count=dept_chart|length %}
+                    <div class="simple-bar-chart" style="grid-template-columns: repeat({{ dept_count }}, minmax(56px, 1fr));">
+                    {% for d in dept_chart %}
+                        {% with tip_id="dept-tip-"|add:forloop.counter0 %}
+                        <div class="item" style="--clr: {{ d.color }}; --val: {{ d.pct }}" tabindex="0" aria-label="Department: {{ d.name }}" aria-describedby="{{ tip_id }}">
+                            <div class="label" title="{{ d.name }}" aria-hidden="true">{{ d.name }}</div>
+                            <div class="value">{{ d.count }}</div>
+                            <div id="{{ tip_id }}" role="tooltip" class="chart-tooltip">{{ d.name }}</div>
+                        </div>
+                        {% endwith %}
+                    {% endfor %}
+                    </div>
+                    {% endwith %}
+                {% else %}
+                    <div class="simple-bar-chart" style="grid-template-columns: repeat(6, minmax(56px, 1fr));">
+                        <div class="item" style="--clr: #4f46e5; --val: 80" tabindex="0" aria-label="Label 1">
+                            <div class="label" title="Label 1" aria-hidden="true">Label 1</div>
+                            <div class="value">80</div>
+                        </div>
+                        <div class="item" style="--clr: #f59e0b; --val: 50" tabindex="0" aria-label="Label 2">
+                            <div class="label" title="Label 2" aria-hidden="true">Label 2</div>
+                            <div class="value">50</div>
+                        </div>
+                        <div class="item" style="--clr: #10b981; --val: 100" tabindex="0" aria-label="Label 3">
+                            <div class="label" title="Label 3" aria-hidden="true">Label 3</div>
+                            <div class="value">100</div>
+                        </div>
+                        <div class="item" style="--clr: #ef4444; --val: 15" tabindex="0" aria-label="Label 4">
+                            <div class="label" title="Label 4" aria-hidden="true">Label 4</div>
+                            <div class="value">15</div>
+                        </div>
+                        <div class="item" style="--clr: #8b5cf6; --val: 30" tabindex="0" aria-label="Label 5">
+                            <div class="label" title="Label 5" aria-hidden="true">Label 5</div>
+                            <div class="value">30</div>
+                        </div>
+                        <div class="item" style="--clr: #14b8a6; --val: 90" tabindex="0" aria-label="Label 6">
+                            <div class="label" title="Label 6" aria-hidden="true">Label 6</div>
+                            <div class="value">90</div>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+</div><!-- /.dashboard-shell -->
+
+<div id="employees-panel" hidden></div>
+
+<!-- Success Toast -->
+<div id="success-toast" class="success-toast" role="status" aria-live="polite" aria-atomic="true">
+    <div class="success-toast-content">
+        <span class="success-icon">✅</span>
+        <span id="success-toast-message" class="success-message"></span>
+        <button id="success-toast-close" class="success-close" aria-label="Close">✕</button>
+    </div>
+</div>
+
+{% endblock content %}
+
+{% block scripts %}
+<script>
+var LYRA_LAYOUT_API = {
+  getUrl: "{% url 'dashboard_layout_get' %}",
+  saveUrl: "{% url 'dashboard_layout_save' %}",
+  csrf: "{{ csrf_token }}"
+};
+
+var LYRA_ARRANGE_CONFIG = {
+  storagePrefix: "hr_dashboard:",
+  sectionContainer: ".dashboard-shell",
+  arrangeLabel: "Arrange Layout",
+  doneLabel: "Done Arranging",
+  resetConfirm: "Reset HR dashboard to default layout?",
+  cardGroups: [
+    { container: "#hrCardsGrid", child: ".card", key: "cards" }
+  ]
+};
+</script>
+<script src="{% static 'js/dashboard_dragdrop.js' %}"></script>
+
+<script>
+$(document).ready(function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const successMsgRaw = urlParams.get('success');
+    let successMsg = null;
+    if (successMsgRaw) {
+        try { successMsg = decodeURIComponent(successMsgRaw); } catch(e) { successMsg = successMsgRaw; }
+    }
+
+    if (successMsg) {
+        try {
+            if (typeof $ !== 'undefined') {
+                $('#success-toast-message').text(successMsg);
+                $('#success-toast').addClass('show');
+                const hideTimeout = setTimeout(() => { $('#success-toast').removeClass('show'); }, 3000);
+                $('#success-toast-close').on('click', function(){ clearTimeout(hideTimeout); $('#success-toast').removeClass('show'); });
+            } else {
+                const msgEl = document.getElementById('success-toast-message');
+                const toastEl = document.getElementById('success-toast');
+                const closeBtn = document.getElementById('success-toast-close');
+                if (msgEl) msgEl.textContent = successMsg;
+                if (toastEl) {
+                    toastEl.classList.add('show');
+                    const to = setTimeout(() => { toastEl.classList.remove('show'); }, 3000);
+                    if (closeBtn) closeBtn.addEventListener('click', function(){ clearTimeout(to); toastEl.classList.remove('show'); });
+                }
+            }
+        } catch(e) { console.error('[hr_dashboard] failed to show toast', e); }
+
+        try { const newUrl = window.location.href.split('?')[0]; window.history.replaceState({}, document.title, newUrl); } catch(e) {}
+
+        setTimeout(function(){
+            try {
+                var toastEl = document.getElementById('success-toast');
+                function isVisible(el) {
+                    if (!el || !el.isConnected) return false;
+                    var style = window.getComputedStyle(el);
+                    if (!style) return false;
+                    if (style.display === 'none' || style.visibility === 'hidden' || parseFloat(style.opacity || '1') === 0) return false;
+                    var p = el.parentElement;
+                    while (p) {
+                        var ps = window.getComputedStyle(p);
+                        if (!ps) break;
+                        if (ps.display === 'none' || ps.visibility === 'hidden' || parseFloat(ps.opacity || '1') === 0) return false;
+                        p = p.parentElement;
+                    }
+                    var r = el.getBoundingClientRect();
+                    if (r.width === 0 && r.height === 0) return false;
+                    return true;
+                }
+                if (!isVisible(toastEl)) {
+                    var fb = document.createElement('div');
+                    fb.textContent = successMsg;
+                    fb.setAttribute('role','status');
+                    fb.style.cssText = 'position:fixed;right:20px;bottom:20px;background:#10b981;color:#fff;padding:12px 18px;border-radius:10px;z-index:20000;box-shadow:0 6px 18px rgba(0,0,0,0.12);font-weight:600;font-family:DM Sans,sans-serif;';
+                    document.body.appendChild(fb);
+                    setTimeout(function(){ try{ fb.remove(); }catch(e){} }, 3000);
+                }
+            } catch(e) {}
+        }, 50);
+    }
+});
+
+(function() {
+    var card = document.getElementById('employees-card');
+    if (card) card.addEventListener('click', function() { window.location.href = '{% url "employees_list" %}'; });
+
+    var recruitCard = document.getElementById('card-recruit');
+    if (recruitCard) recruitCard.addEventListener('click', function(){ window.location.href = '{% url "recruiter_dashboard" %}'; });
+
+    var panel = document.getElementById('employees-panel');
+    var params = new URLSearchParams(window.location.search);
+    if (panel && params.get('page')) panel.hidden = false;
+
+    Array.prototype.slice.call(document.getElementsByClassName('confirm-delete')).forEach(function(form) {
+        form.addEventListener('submit', function(e) {
+            if (!confirm('Are you sure you want to delete this employee? This action cannot be undone.')) e.preventDefault();
+        });
+    });
+})();
+
+document.addEventListener('DOMContentLoaded', function() {
+    const noticeCard = document.getElementById('card-notices');
+    const dropdown = document.getElementById('notice-dropdown');
+    if (noticeCard && dropdown) {
+        noticeCard.addEventListener('click', function(e) {
+            e.stopPropagation();
+            noticeCard.classList.toggle('show');
+        });
+        document.addEventListener('click', function(e) {
+            if (!noticeCard.contains(e.target)) noticeCard.classList.remove('show');
+        });
+    }
+});
+</script>
+{% endblock scripts %}

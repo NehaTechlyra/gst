@@ -1,0 +1,356 @@
+{% extends 'website/index.html' %}
+
+{% block title %}{{ opportunity.lead.customer_name }} - Opportunity - Lyra CRM{% endblock %}
+{% block page_title %}Opportunity: {{ opportunity.lead.customer_name }}{% endblock %}
+
+{% block exstyle %}
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  /* ─── Design Tokens ─────────────────────────────────────────── */
+  :root {
+    --brand:        #55588b;
+    --brand-dark:   #3e4070;
+    --brand-light:  #8486b8;
+    --brand-pale:   #f0f0f8;
+    --brand-muted:  #f5f5fb;
+    --brand-border: #dcddf0;
+    --success:      #2a7a56;
+    --danger:       #c0392b;
+    --warning:      #8a6300;
+    --text-primary: #2c2d4a;
+    --text-secondary:#6b6d96;
+    --text-muted:   #a0a2c0;
+    --surface:      #ffffff;
+    --surface-alt:  #fafafa;
+    --border:       #eaeaef;
+    --shadow-xs:    0 1px 2px rgba(85,88,139,.06);
+    --shadow-sm:    0 2px 8px rgba(85,88,139,.08);
+    --shadow-md:    0 4px 16px rgba(85,88,139,.10);
+    --radius:       8px;
+    --radius-sm:    5px;
+    --radius-lg:    12px;
+    --font-main:    'DM Sans', sans-serif;
+    --font-mono:    'DM Mono', monospace;
+  }
+
+  body { font-family: var(--font-main); color: var(--text-primary); background: #f6f6fb; }
+  .crm-page { padding: 24px 8px 48px; max-width: none; }
+
+  /* ─── Action Bar ─────────────────────────────────────────────── */
+  .action-bar {
+    display: flex; align-items: center;
+    margin-bottom: 24px; gap: 8px; flex-wrap: wrap;
+  }
+
+  /* ─── Buttons ────────────────────────────────────────────────── */
+  .btn { font-family: var(--font-main); font-weight: 500; font-size: 0.85rem; border-radius: var(--radius-sm); transition: all .15s ease; letter-spacing: 0; }
+  .btn:hover { transform: translateY(-1px); box-shadow: var(--shadow-sm); }
+  .btn:active { transform: translateY(0); box-shadow: none; }
+  .btn-primary { background: var(--brand) !important; border-color: var(--brand) !important; color: #fff !important; }
+  .btn-primary:hover, .btn-primary:focus { background: var(--brand-dark) !important; border-color: var(--brand-dark) !important; color: #fff !important; }
+  .btn-success { background: #1e6e49 !important; border-color: #1e6e49 !important; color: #fff !important; }
+  .btn-success:hover { background: #155236 !important; border-color: #155236 !important; color: #fff !important; }
+  .btn-warning { background: var(--brand-muted) !important; border-color: var(--brand-border) !important; color: var(--brand) !important; }
+  .btn-warning:hover { background: var(--brand-pale) !important; border-color: var(--brand) !important; color: var(--brand-dark) !important; }
+  .btn-danger { background: var(--danger) !important; border-color: var(--danger) !important; color: #fff !important; }
+  .btn-danger:hover { background: #a93226 !important; border-color: #a93226 !important; }
+  .btn-secondary { background: #1a7f7a !important; border-color: #1a7f7a !important; color: #fff !important; }
+  .btn-secondary:hover { background: #136360 !important; border-color: #136360 !important; color: #fff !important; }
+  .btn-outline-secondary { border-color: var(--border) !important; color: var(--text-secondary) !important; background: #fff !important; }
+  .btn-outline-secondary:hover { background: var(--brand-muted) !important; border-color: var(--brand-border) !important; color: var(--brand) !important; }
+  .btn-sm { font-size: 0.78rem !important; padding: 3px 10px !important; }
+
+  /* ─── Cards ──────────────────────────────────────────────────── */
+  .card { border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-xs); background: var(--surface); overflow: hidden; transition: box-shadow .2s; }
+  .card:hover { box-shadow: var(--shadow-sm); }
+
+  .card > .card-header,
+  .card>.card-header {
+    background: #ffffff !important; background-color: #ffffff !important;
+    border-bottom: 1px solid var(--border) !important;
+    border-left: 3px solid var(--brand) !important;
+    padding: 13px 18px !important; position: relative;
+  }
+  .card > .card-header::after, .card>.card-header::after { display: none; }
+  .card > .card-header h5, .card > .card-header h6,
+  .card>.card-header h5, .card>.card-header h6 {
+    color: var(--brand) !important; font-size: 0.82rem !important; font-weight: 700 !important;
+    letter-spacing: .07em !important; text-transform: uppercase !important; margin: 0 !important;
+  }
+  .card > .card-header i, .card>.card-header i { color: var(--brand-light) !important; }
+  .card-body { padding: 20px; }
+
+  /* ─── Info Rows ──────────────────────────────────────────────── */
+  .info-row { display: flex; align-items: baseline; gap: 10px; padding: 8px 0; border-bottom: 1px dashed var(--border); font-size: 0.88rem; }
+  .info-row:last-child { border-bottom: none; }
+  .info-row strong { color: var(--text-muted); font-weight: 600; font-size: 0.74rem; text-transform: uppercase; letter-spacing: .07em; min-width: 150px; flex-shrink: 0; }
+  .info-row span:not(.badge) { color: var(--text-primary); font-weight: 400; }
+  .info-row a { color: var(--brand); text-decoration: none; font-weight: 500; }
+  .info-row a:hover { text-decoration: underline; }
+
+  /* ─── Badges ─────────────────────────────────────────────────── */
+  .badge { font-size: 0.7rem !important; font-weight: 600 !important; letter-spacing: .04em; border-radius: 4px; padding: 3px 8px; }
+  .bg-danger   { background: var(--danger) !important; color: #fff !important; }
+  .bg-warning  { background: #f0c040 !important; color: #2c2000 !important; }
+  .bg-secondary{ background: var(--text-muted) !important; color: #fff !important; }
+  .bg-info     { background: var(--brand-light) !important; color: #fff !important; }
+  .bg-success  { background: #1e6e49 !important; color: #fff !important; }
+
+  /* ─── Quick Actions ──────────────────────────────────────────── */
+  .quick-actions-body { display: flex; flex-direction: column; gap: 8px; padding: 16px 20px; }
+
+  /* ─── Linked Items (Quotations) ──────────────────────────────── */
+  .linked-item {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 9px 0; border-bottom: 1px dashed var(--border); font-size: 0.875rem;
+  }
+  .linked-item:last-child { border-bottom: none; }
+  .linked-item a { color: var(--brand); font-weight: 500; text-decoration: none; }
+  .linked-item a:hover { text-decoration: underline; }
+
+  /* ─── Timeline ───────────────────────────────────────────────── */
+  .timeline-item {
+    border-left: 3px solid var(--brand-border);
+    padding: 4px 0 12px 16px;
+    margin-bottom: 4px;
+    position: relative;
+  }
+  .timeline-item::before {
+    content: '';
+    width: 9px; height: 9px;
+    background: var(--brand);
+    border-radius: 50%;
+    position: absolute;
+    left: -6px; top: 6px;
+  }
+  .timeline-item:last-child { border-left-color: transparent; padding-bottom: 0; }
+  .timeline-meta { font-size: 0.75rem; color: var(--text-muted); margin-bottom: 4px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
+  .timeline-body { font-size: 0.875rem; color: var(--text-secondary); line-height: 1.6; margin: 0; }
+  .timeline-attachment { font-size: 0.8rem; color: var(--brand); margin-top: 4px; display: inline-block; }
+
+  /* ─── Follow-ups ─────────────────────────────────────────────── */
+  .followup-item {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    gap: 12px; padding: 10px 0; border-bottom: 1px dashed var(--border); font-size: 0.875rem;
+  }
+  .followup-item:last-child { border-bottom: none; }
+  .followup-date { font-weight: 600; color: var(--brand); font-size: 0.82rem; min-width: 100px; }
+  .followup-desc { color: var(--text-secondary); flex: 1; line-height: 1.55; }
+  .followup-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+
+  /* ─── Opportunity Grid Layout ────────────────────────────────── */
+  .lead-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    align-items: start;
+    margin-bottom: 24px;
+  }
+  .lead-grid-main { min-width: 0; }
+  .lead-grid-side { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+  .lead-grid-side .card { margin-bottom: 0 !important; }
+  @media (max-width: 767px) { .lead-grid { grid-template-columns: 1fr; } }
+
+  /* ─── Empty state ────────────────────────────────────────────── */
+  .empty-state { color: var(--text-muted); font-style: italic; font-size: 0.85rem; margin: 0; }
+
+  /* ─── Dropdowns ──────────────────────────────────────────────── */
+  .dropdown-menu { border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-md); padding: 5px; font-family: var(--font-main); font-size: 0.855rem; }
+  .dropdown-item { border-radius: 4px; padding: 7px 12px; color: var(--text-primary); font-weight: 400; transition: background .1s; }
+  .dropdown-item:hover { background: var(--brand-muted); color: var(--brand); }
+
+  @media (max-width: 768px) {
+    .action-bar { flex-direction: column; align-items: flex-start; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid crm-page">
+
+  <!-- ── Action Bar ─────────────────────────────────────────────── -->
+  <div class="action-bar">
+    {% if request.user.is_superuser or can_edit_crm_opportunities %}
+    <a href="{% url 'opportunity_edit' opportunity.pk %}" class="btn btn-warning">
+      <i class="bi bi-pencil me-1"></i> Edit
+    </a>
+    {% if opportunity.status != 'Lost' and opportunity.lead.status != 'Lost' %}
+    <a href="{% url 'opportunity_mark_lost' opportunity.pk %}" class="btn btn-danger">
+      <i class="bi bi-x-circle me-1"></i> Mark as Lost
+    </a>
+    {% endif %}
+    {% endif %}
+    {% if can_create_quotations %}
+    <a href="{% url 'quotation_create' %}?opportunity_id={{ opportunity.pk }}" class="btn btn-primary">
+      <i class="bi bi-file-text me-1"></i> Create Quotation
+    </a>
+    {% endif %}
+  </div>
+
+  <!-- ── Opportunity Info + Side panels: CSS grid layout ──────── -->
+  <div class="lead-grid">
+
+    <!-- Opportunity Information (left column) -->
+    <div class="lead-grid-main">
+      <div class="card">
+        <div class="card-header">
+          <h5><i class="bi bi-briefcase-fill me-2"></i>Opportunity Information</h5>
+        </div>
+        <div class="card-body">
+          <div class="info-row">
+            <strong>Lead</strong>
+            <a href="{% url 'lead_detail' opportunity.lead.pk %}">{{ opportunity.lead.customer_name }}</a>
+          </div>
+          <div class="info-row">
+            <strong>Estimated Deal Value</strong>
+            <span>₹{{ opportunity.estimated_deal_value }}</span>
+          </div>
+          <div class="info-row">
+            <strong>Expected Closing Date</strong>
+            <span>{{ opportunity.expected_closing_date }}</span>
+          </div>
+          <div class="info-row">
+            <strong>Status</strong>
+            <span class="badge bg-info">{{ opportunity.status }}</span>
+          </div>
+          <div class="info-row">
+            <strong>Priority</strong>
+            {% if opportunity.priority == 'Hot' %}
+              <span class="badge bg-danger">Hot</span>
+            {% elif opportunity.priority == 'Warm' %}
+              <span class="badge bg-warning">Warm</span>
+            {% else %}
+              <span class="badge bg-secondary">Cold</span>
+            {% endif %}
+          </div>
+          <div class="info-row">
+            <strong>Assigned To</strong>
+            <span>{% if opportunity.assigned_employee %}{{ opportunity.assigned_employee }}{% elif opportunity.assigned_to %}{{ opportunity.assigned_to }}{% else %}—{% endif %}</span>
+          </div>
+          {% if opportunity.lost_reason %}
+          <div class="info-row">
+            <strong>Lost Reason</strong>
+            <span>{{ opportunity.lost_reason }}</span>
+          </div>
+          {% endif %}
+          <div class="info-row" style="flex-direction: column; align-items: flex-start;">
+            <strong>Products &amp; Quantities</strong>
+            <p style="margin: 6px 0 0; font-size: 0.875rem; color: var(--text-secondary); line-height: 1.6;">{{ opportunity.products_quantities|default:'—' }}</p>
+          </div>
+          <div class="info-row" style="flex-direction: column; align-items: flex-start;">
+            <strong>Negotiation Notes</strong>
+            <p style="margin: 6px 0 0; font-size: 0.875rem; color: var(--text-secondary); line-height: 1.6;">{{ opportunity.negotiation_notes|default:'—' }}</p>
+          </div>
+          <div class="info-row" style="flex-direction: column; align-items: flex-start;">
+            <strong>Competitor Information</strong>
+            <p style="margin: 6px 0 0; font-size: 0.875rem; color: var(--text-secondary); line-height: 1.6;">{{ opportunity.competitor_info|default:'—' }}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right sidebar -->
+    <div class="lead-grid-side">
+
+      <!-- Quick Actions -->
+      <div class="card">
+        <div class="card-header">
+          <h5><i class="bi bi-lightning me-2"></i>Quick Actions</h5>
+        </div>
+        <div class="quick-actions-body">
+          <a href="{% url 'update_create' %}?opportunity_id={{ opportunity.pk }}" class="btn btn-primary w-100">
+            <i class="bi bi-plus-circle me-2"></i>Add Update
+          </a>
+          {% if can_create_crm_followups %}
+          <a href="{% url 'followup_create' %}?opportunity_id={{ opportunity.pk }}" class="btn btn-success w-100">
+            <i class="bi bi-calendar-plus me-2"></i>Create Follow-up
+          </a>
+          {% endif %}
+          {% if can_create_crm_presales %}
+          <a href="{% url 'presales_create' %}?opportunity_id={{ opportunity.pk }}" class="btn btn-secondary w-100">
+            <i class="bi bi-clipboard-check me-2"></i>Create Pre-Sales
+          </a>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Quotations -->
+      <div class="card">
+        <div class="card-header">
+          <h5><i class="bi bi-file-text me-2"></i>Quotations</h5>
+        </div>
+        <div class="card-body">
+          {% for quote in quotations %}
+          <div class="linked-item">
+            <a href="{% url 'quotation_detail' quote.pk %}">
+              <i class="bi bi-file-earmark me-1" style="font-size:.8rem;"></i>
+              {{ quote.quote_number }}
+            </a>
+            <span class="badge bg-secondary">{{ quote.status }}</span>
+          </div>
+          {% empty %}
+          <p class="empty-state">No quotations yet.</p>
+          {% endfor %}
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── Timeline / Updates ─────────────────────────────────────── -->
+  <div class="card mt-4">
+    <div class="card-header">
+      <h5><i class="bi bi-clock-history me-2"></i>Timeline / Updates</h5>
+    </div>
+    <div class="card-body">
+      {% for update in updates %}
+      <div class="timeline-item">
+        <p class="timeline-meta">
+          {{ update.update_type }}
+          <span style="font-weight:400; color: var(--text-secondary); margin: 0 4px;">·</span>
+          {{ update.created_by }}
+          <span style="font-weight:400; color: var(--text-secondary); margin: 0 4px;">·</span>
+          {{ update.created_at }}
+        </p>
+        <p class="timeline-body">{{ update.description }}</p>
+        {% if update.attachment %}
+        <a href="{{ update.attachment.url }}" target="_blank" class="timeline-attachment">
+          <i class="bi bi-paperclip me-1"></i>View Attachment
+        </a>
+        {% endif %}
+      </div>
+      {% empty %}
+      <p class="empty-state">No updates yet.</p>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- ── Follow-ups ─────────────────────────────────────────────── -->
+  <div class="card mt-4">
+    <div class="card-header">
+      <h5><i class="bi bi-calendar-check me-2"></i>Follow-ups</h5>
+    </div>
+    <div class="card-body">
+      {% for followup in followups %}
+      <div class="followup-item">
+        <span class="followup-date">{{ followup.followup_date }}</span>
+        <span class="followup-desc">{{ followup.description }}</span>
+        <div class="followup-actions">
+          <span class="badge {% if followup.status == 'Completed' %}bg-success{% else %}bg-warning{% endif %}">
+            {{ followup.status }}
+          </span>
+          {% if followup.status == 'Pending' %}
+          <a href="{% url 'followup_complete' followup.pk %}" class="btn btn-sm btn-success">
+            <i class="bi bi-check2 me-1"></i>Mark Complete
+          </a>
+          {% endif %}
+        </div>
+      </div>
+      {% empty %}
+      <p class="empty-state">No follow-ups yet.</p>
+      {% endfor %}
+    </div>
+  </div>
+
+</div>
+{% endblock %}

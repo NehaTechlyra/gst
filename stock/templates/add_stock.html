@@ -1,0 +1,317 @@
+{% extends 'website/index.html' %}
+{% load widget_tweaks %}
+{% load static %}
+{% block exstyle %}
+<link href="{% static 'style/general.css' %}" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.9.1/font/bootstrap-icons.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<style>
+  /* Fixed column widths */
+  #stockTable {
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: collapse;
+  }
+
+  #stockTable thead th:nth-child(1) { width: 40%; }
+  #stockTable thead th:nth-child(2) { width: 20%; }
+  #stockTable thead th:nth-child(3) { width: 25%; }
+  #stockTable thead th:nth-child(4) { width: 15%; text-align: center; }
+
+  #stockTable td {
+    padding: 6px 8px;
+    vertical-align: middle;
+    overflow: hidden;
+  }
+
+  #stockTable td:nth-child(4) {
+    text-align: center;
+  }
+
+  /* Make Select2 and inputs fill their cell fully */
+  #stockTable .select2-container,
+  #stockTable input,
+  #stockTable select {
+    width: 100% !important;
+    box-sizing: border-box;
+  }
+</style>
+{% endblock exstyle %}
+
+{% block page_title %} Stock Entry {% endblock page_title %}
+
+{% block content %}
+<div class="container mt-4">
+  <div class="card p-4 shadow-sm border-0">
+
+    <form method="post" id="stockFormSet">
+      {% csrf_token %}
+
+      <!-- Warehouse -->
+      <div class="mb-4">
+        <label for="{{ warehouse_form.warehouse.id_for_label }}" class="form-label">
+          Select Warehouse <span class="text-danger">*</span>
+        </label>
+        {{ warehouse_form.warehouse|add_class:"form-select select2" }}
+        {% for error in warehouse_form.warehouse.errors %}
+          <div class="text-danger small">{{ error }}</div>
+        {% endfor %}
+      </div>
+
+      {{ formset.management_form }}
+
+      <table id="stockTable" class="items-table">
+        <thead>
+          <tr>
+            <th>Item <span class="text-danger">*</span></th>
+            <th>Quantity <span class="text-danger">*</span></th>
+            <th>Expiration Date</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for form in formset %}
+          <tr>
+            <td>{{ form.item|add_class:"form-select item-select" }}</td>
+            <td>{{ form.quantity|add_class:"form-control" }}</td>
+            <td>{{ form.expiration_date|add_class:"form-control" }}</td>
+            <td><button type="button" class="remove-item-btn">&#x2715;</button></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
+      <!-- Hidden template row -->
+      <table style="display:none;">
+        <tbody id="emptyForm">
+          <tr>
+            <td>{{ formset.empty_form.item|add_class:"form-select item-select" }}</td>
+            <td>{{ formset.empty_form.quantity|add_class:"form-control" }}</td>
+            <td>{{ formset.empty_form.expiration_date|add_class:"form-control" }}</td>
+            <td><button type="button" class="remove-item-btn">&#x2715;</button></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="mt-3">
+        <button type="button" id="addRowBtn" class="add-item-btn">Add Row</button>
+        <button type="submit" class="btn btn-primary">Submit</button>
+        <a href="{% url 'stock_list' %}" class="btn btn-outline-secondary ms-2">Cancel</a>
+      </div>
+    </form>
+
+  </div>
+</div>
+
+<!-- Select2 JS -->
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+
+  /* ── Init Select2 ── */
+  function initSelect2On(el) {
+    $(el).select2({ width: '100%', placeholder: '' });
+  }
+
+  document.querySelectorAll('select.item-select, select.select2').forEach(function (el) {
+    if (el.closest('#emptyForm')) return;
+    initSelect2On(el);
+  });
+
+  /* ── Red border helpers ── */
+  function applyRedBorder(selectEl) {
+    var c = $(selectEl).next('.select2-container');
+    if (c && c.length) {
+      var s = c[0].querySelector('.select2-selection');
+      if (s) {
+        s.style.border       = '1px solid #dc3545';
+        s.style.boxShadow    = '0 0 0 0.2rem rgba(220,53,69,.25)';
+        s.style.borderRadius = '.25rem';
+      }
+    }
+  }
+
+  function clearRedBorder(selectEl) {
+    var c = $(selectEl).next('.select2-container');
+    if (c && c.length) {
+      var s = c[0].querySelector('.select2-selection');
+      if (s) { s.style.border = ''; s.style.boxShadow = ''; s.style.borderRadius = ''; }
+    }
+  }
+
+  /* ── Add Row ── */
+  document.getElementById('addRowBtn').addEventListener('click', function () {
+    var totalForms = document.getElementById('id_form-TOTAL_FORMS');
+    var count = parseInt(totalForms.value);
+
+    var templateRow = document.querySelector('#emptyForm tr');
+    var newRow = templateRow.cloneNode(true);
+
+    newRow.querySelectorAll('[name],[id],[for]').forEach(function (el) {
+      ['name', 'id', 'for'].forEach(function (attr) {
+        if (el.hasAttribute(attr)) {
+          el.setAttribute(attr, el.getAttribute(attr).replace(/__prefix__/g, count));
+        }
+      });
+    });
+
+    newRow.querySelectorAll('span.select2-container').forEach(function (s) { s.remove(); });
+    newRow.querySelectorAll('select').forEach(function (sel) {
+      sel.classList.remove('select2-hidden-accessible');
+      sel.removeAttribute('data-select2-id');
+      sel.style.display = '';
+    });
+
+    document.querySelector('#stockTable tbody').appendChild(newRow);
+    totalForms.value = count + 1;
+
+    var newSelect = newRow.querySelector('select.item-select');
+    if (newSelect) {
+      setTimeout(function () { initSelect2On(newSelect); }, 0);
+    }
+  });
+
+  /* ── Remove Row ── */
+  document.querySelector('#stockTable').addEventListener('click', function (e) {
+    if (e.target.classList.contains('remove-item-btn')) {
+      e.target.closest('tr').remove();
+    }
+  });
+
+  /* ── Validation ── */
+  var form = document.getElementById('stockFormSet');
+
+  function clearAllErrors() {
+    form.querySelectorAll('.field-error').forEach(function (el) { el.remove(); });
+    form.querySelectorAll('.is-invalid').forEach(function (el) { el.classList.remove('is-invalid'); });
+    form.querySelectorAll('select').forEach(function (el) { clearRedBorder(el); });
+  }
+
+  function addError(afterEl, msg) {
+    afterEl.insertAdjacentHTML('afterend',
+      '<div class="text-danger small field-error">' + msg + '</div>');
+  }
+
+  form.addEventListener('submit', function (e) {
+    clearAllErrors();
+    var valid = true;
+
+    var whEl = document.getElementById('{{ warehouse_form.warehouse.id_for_label }}');
+    if (whEl && !(whEl.value || '').trim()) {
+      valid = false;
+      applyRedBorder(whEl);
+      var wc = $(whEl).next('.select2-container')[0];
+      addError(wc || whEl, 'Please select a warehouse.');
+    }
+
+    form.querySelectorAll('#stockTable tbody [name$="-item"]').forEach(function (el) {
+      if (!(el.value || '').trim()) {
+        valid = false;
+        applyRedBorder(el);
+        var c = $(el).next('.select2-container')[0];
+        addError(c || el, 'Please select an item.');
+      }
+    });
+
+    form.querySelectorAll('#stockTable tbody [name$="-quantity"]').forEach(function (el) {
+      var v = (el.value || '').trim();
+      if (!v || isNaN(v) || Number(v) === 0) {
+        valid = false;
+        el.classList.add('is-invalid');
+        addError(el, 'Quantity cannot be zero (positive to add, negative to reduce).');
+      }
+    });
+
+    if (!valid) {
+      e.preventDefault();
+      var first = form.querySelector('.is-invalid') || form.querySelector('.select2-container');
+      if (first) first.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  });
+
+  $(document).on('select2:select', '#stockFormSet select', function () {
+    clearRedBorder(this);
+    var c = $(this).next('.select2-container')[0];
+    if (c && c.nextElementSibling && c.nextElementSibling.classList.contains('field-error')) {
+      c.nextElementSibling.remove();
+    }
+  });
+
+  form.addEventListener('input', function (e) {
+    var t = e.target;
+    if (t.classList.contains('is-invalid')) {
+      t.classList.remove('is-invalid');
+      var n = t.nextElementSibling;
+      if (n && n.classList.contains('field-error')) n.remove();
+    }
+  });
+
+  /* ── Unsaved-changes guard ── */
+  var changed = false;
+  form.addEventListener('change', function () { changed = true; });
+  form.addEventListener('input',  function () { changed = true; });
+  $(document).on('select2:select', '#stockFormSet select', function () { changed = true; });
+
+  document.addEventListener('click', function (e) {
+    var link = e.target.closest('a');
+    if (!link || !changed) return;
+    var href = link.getAttribute('href');
+    if (!href || href.startsWith('#') || link.dataset.bsToggle || href.startsWith('javascript:')) return;
+    e.preventDefault(); e.stopPropagation();
+
+    var modal = document.getElementById('unsavedChangesModal');
+    if (!modal) {
+      document.body.insertAdjacentHTML('beforeend',
+        '<div class="modal fade" id="unsavedChangesModal" tabindex="-1" aria-hidden="true">' +
+        '<div class="modal-dialog"><div class="modal-content">' +
+        '<div class="modal-header"><h5 class="modal-title">Unsaved Changes</h5>' +
+        '<button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>' +
+        '<div class="modal-body">You have unsaved changes. Leave without saving?</div>' +
+        '<div class="modal-footer">' +
+        '<button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>' +
+        '<button id="confirmNavigation" class="btn btn-primary">Leave</button>' +
+        '</div></div></div></div>');
+      modal = document.getElementById('unsavedChangesModal');
+    }
+    var bsModal = new bootstrap.Modal(modal);
+    var oldBtn  = document.getElementById('confirmNavigation');
+    var newBtn  = oldBtn.cloneNode(true);
+    oldBtn.parentNode.replaceChild(newBtn, oldBtn);
+    newBtn.addEventListener('click', function () { changed = false; window.location.href = href; });
+    bsModal.show();
+  }, true);
+
+});
+</script>
+
+<!-- Error modal -->
+<div class="modal fade" id="errorModal" tabindex="-1" aria-labelledby="errorModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="border:2px solid #d9534f;border-radius:8px;">
+      <div class="modal-header" style="background:#f8d7da;border-bottom:2px solid #d9534f;">
+        <h5 class="modal-title" id="errorModalLabel" style="color:#721c24;">
+          <i class="bi bi-exclamation-circle" style="color:#d9534f;"></i> Error
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="errorModalBody" style="color:#721c24;padding:20px;line-height:1.6;"></div>
+      <div class="modal-footer" style="border-top:1px solid #dee2e6;">
+        <button type="button" class="btn btn-primary" data-bs-dismiss="modal">OK</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  var show = {{ show_error_modal|lower|default:"false" }};
+  var msg  = `{{ error_message|escapejs }}`;
+  if (show && msg) {
+    document.getElementById('errorModalBody').innerHTML = msg.replace(/\n/g, '<br>');
+    new bootstrap.Modal(document.getElementById('errorModal')).show();
+  }
+});
+</script>
+
+{% endblock %}

@@ -1,0 +1,547 @@
+{% extends "website/index.html" %}
+{% load static %}
+{% block exstyle %}
+<link href="{% static 'style/general.css' %}" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Ubuntu&display=swap" rel="stylesheet">
+<link href="{% static 'style/quotation_detail.css' %}" rel="stylesheet">
+{% endblock %}
+{% block page_title %}Performa Invoice Detail{% endblock page_title %}
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const statusDropdown = document.getElementById('statusDropdown');
+  const confirmModalEl = document.getElementById('confirmStatusModal');
+  const confirmModal = confirmModalEl ? new bootstrap.Modal(confirmModalEl) : null;
+  const confirmText = confirmModalEl ? document.getElementById('confirmStatusText') : null;
+  const sendEmailButtons = [
+    document.getElementById('sendEmailBtn'),
+    document.getElementById('sendEmailBtnQuick')
+  ].filter(Boolean);
+  let pendingStatus = null;
+
+  function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+      const cookies = document.cookie.split(';');
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
+
+  function showToast(message, type, delay) {
+    let toastContainer = document.getElementById('toastContainer');
+    if (!toastContainer) {
+      toastContainer = document.createElement('div');
+      toastContainer.id = 'toastContainer';
+      toastContainer.className = 'toast-container position-fixed p-3';
+      toastContainer.style.top = '70px';
+      toastContainer.style.right = '20px';
+      toastContainer.style.bottom = 'auto';
+      toastContainer.style.left = 'auto';
+      document.body.appendChild(toastContainer);
+    }
+
+    const toastEl = document.createElement('div');
+    toastEl.className = `toast align-items-center text-bg-${type} border-0 shadow`;
+    toastEl.style.minWidth = '260px';
+    toastEl.style.marginTop = '8px';
+    toastEl.setAttribute('role', 'alert');
+    toastEl.setAttribute('aria-live', 'assertive');
+    toastEl.setAttribute('aria-atomic', 'true');
+    toastEl.innerHTML = `
+      <div class="d-flex">
+        <div class="toast-body">${message}</div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+      </div>
+    `;
+
+    toastContainer.appendChild(toastEl);
+    const toast = new bootstrap.Toast(toastEl, { delay: delay || 3000 });
+    toast.show();
+  }
+
+  const statusTransitionMap = {
+    Draft: ['Sent', 'Cancelled'],
+    Sent: ['Accepted', 'Cancelled'],
+    Accepted: [],
+    Cancelled: []
+  };
+  const convertUrl = "{% if company_code %}{% url 'convert_performa_to_order' company_code invoice.pk %}{% else %}{% url 'convert_performa_to_order' invoice.pk %}{% endif %}";
+  const convertLinks = [
+    document.getElementById('convertToOrderLink'),
+    document.getElementById('convertToOrderQuick')
+  ].filter(Boolean);
+
+  function isTransitionAllowed(fromStatus, toStatus) {
+    if (!fromStatus || !toStatus) return false;
+    if (fromStatus === toStatus) return true;
+    const allowedNext = statusTransitionMap[fromStatus] || [];
+    return allowedNext.includes(toStatus);
+  }
+
+  function applyStatusOptionGuards(currentStatus) {
+    if (!statusDropdown) return;
+    const allowedNext = statusTransitionMap[currentStatus] || [];
+    Array.from(statusDropdown.options).forEach(function(option) {
+      const sameStatus = option.value === currentStatus;
+      const allowed = allowedNext.includes(option.value);
+      option.disabled = !(sameStatus || allowed);
+    });
+  }
+
+  function updateConvertActions(currentStatus) {
+    if (!convertLinks.length) return;
+    const canConvert = currentStatus === 'Accepted';
+    convertLinks.forEach(function(link) {
+      if (canConvert) {
+        link.classList.remove('disabled');
+        link.setAttribute('href', convertUrl);
+        link.removeAttribute('aria-disabled');
+        link.removeAttribute('tabindex');
+      } else {
+        link.classList.add('disabled');
+        link.setAttribute('href', '#');
+        link.setAttribute('aria-disabled', 'true');
+        link.setAttribute('tabindex', '-1');
+      }
+    });
+  }
+
+  if (statusDropdown) {
+    statusDropdown.dataset.original = statusDropdown.value;
+    applyStatusOptionGuards(statusDropdown.dataset.original);
+    updateConvertActions(statusDropdown.dataset.original);
+    statusDropdown.addEventListener('change', function() {
+      const fromStatus = this.dataset.original || this.value;
+      const toStatus = this.value;
+      if (!isTransitionAllowed(fromStatus, toStatus)) {
+        this.value = fromStatus;
+        showToast(`Invalid status transition: ${fromStatus} -> ${toStatus}.`, 'warning', 3500);
+        return;
+      }
+      pendingStatus = this.value;
+      if (confirmText) {
+        confirmText.innerHTML = `Change status to <strong>${pendingStatus}</strong>?`;
+      }
+      if (confirmModal) confirmModal.show();
+    });
+  }
+
+  const confirmBtn = document.getElementById('confirmStatusBtn');
+  const cancelBtn = document.getElementById('cancelStatusBtn');
+  if (confirmBtn) {
+    confirmBtn.addEventListener('click', function() {
+      if (!pendingStatus) return;
+
+      const formData = new FormData();
+      formData.append('status', pendingStatus);
+      formData.append('csrfmiddlewaretoken', getCookie('csrftoken'));
+
+      if (statusDropdown) statusDropdown.disabled = true;
+
+      fetch("{% if company_code %}{% url 'update_performa_status' company_code invoice.pk %}{% else %}{% url 'update_performa_status' invoice.pk %}{% endif %}", {
+        method: 'POST',
+        body: formData
+      })
+      .then(response => {
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        return response.json();
+      })
+      .then(data => {
+        if (data.success) {
+          showToast(data.message, 'success', 3000);
+          if (statusDropdown) {
+            statusDropdown.dataset.original = pendingStatus;
+            applyStatusOptionGuards(pendingStatus);
+            updateConvertActions(pendingStatus);
+          }
+          const statusValue = document.getElementById('performaStatusValue');
+          if (statusValue) statusValue.textContent = pendingStatus;
+        } else {
+          showToast(data.error || 'Failed to update status', 'danger', 4000);
+          if (statusDropdown) statusDropdown.value = statusDropdown.dataset.original;
+        }
+      })
+      .catch(error => {
+        console.error('Status update error:', error);
+        showToast('An error occurred while updating status: ' + error.message, 'danger', 4000);
+        if (statusDropdown) statusDropdown.value = statusDropdown.dataset.original;
+      })
+      .finally(() => {
+        if (statusDropdown) statusDropdown.disabled = false;
+        pendingStatus = null;
+        if (confirmModal) confirmModal.hide();
+      });
+    });
+  }
+
+  if (cancelBtn) {
+    cancelBtn.addEventListener('click', function() {
+      if (statusDropdown) {
+        statusDropdown.value = statusDropdown.dataset.original || statusDropdown.value;
+      }
+      pendingStatus = null;
+      if (confirmModal) confirmModal.hide();
+    });
+  }
+
+  if (sendEmailButtons.length) {
+    const sendEmail = function () {
+      const url = "{% if company_code %}{% url 'send_performa_invoice_message' company_code invoice.pk %}{% else %}{% url 'send_performa_invoice_message' invoice.pk %}{% endif %}?method=email";
+      sendEmailButtons.forEach(btn => btn.classList.add('disabled'));
+      showToast('Sending email...', 'info', 2000);
+
+      fetch(url, {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': getCookie('csrftoken')
+        }
+      })
+      .then(resp => resp.json())
+      .then(data => {
+        if (data && data.success) {
+          showToast(data.message || 'Email sent', 'success', 4000);
+          const statusValue = document.getElementById('performaStatusValue');
+          if (statusValue && statusValue.textContent.trim() === 'Draft') {
+            statusValue.textContent = 'Sent';
+          }
+          if (statusDropdown && statusDropdown.dataset.original === 'Draft') {
+            statusDropdown.value = 'Sent';
+            statusDropdown.dataset.original = 'Sent';
+            applyStatusOptionGuards('Sent');
+            updateConvertActions('Sent');
+          }
+        } else {
+          showToast(data.message || data.error || 'Failed to send email', 'danger', 5000);
+        }
+      })
+      .catch(err => {
+        console.error(err);
+        showToast('An error occurred while sending email: ' + (err.message || err), 'danger', 5000);
+      })
+      .finally(() => {
+        sendEmailButtons.forEach(btn => btn.classList.remove('disabled'));
+      });
+    };
+
+    sendEmailButtons.forEach(function (btn) {
+      btn.addEventListener('click', function (e) {
+        e.preventDefault();
+        sendEmail();
+      });
+    });
+  }
+
+  if (!statusDropdown) {
+    updateConvertActions("{{ invoice.status }}");
+  }
+});
+</script>
+{% endblock scripts %}
+{% block content %}
+<div class="container crm-page">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <a href="{% if company_code %}{% url 'performa_inv_list' company_code %}{% else %}{% url 'performa_inv_list' %}{% endif %}" class="btn btn-warning">Back to List</a>
+    </div>
+    <div class="d-flex align-items-center">
+      {% if can_create_orders %}
+      <div class="dropdown me-2">
+        <button class="btn btn-primary dropdown-toggle" type="button" id="convertDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+          Convert
+        </button>
+        <ul class="dropdown-menu" aria-labelledby="convertDropdown">
+          {% if converted_order %}
+          <li>
+            <a class="dropdown-item" href="{% if company_code %}{% url 'order_detail' company_code converted_order.pk %}{% else %}{% url 'order_detail' converted_order.pk %}{% endif %}">
+              <span class="me-2"><i class="bi bi-file-earmark-text"></i></span>
+              View Sales Order {{ converted_order.order_number }}
+            </a>
+          </li>
+          {% else %}
+          <li>
+            <a class="dropdown-item {% if invoice.status != 'Accepted' %}disabled{% endif %}"
+               id="convertToOrderLink"
+               {% if invoice.status == 'Accepted' %}
+               href="{% if company_code %}{% url 'convert_performa_to_order' company_code invoice.pk %}{% else %}{% url 'convert_performa_to_order' invoice.pk %}{% endif %}"
+               {% else %}
+               href="#"
+               aria-disabled="true"
+               tabindex="-1"
+               {% endif %}>
+              <span class="me-2"><i class="bi bi-file-earmark"></i></span>
+              Convert to Sales Order
+            </a>
+          </li>
+          {% endif %}
+        </ul>
+      </div>
+      {% endif %}
+      <div class="dropdown me-2">
+        <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="sendDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+          <i class="bi bi-envelope"></i> Send
+        </button>
+        <ul class="dropdown-menu" aria-labelledby="sendDropdown">
+          <li>
+            <a class="dropdown-item" href="#" id="sendEmailBtn">
+              <i class="bi bi-envelope me-2"></i> Send Email
+            </a>
+          </li>
+        </ul>
+      </div>
+      <div class="dropdown me-2">
+        <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="printDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+          <i class="bi bi-printer"></i> Print
+        </button>
+        <ul class="dropdown-menu" aria-labelledby="printDropdown">
+          <li>
+            <a class="dropdown-item" href="{% if company_code %}{% url 'performa_invoice_print' company_code invoice.pk %}{% else %}{% url 'performa_invoice_print' invoice.pk %}{% endif %}?print=1" target="_blank">
+              <i class="bi bi-printer me-2"></i> Print Performa Invoice
+            </a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-md-6">
+      <div class="card mb-4">
+        <div class="card-header">
+          <h5>Performa Invoice Information</h5>
+        </div>
+        <div class="card-body">
+          <p><strong style="color: #55588b;">Performa Number:</strong> <span style="color: #55588b;">{{ q_no }}</span></p>
+          {% if invoice.customer %}
+          <p><strong style="color: #55588b;">Customer:</strong> <span style="color: #55588b;">{% if invoice.customer.customer_type == 'company' %}{{ invoice.customer.company_name }}{% else %}{{ invoice.customer.first_name }} {% if invoice.customer.last_name %}{{ invoice.customer.last_name }}{% endif %}{% endif %}</span></p>
+          {% endif %}
+          <p><strong style="color: #55588b;">Status:</strong>
+            {% if can_edit_performa_invoice %}
+            <select class="form-select form-select-sm" id="statusDropdown" style="max-width: 220px; display: inline-block;">
+              <option value="Draft" {% if invoice.status == 'Draft' %}selected{% endif %}>Draft</option>
+              <option value="Sent" {% if invoice.status == 'Sent' %}selected{% endif %}>Sent</option>
+              <option value="Accepted" {% if invoice.status == 'Accepted' %}selected{% endif %}>Accepted</option>
+              <option value="Cancelled" {% if invoice.status == 'Cancelled' %}selected{% endif %}>Cancelled</option>
+            </select>
+            <span id="performaStatusValue" style="display:none;">{{ invoice.status }}</span>
+            {% else %}
+            <span id="performaStatusValue" style="color: #55588b;">{{ invoice.status }}</span>
+            {% endif %}
+          </p>
+          <p><strong style="color: #55588b;">Date:</strong> <span style="color: #55588b;">{{ invoice.date }}</span></p>
+          {% if invoice.sales_person %}
+          <p><strong style="color: #55588b;">Sales Person:</strong> <span style="color: #55588b;">{{ invoice.sales_person.name }}</span></p>
+          {% endif %}
+          {% if invoice.payment_term %}
+          <p><strong style="color: #55588b;">Payment Terms:</strong> <span style="color: #55588b;">{{ invoice.payment_term.name }}</span></p>
+          {% endif %}
+          {% if invoice.place_of_supply %}
+          <p><strong style="color: #55588b;">Place of Supply:</strong> <span style="color: #55588b;">{{ invoice.place_of_supply }}</span></p>
+          {% endif %}
+          <p><strong style="color: #55588b;">Notes:</strong></p>
+          <p><span style="color: #55588b;">{{ invoice.notes|default:'-' }}</span></p>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-6">
+      <div class="card mb-4">
+        <div class="card-header">
+          <h5>Quick Actions</h5>
+        </div>
+        <div class="card-body">
+          {% comment %} {% if can_create_orders %}
+              {% if converted_order %}
+              <a href="{% if company_code %}{% url 'order_detail' company_code converted_order.pk %}{% else %}{% url 'order_detail' converted_order.pk %}{% endif %}" class="btn btn-success btn-block mb-2 flex-fill">View Sales Order</a>
+              {% else %}
+              <a href="{% if invoice.status == 'Accepted' %}{% if company_code %}{% url 'convert_performa_to_order' company_code invoice.pk %}{% else %}{% url 'convert_performa_to_order' invoice.pk %}{% endif %}{% else %}#{% endif %}"
+                 id="convertToOrderQuick"
+                 class="btn btn-primary btn-block mb-2 w-100 {% if invoice.status != 'Accepted' %}disabled{% endif %}">
+                Convert to Sales Order
+              </a>
+              {% endif %}
+            {% endif %} {% endcomment %}
+          <div class="d-flex flex-wrap gap-3">
+            {% if can_edit_performa_invoice %}
+            <a href="{% if company_code %}{% url 'performa_invoice_edit' company_code invoice.pk %}{% else %}{% url 'performa_invoice_edit' invoice.pk %}{% endif %}" class="btn btn-primary btn-block mb-2 w-50">Edit</a>
+            {% endif %}
+            {% comment %} <button type="button" class="btn btn-primary btn-block mb-2 flex-fill" id="sendEmailBtnQuick">Send Email</button> {% endcomment %}
+            {% comment %} <a href="{% if company_code %}{% url 'performa_invoice_print' company_code invoice.pk %}{% else %}{% url 'performa_invoice_print' invoice.pk %}{% endif %}?print=1" target="_blank" class="btn btn-primary btn-block mb-2 flex-fill">Print</a> {% endcomment %}
+            
+            {% if can_delete_performa_invoice %}
+            <form action="{% if company_code %}{% url 'delete_performa_inv' company_code invoice.pk %}{% else %}{% url 'delete_performa_inv' invoice.pk %}{% endif %}" method="post" onsubmit="return confirm('Are you sure you want to delete this performa invoice?');" class="flex-fill">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-danger btn-block w-100">Delete</button>
+            </form>
+            {% endif %}
+          </div>
+          {% if converted_order %}
+          {% comment %} <p class="mt-2 mb-0 text-success">
+            Converted to Sales Order
+            <a href="{% if company_code %}{% url 'order_detail' company_code converted_order.pk %}{% else %}{% url 'order_detail' converted_order.pk %}{% endif %}">
+              {{ converted_order.order_number }}
+            </a>
+          </p> {% endcomment %}
+          {% elif invoice.status != 'Accepted' %}
+          <p class="mt-2 mb-0 text-muted">Performa Invoice must be in <strong>Accepted</strong> status before conversion.</p>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="card mb-4">
+        <div class="card-header" style="padding: 0.75rem 1rem;">
+          <h6 style="margin: 0; display: flex; justify-content: space-between; align-items: center; font-size: 0.95rem;">
+            <span><strong style="color: #55588b;">BILLING ADDRESS</strong></span>
+            <span style="font-weight: 300; color: #999;">|</span>
+            <span><strong style="color: #55588b;">SHIPPING ADDRESS</strong></span>
+          </h6>
+        </div>
+        <div class="card-body" style="padding: 0.75rem 1rem;">
+          <div class="row" style="margin: 0;">
+            <div class="col-md-6" style="padding: 0 7px;">
+              {% if invoice.customer %}
+              <div>
+                <p style="margin-bottom: 0.25rem; font-size: 0.9rem;"><strong style="color: #55588b;">{% if invoice.customer.customer_type == 'company' %}{{ invoice.customer.company_name }}{% else %}{{ invoice.customer.first_name }} {% if invoice.customer.last_name %}{{ invoice.customer.last_name }}{% endif %}{% endif %}</strong></p>
+                {% if invoice.customer.address_line_1 %}
+                <p style="margin-bottom: 0.25rem; font-size: 0.85rem; color: #55588b;">{{ invoice.customer.address_line_1 }}</p>
+                {% endif %}
+                {% if invoice.customer.address %}
+                <p style="margin-bottom: 0.25rem; font-size: 0.85rem; color: #55588b;">{{ invoice.customer.address }}</p>
+                {% endif %}
+                {% if invoice.customer.city %}
+                <p style="margin-bottom: 0.25rem; font-size: 0.85rem; color: #55588b;">{{ invoice.customer.city }}{% if invoice.customer.state %}, {{ invoice.customer.state }}{% endif %}{% if invoice.customer.postal_code %} - {{ invoice.customer.postal_code }}{% endif %}</p>
+                {% endif %}
+                {% if invoice.customer.country %}
+                <p style="margin-bottom: 0; font-size: 0.85rem; color: #55588b;">{{ invoice.customer.country }}</p>
+                {% endif %}
+              </div>
+              {% endif %}
+            </div>
+
+            <div class="col-md-6" style="padding: 0 7px;">
+              {% if invoice.shipping_address1 or invoice.shipping_city %}
+              <div>
+                {% if invoice.shipping_attention %}
+                <p style="margin-bottom: 0.25rem; font-size: 0.9rem;"><strong style="color: #55588b;">Attention To:</strong> <span style="font-size: 0.85rem; color: #55588b;">{{ invoice.shipping_attention }}</span></p>
+                {% endif %}
+                {% if invoice.shipping_address1 %}
+                <p style="margin-bottom: 0.25rem; font-size: 0.85rem; color: #55588b;">{{ invoice.shipping_address1 }}</p>
+                {% if invoice.shipping_address2 %}<p style="margin-bottom: 0.25rem; font-size: 0.85rem; color: #55588b;">{{ invoice.shipping_address2 }}</p>{% endif %}
+                {% endif %}
+                {% if invoice.shipping_city %}
+                <p style="margin-bottom: 0.25rem; font-size: 0.85rem; color: #55588b;">{{ invoice.shipping_city }}{% if invoice.shipping_postal_code %} - {{ invoice.shipping_postal_code }}{% endif %}</p>
+                {% endif %}
+                {% if invoice.shipping_state %}
+                <p style="margin-bottom: 0.25rem; font-size: 0.85rem; color: #55588b;">{{ invoice.shipping_state }}</p>
+                {% endif %}
+                {% if invoice.shipping_country %}
+                <p style="margin-bottom: 0.25rem; font-size: 0.85rem; color: #55588b;">{{ invoice.shipping_country }}</p>
+                {% endif %}
+                {% if invoice.shipping_email %}
+                <p style="margin-bottom: 0.25rem; font-size: 0.85rem;"><strong style="color: #55588b;">Email:</strong> <span style="color: #55588b;">{{ invoice.shipping_email }}</span></p>
+                {% endif %}
+                {% if invoice.shipping_phone %}
+                <p style="margin-bottom: 0; font-size: 0.85rem;"><strong style="color: #55588b;">Phone:</strong> <span style="color: #55588b;">{{ invoice.shipping_phone }}</span></p>
+                {% endif %}
+              </div>
+              {% else %}
+              <div style="color: #999;">
+                <p style="margin: 0; font-size: 0.85rem;"><em>No shipping address</em></p>
+              </div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="confirmStatusModal" tabindex="-1" aria-labelledby="confirmStatusLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="confirmStatusLabel">Confirm Status Change</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p id="confirmStatusText">Are you sure you want to change the status?</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" id="cancelStatusBtn" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" id="confirmStatusBtn" class="btn btn-primary">Confirm</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card mb-4">
+    <div class="card-header">
+      <h5>Items</h5>
+    </div>
+    <div class="card-body" style="overflow-x: auto;">
+      <table class="table" style="width: 100%; margin-bottom: 0;">
+        <thead>
+          <tr>
+            <th style="width: 12%; white-space: nowrap;">Item</th>
+            <th style="width: 10%; white-space: nowrap;">HSN</th>
+            <th style="width: 18%; white-space: nowrap;">Description</th>
+            <th style="width: 12%; white-space: nowrap;">Quantity</th>
+            <th style="width: 13%; white-space: nowrap;">Price</th>
+            <th style="width: 10%; white-space: nowrap;">Tax</th>
+            <th style="width: 15%; white-space: nowrap;">Discount</th>
+            <th style="width: 14%; white-space: nowrap;">Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in items_info %}
+          <tr>
+            <td>{{ item.product_name }}</td>
+            <td>{% if item.hsn %}{{ item.hsn }}{% else %}-{% endif %}</td>
+            <td>{{ item.description|default:'-' }}</td>
+            <td>{{ item.quantity }}</td>
+            <td>₹{{ item.price|floatformat:2 }}</td>
+            <td>{% if item.tax_rate %}{{ item.tax_rate|floatformat:2 }}%{% else %}-{% endif %}</td>
+            <td>{{ item.discount_amount|default:'-' }}</td>
+            <td class="amount">₹{{ item.line_total|floatformat:2 }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="card-footer" style="background-color: #f8f9fa;">
+      <div style="max-width: 400px; margin-left: auto;">
+        <table style="width: 100%;" class="table table-borderless">
+          <tbody>
+            <tr>
+              <td style="text-align: right;"><strong>Subtotal:</strong></td>
+              <td style="text-align: right;">₹{{ subtotal_calc|floatformat:2 }}</td>
+            </tr>
+            <tr>
+              <td style="text-align: right;"><strong>Total CGST:</strong></td>
+              <td style="text-align: right;">₹{{ total_cgst|floatformat:2 }}</td>
+            </tr>
+            <tr>
+              <td style="text-align: right;"><strong>Total SGST:</strong></td>
+              <td style="text-align: right;">₹{{ total_sgst|floatformat:2 }}</td>
+            </tr>
+            <tr>
+              <td style="text-align: right;"><strong>Total Discount:</strong></td>
+              <td style="text-align: right;">₹{{ total_discount_combined|floatformat:2 }}</td>
+            </tr>
+            <tr style="border-top: 2px solid #dee2e6;">
+              <td style="text-align: right;"><strong>Total:</strong></td>
+              <td style="text-align: right; font-size: 1.1em;"><strong>₹{{ final_total|floatformat:2 }}</strong></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

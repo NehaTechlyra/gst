@@ -1,0 +1,47 @@
+{% extends "website/index.html" %}
+{% block title %}Assign Contact{% endblock %}
+{% block content %}
+<div class="form-wrapper">
+  <div class="breadcrumb">
+    <a href="{% url 'pricelist:index' %}">Price Lists</a> /
+    <a href="{% url 'pricelist:detail' price_list.pk %}">{{ price_list.name }}</a> /
+    Assign Contact
+  </div>
+  <div class="form-card">
+    <h1 class="form-title">Assign Contact</h1>
+    <p class="form-sub">Assigning to: <strong>{{ price_list.name }}</strong></p>
+    <form method="post" novalidate>
+      {% csrf_token %}
+      <div class="form-group">
+        <label>Contact <span class="required">*</span></label>
+        {{ form.contact }}
+        {% if form.contact.errors %}<div class="field-error">{{ form.contact.errors }}</div>{% endif %}
+      </div>
+      <div class="hint">
+        💡 Once assigned, this price list will be auto-applied when creating transactions for this contact.
+      </div>
+      <div class="form-footer">
+        <button type="submit" class="btn-primary">Assign</button>
+        <a href="{% url 'pricelist:detail' price_list.pk %}" class="btn-cancel">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+<style>
+.form-wrapper { max-width: 500px; margin: 2rem auto; padding: 0 1rem; font-family: 'Segoe UI', sans-serif; }
+.breadcrumb { font-size: 0.85rem; color: #9ca3af; margin-bottom: 1rem; }
+.breadcrumb a { color: #4f46e5; text-decoration: none; }
+.form-card { background: #fff; border-radius: 14px; padding: 2rem; box-shadow: 0 1px 10px rgba(0,0,0,0.08); }
+.form-title { font-size: 1.4rem; font-weight: 700; color: #1a1a2e; margin: 0 0 0.25rem; }
+.form-sub { color: #6b7280; font-size: 0.88rem; margin: 0 0 1.5rem; }
+.form-group { display: flex; flex-direction: column; gap: 0.35rem; margin-bottom: 1.1rem; }
+.form-group label { font-size: 0.85rem; font-weight: 600; color: #374151; }
+.required { color: #ef4444; }
+.form-group select { padding: 0.55rem 0.75rem; border: 1px solid #d1d5db; border-radius: 7px; font-size: 0.9rem; }
+.hint { font-size: 0.82rem; color: #6b7280; background: #f0f9ff; padding: 0.65rem 0.85rem; border-radius: 7px; margin-bottom: 1rem; }
+.field-error { color: #ef4444; font-size: 0.8rem; }
+.form-footer { display: flex; gap: 0.75rem; margin-top: 1.25rem; }
+.btn-primary { background: #4f46e5; color: #fff; border: none; padding: 0.65rem 1.4rem; border-radius: 8px; font-size: 0.9rem; font-weight: 600; cursor: pointer; }
+.btn-cancel { background: #f3f4f6; color: #6b7280; padding: 0.65rem 1.2rem; border-radius: 8px; text-decoration: none; font-size: 0.9rem; }
+</style>
+{% endblock %}

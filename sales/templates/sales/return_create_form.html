@@ -1,0 +1,372 @@
+{% extends 'website/index.html' %}
+{% load static lyra_tags %}
+
+{% block exstyle %}
+<link href="{% static 'style/general.css' %}" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.9.1/font/bootstrap-icons.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+{% endblock exstyle %}
+
+{% block page_title %}Create Sales Return{% endblock page_title %}
+
+{% block content %}
+<style>
+.return-wrap{max-width:1180px;margin:24px auto}
+.back-link{display:inline-block;margin-bottom:18px;color:#3b5b98;text-decoration:none;font-weight:600}
+.form-panel{background:#fff;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.08);padding:24px}
+.section{margin-bottom:26px}
+.section h2{font-size:22px;color:#4d5790;margin-bottom:16px}
+.form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px}
+.form-group label{display:block;font-weight:700;color:#4d5790;margin-bottom:7px}
+.form-group .required:after{content:" *";color:#dc3545}
+.form-group input,.form-group select,.form-group textarea{width:100%;padding:11px 12px;border:1px solid #d8dde8;border-radius:6px;font-size:14px}
+.form-group textarea{min-height:76px;resize:vertical}
+.help-text{font-size:12px;color:#6b7280;margin-top:5px}
+.invoice-info{display:none;background:#f8fafc;border:1px solid #e5e7eb;border-radius:8px;padding:14px;margin-top:14px}
+.info-row{display:flex;justify-content:space-between;gap:12px;padding:5px 0;color:#374151}
+.alert{padding:13px 16px;border-radius:6px;margin:14px 0}
+.alert-info{background:#dff6fb;border-left:4px solid #17a2b8;color:#0f5661}
+.alert-warning{background:#fff3cd;border-left:4px solid #ffc107;color:#7a5a00}
+.alert-danger{background:#f8d7da;border-left:4px solid #dc3545;color:#721c24}
+.items-table{width:100%;border-collapse:collapse;margin-top:12px}
+.items-table thead{background:#34495e;color:#fff}
+.items-table th,.items-table td{padding:11px 12px;border-bottom:1px solid #edf0f5;text-align:left;font-size:14px}
+.items-table input[type="number"]{width:90px;padding:7px}
+.qty-badge{display:inline-block;min-width:34px;text-align:center;border-radius:12px;padding:3px 8px;font-weight:700}
+.qty-ordered{background:#e3f2fd;color:#0d47a1}
+.qty-returned{background:#fff3e0;color:#9a5200}
+.qty-remaining{background:#eaf7e9;color:#256029}
+.form-actions{display:flex;justify-content:flex-end;gap:12px;border-top:1px solid #edf0f5;padding-top:22px;margin-top:20px}
+.btn{padding:10px 18px;border:none;border-radius:6px;font-weight:600;text-decoration:none;cursor:pointer}
+.btn-primary{background:#2563eb;color:#fff}
+.btn-secondary{background:#6c757d;color:#fff}
+.select2-container--bootstrap-5 .select2-selection{min-height:46px;padding:6px 12px;font-size:14px}
+</style>
+
+<div class="return-wrap">
+    <a href="{% url 'sales_return_list' %}" class="back-link">&larr; Back to Sales Returns</a>
+
+    <div class="form-panel">
+        <form method="post" id="returnCreateForm">
+            {% csrf_token %}
+
+            <div class="section">
+                <h2>Invoice & Warehouse Information</h2>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label class="required" for="invoiceSelect">Sales Invoice</label>
+                        <select id="invoiceSelect" class="form-control" required>
+                            <option value="">Select an invoice</option>
+                            {% for invoice in invoices %}
+                            <option value="{{ invoice.pk }}">{{ invoice.inv_number }} - {{ invoice.customer }}</option>
+                            {% endfor %}
+                        </select>
+                        <div class="help-text">Choose the invoice for this return</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Warehouse</label>
+                        <input type="text" id="warehouseName" value="Select an invoice first" readonly>
+                        <div class="help-text">Return stock will go back to the invoice delivery warehouse</div>
+                    </div>
+                </div>
+
+                <div id="invoiceInfo" class="invoice-info">
+                    <div class="info-row"><strong>Customer</strong><span id="customerName"></span></div>
+                    <div class="info-row"><strong>Invoice Number</strong><span id="invoiceNumber"></span></div>
+                    <div class="info-row"><strong>Invoice Status</strong><span id="invoiceStatus"></span></div>
+                    <div class="info-row"><strong>Amount Paid</strong><span id="amountPaid"></span></div>
+                </div>
+
+                <div id="invoiceWarning" class="alert alert-warning" style="display:none"></div>
+            </div>
+
+            <div class="section">
+                <h2>Return Details</h2>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label class="required" for="returnDate">Return Date</label>
+                        <input type="date" id="returnDate" name="date" value="{% now "Y-m-d" %}" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="required" for="returnStatus">Status</label>
+                        <select id="returnStatus" name="status" required>
+                            <option value="pending">Pending</option>
+                            <option value="received">Returned</option>
+                        </select>
+                        <div class="help-text">Returned status updates stock immediately</div>
+                    </div>
+                    <div class="form-group">
+                        <label for="shippedBy">Shipped By</label>
+                        <input type="text" id="shippedBy" name="shipped_by" placeholder="Name of shipper">
+                    </div>
+                </div>
+
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="courierName">Courier Name</label>
+                        <input type="text" id="courierName" name="courier_name" placeholder="e.g., FedEx, UPS, DHL">
+                    </div>
+                    <div class="form-group">
+                        <label for="trackingNumber">Tracking Number</label>
+                        <input type="text" id="trackingNumber" name="tracking_number" placeholder="Tracking number">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="notes">Notes</label>
+                    <textarea id="notes" name="notes" placeholder="Reason for return..."></textarea>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>Items to Return</h2>
+                <div class="alert alert-info">Select quantities to return. Remaining quantity excludes pending and returned sales returns.</div>
+                <div id="itemsContainer">
+                    <p style="text-align:center;color:#7f8c8d;padding:34px">Please select an invoice to load items.</p>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <a href="{% url 'sales_return_list' %}" class="btn btn-secondary">Cancel</a>
+                <button type="submit" class="btn btn-primary">Create Return</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script>
+$(function() {
+    const invoiceItemsUrl = "{% company_path '/sales/sales/returns/invoice/0/items/' %}";
+    const submitUrlTemplate = "{% company_path '/sales/sales/invoice/0/return/' %}";
+    const detailUrlTemplate = "{% company_path '/sales/sales/return/0/' %}";
+    const listUrl = "{% company_path '/sales/sales/returns/' %}";
+
+    $('#invoiceSelect').select2({
+        theme: 'bootstrap-5',
+        width: '100%',
+        placeholder: 'Select an invoice',
+        allowClear: true
+    });
+
+    $('#returnStatus').select2({
+        theme: 'bootstrap-5',
+        width: '100%',
+        minimumResultsForSearch: -1
+    });
+
+    $('#invoiceSelect').on('change', function() {
+        const invoiceId = this.value;
+        $('#invoiceWarning').hide().text('');
+        $('#invoiceInfo').hide();
+        $('#warehouseName').val('Select an invoice first');
+
+        if (!invoiceId) {
+            $('#itemsContainer').html('<p style="text-align:center;color:#7f8c8d;padding:34px">Please select an invoice to load items.</p>');
+            return;
+        }
+
+        $('#itemsContainer').html('<p style="text-align:center;color:#7f8c8d;padding:34px">Loading invoice items...</p>');
+
+        fetch(invoiceItemsUrl.replace('/0/', '/' + invoiceId + '/'), {
+            headers: {'X-Requested-With': 'XMLHttpRequest'}
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (!data.success) {
+                // If period is locked, show the same modal used elsewhere
+                if (data.period_lock_error) {
+                    const lockError = data.period_lock_error;
+                    const errorMsg = `❌ Period Locked: The fiscal year is locked for editing (sales_return).<br><br>` +
+                        `<i class='bi bi-lock-fill'></i> <strong>Locked by:</strong> ${lockError.locked_by}<br>` +
+                        `<i class='bi bi-calendar'></i> <strong>Lock Date:</strong> ${lockError.lock_date}<br>` +
+                        `<i class='bi bi-info-circle'></i> <strong>Locked areas:</strong> ${lockError.locked_areas}<br><br>` +
+                        `Contact your administrator to unlock this period if needed.`;
+                    showPeriodLockModal(errorMsg);
+                    $('#itemsContainer').html('<div class="alert alert-danger">' + (data.message || 'Period is locked') + '</div>');
+                    return;
+                }
+                throw new Error(data.message || 'Unable to load invoice items.');
+            }
+
+            $('#customerName').text(data.invoice.customer_name || '-');
+            $('#invoiceNumber').text(data.invoice.inv_number || '-');
+            $('#invoiceStatus').text(data.invoice.status || '-');
+            $('#amountPaid').text(data.invoice.paid || '0.00');
+            $('#warehouseName').val(data.invoice.warehouse_name || 'No delivery warehouse found');
+            $('#invoiceInfo').show();
+
+            if (!data.invoice.can_return) {
+                $('#invoiceWarning').text('Returns are allowed only after a payment has been received for this invoice.').show();
+            } else if (!data.invoice.warehouse_name) {
+                $('#invoiceWarning').text('No delivery warehouse was found. The return can still be saved, but stock may not update until a warehouse is available.').show();
+            }
+
+            renderItems(data.items || []);
+        })
+        .catch(error => {
+            $('#itemsContainer').html('<div class="alert alert-danger">' + error.message + '</div>');
+        });
+    });
+
+    function renderItems(items) {
+        if (!items.length) {
+            $('#itemsContainer').html('<div class="alert alert-warning">No returnable items found for this invoice.</div>');
+            return;
+        }
+
+        let html = '<div style="overflow-x:auto"><table class="items-table"><thead><tr>' +
+            '<th style="width:52px"><input type="checkbox" id="selectAllItems"></th>' +
+            '<th>Item</th><th>HSN Code</th><th>Ordered Qty</th><th>Already Returned</th><th>Remaining</th><th>Return Qty</th><th style="text-align:right">Amount</th>' +
+            '</tr></thead><tbody>';
+
+        items.forEach(item => {
+            html += '<tr>' +
+                '<td><input type="checkbox" class="item-checkbox" data-item-id="' + item.id + '"></td>' +
+                '<td><strong>' + escapeHtml(item.product_name) + '</strong></td>' +
+                '<td>' + escapeHtml(item.hsn_code || '-') + '</td>' +
+                '<td><span class="qty-badge qty-ordered">' + item.quantity + '</span></td>' +
+                '<td><span class="qty-badge qty-returned">' + item.already_returned + '</span></td>' +
+                '<td><span class="qty-badge qty-remaining">' + item.remaining_quantity + '</span></td>' +
+                '<td><input type="number" class="return-qty" name="items[' + item.id + ']" min="1" max="' + item.remaining_quantity + '" value="' + item.remaining_quantity + '" data-price="' + item.price + '" data-tax="' + item.tax_rate + '" disabled></td>' +
+                '<td style="text-align:right"><span class="item-amount" data-item-id="' + item.id + '">0.00</span></td>' +
+                '</tr>';
+        });
+
+        html += '</tbody></table></div>';
+        $('#itemsContainer').html(html);
+        updateAmounts();
+    }
+
+    $(document).on('change', '#selectAllItems', function() {
+        $('.item-checkbox').prop('checked', this.checked).trigger('change');
+    });
+
+    $(document).on('change', '.item-checkbox', function() {
+        const itemId = $(this).data('item-id');
+        const qtyInput = $('.return-qty[name="items[' + itemId + ']"]');
+        qtyInput.prop('disabled', !this.checked);
+        if (this.checked && !qtyInput.val()) {
+            qtyInput.val(qtyInput.attr('max'));
+        }
+        updateAmounts();
+    });
+
+    $(document).on('input change', '.return-qty', updateAmounts);
+
+    $('#returnCreateForm').on('submit', function(e) {
+        e.preventDefault();
+        const invoiceId = $('#invoiceSelect').val();
+        if (!invoiceId) {
+            alert('Please select an invoice.');
+            return;
+        }
+
+        let valid = true;
+        let selectedCount = 0;
+        $('.item-checkbox:checked').each(function() {
+            selectedCount += 1;
+            const itemId = $(this).data('item-id');
+            const qtyInput = $('.return-qty[name="items[' + itemId + ']"]');
+            const qty = parseInt(qtyInput.val(), 10) || 0;
+            const max = parseInt(qtyInput.attr('max'), 10) || 0;
+            if (qty <= 0 || qty > max) {
+                valid = false;
+            }
+        });
+
+        if (!selectedCount) {
+            alert('Please select at least one item to return.');
+            return;
+        }
+        if (!valid) {
+            alert('Return quantity must be greater than 0 and not more than remaining quantity.');
+            return;
+        }
+
+        fetch(submitUrlTemplate.replace('/0/', '/' + invoiceId + '/'), {
+            method: 'POST',
+            body: new FormData(this),
+            headers: {'X-Requested-With': 'XMLHttpRequest'}
+        })
+        .then(response => response.json().then(data => ({ok: response.ok, data: data})))
+        .then(result => {
+            if (!result.ok || !result.data.success) {
+                // Show period lock modal if present in response
+                if (result.data && result.data.period_lock_error) {
+                    const lockError = result.data.period_lock_error;
+                    const errorMsg = `❌ Period Locked: The fiscal year is locked for editing (sales_return).<br><br>` +
+                        `<i class='bi bi-lock-fill'></i> <strong>Locked by:</strong> ${lockError.locked_by}<br>` +
+                        `<i class='bi bi-calendar'></i> <strong>Lock Date:</strong> ${lockError.lock_date}<br>` +
+                        `<i class='bi bi-info-circle'></i> <strong>Locked areas:</strong> ${lockError.locked_areas}<br><br>` +
+                        `Contact your administrator to unlock this period if needed.`;
+                    showPeriodLockModal(errorMsg);
+                    return;
+                }
+                throw new Error(result.data.message || 'Unable to create return.');
+            }
+            if (result.data.return_id) {
+                window.location.href = detailUrlTemplate.replace('/0/', '/' + result.data.return_id + '/');
+            } else {
+                window.location.href = listUrl;
+            }
+        })
+        .catch(error => alert(error.message));
+    });
+
+    function updateAmounts() {
+        $('.return-qty').each(function() {
+            const itemId = this.name.replace('items[', '').replace(']', '');
+            const qty = parseFloat($(this).val()) || 0;
+            const price = parseFloat(String($(this).data('price')).replace(/[^\d.-]/g, '')) || 0;
+            const tax = parseFloat(String($(this).data('tax')).replace(/[^\d.-]/g, '')) || 0;
+            const amount = $(this).prop('disabled') ? 0 : qty * price * (1 + (tax / 100));
+            $('.item-amount[data-item-id="' + itemId + '"]').text(amount.toFixed(2));
+        });
+    }
+
+    function escapeHtml(value) {
+        return String(value || '').replace(/[&<>"']/g, function(char) {
+            return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[char];
+        });
+    }
+});
+</script>
+
+<!-- Period Lock Error Modal (copied pattern from return_detail) -->
+<div class="modal fade" id="periodLockErrorModal" tabindex="-1" aria-labelledby="periodLockErrorLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border: 2px solid #d9534f; border-radius: 8px;">
+            <div class="modal-header" style="background-color: #f8d7da; border-bottom: 2px solid #d9534f;">
+                <h5 class="modal-title" id="periodLockErrorLabel" style="color: #721c24;">
+                    <i class="bi bi-exclamation-circle" style="color: #d9534f;"></i> Period Locked
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="periodLockErrorBody" style="color: #721c24; padding: 20px; line-height: 1.6;">
+                <!-- Error message will be inserted here -->
+            </div>
+            <div class="modal-footer" style="border-top: 1px solid #dee2e6;">
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">OK</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function showPeriodLockModal(messageHtml) {
+    const body = document.getElementById('periodLockErrorBody');
+    if (body) body.innerHTML = messageHtml;
+    if (typeof bootstrap !== 'undefined') {
+        const modalEl = document.getElementById('periodLockErrorModal');
+        const bsModal = new bootstrap.Modal(modalEl);
+        bsModal.show();
+    } else {
+        alert(messageHtml.replace(/<br\/?\s*>/g, '\n').replace(/<[^>]+>/g, ''));
+    }
+}
+</script>
+{% endblock content %}

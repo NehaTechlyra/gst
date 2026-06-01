@@ -1,0 +1,312 @@
+{% extends 'website/index.html' %}
+{% load static %}
+
+{% block page_title %}Start Reconciliation — {{ account.account_number }}{% endblock %}
+
+{% block exstyle %}
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+{% endblock %}
+
+{% block content %}
+<style>
+  :root {
+    --bg:           #f5f6fa;
+    --surface:      #ffffff;
+    --border:       #e4e8f0;
+    --text-primary: #111827;
+    --text-muted:   #6b7280;
+    --accent:       #4f46e5;
+    --accent-light: #eef2ff;
+    --green:        #059669;
+    --green-light:  #ecfdf5;
+    --green-border: #a7f3d0;
+    --red:          #dc2626;
+    --orange:       #d97706;
+    --radius:       12px;
+    --shadow:       0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.05);
+  }
+
+  body { background: var(--bg); font-family: 'DM Sans', sans-serif; color: var(--text-primary); margin: 0; }
+
+  /* ── Topbar ── */
+  .hr-topbar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    display: flex; align-items: stretch;
+    min-height: 52px;
+  }
+  .hr-breadcrumb {
+    display: flex; align-items: center;
+    font-size: 13px; gap: 4px; color: var(--text-muted);
+  }
+  .hr-breadcrumb a {
+    color: var(--accent); text-decoration: none;
+    padding: 16px 8px; display: block;
+  }
+  .hr-breadcrumb a:hover { text-decoration: underline; }
+  .hr-breadcrumb .sep { color: #d1d5db; }
+  .hr-breadcrumb .current {
+    color: var(--text-primary); font-weight: 600;
+    padding: 16px 8px;
+    border-bottom: 2px solid var(--accent);
+  }
+
+  /* ── Content ── */
+  .hr-content { padding: 28px 24px; }
+
+  /* ── Form card ── */
+  .hr-form-card {
+    background: var(--surface);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+    max-width: 520px;
+    overflow: hidden;
+  }
+  .hr-form-card-header {
+    padding: 18px 24px;
+    border-bottom: 1px solid var(--border);
+  }
+  .hr-form-card-header h5 {
+    font-size: 16px; font-weight: 700; color: var(--text-primary); margin: 0;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .hr-form-card-header h5 i { color: var(--accent); }
+  .hr-form-card-header p { font-size: 12px; color: var(--text-muted); margin: 4px 0 0; }
+  .hr-form-card-body { padding: 24px; }
+  .hr-form-card-footer {
+    padding: 16px 24px;
+    border-top: 1px solid var(--border);
+    display: flex; gap: 10px; background: #fafafa;
+  }
+
+  /* ── Info / success boxes ── */
+  .hr-info-box {
+    background: #fffbeb; border: 1px solid #fde68a;
+    border-radius: 8px; padding: 12px 16px;
+    font-size: 12px; color: #92400e;
+    margin-bottom: 18px;
+    display: flex; gap: 8px; align-items: flex-start;
+  }
+  .hr-info-box i { margin-top: 1px; flex-shrink: 0; color: var(--orange); }
+
+  .hr-success-box {
+    background: var(--green-light); border: 1px solid var(--green-border);
+    border-radius: 8px; padding: 11px 16px;
+    font-size: 12px; color: var(--green);
+    margin-bottom: 18px;
+    display: flex; gap: 8px; align-items: center;
+  }
+
+  /* ── Fields ── */
+  .hr-field { margin-bottom: 20px; }
+  .hr-field label {
+    display: block; font-size: 13px; font-weight: 600;
+    color: var(--text-primary); margin-bottom: 6px;
+  }
+  .hr-field label .req { color: var(--red); margin-left: 2px; }
+  .hr-field .hr-help { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+  .hr-field-error { font-size: 12px; color: var(--red); margin-top: 4px; display: block; }
+
+  .hr-input {
+    width: 100%; padding: 9px 12px;
+    border: 1.5px solid #d1d5db; border-radius: 8px;
+    font-size: 13px; color: var(--text-primary);
+    font-family: 'DM Sans', sans-serif;
+    background: var(--surface); box-sizing: border-box;
+    transition: border-color 0.15s, box-shadow 0.15s; outline: none;
+  }
+  .hr-input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(79,70,229,0.1);
+  }
+  .hr-input.error { border-color: var(--red); }
+
+  /* Currency wrapper */
+  .hr-currency-wrap { display: flex; }
+  .hr-currency-prefix {
+    background: #f3f4f6; border: 1.5px solid #d1d5db; border-right: none;
+    border-radius: 8px 0 0 8px;
+    padding: 9px 12px; font-size: 13px; font-weight: 600;
+    color: var(--text-muted); white-space: nowrap;
+  }
+  .hr-currency-wrap .hr-input { border-radius: 0 8px 8px 0; }
+
+  /* ── Form error ── */
+  .hr-form-error {
+    background: #fef2f2; border: 1px solid #fecaca;
+    border-radius: 8px; padding: 10px 14px;
+    margin-bottom: 16px; font-size: 13px; color: var(--red);
+  }
+
+  /* ── Field grid ── */
+  .hr-field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+  /* ── File input ── */
+  .hr-file-input {
+    width: 100%; font-size: 13px; color: var(--text-primary);
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  /* ── Buttons ── */
+  .btn-hr {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 9px 20px; border-radius: 8px;
+    font-size: 13px; font-weight: 600; cursor: pointer;
+    border: none; text-decoration: none;
+    transition: background 0.15s, box-shadow 0.15s; line-height: 1;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .btn-hr-primary { background: var(--accent); color: #fff; }
+  .btn-hr-primary:hover { background: #4338ca; color: #fff; text-decoration: none; box-shadow: 0 4px 12px rgba(79,70,229,0.2); }
+  .btn-hr-ghost { background: var(--surface); color: var(--text-muted); border: 1.5px solid var(--border); }
+  .btn-hr-ghost:hover { background: var(--bg); color: var(--text-primary); text-decoration: none; }
+
+  /* ── Divider ── */
+  .hr-divider { height: 1px; background: var(--border); margin: 4px 0 20px; }
+</style>
+
+<div>
+  <!-- Topbar -->
+  <div class="hr-topbar">
+    <nav class="hr-breadcrumb">
+    <a href="{% company_url 'reconciliation_list' account.id %}">{{ account.account_number }}</a>
+      <span class="sep">&rsaquo;</span>
+      <span class="current">Start Reconciliation</span>
+    </nav>
+  </div>
+
+  <div class="hr-content">
+    <div class="hr-form-card">
+
+      <div class="hr-form-card-header">
+        <h5><i class="bi bi-arrow-left-right"></i> {{ account.bank.bank_name }} — Reconciliation</h5>
+        <p>{{ account.account_number }} &bull; {{ account.account_holder_name|default:"" }}</p>
+      </div>
+
+      <div class="hr-form-card-body">
+
+        <!-- Warning -->
+        <div class="hr-info-box">
+          <i class="bi bi-exclamation-triangle-fill"></i>
+          <span>
+            <strong>Note:</strong> The opening balance cannot be edited once transactions have been reconciled.
+            Ensure it is correct before proceeding.
+          </span>
+        </div>
+
+        <!-- Last reconciliation -->
+        {% if last_recon %}
+        <div class="hr-success-box">
+          <i class="bi bi-check-circle-fill"></i>
+          <span>
+            Last reconciled: <strong>{{ last_recon.start_date|date:"d/m/Y" }} to {{ last_recon.end_date|date:"d/m/Y" }}</strong>
+            &mdash; new period starts from {{ last_recon.end_date|date:"d/m/Y" }} onwards.
+          </span>
+        </div>
+        {% endif %}
+
+        <form method="post" enctype="multipart/form-data" novalidate>
+          {% csrf_token %}
+
+          {% if form.non_field_errors %}
+          <div class="hr-form-error">{% for e in form.non_field_errors %}{{ e }}{% endfor %}</div>
+          {% endif %}
+
+          <!-- Dates -->
+          <div class="hr-field-grid">
+            <div class="hr-field">
+              <label for="{{ form.start_date.id_for_label }}">
+                Start Date <span class="req">*</span>
+              </label>
+              <input type="date"
+                     name="{{ form.start_date.html_name }}"
+                     id="{{ form.start_date.id_for_label }}"
+                     class="hr-input {% if form.start_date.errors %}error{% endif %}"
+                     value="{{ form.start_date.value|default:'' }}"
+                     {% if form.start_date.field.widget.attrs.min %}min="{{ form.start_date.field.widget.attrs.min }}"{% endif %}
+                     required>
+              {% if form.start_date.errors %}
+                <span class="hr-field-error">{{ form.start_date.errors|join:", " }}</span>
+              {% else %}
+                <span class="hr-help">First day of the period</span>
+              {% endif %}
+            </div>
+            <div class="hr-field">
+              <label for="{{ form.end_date.id_for_label }}">
+                End Date <span class="req">*</span>
+              </label>
+              <input type="date"
+                     name="{{ form.end_date.html_name }}"
+                     id="{{ form.end_date.id_for_label }}"
+                     class="hr-input {% if form.end_date.errors %}error{% endif %}"
+                     value="{{ form.end_date.value|default:'' }}"
+                     required>
+              {% if form.end_date.errors %}
+                <span class="hr-field-error">{{ form.end_date.errors|join:", " }}</span>
+              {% else %}
+                <span class="hr-help">Last day of the period</span>
+              {% endif %}
+            </div>
+          </div>
+
+          <!-- Closing Balance -->
+          <div class="hr-field">
+            <label for="{{ form.closing_balance.id_for_label }}">
+              Closing Balance <span class="req">*</span>
+            </label>
+            <div class="hr-currency-wrap">
+              <span class="hr-currency-prefix">{{ base_currency_symbol }}</span>
+              <input type="number"
+                     name="{{ form.closing_balance.html_name }}"
+                     id="{{ form.closing_balance.id_for_label }}"
+                     class="hr-input {% if form.closing_balance.errors %}error{% endif %}"
+                     value="{{ form.closing_balance.value|default:'' }}"
+                     step="0.01" placeholder="0.00" required>
+            </div>
+            {% if form.closing_balance.errors %}
+              <span class="hr-field-error">{{ form.closing_balance.errors|join:", " }}</span>
+            {% else %}
+              <span class="hr-help">Closing balance shown on your bank statement as of the end date.</span>
+            {% endif %}
+          </div>
+
+          <div class="hr-divider"></div>
+
+          <!-- Attachment -->
+          <div class="hr-field">
+            <label for="{{ form.attachment.id_for_label }}">
+              Attachment <span class="req">*</span>
+            </label>
+            <input type="file"
+                   name="{{ form.attachment.html_name }}"
+                   id="{{ form.attachment.id_for_label }}"
+                   class="hr-file-input"
+                   accept=".csv,.xls,.xlsx">
+            {% if form.attachment.errors %}
+              <span class="hr-field-error">{{ form.attachment.errors|join:", " }}</span>
+            {% else %}
+              <span class="hr-help">Upload your bank statement (CSV/XLS/XLSX) only.</span>
+            {% endif %}
+          </div>
+
+          </div><!-- /body -->
+
+        <div class="hr-form-card-footer">
+          {% if can_create_reconciliation %}
+          <button type="submit" class="btn-hr btn-hr-primary">
+            <i class="bi bi-arrow-right"></i> Start Reconciliation
+          </button>
+          {% endif %}
+          <a href="{% company_url 'reconciliation_list' account.id %}" class="btn-hr btn-hr-ghost">
+            Cancel
+          </a>
+        </div>
+
+        </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

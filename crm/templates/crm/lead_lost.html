@@ -1,0 +1,29 @@
+{% extends 'website/index.html' %}
+
+{% block title %}Mark Lead as Lost - Lyra CRM{% endblock %}
+{% block page_title %}Mark Lead as Lost{% endblock %}
+
+{% block content %}
+<div class="container crm-page">
+<h2 class="mb-4">Mark Lead as Lost: {{ lead.customer_name }}</h2>
+
+<div class="card">
+    <div class="card-body">
+        <form method="post">
+            {% csrf_token %}
+            <div class="mb-3">
+                <label class="form-label">Select Lost Reason</label>
+                {{ form.lost_reason }}
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Or Add New Reason</label>
+                {{ form.new_reason }}
+            </div>
+            <button type="submit" class="btn btn-danger">Mark as Lost</button>
+            <a href="{% url 'lead_detail' lead.pk %}" class="btn btn-secondary">Cancel</a>
+        </form>
+    </div>
+</div>
+</div>
+{% endblock %}
+

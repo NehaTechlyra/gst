@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome to Lyra ERP</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            background: #ffffff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 600;
+        }
+        .content {
+            padding: 40px 30px;
+        }
+        .welcome-text {
+            font-size: 18px;
+            color: #555;
+            margin-bottom: 20px;
+        }
+        .info-box {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .info-box p {
+            margin: 8px 0;
+            font-size: 14px;
+        }
+        .info-box strong {
+            color: #333;
+            font-weight: 600;
+        }
+        .login-button {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 40px;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 16px;
+            margin: 20px 0;
+            text-align: center;
+            transition: transform 0.2s;
+        }
+        .login-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        .warning-box {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .warning-box p {
+            margin: 0;
+            color: #856404;
+            font-size: 14px;
+        }
+        .footer {
+            background: #f8f9fa;
+            padding: 20px;
+            text-align: center;
+            font-size: 13px;
+            color: #666;
+            border-top: 1px solid #e9ecef;
+        }
+        .code-display {
+            background: #e9ecef;
+            padding: 10px 15px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 16px;
+            font-weight: bold;
+            color: #495057;
+            text-align: center;
+            margin: 15px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎉 Welcome to Lyra ERP!</h1>
+        </div>
+        
+        <div class="content">
+            <p class="welcome-text">
+                Hello <strong>{{ username }}</strong>,
+            </p>
+            
+            <p>
+                Your account has been created successfully! We're excited to have you on board.
+            </p>
+            
+            <div class="info-box">
+                <p><strong>Company:</strong> {{ company_name }}</p>
+                <p><strong>Username:</strong> {{ username }}</p>
+                <p><strong>Company Code:</strong></p>
+                <div class="code-display">{{ company_code }}</div>
+            </div>
+            
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="{{ login_url }}" class="login-button">
+                    🔗 Login to Your Account
+                </a>
+            </div>
+            
+            <div class="warning-box">
+                <p>
+                    <strong>⏱️ First Login Setup:</strong> Your company database will be created automatically 
+                    when you log in for the first time. This process may take 30-60 seconds. 
+                    Please be patient and do not close your browser.
+                </p>
+            </div>
+            
+            <div style="margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 4px;">
+                <p style="margin: 0 0 10px 0; font-weight: 600; color: #333;">📧 Your Unique Login URL:</p>
+                <p style="margin: 0; word-break: break-all;">
+                    <a href="{{ login_url }}" style="color: #667eea; text-decoration: none;">{{ login_url }}</a>
+                </p>
+                <p style="margin: 10px 0 0 0; font-size: 12px; color: #666;">
+                    💾 Please bookmark this link for future access
+                </p>
+            </div>
+            
+            <div style="margin-top: 30px; padding: 15px; border-top: 1px solid #e9ecef;">
+                <p style="font-size: 14px; color: #666; margin: 0;">
+                    <strong>Need Help?</strong> Contact our support team if you encounter any issues during setup.
+                </p>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p style="margin: 5px 0;">
+                <strong>Lyra ERP</strong> - Enterprise Resource Planning Solution
+            </p>
+            <p style="margin: 5px 0; color: #999;">
+                This is an automated email. Please do not reply to this message.
+            </p>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,318 @@
+{% extends 'website/index.html' %}
+
+{% block content %}
+<!-- jQuery (must be loaded first) -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+<!-- Select2 CSS -->
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+
+<!-- Select2 JS -->
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<style>
+  {% comment %} span.select2.select2-container.select2-container--default {
+    width: 0% !important;
+  } {% endcomment %}
+</style>
+<h1>Create Purchase Order and Add Items</h1>
+<form method="post">
+    {% csrf_token %}
+     <div id="vendors_container">
+       {{ po_form.vendor }}
+     </div>
+     {% comment %} <button type="button" id="openVendorModalButton" >
+  + Add Vendor
+</button> {% endcomment %}
+    {{ formset.management_form }}
+    <table id="purchase-order-items-table">
+        <thead>
+            <tr>
+                <th>Product</th>
+                <th>Qty</th>
+                <th>Price</th>
+                {% comment %} <th>Remove?</th> {% endcomment %}
+            </tr>
+        </thead>
+        <tbody>
+        {% for form in formset %}
+            <tr>
+                <td>{{ form.product }}</td>
+                <td>{{ form.quantity }}</td>
+                <td>{{ form.price }}</td>
+                {% comment %} <td>{{ formset.empty_form.DELETE }}</td> {% endcomment %}
+s
+            </tr>
+        {% endfor %}
+        
+        </tbody>
+        
+    </table>
+    <button type="button" id="add-row-btn">+ Add New Row</button>
+    <button type="submit">Save Purchase Order</button>
+</form>
+<table style="display:none;">
+  <tbody id="empty-form-template">
+    <tr>
+      <td>{{ formset.empty_form.product }}</td>
+      <td>{{ formset.empty_form.quantity }}</td>
+      <td>{{ formset.empty_form.price }}</td>
+      {% comment %} <td></td>  {% endcomment %}
+    </tr>
+  </tbody>
+  
+</table>
+
+
+
+<div class="modal fade" id="productModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content" id="productModalContent"></div>
+  </div>
+</div>
+
+
+<script>
+
+  
+  
+// Initialize Vendor Select2
+function initVendorSelect2() {
+  $('#vendors_container select').select2({
+    placeholder: 'Search or select a vendor',
+    allowClear: true,
+    width: '100%',
+    minimumResultsForSearch: 0
+  }).on('select2:open', function() {
+    if (!$('.select2-dropdown .select2-add-vendor').length) {
+      $('.select2-dropdown').append(
+        '<div class="select2-add-vendor" style="padding: 6px; text-align: center; cursor: pointer; border-top: 1px solid #ddd; background: #f9f9f9;">+ Add Vendor</div>'
+      );
+      $('.select2-add-vendor').on('click', function(e) {
+        e.stopPropagation();
+        const $vendorSelect = $('#vendors_container select');
+        if ($vendorSelect.hasClass('select2-hidden-accessible')) {
+          $vendorSelect.select2('close');
+        }
+        $('.select2-container--open').removeClass('select2-container--open');
+        loadVendorForm();
+      });
+    }
+  });
+}
+
+
+
+// Load vendor form modal
+function loadVendorForm() {
+  fetch("{% url 'vendor_add_modal' %}")
+    .then(response => response.text())
+    .then(html => {
+      document.getElementById('vendorModalContent').innerHTML = html;
+      $('.select2-hidden-accessible').blur();  // remove focus from Select2 input
+const vendorModal = new bootstrap.Modal(document.getElementById('vendorModal'));
+vendorModal.show();
+      bindVendorFormSubmit();
+    })
+    .catch(error => console.error('Error loading form:', error));
+}
+
+// Handle vendor form submit
+function bindVendorFormSubmit() {
+  const form = document.getElementById('vendorForm');
+  if (!form) return;
+
+  form.addEventListener('submit', function(e) {
+    e.preventDefault();
+    const formData = new FormData(form);
+
+    fetch("{% url 'vendor_add_modal' %}", {
+      method: 'POST',
+      headers: { 'X-Requested-With': 'XMLHttpRequest' },
+      body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        $('#vendorModal').modal('hide');
+        refreshVendorChoices(data.new_vendor_id);
+      } else {
+        $('#vendorModalContent').html(data.html_form);
+        bindVendorFormSubmit();
+      }
+    })
+    .catch(error => console.error('Error submitting form:', error));
+  });
+}
+
+// Reload vendors after new vendor is added
+// Reload vendors after new vendor is added
+function refreshVendorChoices(new_vendor_id) {
+  fetch("{% url 'vendor_choices_partial' %}?selected_vendor_id=" + new_vendor_id)
+    .then(response => response.text())
+    .then(html => {
+      $('#vendors_container').html(html);
+
+      // reinitialize Select2 on the new select
+      const $newSelect = $('#vendors_container select');
+      $newSelect.select2({
+        placeholder: 'Search or select a vendor',
+        allowClear: true,
+        width: '100%',
+        minimumResultsForSearch: 0
+      });
+
+      // ensure the new vendor is preselected
+      if (new_vendor_id) {
+        $newSelect.val(new_vendor_id).trigger('change');
+      }
+    });
+}
+
+// Initialize Product Select2
+function initProductSelect2($select) {
+  console.log("initProductSelect2 is being called");
+  $select.select2({
+    placeholder: 'Search or select a product',
+    allowClear: true,
+    width: '100%',
+    dropdownParent: $(document.body)
+  }).on('select2:open', function() {
+    if (!$('.select2-dropdown .select2-add-product').length) {
+      console.log("add-product is being called");
+      $('.select2-dropdown').append(
+        '<div class="select2-add-product" style="padding: 6px; text-align: center; cursor: pointer; border-top: 1px solid #ddd; background: #f9f9f9;">+ Add Product</div>'
+      );
+      // Product select2 'close' guarded
+      $('.select2-add-product').on('click', function(e) {
+        e.stopPropagation();
+        const $productSelect = $('select[name$="product"]');
+        if ($productSelect.hasClass('select2-hidden-accessible') && $('.select2-container--open').length) {
+          $productSelect.select2('close');
+        }
+        loadProductForm();
+      });
+    }
+  });
+}
+
+
+function loadProductForm() {
+  fetch("{% url 'product_add_modal' %}")  // URL mapped to return the product creation form
+    .then(response => response.text())
+    .then(html => {
+      document.getElementById('productModalContent').innerHTML = html;
+      const productModal = new bootstrap.Modal(document.getElementById('productModal'));
+      productModal.show();
+      bindProductFormSubmit();
+    })
+    .catch(error => console.error('Error loading form:', error));
+}
+
+function bindProductFormSubmit() {
+  const form = document.getElementById('productForm');
+  if (!form) return;
+  form.addEventListener('submit', function(e) {
+    e.preventDefault();
+    const formData = new FormData(form);
+    fetch("{% url 'product_add_modal' %}", {
+      method: 'POST',
+      headers: { 'X-Requested-With': 'XMLHttpRequest' },
+      body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        $('#productModal').modal('hide');
+        refreshProductChoices(data.new_product_id);
+      } else {
+        $('#productModalContent').html(data.html_form);
+        bindProductFormSubmit();
+      }
+    })
+    .catch(error => console.error('Error submitting product form:', error));
+  });
+}
+
+function refreshProductChoices(new_product_id) {
+  fetch("{% url 'product_choices_partial' %}?selected_product_id=" + new_product_id)
+    .then(response => response.text())
+    .then(html => {
+      $('select[name$="product"]').html(html)
+        .val(new_product_id).trigger('change');
+      $('select[name$="product"]').select2('destroy');
+      initProductSelect2();
+    });
+}
+
+
+
+
+
+
+
+
+
+
+document.addEventListener("DOMContentLoaded", function () {
+  const vendorModal = document.getElementById('vendorModal');
+
+  vendorModal.addEventListener('hide.bs.modal', function () {
+    if (vendorModal.contains(document.activeElement)) {
+      document.activeElement.blur();
+    }
+  });
+
+  vendorModal.addEventListener('hidden.bs.modal', function () {
+    document.body.focus();
+  });
+});
+
+
+// Handle Add Row button click
+document.getElementById('add-row-btn').addEventListener('click', function () {
+    // Get the management form field that tracks total forms
+    const totalForms = document.querySelector('[name$="-TOTAL_FORMS"]');
+    if (!totalForms) {
+        alert('Management form not found!');
+        return;
+    }
+    let formCount = parseInt(totalForms.value);
+
+    // Clone the empty form template row
+    const emptyFormTemplate = document.querySelector('#empty-form-template tr');
+    const newRow = emptyFormTemplate.cloneNode(true);
+
+    // Replace __prefix__ with current index
+    newRow.querySelectorAll('input, select, textarea').forEach(function (input) {
+        if (input.name) {
+            input.name = input.name.replace('__prefix__', formCount);
+        }
+        if (input.id) {
+            input.id = input.id.replace('__prefix__', formCount);
+        }
+        input.value = ''; // clear value
+    });
+
+    // Append to the main table (not the hidden one)
+    document.querySelector('#purchase-order-items-table tbody').appendChild(newRow);
+
+    // Update TOTAL_FORMS count
+    totalForms.value = formCount + 1;
+
+    // Reinitialize select2 for the new product field only
+    const $newProductSelect = $(newRow).find('select[name$="product"]');
+    if ($newProductSelect.length) {
+        // Reinitialize select2 for this product dropdown
+        initProductSelect2($newProductSelect);
+    }
+});
+
+// On page load
+$(document).ready(function() {
+  initVendorSelect2();
+  $('select[name$="product"]').each(function() {
+    initProductSelect2($(this));
+  });
+});
+</script>
+{% endblock %}

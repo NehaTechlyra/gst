@@ -1,0 +1,39 @@
+{% extends 'website/index.html' %}
+{% load static %}
+{% block page_title %}Roles List{% endblock page_title %}
+{% block content %}
+
+<div class="container mt-4">
+    <div class="card p-4 shadow-sm border-0">
+        <h3 class="mb-3">Roles Listing</h3>
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Role Name</th>
+                    <th>Description</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for role in roles %}
+                <tr>
+                    <td>{{ forloop.counter }}</td>
+                    <td>{{ role.role_name }}</td>
+                    <td>{{ role.description }}</td>
+                    <td>
+                        {% comment %} <a href="{% company_url 'roles_edit' role.id %}" class="btn btn-sm btn-primary">Edit</a> {% endcomment %}
+                        {% comment %} <a href="{% company_url 'roles_delete' role.id %}" class="btn btn-sm btn-danger">Delete</a> {% endcomment %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="4" class="text-center">No roles found.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <a href="{% company_url 'roles_view' %}" class="btn btn-success">Create New Role</a>
+    </div>
+</div>
+{% endblock %}

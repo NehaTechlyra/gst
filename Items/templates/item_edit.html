@@ -1,0 +1,285 @@
+{% extends "website/index.html" %}
+{% load static %}
+{% block exstyle %}
+<link href="{% static 'style/general.css' %}" rel="stylesheet">
+{% endblock exstyle %}
+{% block page_title %}New Item{% endblock page_title %}
+
+{% block content %}
+
+<div class="container mt-4">
+  <!-- <h2>New Item</h2> -->
+  <form method="POST" action="">
+    {% csrf_token %}
+    <div class="row mb-3">
+      <div class="col-md-6">
+        <label class="form-label">Type<span class="text-danger">*</span></label>
+        <div class="text-primary">
+          <input type="radio" name="type" value="goods" {% if form.type.value == "goods" %}checked{% endif %}> Goods
+          <input type="radio" name="type" value="service" class="ms-3" {% if form.type.value == "service" %}checked{% endif %}> Service
+
+        </div>
+      </div>
+    </div>
+    <div class="row mb-2">
+      <div class="col-md-4">
+        <label for="name" class="form-label">Name<span class="text-danger">*</span></label>
+        <input type="text" class="form-control" name="name" required value="{{ form.name.value|default_if_none:'' }}">
+      </div>
+      <div class="col-md-4">
+        <label for="unit" class="form-label">Unit<span class="text-danger">*</span></label>
+        <select class="form-select" name="unit">
+          <option value="">Select Unit</option>
+          {% for unit in units %}
+          <option value="{{ unit }}">{{ unit }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-4">
+        <label for="hsn_code" class="form-label">HSN Code</label>
+        <input type="text" class="form-control" name="hsn_code">
+      </div>
+    </div>
+    <div class="row mb-2">
+      <div class="col-md-4">
+        <label for="tax_pref" class="form-label">Tax Preference<span class="text-danger">*</span></label>
+        <select class="form-select" name="tax_pref">
+          <option value="taxable">Taxable</option>
+          <option value="non_taxable">Non-Taxable</option>
+        </select>
+      </div>
+    </div>
+    <hr>
+
+    <div class="row mb-3">
+      <!-- Sales Information -->
+      <div class="col-md-6">
+        <div class="card p-3">
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" checked id="sales_info" name="sales_info">
+            <label class="form-check-label" for="sales_info">Sales Information</label>
+          </div>
+          <div class="mt-2">
+            <label for="selling_price" class="form-label">Selling Price</label>
+            <div class="input-group">
+              <span class="input-group-text">{{ base_currency|default:"INR" }}</span>
+              <input type="number" class="form-control" name="selling_price" min="0.01" step="0.01">
+            </div>
+          </div>
+          <div class="mt-2">
+            <label for="sales_account" class="form-label">Account</label>
+            <select class="form-select" name="sales_account">
+              <option value="Sales">Sales</option>
+              <!-- More accounts... -->
+            </select>
+          </div>
+          <div class="mt-2">
+            <label for="sales_desc" class="form-label">Description</label>
+            <textarea class="form-control" name="sales_desc"></textarea>
+          </div>
+        </div>
+      </div>
+      <!-- Purchase Information -->
+      <div class="col-md-6">
+        <div class="card p-3">
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" checked id="purchase_info" name="purchase_info">
+            <label class="form-check-label" for="purchase_info">Purchase Information</label>
+          </div>
+          <div class="mt-2">
+            <label for="cost_price" class="form-label">Cost Price</label>
+            <div class="input-group">
+              <span class="input-group-text">{{ base_currency|default:"INR" }}</span>
+              <input type="number" class="form-control" name="cost_price" min="0.01" step="0.01">
+            </div>
+          </div>
+          <div class="mt-2">
+            <label for="purchase_account" class="form-label">Account</label>
+            <select class="form-select" name="purchase_account">
+              <option value="Cost of Goods Sold">Cost of Goods Sold</option>
+              <!-- More accounts... -->
+            </select>
+          </div>
+          <div class="mt-2">
+            <label for="purchase_desc" class="form-label">Description</label>
+            <textarea class="form-control" name="purchase_desc"></textarea>
+          </div>
+          <div class="mt-2">
+            <label for="vendor" class="form-label">Preferred Vendor</label>
+            <select class="form-select" name="preferred_vendor">
+              <option value="">Choose...</option>
+              {% for vendor in vendors %}
+              <option value="{{ vendor.id }}">{{ vendor.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <hr>
+    <div class="row mb-2">
+      <div class="col-md-6 text-primary">
+        <strong>Default Tax Rates</strong>
+        <div>Intra State Tax Rate: GST18 (18%)</div>
+        <div>Inter State Tax Rate: IGST18 (18%)</div>
+      </div>
+      <div class="col-md-6">
+        <div class="form-check mt-3">
+          <input class="form-check-input" type="checkbox" id="track_inventory" name="track_inventory">
+          <label class="form-check-label" for="track_inventory">
+            Track Inventory for this item
+          </label>
+          <div class="text-muted" style="font-size:0.95em;">
+            You cannot enable/disable inventory tracking once you've created transactions for this item
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="mt-3">
+      <button type="submit" class="btn btn-primary">Save</button>
+      <button type="button" class="btn btn-secondary">Cancel</button>
+    </div>
+  </form>
+</div>
+
+<script>
+  // Track form changes - Global variable
+  let formChanged = false;
+  const form = document.querySelector('form');
+  
+  if (form) {
+      // Track all form input changes
+      form.addEventListener('change', function(e) {
+          formChanged = true;
+          console.log('Form changed via change event');
+      });
+      
+      form.addEventListener('input', function(e) {
+          formChanged = true;
+          console.log('Form changed via input event');
+      });
+  }
+  
+  // Track Select2 changes using jQuery delegation (works regardless of initialization timing)
+  if (window.$ && window.jQuery) {
+      $(document).on('change', 'select.select2, .select2-hidden-accessible', function() {
+          formChanged = true;
+          console.log('Form changed via Select2 change event (delegation)');
+      });
+  }
+  
+  // Direct select element change listeners as fallback
+  document.addEventListener('change', function(e) {
+      if (e.target.tagName === 'SELECT') {
+          formChanged = true;
+          console.log('Form changed via direct select change event');
+      }
+  }, true);
+  
+  // Global click interceptor for all links - Outside of form check
+  document.addEventListener('click', function(e) {
+      // Check if clicked element is a link
+      let link = e.target.closest('a');
+      
+      console.log('Link clicked:', link ? link.href : 'not a link');
+      
+      if (link && formChanged) {
+          // Get the href
+          const href = link.getAttribute('href');
+          
+          console.log('Checking href:', href, 'formChanged:', formChanged);
+          
+          // Check if it's a navigation link (not modal, not anchor, not javascript)
+          if (href && !href.startsWith('#') && !link.getAttribute('data-bs-toggle') && !href.startsWith('javascript:')) {
+              console.log('Preventing navigation to:', href);
+              e.preventDefault();
+              e.stopPropagation();
+              
+              // Show confirmation modal
+              const navModalHtml = `
+                  <div class="modal fade" id="navConfirmationModal" tabindex="-1" role="dialog" aria-labelledby="navConfirmationLabel" aria-hidden="true">
+                      <div class="modal-dialog" role="document">
+                          <div class="modal-content">
+                              <div class="modal-header">
+                                  <h5 class="modal-title" id="navConfirmationLabel">Confirm Navigation</h5>
+                                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                              </div>
+                              <div class="modal-body">
+                                  <p>Are you sure you want to leave this page? All unsaved data will be lost.</p>
+                              </div>
+                              <div class="modal-footer">
+                                  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                  <button type="button" class="btn btn-primary" id="confirm-nav">OK</button>
+                              </div>
+                          </div>
+                      </div>
+                  </div>
+              `;
+              
+              // Remove any existing modal
+              const existingModal = document.getElementById('navConfirmationModal');
+              if (existingModal) existingModal.remove();
+              
+              // Add new modal to body
+              document.body.insertAdjacentHTML('beforeend', navModalHtml);
+              
+              // Show the modal
+              const navModal = new bootstrap.Modal(document.getElementById('navConfirmationModal'));
+              navModal.show();
+              
+              // Store the target URL
+              const targetUrl = href;
+              
+              // Handle the confirmation
+              document.getElementById('confirm-nav').addEventListener('click', function() {
+                  formChanged = false; // Reset to allow navigation
+                  window.location.href = targetUrl;
+              });
+              
+              // Clean up modal when it's hidden
+              document.getElementById('navConfirmationModal').addEventListener('hidden.bs.modal', function () {
+                  document.getElementById('navConfirmationModal').remove();
+              });
+          }
+      }
+  }, true); // Use capture phase for better event handling
+</script>
+
+<!-- ERROR MODAL FOR PERIOD LOCK AND OTHER ERRORS -->
+<div class="modal fade" id="errorModal" tabindex="-1" aria-labelledby="errorModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="border: 2px solid #d9534f; border-radius: 8px;">
+      <div class="modal-header" style="background-color: #f8d7da; border-bottom: 2px solid #d9534f;">
+        <h5 class="modal-title" id="errorModalLabel" style="color: #721c24;">
+          <i class="bi bi-exclamation-circle" style="color: #d9534f;"></i> Error
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="errorModalBody" style="color: #721c24; padding: 20px; line-height: 1.6;">
+        <!-- Error message will be inserted here -->
+      </div>
+      <div class="modal-footer" style="border-top: 1px solid #dee2e6;">
+        <button type="button" class="btn btn-primary" data-bs-dismiss="modal">OK</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Show error modal if there's an error message
+document.addEventListener('DOMContentLoaded', function() {
+  const showErrorModal = {{ show_error_modal|lower|default:"false" }};
+  const errorMessage = `{{ error_message|escapejs }}`;
+  
+  if (showErrorModal && errorMessage) {
+    const errorBodyElement = document.getElementById('errorModalBody');
+    errorBodyElement.innerHTML = errorMessage.replace(/\n/g, '<br>');
+    
+    const errorModal = new bootstrap.Modal(document.getElementById('errorModal'));
+    errorModal.show();
+  }
+});
+</script>
+
+{% endblock %}

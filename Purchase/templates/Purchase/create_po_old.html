@@ -1,0 +1,12 @@
+{% extends 'website/index.html' %}
+
+
+
+{% block content %}
+<h1>Create Purchase Order</h1>
+<form method="post">
+    {% csrf_token %}
+    {{ po_form.as_p }}
+    <button type="submit">Create PO</button>
+</form>
+{% endblock content %}

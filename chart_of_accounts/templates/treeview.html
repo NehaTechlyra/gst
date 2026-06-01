@@ -1,0 +1,92 @@
+{% extends 'website/index.html' %}
+{% load static %}
+{% block exstyle %}
+<link href="{% static 'style/general.css' %}" rel="stylesheet">
+<link href="{% static 'style/treeview.css' %}" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.9.1/font/bootstrap-icons.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+{% endblock exstyle %}
+{% block page_title %}Chart of Accounts Treeview{% endblock page_title %}
+{% block content %}
+
+    {% comment %} <h2>Chart of Accounts Treeview</h2> {% endcomment %}
+<div class="container mt-4 ">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+   
+    <!-- Add New account Button -->
+        {% if can_create %}
+            <a href="{% url 'create_account_tree' %}" class="btn btn-success">+ Add New Account</a>
+        {% endif %}
+    <!-- Search Box -->
+ <a href="{% url 'accounts-list' %}" class="btn commmombtn"><i class="fa fa-list-ul"></i>
+ List View</a>
+
+  </div>
+  <div class="float-end mb-4" >
+   
+  </div>
+    <div class="tree-container">
+        <ul>
+            {% for item in tree %}
+                {% include 'tree_node.html' with node=item level=1 %}
+            {% endfor %}
+        </ul>
+    </div>
+</div>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const toastContainer = document.getElementById('toastContainer');
+            {% if messages %}
+            {% for message in messages %}
+                const toastEl = document.createElement('div');
+                toastEl.className = 'toast align-items-center text-bg-{{ message.tags }} border-0';
+                toastEl.setAttribute('role', 'alert');
+                toastEl.setAttribute('aria-live', 'assertive');
+                toastEl.setAttribute('aria-atomic', 'true');
+                toastEl.innerHTML = `
+                <div class="d-flex">
+                    <div class="toast-body">
+                    {{ message|escapejs }}
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+                `;
+                toastContainer.appendChild(toastEl);
+
+                const toast = new bootstrap.Toast(toastEl, { delay: 3000 });
+                toast.show();
+            {% endfor %}
+            {% endif %}
+        });
+        document.addEventListener('DOMContentLoaded', () => {
+           
+            // Hide all children ULs initially
+            document.querySelectorAll('.children').forEach(childrenUl => {
+            childrenUl.style.display = 'none';
+            });
+
+
+            // Set all toggle icons initially to right-pointing triangle
+            document.querySelectorAll('.toggle .icon').forEach(icon => {
+            icon.innerHTML = '▸'; // right-pointing triangle
+            });
+            document.querySelectorAll('.toggle').forEach(elem => {
+                elem.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const childrenUl = elem.nextElementSibling;
+                    const icon = elem.querySelector('.icon');
+                    if (childrenUl.style.display === 'none') {
+                        childrenUl.style.display = 'block';
+                        icon.innerHTML = '&#9662;'; // Down-pointing triangle
+                    } else {
+                        childrenUl.style.display = 'none';
+                        icon.innerHTML = '&#9656;'; // Right-pointing triangle
+                    }
+                });
+            });
+        });
+        
+
+    </script>
+
+{% endblock %}

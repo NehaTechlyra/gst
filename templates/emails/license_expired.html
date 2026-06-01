@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin:0;padding:0;background-color:#f7f8fc;font-family:Arial,Helvetica,sans-serif;">
+
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f7f8fc;padding:40px 16px;">
+  <tr>
+    <td align="center">
+      <table width="580" cellpadding="0" cellspacing="0" border="0" style="max-width:580px;width:100%;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+
+        <!-- ── Red Stripe Header ── -->
+        <tr>
+          <td style="background-color:#c0392b;padding:32px 40px 28px;">
+            <table cellpadding="0" cellspacing="0" border="0">
+              <tr>
+                <td style="background:rgba(255,255,255,0.2);border-radius:8px;width:36px;height:36px;text-align:center;vertical-align:middle;font-size:18px;">⚡</td>
+                <td style="padding-left:10px;font-size:22px;font-weight:700;color:#ffffff;font-family:Georgia,serif;">Lyra ERP</td>
+              </tr>
+            </table>
+            <div style="margin-top:20px;font-size:26px;font-weight:700;color:#ffffff;line-height:1.25;">License Expired</div>
+            <div style="margin-top:6px;font-size:14px;color:rgba(255,255,255,0.8);">Your application access has been restricted</div>
+            <table cellpadding="0" cellspacing="0" border="0" style="margin-top:16px;">
+              <tr>
+                <td style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);border-radius:100px;padding:6px 14px;font-size:13px;color:#ffffff;">
+                  &#9679;&nbsp;Expired on {{ license_expiry_date }}
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- ── Body ── -->
+        <tr>
+          <td style="padding:36px 40px;">
+
+            <p style="margin:0 0 16px;font-size:15px;color:#1a1a2e;">Dear <strong>{{ contact_person }}</strong>,</p>
+            <p style="margin:0 0 24px;font-size:15px;line-height:1.7;color:#444444;">
+              The license expired on <strong>{{ license_expiry_date }}</strong>.
+              As of now, access to the application is restricted until a valid license is activated.
+            </p>
+
+            <!-- Alert card -->
+            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:24px;">
+              <tr>
+                <td style="background:#fdf0ef;border:1px solid #f5c6c2;border-radius:10px;padding:22px 24px;">
+                  <div style="font-size:17px;font-weight:700;color:#c0392b;margin-bottom:16px;font-family:Georgia,serif;">⚠️ To restore access:</div>
+
+                  <!-- Option 1 -->
+                  <table cellpadding="0" cellspacing="0" border="0" style="margin-bottom:14px;width:100%;">
+                    <tr>
+                      <td style="vertical-align:top;width:28px;padding-top:1px;">
+                        <div style="background:#c0392b;color:#ffffff;border-radius:50%;width:26px;height:26px;min-width:26px;text-align:center;line-height:26px;font-size:12px;font-weight:700;display:block;mso-line-height-rule:exactly;">1</div>
+                      </td>
+                      <td style="padding-left:12px;font-size:14px;color:#7a2020;line-height:1.6;vertical-align:top;">
+                        <strong>Don't have a license key?</strong> — Reply to this email or click <strong>Request License Key</strong> on the restricted access page to get one
+                      </td>
+                    </tr>
+                  </table>
+
+                  <!-- Option 2 -->
+                  <table cellpadding="0" cellspacing="0" border="0" style="margin-bottom:14px;width:100%;">
+                    <tr>
+                      <td style="vertical-align:top;width:28px;padding-top:1px;">
+                        <div style="background:#c0392b;color:#ffffff;border-radius:50%;width:26px;height:26px;min-width:26px;text-align:center;line-height:26px;font-size:12px;font-weight:700;display:block;mso-line-height-rule:exactly;">2</div>
+                      </td>
+                      <td style="padding-left:12px;font-size:14px;color:#7a2020;line-height:1.6;vertical-align:top;">
+                        <strong>Already have a new license key?</strong> — Click <strong>Activate License</strong> on the restricted access page and enter your key to restore access immediately
+                      </td>
+                    </tr>
+                  </table>
+
+                  <!-- Option 3 -->
+                  <table cellpadding="0" cellspacing="0" border="0" style="width:100%;">
+                    <tr>
+                      <td style="vertical-align:top;width:28px;padding-top:1px;">
+                        <div style="background:#c0392b;color:#ffffff;border-radius:50%;width:26px;height:26px;min-width:26px;text-align:center;line-height:26px;font-size:12px;font-weight:700;display:block;mso-line-height-rule:exactly;">3</div>
+                      </td>
+                      <td style="padding-left:12px;font-size:14px;color:#7a2020;line-height:1.6;vertical-align:top;">
+                        <strong>Need help?</strong> — Contact support at <a href="mailto:{{ contact_email }}" style="color:#c0392b;font-weight:700;">{{ contact_email }}</a>
+                      </td>
+                    </tr>
+                  </table>
+
+                </td>
+              </tr>
+            </table>
+
+            <!-- Account info card -->
+            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:24px;">
+              <tr>
+                <td style="background:#dce2f9;border-radius:10px;padding:22px 24px;">
+                  <div style="font-size:17px;font-weight:700;color:#55588b;margin-bottom:16px;font-family:Georgia,serif;">Account Details</div>
+                  <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                    <tr>
+                      <td style="font-size:14px;color:#6b6f9a;font-weight:500;">License Expired On</td>
+                      <td style="font-size:14px;color:#c0392b;font-weight:700;text-align:right;">{{ license_expiry_date }}</td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+
+            <!-- Ignore notice -->
+            <table width="100%" cellpadding="0" cellspacing="0" border="0">
+              <tr>
+                <td style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:14px 16px;">
+                  <table cellpadding="0" cellspacing="0" border="0">
+                    <tr>
+                      <td style="font-size:18px;vertical-align:top;padding-right:10px;">💡</td>
+                      <td style="font-size:13px;color:#7a5f00;line-height:1.55;">If you have already renewed your license, please disregard this message. It may take a few minutes for access to be restored.</td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+
+          </td>
+        </tr>
+
+        <!-- ── Footer ── -->
+        <tr>
+          <td style="background:#f7f8fc;border-top:1px solid #e8eaf0;padding:18px 40px;text-align:center;">
+            <p style="margin:0 0 4px;font-size:12px;color:#9b9dc4;">Need help? Contact us at <a href="mailto:{{ contact_email }}" style="color:#55588b;text-decoration:none;font-weight:600;">{{ contact_email }}</a></p>
+            <p style="margin:0;font-size:12px;color:#9b9dc4;">© 2025 Lyra ERP. All rights reserved.</p>
+          </td>
+        </tr>
+
+      </table>
+    </td>
+  </tr>
+</table>
+
+</body>
+</html>

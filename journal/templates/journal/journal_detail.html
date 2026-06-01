@@ -1,0 +1,167 @@
+{% extends 'website/index.html' %}
+
+{% block page_title %}Journal Entry{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="card">
+        <div class="card-header">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h3 class="card-title mb-0">
+                        Journal Entry {{ journal.entry_number }}
+                        <span class="badge {% if journal.status == 'posted' %}bg-success{% elif journal.status == 'draft' %}bg-warning{% else %}bg-danger{% endif %}">
+                            {{ journal.status|title }}
+                        </span>
+                    </h3>
+                </div>
+                <div>
+                    {% if journal.status == 'draft' %}
+                    <a href="{% url 'journal_edit' journal.pk %}" class="btn btn-primary">
+                        <i class="bx bx-edit"></i> Edit
+                    </a>
+                    <a href="{% url 'journal_post' journal.pk %}" class="btn btn-success" 
+                       onclick="return confirm('Are you sure you want to post this journal?')">
+                        <i class="bx bx-check"></i> Post
+                    </a>
+                    {% endif %}
+                    <a href="{% url 'journal_list' %}" class="btn btn-outline-secondary" onclick="return handleJournalBackButton(event)">
+                        <i class="bx bx-arrow-back"></i> Back to List
+                    </a>
+                </div>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <table class="table table-sm">
+                        <tr>
+                            <th style="width: 150px">Date:</th>
+                            <td>{{ journal.date }}</td>
+                        </tr>
+                        <tr>
+                            <th>Reference:</th>
+                            <td>{{ journal.reference }}</td>
+                        </tr>
+                        <tr>
+                            <th>Narration:</th>
+                            <td>{{ journal.narration }}</td>
+                        </tr>
+                    </table>
+                </div>
+                <div class="col-md-6">
+                    <table class="table table-sm">
+                        <tr>
+                            <th style="width: 150px">Created By:</th>
+                            <td>{{ journal.created_by }}</td>
+                        </tr>
+                        <tr>
+                            <th>Created On:</th>
+                            <td>{{ journal.created_at }}</td>
+                        </tr>
+                        <tr>
+                            <th>Last Updated:</th>
+                            <td>{{ journal.updated_at }}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th style="width: 40%">Account</th>
+                            <th style="width: 30%">Description</th>
+                            <th style="width: 15%" class="text-end">Debit</th>
+                            <th style="width: 15%" class="text-end">Credit</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for line in journal.lines.all %}
+                        <tr>
+                            <td>{{ line.account.name }}</td>
+                            <td>{{ line.description }}</td>
+                            <td class="text-end line-debit">{{ line.debit|floatformat:2 }}</td>
+                            <td class="text-end line-credit">{{ line.credit|floatformat:2 }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td colspan="2" class="text-end">Sub Total</td>
+                            <td id="subtotal-debit" class="text-end">0.00</td>
+                            <td id="subtotal-credit" class="text-end">0.00</td>
+                        </tr>
+                        <tr>
+                            <td colspan="2" class="text-end">Total</td>
+                            <td id="total-debit" class="text-end">0.00</td>
+                            <td id="total-credit" class="text-end">0.00</td>
+                        </tr>
+                        <tr>
+                            <td colspan="2" class="text-end">Difference</td>
+                            <td colspan="2" class="text-end"><span id="difference">0.00</span></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+            <script>
+                // Compute totals client-side from rendered rows so we can show per-column totals
+                (function(){
+                    function parseAmount(text){
+                        if(!text) return 0;
+                        // remove commas and non-numeric chars
+                        var v = text.replace(/[^0-9.\-]/g,'');
+                        var f = parseFloat(v);
+                        return isNaN(f)?0:f;
+                    }
+
+                    var debitCells = document.querySelectorAll('.line-debit');
+                    var creditCells = document.querySelectorAll('.line-credit');
+                    var sumDebit = 0, sumCredit = 0;
+
+                    debitCells.forEach(function(td){ sumDebit += parseAmount(td.textContent || td.innerText); });
+                    creditCells.forEach(function(td){ sumCredit += parseAmount(td.textContent || td.innerText); });
+
+                    // Find or create subtotal/total/difference cells
+                    function setText(id, value){
+                        var el = document.getElementById(id);
+                        if(el) el.textContent = value.toFixed(2);
+                    }
+
+                    // If the template already rendered placeholders, use them; otherwise inject at end of table
+                    setText('subtotal-debit', sumDebit);
+                    setText('subtotal-credit', sumCredit);
+                    setText('total-debit', sumDebit);
+                    setText('total-credit', sumCredit);
+
+                    var diff = Math.abs(sumDebit - sumCredit);
+                    var diffEl = document.getElementById('difference');
+                    if(diffEl){
+                        diffEl.textContent = diff.toFixed(2);
+                        if(diff > 0){ diffEl.classList.add('text-danger'); }
+                    }
+                })();
+            </script>
+        </div>
+    </div>
+</div>
+
+<script>//byadarsh
+// Back button logic: if came from chart of accounts or party transactions, go back there; otherwise go to journal list
+function handleJournalBackButton(event) {
+  event.preventDefault();
+  const backSource = sessionStorage.getItem('journalBackSource');
+  
+  if (backSource === 'chart_of_accounts' || backSource === 'party_transactions') {
+    sessionStorage.removeItem('journalBackSource');
+    window.history.back();
+    return false;
+  } else {
+    window.location.href = "{% url 'journal_list' %}";
+    return false;
+  }
+}//byadarsh
+</script>
+
+{% endblock %}

@@ -1,0 +1,499 @@
+{% extends 'website/index.html' %}
+{% load static %}
+
+{% block back_button %}{% endblock %}
+
+{% block exstyle %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+
+<style>
+/* ═══════════════════════════════════════════════════════
+   MODERN CRM DASHBOARD STYLING
+   ═══════════════════════════════════════════════════════ */
+:root {
+  --bg:       #ffffff;
+  --bg2:      #f3f4f6;
+  --surface:  #ffffff;
+  --border:   #e2e6f3;
+  --border2:  #d0d6ee;
+  --brand:    #55588b;
+  --brand-lt: #dce2f9;
+  --brand-mid:#7b7fd4;
+  --t1: #111827;
+  --t2: #4b5563;
+  --t3: #9ca3af;
+  --radius: 16px;
+  --shadow-sm: 0 1px 3px rgba(85,88,139,.06), 0 2px 8px rgba(85,88,139,.05);
+  --shadow: 0 2px 8px rgba(85,88,139,.08), 0 8px 24px rgba(85,88,139,.06);
+  --shadow-lg: 0 4px 16px rgba(85,88,139,.13), 0 16px 40px rgba(85,88,139,.09);
+}
+
+* { box-sizing: border-box; font-family: 'Plus Jakarta Sans', sans-serif; }
+
+.crm-page {
+  background: #ffffff !important;
+  min-height: 100vh;
+  position: relative;
+  z-index: 1;
+  padding: 20px 24px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+}
+.crm-page::before {
+  content: '';
+  position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  background:
+    radial-gradient(ellipse 800px 500px at 85% 0%,   rgba(85,88,139,.06) 0%, transparent 60%),
+    radial-gradient(ellipse 600px 400px at 10% 100%, rgba(13,148,136,.04) 0%, transparent 60%);
+}
+
+/* ── Section heading ── */
+.crm-section-head { 
+  display: flex; align-items: center; gap: 10px; 
+  margin-bottom: 16px;
+}
+.crm-pip  { 
+  width: 4px; height: 18px; border-radius: 3px; 
+  background: linear-gradient(180deg, var(--brand) 0%, #0d9488 100%); 
+}
+.crm-lbl  { 
+  font-size: .7rem; font-weight: 800; letter-spacing: .1em; 
+  text-transform: uppercase; color: var(--t3); 
+}
+
+/* ═══════════════════════════════════════════════════════
+   KPI CARDS
+   ═══════════════════════════════════════════════════════ */
+.crm-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr));
+  gap: 14px;
+}
+
+.crm-kpi-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  max-width: 100%;
+  text-decoration: none; color: inherit;
+  display: flex; flex-direction: column; gap: 13px;
+  position: relative; overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  transition: transform .2s, box-shadow .2s, border-color .2s;
+  opacity: 0;
+  animation: riseIn .42s ease forwards;
+}
+.crm-kpi-card:hover { 
+  transform: translateY(-3px); 
+  box-shadow: var(--shadow-lg); 
+  border-color: var(--border2); 
+}
+
+/* top stripe */
+.crm-kpi-card::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 3px;
+  background: linear-gradient(90deg, var(--kc1, var(--brand)), var(--kc2, var(--brand-mid)));
+  border-radius: var(--radius) var(--radius) 0 0;
+}
+
+.crm-kpi-top   { display: flex; align-items: center; justify-content: space-between; }
+.crm-kpi-icon  { 
+  width: 42px; height: 42px; border-radius: 12px; 
+  display: flex; align-items: center; justify-content: center; 
+  font-size: 1.1rem; background: var(--kbg, var(--brand-lt)); 
+  color: var(--kc1, var(--brand)); 
+  border: 1px solid var(--kborder, rgba(85,88,139,.13)); 
+}
+.crm-kpi-pill  { 
+  font-size: 10px; font-weight: 700; letter-spacing: .4px; 
+  padding: 3px 9px; border-radius: 20px; 
+  background: var(--kbg, var(--brand-lt)); 
+  color: var(--kc1, var(--brand)); 
+}
+.crm-kpi-label { 
+  font-size: .7rem; font-weight: 700; color: var(--t3); 
+  letter-spacing: .05em; text-transform: uppercase; 
+}
+.crm-kpi-value { 
+  font-size: 2.1rem; font-weight: 800; line-height: 1; 
+  letter-spacing: -.04em; font-family: 'JetBrains Mono', monospace; 
+  color: var(--t1); 
+}
+.crm-kpi-sub   { 
+  font-size: 11px; color: var(--t3); 
+  display: flex; align-items: center; gap: 5px; 
+}
+.crm-kpi-sub i { color: var(--kc1, var(--brand)); }
+
+.crm-kpi-card:nth-child(1){animation-delay:.04s;} 
+.crm-kpi-card:nth-child(2){animation-delay:.08s;}
+.crm-kpi-card:nth-child(3){animation-delay:.12s;} 
+.crm-kpi-card:nth-child(4){animation-delay:.16s;}
+.crm-kpi-card:nth-child(5){animation-delay:.20s;} 
+.crm-kpi-card:nth-child(6){animation-delay:.24s;}
+.crm-kpi-card:nth-child(7){animation-delay:.28s;} 
+.crm-kpi-card:nth-child(8){animation-delay:.32s;}
+
+@keyframes riseIn { from{opacity:0;transform:translateY(12px);} to{opacity:1;transform:translateY(0);} }
+
+/* ─ Responsive ── */
+@media (max-width:1100px) {
+  .crm-kpi-grid { grid-template-columns: repeat(3, 1fr) !important; }
+}
+@media (max-width:768px) {
+  .crm-kpi-grid { grid-template-columns: repeat(2, 1fr) !important; }
+}
+@media (max-width:640px) {
+  .crm-page { padding: 16px; }
+  .crm-kpi-grid { grid-template-columns: 1fr !important; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="crm-page">
+
+<!-- Lead Overview -->
+{% if has_leads_permission %}
+<div>
+    <div class="crm-section-head s-head">
+      <div class="crm-pip s-pip"></div>
+      <span class="crm-lbl s-lbl">Lead Overview</span>
+    </div>
+    <div class="crm-kpi-grid" id="crmLeadGrid">
+        <a href="{% url 'lead_list' %}" class="crm-kpi-card" style="--kc1:#ea580c;--kc2:#fb923c;--kbg:#ffedd5;--kborder:rgba(234,88,12,.15);">
+          <div class="crm-kpi-top">
+            <div class="crm-kpi-icon" style="background:#ffedd5;color:#ea580c;border-color:rgba(234,88,12,.15);"><i class="bi bi-people-fill"></i></div>
+            <span class="crm-kpi-pill" style="background:#ffedd5;color:#ea580c;">Leads</span>
+          </div>
+          <div class="crm-kpi-label">Total Leads</div>
+          <div class="crm-kpi-value">{{ total_leads }}</div>
+          <div class="crm-kpi-sub"><i class="bi bi-graph-up-arrow"></i> All statuses</div>
+        </a>
+
+        <a href="{% url 'lead_list' %}?status=Hot" class="crm-kpi-card" style="--kc1:#dc2626;--kc2:#ef4444;--kbg:#fee2e2;--kborder:rgba(220,38,38,.15);">
+          <div class="crm-kpi-top">
+            <div class="crm-kpi-icon" style="background:#fee2e2;color:#dc2626;border-color:rgba(220,38,38,.15);"><i class="bi bi-fire"></i></div>
+            <span class="crm-kpi-pill" style="background:#fee2e2;color:#dc2626;">Hot</span>
+          </div>
+          <div class="crm-kpi-label">Hot Leads</div>
+          <div class="crm-kpi-value">{{ hot_leads }}</div>
+          <div class="crm-kpi-sub"><i class="bi bi-lightning-fill"></i> Ready to convert</div>
+        </a>
+
+        <a href="{% url 'lead_list' %}?status=Warm" class="crm-kpi-card" style="--kc1:#f59e0b;--kc2:#fbbf24;--kbg:#fef3c7;--kborder:rgba(245,158,11,.15);">
+          <div class="crm-kpi-top">
+            <div class="crm-kpi-icon" style="background:#fef3c7;color:#f59e0b;border-color:rgba(245,158,11,.15);"><i class="bi bi-brightness-high"></i></div>
+            <span class="crm-kpi-pill" style="background:#fef3c7;color:#f59e0b;">Warm</span>
+          </div>
+          <div class="crm-kpi-label">Warm Leads</div>
+          <div class="crm-kpi-value">{{ warm_leads }}</div>
+          <div class="crm-kpi-sub"><i class="bi bi-hourglass"></i> In progress</div>
+        </a>
+
+        <a href="{% url 'lead_list' %}?status=Cold" class="crm-kpi-card" style="--kc1:#06b6d4;--kc2:#22d3ee;--kbg:#cffafe;--kborder:rgba(6,182,212,.15);">
+          <div class="crm-kpi-top">
+            <div class="crm-kpi-icon" style="background:#cffafe;color:#06b6d4;border-color:rgba(6,182,212,.15);"><i class="bi bi-snow"></i></div>
+            <span class="crm-kpi-pill" style="background:#cffafe;color:#06b6d4;">Cold</span>
+          </div>
+          <div class="crm-kpi-label">Cold Leads</div>
+          <div class="crm-kpi-value">{{ cold_leads }}</div>
+          <div class="crm-kpi-sub"><i class="bi bi-clock-history"></i> Needs nurturing</div>
+        </a>
+
+        <a href="{% url 'lead_list' %}?status=New" class="crm-kpi-card" style="--kc1:#10b981;--kc2:#34d399;--kbg:#d1fae5;--kborder:rgba(16,185,129,.15);">
+          <div class="crm-kpi-top">
+            <div class="crm-kpi-icon" style="background:#d1fae5;color:#10b981;border-color:rgba(16,185,129,.15);"><i class="bi bi-plus-circle"></i></div>
+            <span class="crm-kpi-pill" style="background:#d1fae5;color:#10b981;">New</span>
+          </div>
+          <div class="crm-kpi-label">New Leads</div>
+          <div class="crm-kpi-value">{{ new_leads }}</div>
+          <div class="crm-kpi-sub"><i class="bi bi-star"></i> Fresh entries</div>
+        </a>
+
+        <a href="{% url 'lead_list' %}?status=Contacted" class="crm-kpi-card" style="--kc1:#8b5cf6;--kc2:#a78bfa;--kbg:#ede9fe;--kborder:rgba(139,92,246,.15);">
+          <div class="crm-kpi-top">
+            <div class="crm-kpi-icon" style="background:#ede9fe;color:#8b5cf6;border-color:rgba(139,92,246,.15);"><i class="bi bi-telephone-fill"></i></div>
+            <span class="crm-kpi-pill" style="background:#ede9fe;color:#8b5cf6;">Contacted</span>
+          </div>
+          <div class="crm-kpi-label">Contacted</div>
+          <div class="crm-kpi-value">{{ contacted_leads }}</div>
+          <div class="crm-kpi-sub"><i class="bi bi-check-circle"></i> Follow-up done</div>
+        </a>
+
+        <a href="{% url 'lead_list' %}?status=Interested" class="crm-kpi-card" style="--kc1:#ec4899;--kc2:#f472b6;--kbg:#fce7f3;--kborder:rgba(236,72,153,.15);">
+          <div class="crm-kpi-top">
+            <div class="crm-kpi-icon" style="background:#fce7f3;color:#ec4899;border-color:rgba(236,72,153,.15);"><i class="bi bi-heart-fill"></i></div>
+            <span class="crm-kpi-pill" style="background:#fce7f3;color:#ec4899;">Interested</span>
+          </div>
+          <div class="crm-kpi-label">Interested</div>
+          <div class="crm-kpi-value">{{ interested_leads }}</div>
+          <div class="crm-kpi-sub"><i class="bi bi-hand-thumbs-up"></i> Strong potential</div>
+        </a>
+
+        <a href="{% url 'lead_list' %}?status=Lost" class="crm-kpi-card" style="--kc1:#6366f1;--kc2:#818cf8;--kbg:#e0e7ff;--kborder:rgba(99,102,241,.15);">
+          <div class="crm-kpi-top">
+            <div class="crm-kpi-icon" style="background:#e0e7ff;color:#6366f1;border-color:rgba(99,102,241,.15);"><i class="bi bi-x-circle-fill"></i></div>
+            <span class="crm-kpi-pill" style="background:#e0e7ff;color:#6366f1;">Lost</span>
+          </div>
+          <div class="crm-kpi-label">Lost Leads</div>
+          <div class="crm-kpi-value">{{ lost_leads }}</div>
+          <div class="crm-kpi-sub"><i class="bi bi-dash-circle"></i> Not converting</div>
+        </a>
+    </div>
+</div>
+{% endif %}
+
+<!-- Quotation Summary -->
+{% if has_sales_quotation_permission %}
+<div>
+    <div class="crm-section-head s-head">
+      <div class="crm-pip s-pip"></div>
+      <span class="crm-lbl s-lbl">Quotation Summary</span>
+    </div>
+    <div class="crm-kpi-grid" id="crmQuotationGrid">
+        <a href="{% url 'quotation_list' %}" class="crm-kpi-card" style="--kc1:#3b82f6;--kc2:#60a5fa;--kbg:#dbeafe;--kborder:rgba(59,130,246,.15);">
+          <div class="crm-kpi-top">
+            <div class="crm-kpi-icon" style="background:#dbeafe;color:#3b82f6;border-color:rgba(59,130,246,.15);"><i class="bi bi-file-earmark-text"></i></div>
+            <span class="crm-kpi-pill" style="background:#dbeafe;color:#3b82f6;">All</span>
+          </div>
+          <div class="crm-kpi-label">Total Quotations</div>
+          <div class="crm-kpi-value">{{ total_quotations }}</div>
+          <div class="crm-kpi-sub"><i class="bi bi-file-earmark"></i> All statuses</div>
+        </a>
+
+        <a href="{% url 'quotation_list' %}?status=Sent" class="crm-kpi-card" style="--kc1:#14b8a6;--kc2:#2dd4bf;--kbg:#ccfbf1;--kborder:rgba(20,184,166,.15);">
+          <div class="crm-kpi-top">
+            <div class="crm-kpi-icon" style="background:#ccfbf1;color:#14b8a6;border-color:rgba(20,184,166,.15);"><i class="bi bi-send"></i></div>
+            <span class="crm-kpi-pill" style="background:#ccfbf1;color:#14b8a6;">Sent</span>
+          </div>
+          <div class="crm-kpi-label">Sent</div>
+          <div class="crm-kpi-value">{{ quotations_sent }}</div>
+          <div class="crm-kpi-sub"><i class="bi bi-arrow-right"></i> Awaiting response</div>
+        </a>
+
+        <a href="{% url 'quotation_list' %}?status=Accepted" class="crm-kpi-card" style="--kc1:#22c55e;--kc2:#4ade80;--kbg:#dcfce7;--kborder:rgba(34,197,94,.15);">
+          <div class="crm-kpi-top">
+            <div class="crm-kpi-icon" style="background:#dcfce7;color:#22c55e;border-color:rgba(34,197,94,.15);"><i class="bi bi-check-circle-fill"></i></div>
+            <span class="crm-kpi-pill" style="background:#dcfce7;color:#22c55e;">Won</span>
+          </div>
+          <div class="crm-kpi-label">Accepted (Won)</div>
+          <div class="crm-kpi-value">{{ quotations_accepted }}</div>
+          <div class="crm-kpi-sub"><i class="bi bi-check2-all"></i> Converted deals</div>
+        </a>
+
+        <a href="{% url 'quotation_list' %}?status=Rejected" class="crm-kpi-card" style="--kc1:#ef4444;--kc2:#f87171;--kbg:#fee2e2;--kborder:rgba(239,68,68,.15);">
+          <div class="crm-kpi-top">
+            <div class="crm-kpi-icon" style="background:#fee2e2;color:#ef4444;border-color:rgba(239,68,68,.15);"><i class="bi bi-x-circle-fill"></i></div>
+            <span class="crm-kpi-pill" style="background:#fee2e2;color:#ef4444;">Lost</span>
+          </div>
+          <div class="crm-kpi-label">Rejected (Lost)</div>
+          <div class="crm-kpi-value">{{ quotations_rejected }}</div>
+          <div class="crm-kpi-sub"><i class="bi bi-dash-circle"></i> Not accepted</div>
+        </a>
+    </div>
+</div>
+{% endif %}
+
+<!-- Reminder Alerts -->
+{% if reminder_followups %}
+<div style="background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 22px 24px; box-shadow: var(--shadow-sm); margin-bottom: 32px;">
+    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 18px;">
+      <i class="bi bi-bell" style="color: var(--brand); font-size: .95rem;"></i>
+      <h5 style="margin: 0; font-size: .9rem; font-weight: 800; color: var(--t1);">Reminder Notifications</h5>
+    </div>
+    <ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 12px;">
+        {% for followup in reminder_followups %}
+        <li style="display: flex; align-items: center; gap: 12px; padding: 11px 0; border-bottom: 1px solid var(--border);">
+            <span style="font-size: 11px; color: var(--t3); background: var(--bg2); padding: 3px 8px; border-radius: 6px; font-family: 'JetBrains Mono', monospace; font-weight: 600; white-space: nowrap;">{{ followup.followup_date|date:"Y-m-d H:i" }}</span>
+            <span style="font-size: 13px; font-weight: 600; color: var(--t2); flex: 1;">{{ followup.description }}</span>
+            {% if followup.lead %}
+                <a href="{% url 'lead_detail' followup.lead.pk %}" style="font-size: 11px; font-weight: 700; color: var(--brand); text-decoration: none; padding: 4px 10px; border-radius: 7px; background: var(--brand-lt); border: 1px solid rgba(85,88,139,.15);">View Lead</a>
+            {% elif followup.opportunity %}
+                <a href="{% url 'opportunity_detail' followup.opportunity.pk %}" style="font-size: 11px; font-weight: 700; color: var(--brand); text-decoration: none; padding: 4px 10px; border-radius: 7px; background: var(--brand-lt); border: 1px solid rgba(85,88,139,.15);">View Opportunity</a>
+            {% elif followup.quotation %}
+                <a href="{% url 'quotation_detail' followup.quotation.pk %}" style="font-size: 11px; font-weight: 700; color: var(--brand); text-decoration: none; padding: 4px 10px; border-radius: 7px; background: var(--brand-lt); border: 1px solid rgba(85,88,139,.15);">View Quotation</a>
+            {% endif %}
+        </li>
+        {% endfor %}
+    </ul>
+</div>
+{% endif %}
+
+<!-- Follow-up Tracker -->
+{% if has_followups_permission %}
+<div>
+    <div class="crm-section-head s-head">
+      <div class="crm-pip s-pip"></div>
+      <span class="crm-lbl s-lbl">Follow-up Tracker</span>
+    </div>
+    <div class="crm-kpi-grid" id="crmFollowupGrid">
+        <a href="{% url 'followup_list' %}" class="crm-kpi-card" style="--kc1:#f59e0b;--kc2:#fbbf24;--kbg:#fef3c7;--kborder:rgba(245,158,11,.15);">
+          <div class="crm-kpi-top">
+            <div class="crm-kpi-icon" style="background:#fef3c7;color:#f59e0b;border-color:rgba(245,158,11,.15);"><i class="bi bi-calendar-check"></i></div>
+            <span class="crm-kpi-pill" style="background:#fef3c7;color:#f59e0b;">Today</span>
+          </div>
+          <div class="crm-kpi-label">Today's Follow-ups</div>
+          <div class="crm-kpi-value">{{ today_followups.count }}</div>
+          <div class="crm-kpi-sub"><i class="bi bi-clock"></i> Schedule now</div>
+        </a>
+
+        <a href="{% url 'followup_list' %}" class="crm-kpi-card" style="--kc1:#dc2626;--kc2:#ef4444;--kbg:#fee2e2;--kborder:rgba(220,38,38,.15);">
+          <div class="crm-kpi-top">
+            <div class="crm-kpi-icon" style="background:#fee2e2;color:#dc2626;border-color:rgba(220,38,38,.15);"><i class="bi bi-exclamation-triangle"></i></div>
+            <span class="crm-kpi-pill" style="background:#fee2e2;color:#dc2626;">Overdue</span>
+          </div>
+          <div class="crm-kpi-label">Overdue Follow-ups</div>
+          <div class="crm-kpi-value">{{ overdue_followups.count }}</div>
+          <div class="crm-kpi-sub"><i class="bi bi-lightning-fill"></i> Action needed</div>
+        </a>
+
+        <a href="{% url 'followup_list' %}" class="crm-kpi-card" style="--kc1:#0284c7;--kc2:#38bdf8;--kbg:#e0f2fe;--kborder:rgba(2,132,199,.15);">
+          <div class="crm-kpi-top">
+            <div class="crm-kpi-icon" style="background:#e0f2fe;color:#0284c7;border-color:rgba(2,132,199,.15);"><i class="bi bi-clock-history"></i></div>
+            <span class="crm-kpi-pill" style="background:#e0f2fe;color:#0284c7;">Upcoming</span>
+          </div>
+          <div class="crm-kpi-label">Upcoming Follow-ups</div>
+          <div class="crm-kpi-value">{{ upcoming_followups.count }}</div>
+          <div class="crm-kpi-sub"><i class="bi bi-arrow-right"></i> Scheduled ahead</div>
+        </a>
+    </div>
+</div>
+{% endif %}
+
+<!-- Lost Reasons Chart -->
+{% if has_leads_permission or has_opportunities_permission %}
+<div>
+    <div class="crm-section-head s-head">
+      <div class="crm-pip s-pip"></div>
+      <span class="crm-lbl s-lbl">Lost Reasons Breakdown</span>
+    </div>
+    <div style="background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 22px 24px; box-shadow: var(--shadow-sm);">
+        <canvas id="lostReasonsChart" height="100"></canvas>
+    </div>
+</div>
+{% endif %}
+
+<!-- Recent Activities -->
+{% if has_leads_permission %}
+<div id="crmRecentGrid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; margin-bottom: 32px;">
+    <div style="background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 22px 24px; box-shadow: var(--shadow-sm);">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 18px;">
+          <i class="bi bi-people-fill" style="color: var(--brand); font-size: .95rem;"></i>
+          <h5 style="margin: 0; font-size: .9rem; font-weight: 800; color: var(--t1);">Recent Leads</h5>
+        </div>
+        <table style="width: 100%; font-size: .82rem;">
+            <thead style="border-bottom: 1px solid var(--border);">
+                <tr>
+                    <th style="padding: 8px 0; text-align: left; font-weight: 700; color: var(--t3); letter-spacing: .05em; text-transform: uppercase; font-size: .7rem;">Customer</th>
+                    <th style="padding: 8px 0; text-align: left; font-weight: 700; color: var(--t3); letter-spacing: .05em; text-transform: uppercase; font-size: .7rem;">Product</th>
+                    <th style="padding: 8px 0; text-align: left; font-weight: 700; color: var(--t3); letter-spacing: .05em; text-transform: uppercase; font-size: .7rem;">Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for lead in recent_leads %}
+                <tr style="border-bottom: 1px solid var(--border);">
+                    <td style="padding: 10px 0;"><a href="{% url 'lead_detail' lead.pk %}" style="color: var(--brand); text-decoration: none; font-weight: 600;">{{ lead.customer_name }}</a></td>
+                    <td style="padding: 10px 0; color: var(--t2);">{{ lead.product_interested }}</td>
+                    <td style="padding: 10px 0;"><span style="font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 20px; background: var(--brand-lt); color: var(--brand); letter-spacing: .4px;">{{ lead.status }}</span></td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="3" style="padding: 16px; text-align: center; color: var(--t3); font-size: .82rem;">No recent leads</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div style="background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 22px 24px; box-shadow: var(--shadow-sm);">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 18px;">
+          <i class="bi bi-clock-history" style="color: var(--brand); font-size: .95rem;"></i>
+          <h5 style="margin: 0; font-size: .9rem; font-weight: 800; color: var(--t1);">Recent Updates</h5>
+        </div>
+        <ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 12px;">
+            {% for update in recent_updates %}
+            <li style="display: flex; flex-direction: column; gap: 4px; padding: 12px 0; border-bottom: 1px solid var(--border);">
+                <span style="font-size: 13px; font-weight: 700; color: var(--t1);">{{ update.update_type }}</span>
+                <span style="font-size: .82rem; color: var(--t2);">{{ update.description|truncatewords:10 }}</span>
+                <span style="font-size: 11px; color: var(--t3); font-family: 'JetBrains Mono', monospace; font-weight: 600;">{{ update.created_at }}</span>
+            </li>
+            {% empty %}
+            <li style="text-align: center; padding: 20px; color: var(--t3); font-size: .82rem;">No recent updates</li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
+{% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+var LYRA_LAYOUT_API = {
+  getUrl: "{% url 'dashboard_layout_get' %}",
+  saveUrl: "{% url 'dashboard_layout_save' %}",
+  csrf: "{{ csrf_token }}"
+};
+
+var LYRA_ARRANGE_CONFIG = {
+  storagePrefix: "crm_dashboard:",
+  sectionContainer: ".crm-page",
+  arrangeLabel: "Arrange Layout",
+  doneLabel: "Done Arranging",
+  resetConfirm: "Reset CRM dashboard to default layout?",
+  cardGroups: [
+    { container: "#crmLeadGrid", child: ".crm-kpi-card", key: "leads" },
+    { container: "#crmQuotationGrid", child: ".crm-kpi-card", key: "quotations" },
+    { container: "#crmFollowupGrid", child: ".crm-kpi-card", key: "followups" },
+    { container: "#crmRecentGrid", child: "div", key: "recent" }
+  ]
+};
+</script>
+<script src="{% static 'js/dashboard_dragdrop.js' %}"></script>
+
+<script>
+    const lostReasonsData = {{ lost_reasons_data|safe }};
+    const ctx = document.getElementById('lostReasonsChart').getContext('2d');
+    const chartColors = ['#F14A00','#500073','#C62300','#E1FFBB','#2A004E','#009990','#FFCCE1','#355F2E','#FFB200','#89A8B2'];
+    function hexToRgba(hex, alpha) {
+        const h = hex.replace('#','');
+        const r = parseInt(h.substring(0,2),16);
+        const g = parseInt(h.substring(2,4),16);
+        const b = parseInt(h.substring(4,6),16);
+        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    }
+
+    const labels = Object.keys(lostReasonsData);
+    const values = Object.values(lostReasonsData);
+    const backgroundColors = labels.map((_, idx) => hexToRgba(chartColors[idx % chartColors.length], 0.18));
+    const borderColors = labels.map((_, idx) => chartColors[idx % chartColors.length]);
+
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels,
+            datasets: [{
+                label: 'Lost Count',
+                data: values,
+                backgroundColor: backgroundColors,
+                borderColor: borderColors,
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+</script>
+{% endblock %}

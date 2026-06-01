@@ -1,0 +1,426 @@
+{% extends 'website/index.html' %}
+{% load widget_tweaks %}
+{% load static %}
+{% load get_item %}
+{% block exstyle %}
+<link href="{% static 'style/general.css' %}" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.9.1/font/bootstrap-icons.css" rel="stylesheet">
+{% endblock exstyle %}
+{% block page_title %}Create New Role{% endblock page_title %}
+{% block content %}
+{% if form.errors %}
+  {% comment %} <div class="alert alert-danger">
+    <ul>
+      {% for field in form %}
+        {% for error in field.errors %}
+          <li>{{ field.label }}: {{ error }}</li>
+        {% endfor %}
+      {% endfor %}
+      {% for error in form.non_field_errors %}
+        <li>{{ error }}</li>
+      {% endfor %}
+    </ul>
+  </div> {% endcomment %}
+
+{% endif %}
+<div class="container mt-4">
+    <div class="card p-4 shadow-sm border-0">
+      <form method="post" id="create-role">
+        {% csrf_token %}
+        <!-- Role Info -->
+        <label for="{{ form.role_name.id_for_label }}">Role Name:</label>
+        {{ form.role_name|attr:"class:form-control" }}
+
+        <label for="{{ form.description.id_for_label }}">Description:</label>
+        {{ form.description|attr:"class:form-control" }}
+
+        <!-- Permissions Table -->
+        <label>Permissions</label>
+        
+        <!-- by adarsh Filter Options -->
+        <div class="mb-4 p-4 bg-light rounded border">
+          <!-- Row 1: Select All / Deselect All -->
+          <div class="row mb-3">
+            <div class="col-12">
+              <div class="btn-group w-100" role="group">
+                <button type="button" class="btn btn-outline-primary btn-sm" id="selectAllBtn" style="flex: 1;">
+                  <i class="bi bi-check-all"></i> Select All
+                </button>
+                <button type="button" class="btn btn-outline-danger btn-sm" id="deselectAllBtn" style="flex: 1;">
+                  <i class="bi bi-x"></i> Deselect All
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Row 2: Module Filters -->
+          <div class="row">
+            <div class="col-12">
+              <label class="form-label text-muted mb-2" style="font-size: 13px;">Quick Select by Module:</label>
+              <div class="d-grid gap-2">
+                <div class="row g-2">
+                  <div class="col-6 col-md-4 col-lg-3">
+                    <button type="button" class="btn btn-outline-info btn-sm w-100" id="selectSalesBtn" data-module-prefix="sales">
+                      <i class="bi bi-cart"></i> Sales
+                    </button>
+                  </div>
+                  <div class="col-6 col-md-4 col-lg-3">
+                    <button type="button" class="btn btn-outline-info btn-sm w-100" id="selectPurchaseBtn" data-module-prefix="purchase">
+                      <i class="bi bi-bag"></i> Purchase
+                    </button>
+                  </div>
+                  <div class="col-6 col-md-4 col-lg-3">
+                    <button type="button" class="btn btn-outline-info btn-sm w-100" id="selectHRBtn" data-module-prefix="hr">
+                      <i class="bi bi-people"></i> HR
+                    </button>
+                  </div>
+                  <div class="col-6 col-md-4 col-lg-3">
+                    <button type="button" class="btn btn-outline-info btn-sm w-100" id="selectCRMBtn" data-module-prefix="crm">
+                      <i class="bi bi-person-lines-fill"></i> CRM
+                    </button>
+                  </div>
+                  <div class="col-6 col-md-4 col-lg-3">
+                    <button type="button" class="btn btn-outline-info btn-sm w-100" id="selectAccountsBtn" data-module-prefix="accounts">
+                      <i class="bi bi-calculator"></i> Accounts
+                    </button>
+                  </div>
+                  <div class="col-6 col-md-4 col-lg-3">
+                    <button type="button" class="btn btn-outline-info btn-sm w-100" id="selectReportsBtn" data-module-prefix="reports">
+                      <i class="bi bi-file-earmark-bar-graph"></i> Reports
+                    </button>
+                  </div>
+                  <div class="col-6 col-md-4 col-lg-3">
+                    <button type="button" class="btn btn-outline-info btn-sm w-100" id="selectBankingBtn" data-module-prefix="bank">
+                      <i class="bi bi-bank"></i> Banking
+                    </button>
+                  </div>
+                  <div class="col-6 col-md-4 col-lg-3">
+                    <button type="button" class="btn btn-outline-info btn-sm w-100" id="selectMastersBtn" data-module-prefix="master">
+                      <i class="bi bi-gear"></i> Masters
+                    </button>
+                  </div>
+                  <div class="col-6 col-md-4 col-lg-3">
+                    <button type="button" class="btn btn-outline-info btn-sm w-100" id="selectSystemBtn" data-module-prefix="system">
+                      <i class="bi bi-sliders"></i> System
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Row 3: Permission Type Filters -->
+          <div class="row mt-4">
+            <div class="col-12">
+              <label class="form-label text-muted mb-2" style="font-size: 13px;">Quick Select by Permission Type:</label>
+              <div class="d-grid gap-2">
+                <div class="row g-2">
+                  <div class="col-6 col-md-3">
+                    <button type="button" class="btn btn-outline-success btn-sm w-100" id="selectViewAllBtn" data-perm-col="1">
+                      <i class="bi bi-eye"></i> Select All View
+                    </button>
+                  </div>
+                  <div class="col-6 col-md-3">
+                    <button type="button" class="btn btn-outline-warning btn-sm w-100" id="selectCreateAllBtn" data-perm-col="2">
+                      <i class="bi bi-plus-circle"></i> Select All Create
+                    </button>
+                  </div>
+                  <div class="col-6 col-md-3">
+                    <button type="button" class="btn btn-outline-warning btn-sm w-100" id="selectEditAllBtn" data-perm-col="3">
+                      <i class="bi bi-pencil-square"></i> Select All Edit
+                    </button>
+                  </div>
+                  <div class="col-6 col-md-3">
+                    <button type="button" class="btn btn-outline-danger btn-sm w-100" id="selectDeleteAllBtn" data-perm-col="4">
+                      <i class="bi bi-trash"></i> Select All Delete
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>  <!-- by adarsh Filter Options -->
+        
+        <table class="items-table">
+          <thead>
+            <tr>
+              <th>Module</th>
+              {% for perm_type in permission_types %}
+                <th class="perm-header" data-col="{{ forloop.counter0 }}">{{ perm_type.name }}</th>
+              {% endfor %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for module in modules %}
+            <tr data-module-name="{{ module.name|lower }}"><!-- by adarsh Filter Options -->
+              <td>{{ module.name }}</td>
+              {% for perm_type in permission_types %}
+                <td>
+                  <input
+                    type="checkbox"
+                    class="perm-checkbox"
+                    data-module="{{ module.id }}"
+                    data-col="{{ forloop.counter0 }}"
+                    name="permissions_{{ module.id }}_{{ perm_type.id }}"
+                    aria-label="{{ module.name }} - {{ perm_type.name }}"
+                    {% if role_permissions|get_item:module.id|get_item:perm_type.id %}checked{% endif %}
+                  />
+                </td>
+              {% endfor %}
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+
+        <!-- Special Options -->
+        {% comment %} <h3>Special Options</h3> {% endcomment %}
+        <label>
+          {{ form.dashboard_management }} 
+        </label>
+        <label>
+          {{ form.full_reports_access }}
+        </label>
+
+        <!-- Save/Cancel -->
+        <button type="submit" class="btn btn-primary">Save</button>
+        <a href="{% company_url 'roles_list' %}" class="btn btn-outline-secondary ms-2">Cancel</a>
+      </form>
+    </div>
+</div>
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const toastContainer = document.getElementById('toastContainer');
+    {% if messages %}
+      {% for message in messages %}
+        const toastEl = document.createElement('div');
+        toastEl.className = 'toast align-items-center text-bg-{{ message.tags }} border-0';
+        toastEl.setAttribute('role', 'alert');
+        toastEl.setAttribute('aria-live', 'assertive');
+        toastEl.setAttribute('aria-atomic', 'true');
+        toastEl.innerHTML = `
+          <div class="d-flex">
+            <div class="toast-body">
+              {{ message|escapejs }}
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+          </div>
+        `;
+        toastContainer.appendChild(toastEl);
+
+        const toast = new bootstrap.Toast(toastEl, { delay: 5000 });
+        toast.show();
+      {% endfor %}
+    {% endif %}
+  
+    // by adarsh========== NEW: Filter Options ==========
+    const selectAllBtn = document.getElementById('selectAllBtn');
+    const deselectAllBtn = document.getElementById('deselectAllBtn');
+    const moduleFilterBtns = document.querySelectorAll('[data-module-prefix]');
+    const allCheckboxes = document.querySelectorAll('.perm-checkbox');
+    const table = document.querySelector('.items-table');
+
+    // Select All
+    if (selectAllBtn) {
+      selectAllBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        allCheckboxes.forEach(cb => cb.checked = true);
+        updateButtonStates();
+        updatePermTypeButtonStates();
+      });
+    }
+
+    // Deselect All
+    if (deselectAllBtn) {
+      deselectAllBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        allCheckboxes.forEach(cb => cb.checked = false);
+        updateButtonStates();
+        updatePermTypeButtonStates();
+      });
+    }
+
+    // Module-specific selection with toggle (e.g., Select Sales, Select HR, etc.)
+    moduleFilterBtns.forEach(btn => {
+      const prefix = btn.getAttribute('data-module-prefix').toLowerCase();
+      
+      btn.addEventListener('click', function(e) {
+        e.preventDefault();
+        const rows = table.querySelectorAll('tbody tr');
+        
+        // Determine if we should check or uncheck by looking at current state
+        const matchingRows = Array.from(rows).filter(row => {
+          const moduleName = row.getAttribute('data-module-name') || '';
+          if (prefix === 'master') {
+            return moduleName.startsWith('master') && !moduleName.startsWith('hr');
+          } else {
+            return moduleName.includes(prefix);
+          }
+        });
+        
+        // Check if all matching modules are currently fully selected
+        const isCurrentlyFullySelected = matchingRows.every(row => {
+          const checkboxes = Array.from(row.querySelectorAll('.perm-checkbox'));
+          return checkboxes.every(cb => cb.checked);
+        });
+        
+        // Toggle all checkboxes in matching rows
+        matchingRows.forEach(row => {
+          row.querySelectorAll('.perm-checkbox').forEach(cb => {
+            cb.checked = !isCurrentlyFullySelected;
+          });
+        });
+        
+        // Update button appearance after checkboxes are toggled
+        updateButtonStates();
+        updatePermTypeButtonStates();
+      });
+    });
+
+    // Permission Type selection buttons (View, Create, Edit, Delete)
+    const permTypeFilterBtns = document.querySelectorAll('[data-perm-col]');
+    permTypeFilterBtns.forEach(btn => {
+      btn.addEventListener('click', function(e) {
+        e.preventDefault();
+        const colIndex = this.getAttribute('data-perm-col');
+        const allCheckboxesInCol = document.querySelectorAll(`.perm-checkbox[data-col="${colIndex}"]`);
+        
+        // Check if all checkboxes in this column are currently checked
+        const isCurrentlyFullySelected = Array.from(allCheckboxesInCol).every(cb => cb.checked);
+        
+        // Toggle all checkboxes in this permission type column
+        allCheckboxesInCol.forEach(cb => {
+          cb.checked = !isCurrentlyFullySelected;
+        });
+        
+        // Update button states
+        updatePermTypeButtonStates();
+      });
+    });
+
+    // Function to update permission type button appearance based on state
+    function updatePermTypeButtonStates() {
+      permTypeFilterBtns.forEach(btn => {
+        const colIndex = btn.getAttribute('data-perm-col');
+        const allCheckboxesInCol = document.querySelectorAll(`.perm-checkbox[data-col="${colIndex}"]`);
+        
+        // Check if all checkboxes in this column are checked
+        const isFullySelected = Array.from(allCheckboxesInCol).every(cb => cb.checked);
+        
+        // Update button appearance
+        if (isFullySelected && allCheckboxesInCol.length > 0) {
+          btn.classList.add('active');
+          btn.style.backgroundColor = '#28a745';
+          btn.style.color = 'white';
+          btn.style.borderColor = '#28a745';
+        } else {
+          btn.classList.remove('active');
+          btn.style.backgroundColor = '';
+          btn.style.color = '';
+          btn.style.borderColor = '';
+        }
+      });
+    }
+    
+    
+    // Function to update button appearance based on state
+    function updateButtonStates() {
+      moduleFilterBtns.forEach(btn => {
+        const prefix = btn.getAttribute('data-module-prefix').toLowerCase();
+        
+        // Check if all checkboxes in this module group are checked
+        const rows = Array.from(table.querySelectorAll('tbody tr'));
+        const matchingRows = rows.filter(row => {
+          const moduleName = row.getAttribute('data-module-name') || '';
+          let isMatching = false;
+          
+          if (prefix === 'master') {
+            // Masters includes modules that start with 'master' but exclude hr-related
+            isMatching = moduleName.startsWith('master') && !moduleName.includes('hr');
+          } else {
+            // Other prefixes: check if module name includes the prefix
+            isMatching = moduleName.includes(prefix);
+          }
+          
+          return isMatching;
+        });
+        
+        // Check if we have any matching rows and if all their checkboxes are checked
+        let isFullySelected = false;
+        if (matchingRows.length > 0) {
+          isFullySelected = matchingRows.every(row => {
+            const checkboxes = Array.from(row.querySelectorAll('.perm-checkbox'));
+            return checkboxes.every(cb => cb.checked);
+          });
+        }
+        
+        // Update button state based on whether all matching modules are fully selected
+        if (isFullySelected && matchingRows.length > 0) {
+          btn.classList.add('active');
+          btn.style.backgroundColor = '#17a2b8';
+          btn.style.color = 'white';
+          btn.style.borderColor = '#17a2b8';
+        } else {
+          btn.classList.remove('active');
+          btn.style.backgroundColor = '';
+          btn.style.color = '';
+          btn.style.borderColor = '';
+        }
+      });
+    }// by adarsh========== END: Filter Options ==========
+
+    // ========== ORIGINAL: Full Access Logic ==========
+    // Permissions: when a "Full Access" header exists, toggle all checkboxes in that row
+    // when the Full Access checkbox is changed. Also uncheck Full Access if any
+    // other checkbox in the same row is cleared.
+    (function(){
+      const headers = document.querySelectorAll('.items-table thead th.perm-header');
+      let fullColIndex = -1;
+      headers.forEach((th, idx) => {
+        const txt = (th.textContent || '').trim().toLowerCase();
+        // look for header that contains the word 'full' (covers 'Full Access')
+        if (txt.includes('full')) {
+          fullColIndex = idx;
+        }
+      });
+
+      if (fullColIndex === -1) return; // no Full Access column found
+
+      // For each table row, wire listeners for the Full checkbox and the other checkboxes
+      document.querySelectorAll('.items-table tbody tr').forEach(tr => {
+        const fullCb = tr.querySelector('.perm-checkbox[data-col="' + fullColIndex + '"]');
+        if (!fullCb) return;
+
+        // When Full Access toggled, set other checkboxes in same row to same state
+        fullCb.addEventListener('change', function () {
+          const checked = this.checked;
+          tr.querySelectorAll('.perm-checkbox').forEach(cb => {
+            if (cb === this) return;
+            cb.checked = checked;
+          });
+        });
+
+        // If any other permission is unchecked while Full is checked, uncheck Full
+        tr.querySelectorAll('.perm-checkbox').forEach(cb => {
+          const col = parseInt(cb.getAttribute('data-col'));
+          if (col === fullColIndex) return; // skip the Full checkbox
+          cb.addEventListener('change', function () {
+            if (!this.checked) {
+              const currFull = tr.querySelector('.perm-checkbox[data-col="' + fullColIndex + '"]');
+              if (currFull && currFull.checked) currFull.checked = false;
+            }
+            // Update button states when any checkbox changes
+            updateButtonStates();
+            updatePermTypeButtonStates();
+          });
+        });
+      });
+    })();
+
+    // Initialize button states on page load based on checkbox state
+    updateButtonStates();
+    updatePermTypeButtonStates();
+
+  });
+
+</script>
+{% endblock %}

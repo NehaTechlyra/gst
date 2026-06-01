@@ -1,0 +1,264 @@
+{% extends 'website/index.html' %}
+{% load static %}
+
+{% block page_title %}Reconciliation Complete{% endblock %}
+
+{% block exstyle %}
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+{% endblock %}
+
+{% block content %}
+<style>
+  :root {
+    --bg:           #f5f6fa;
+    --surface:      #ffffff;
+    --border:       #e4e8f0;
+    --text-primary: #111827;
+    --text-muted:   #6b7280;
+    --accent:       #4f46e5;
+    --accent-light: #eef2ff;
+    --green:        #059669;
+    --green-light:  #ecfdf5;
+    --green-border: #a7f3d0;
+    --radius:       12px;
+    --shadow:       0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.05);
+  }
+
+  body { background: var(--bg); font-family: 'DM Sans', sans-serif; color: var(--text-primary); margin: 0; }
+
+  /* ── Topbar ── */
+  .hr-topbar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    display: flex; align-items: stretch;
+    min-height: 52px;
+  }
+  .hr-breadcrumb {
+    display: flex; align-items: center;
+    font-size: 13px; gap: 4px; color: var(--text-muted);
+  }
+  .hr-breadcrumb a {
+    color: var(--accent); text-decoration: none;
+    padding: 16px 8px; display: block;
+  }
+  .hr-breadcrumb a:hover { text-decoration: underline; }
+  .hr-breadcrumb .sep { color: #d1d5db; }
+  .hr-breadcrumb .current {
+    color: var(--text-primary); font-weight: 600;
+    padding: 16px 8px;
+    border-bottom: 2px solid var(--green);
+  }
+
+  /* ── Content ── */
+  .hr-content { padding: 32px 24px; display: flex; justify-content: center; }
+
+  /* ── Card ── */
+  .hr-complete-card {
+    background: var(--surface);
+    border-radius: var(--radius);
+    border: 1px solid var(--green-border);
+    box-shadow: var(--shadow);
+    max-width: 620px; width: 100%;
+    overflow: hidden;
+  }
+
+  /* ── Success header ── */
+  .hr-success-header {
+    background: linear-gradient(135deg, #059669 0%, #047857 100%);
+    padding: 36px 32px 28px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .hr-success-header::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: radial-gradient(circle at 70% 30%, rgba(255,255,255,0.08) 0%, transparent 60%);
+  }
+  .hr-success-icon {
+    font-size: 52px; color: #fff;
+    display: block; margin-bottom: 14px;
+    animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+  }
+  @keyframes popIn {
+    0%   { transform: scale(0.5); opacity: 0; }
+    100% { transform: scale(1);   opacity: 1; }
+  }
+  .hr-success-header h2 {
+    color: #fff; font-size: 22px; font-weight: 700;
+    margin: 0 0 8px; position: relative;
+  }
+  .hr-success-header p {
+    color: rgba(255,255,255,0.85); font-size: 13px;
+    margin: 0; position: relative; line-height: 1.6;
+  }
+
+  /* ── Card body ── */
+  .hr-card-body { padding: 28px 32px; }
+
+  /* ── Summary stats ── */
+  .hr-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+  .hr-stat-cell {
+    background: #f9fafb;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    text-align: center;
+  }
+  .hr-stat-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 6px; }
+  .hr-stat-value { font-size: 16px; font-weight: 700; color: var(--text-primary); font-family: 'DM Mono', monospace; }
+  .hr-stat-value.green { color: var(--green); }
+
+  /* ── What's next ── */
+  .hr-next-card {
+    background: var(--accent-light);
+    border: 1px solid #c7d2fe;
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin-bottom: 24px;
+  }
+  .hr-next-title {
+    font-size: 13px; font-weight: 700; color: var(--accent);
+    display: flex; align-items: center; gap: 7px; margin-bottom: 12px;
+  }
+  .hr-next-list { padding: 0; margin: 0; list-style: none; }
+  .hr-next-list li {
+    display: flex; align-items: flex-start; gap: 8px;
+    font-size: 13px; color: #3730a3;
+    margin-bottom: 7px; line-height: 1.4;
+  }
+  .hr-next-list li:last-child { margin-bottom: 0; }
+  .hr-next-list li i { color: var(--accent); flex-shrink: 0; margin-top: 2px; }
+
+  /* ── Locked badge ── */
+  .hr-locked-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--green-light);
+    border: 1px solid var(--green-border);
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-size: 12px; font-weight: 700;
+    color: var(--green); letter-spacing: 0.04em;
+  }
+
+  /* ── Divider ── */
+  .hr-divider { height: 1px; background: var(--border); margin: 24px 0; }
+
+  /* ── Buttons ── */
+  .hr-card-footer { display: flex; gap: 10px; flex-wrap: wrap; }
+  .btn-hr {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 10px 20px; border-radius: 8px;
+    font-size: 13px; font-weight: 600; cursor: pointer;
+    border: none; text-decoration: none;
+    transition: background 0.15s, box-shadow 0.15s; line-height: 1;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .btn-hr-primary { background: var(--accent); color: #fff; }
+  .btn-hr-primary:hover { background: #4338ca; color: #fff; text-decoration: none; box-shadow: 0 4px 12px rgba(79,70,229,0.25); }
+  .btn-hr-green { background: var(--green); color: #fff; }
+  .btn-hr-green:hover { background: #047857; color: #fff; text-decoration: none; box-shadow: 0 4px 12px rgba(5,150,105,0.25); }
+  .btn-hr-ghost { background: var(--surface); color: var(--text-muted); border: 1.5px solid var(--border); }
+  .btn-hr-ghost:hover { background: var(--bg); color: var(--text-primary); text-decoration: none; }
+</style>
+
+<div>
+
+  <!-- Topbar -->
+  <div class="hr-topbar">
+    <nav class="hr-breadcrumb">
+      <a href="{% url 'reconciliation_list' reconciliation.bank_account.id %}">{{ reconciliation.bank_account.account_number }}</a>
+      <span class="sep">&rsaquo;</span>
+      <span class="current" style="border-bottom-color:var(--green);">Complete</span>
+    </nav>
+  </div>
+
+  <div class="hr-content">
+    <div class="hr-complete-card">
+
+      <!-- Success header -->
+      <div class="hr-success-header">
+        <i class="bi bi-check-circle-fill hr-success-icon"></i>
+        <h2>Reconciliation Complete!</h2>
+        <p>
+          {{ reconciliation.bank_account.bank.bank_name }} — {{ reconciliation.bank_account.account_number }}<br>
+          The period has been reconciled and locked successfully.
+        </p>
+      </div>
+
+      <div class="hr-card-body">
+
+        <!-- Summary stats -->
+        <div class="hr-summary-grid">
+          <div class="hr-stat-cell">
+            <div class="hr-stat-label">Period Locked Until</div>
+            <div class="hr-stat-value" style="font-family:'DM Sans',sans-serif;font-size:14px;">
+              {{ reconciliation.end_date|date:"d/m/Y" }}
+            </div>
+          </div>
+          <div class="hr-stat-cell">
+            <div class="hr-stat-label">Final Balance</div>
+            <div class="hr-stat-value green">{{ base_currency_symbol }}{{ reconciliation.closing_balance|floatformat:2 }}</div>
+          </div>
+          <div class="hr-stat-cell">
+            <div class="hr-stat-label">Status</div>
+            <div style="margin-top:4px;">
+              <span class="hr-locked-badge">
+                <i class="bi bi-lock-fill" style="font-size:10px;"></i> Reconciled
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Period info -->
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:20px;font-size:13px;color:var(--text-muted);">
+          <i class="bi bi-calendar-range" style="color:var(--accent);"></i>
+          Period: <strong style="color:var(--text-primary);">
+            {{ reconciliation.start_date|date:"d/m/Y" }} &mdash; {{ reconciliation.end_date|date:"d/m/Y" }}
+          </strong>
+          {% if reconciliation.reconciled_date %}
+            &nbsp;·&nbsp; Reconciled on <strong style="color:var(--text-primary);">{{ reconciliation.reconciled_date|date:"d/m/Y" }}</strong>
+          {% endif %}
+        </div>
+
+        <!-- What's next -->
+        <div class="hr-next-card">
+          <div class="hr-next-title">
+            <i class="bi bi-lightning-fill"></i> What's Next?
+          </div>
+          <ul class="hr-next-list">
+            <li><i class="bi bi-lock-fill"></i> This period is now locked and cannot be modified.</li>
+            <li><i class="bi bi-check2-all"></i> All cleared transactions are permanently recorded.</li>
+            <li><i class="bi bi-arrow-right-circle-fill"></i> You can now reconcile the next period.</li>
+          </ul>
+        </div>
+
+        <div class="hr-divider"></div>
+
+        <!-- Actions -->
+        <div class="hr-card-footer">
+          <a href="{% url 'reconciliation_list' reconciliation.bank_account.id %}"
+             class="btn-hr btn-hr-primary">
+            <i class="bi bi-arrow-left"></i> Back to Reconciliations
+          </a>
+          <a href="{% url 'reconciliation_start_form' reconciliation.bank_account.id %}"
+             class="btn-hr btn-hr-green">
+            <i class="bi bi-plus-lg"></i> Start New Reconciliation
+          </a>
+          <a href="{% url 'banking_dashboard' %}" class="btn-hr btn-hr-ghost">
+            <i class="bi bi-house"></i> Dashboard
+          </a>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

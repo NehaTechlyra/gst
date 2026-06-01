@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Delivery Note DN-00007</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Epilogue:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink:      #0f1117;
+    --ink-mid:  #3d4052;
+    --ink-soft: #7b7f96;
+    --rule:     #dde0ea;
+    --accent:   #1a3a5c;
+    --accent2:  #c8a84b;
+    --bg-alt:   #f7f8fb;
+    --green:    #1a6645;
+    --green-bg: #e6f4ed;
+    --amber:    #92480c;
+    --amber-bg: #fef3e2;
+    --red:      #991b1b;
+    --red-bg:   #fee2e2;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #e8eaf0;
+    font-family: 'Epilogue', sans-serif;
+    color: var(--ink);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 32px 16px 60px;
+  }
+
+  .screen-toolbar {
+    width: 794px;
+    max-width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 18px;
+  }
+  .screen-toolbar h2 {
+    font-family: 'Epilogue', sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+    color: #555;
+    letter-spacing: 0.3px;
+  }
+  .btn-print {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 22px;
+    font-family: 'Epilogue', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    letter-spacing: 0.4px;
+    box-shadow: 0 2px 12px rgba(26,58,92,0.22);
+    transition: background 0.18s, transform 0.12s;
+  }
+  .btn-print:hover { background: #0f2640; transform: translateY(-1px); }
+
+  .paper {
+    width: 794px;
+    max-width: 100%;
+    background: #fff;
+    box-shadow: 0 8px 48px rgba(0,0,0,0.13), 0 1px 4px rgba(0,0,0,0.07);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .accent-bar {
+    height: 6px;
+    background: linear-gradient(90deg, var(--accent) 0%, var(--accent2) 100%);
+  }
+
+  .sheet-body { padding: 36px 44px 40px; }
+
+  /* HEADER */
+  .dn-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding-bottom: 22px;
+    border-bottom: 1.5px solid var(--rule);
+    margin-bottom: 24px;
+  }
+  .company-name {
+    font-family: 'Playfair Display', serif;
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: -0.5px;
+    line-height: 1.1;
+  }
+  .company-tagline {
+    font-size: 10px;
+    color: var(--ink-soft);
+    letter-spacing: 1.8px;
+    text-transform: uppercase;
+    margin-top: 4px;
+  }
+  .company-contact {
+    font-size: 10px;
+    color: var(--ink-soft);
+    margin-top: 8px;
+    line-height: 1.7;
+  }
+  .dn-title-block { text-align: right; }
+  .dn-doc-label {
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    margin-bottom: 4px;
+  }
+  .dn-doc-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 22px;
+    color: var(--ink);
+    line-height: 1.1;
+  }
+  .dn-number {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--accent);
+    margin-top: 4px;
+    letter-spacing: 0.5px;
+  }
+  .status-badge {
+    display: inline-block;
+    margin-top: 8px;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  .status-delivered { background: var(--green-bg); color: var(--green); }
+  .status-pending   { background: var(--amber-bg); color: var(--amber); }
+  .status-cancelled { background: var(--red-bg);   color: var(--red); }
+
+  /* META GRID */
+  .meta-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 14px;
+    margin-bottom: 22px;
+  }
+  .meta-card {
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    padding: 12px 14px;
+    background: var(--bg-alt);
+  }
+  .meta-card-title {
+    font-size: 8.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    color: var(--ink-soft);
+    padding-bottom: 7px;
+    margin-bottom: 9px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .meta-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 5px;
+  }
+  .meta-row:last-child { margin-bottom: 0; }
+  .meta-label { font-size: 10px; color: var(--ink-soft); white-space: nowrap; }
+  .meta-value { font-size: 11px; font-weight: 600; color: var(--ink); text-align: right; }
+
+  /* NOTES */
+  .notes-block {
+    display: flex;
+    gap: 12px;
+    background: #fffbf0;
+    border: 1px solid #f0e0b0;
+    border-left: 4px solid var(--accent2);
+    border-radius: 0 6px 6px 0;
+    padding: 10px 14px;
+    margin-bottom: 20px;
+    font-size: 11px;
+    color: #5a4a1a;
+    line-height: 1.6;
+  }
+
+  /* SECTION TITLE */
+  .section-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.4px;
+    color: var(--ink-soft);
+    margin-bottom: 10px;
+  }
+  .section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--rule);
+  }
+
+  /* ITEMS TABLE */
+  .items-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 16px;
+    font-size: 11.5px;
+  }
+  .items-table thead tr { background: var(--accent); color: #fff; }
+  .items-table thead th { padding: 9px 11px; font-weight: 600; font-size: 9.5px; letter-spacing: 0.5px; text-align: left; }
+  .items-table thead th:last-child { text-align: center; }
+  .items-table tbody tr { border-bottom: 1px solid #eef0f5; }
+  .items-table tbody tr:nth-child(even) td { background: var(--bg-alt); }
+  .items-table tbody td { padding: 9px 11px; color: var(--ink-mid); }
+  .items-table tbody td:last-child { text-align: center; }
+
+  .td-name { font-weight: 600; color: var(--ink); font-size: 12px; }
+  .td-hsn  { display: block; font-size: 9px; color: var(--ink-soft); margin-top: 2px; font-weight: 400; }
+  .td-this { font-weight: 700; color: var(--green); font-size: 13px; }
+
+  /* SUMMARY */
+  .summary-row { display: flex; justify-content: flex-end; margin-bottom: 24px; }
+  .summary-box {
+    background: var(--accent);
+    color: #fff;
+    border-radius: 8px;
+    padding: 14px 20px;
+    min-width: 220px;
+  }
+  .s-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 24px;
+    font-size: 11px;
+    margin-bottom: 5px;
+    opacity: 0.85;
+  }
+  .s-row:last-child { margin-bottom: 0; }
+  .s-row.total {
+    border-top: 1px solid rgba(255,255,255,0.2);
+    padding-top: 7px;
+    margin-top: 5px;
+    font-weight: 700;
+    font-size: 13px;
+    opacity: 1;
+  }
+  .s-row.total span:last-child { color: var(--accent2); }
+
+  /* SIGNATURES */
+  .sig-section {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 24px;
+    margin-top: 32px;
+    padding-top: 18px;
+    border-top: 1.5px solid var(--rule);
+  }
+  .sig-block { text-align: center; }
+  .sig-line  { border-bottom: 1px solid var(--ink); height: 36px; margin-bottom: 7px; }
+  .sig-label { font-size: 9px; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.9px; font-weight: 600; }
+
+  /* FOOTER */
+  .doc-footer {
+    margin-top: 24px;
+    padding-top: 12px;
+    border-top: 1px solid var(--rule);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 9px;
+    color: #bbb;
+    letter-spacing: 0.4px;
+  }
+  .doc-footer-brand { font-weight: 700; color: var(--ink-soft); letter-spacing: 1px; }
+
+  /* ══ PRINT ══ */
+  @media print {
+    body { background: #fff; padding: 0; display: block; }
+    .screen-toolbar { display: none; }
+    .paper { width: 100%; box-shadow: none; border-radius: 0; }
+    .sheet-body { padding: 20px 28px 24px; }
+    @page { size: A4 portrait; margin: 10mm 12mm 10mm 12mm; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Screen toolbar — hidden on print -->
+{% comment %} <div class="screen-toolbar">
+  <h2>🖨 Delivery Note Preview</h2>
+  <button class="btn-print" onclick="window.print()">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="6 9 6 2 18 2 18 9"/>
+      <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+      <rect x="6" y="14" width="12" height="8"/>
+    </svg>
+    Print / Save as PDF
+  </button>
+</div> {% endcomment %}
+
+<!-- ═══════════════════════════
+     PAPER — this is what prints
+     ═══════════════════════════ -->
+<div class="paper">
+  <div class="accent-bar"></div>
+  <div class="sheet-body">
+
+    <!-- HEADER -->
+    <div class="dn-header">
+      <div>
+        {% if show_logo_in_print and company and company.logo %}
+        <div style="margin-bottom: 6px;">
+          <img src="{{ company.logo.url }}" alt="Company Logo" style="max-height: 52px; max-width: 220px;">
+        </div>
+        {% else %}
+        <div class="company-name">
+          {% if company and company.legal_name %}
+            {{ company.legal_name }}
+          {% elif company and company.name %}
+            {{ company.name }}
+          {% else %}
+            Techlyra
+          {% endif %}
+        </div>
+        {% endif %}
+        {% if company %}
+        <div class="company-contact">
+          {% if company.address_line1 %}{{ company.address_line1 }}<br>{% endif %}
+          {% if company.address_line2 %}{{ company.address_line2 }}<br>{% endif %}
+          {% if company.city %}{{ company.city }}{% if company.state %}, {{ company.state }}{% endif %}{% if company.postal_code %} {{ company.postal_code }}{% endif %}<br>{% endif %}
+          {% if company.phone %}{{ company.phone }}{% endif %}{% if company.email %} · {{ company.email }}{% endif %}
+        </div>
+        {% endif %}
+      </div>
+      <div class="dn-title-block">
+        <div class="dn-doc-label">Document</div>
+        <div class="dn-doc-title">Delivery Note</div>
+        <div class="dn-number">{{ delivery_note.delivery_note_number }}</div>
+        <span class="status-badge status-{{ delivery_note.status }}">
+          {% if delivery_note.status == 'delivered' %}Delivered
+          {% elif delivery_note.status == 'pending' %}Pending
+          {% elif delivery_note.status == 'cancelled' %}Cancelled
+          {% else %}{{ delivery_note.get_status_display|default:"Delivered" }}{% endif %}
+        </span>
+      </div>
+    </div>
+
+    <!-- META GRID -->
+    <div class="meta-grid">
+      <div class="meta-card">
+        <div class="meta-card-title">Delivery Information</div>
+        <div class="meta-row"><span class="meta-label">DN Number</span><span class="meta-value">{{ delivery_note.delivery_note_number }}</span></div>
+        <div class="meta-row"><span class="meta-label">Delivery Date</span><span class="meta-value">{{ delivery_note.delivery_date|date:"M d, Y" }}</span></div>
+        {% comment %} <div class="meta-row"><span class="meta-label">Stock Updated</span><span class="meta-value">✓ Yes</span></div> {% endcomment %}
+      </div>
+      <div class="meta-card">
+        <div class="meta-card-title">Bill Information</div>
+        <div class="meta-row"><span class="meta-label">Bill No.</span><span class="meta-value">{{ delivery_note.bill.bill_number }}</span></div>
+        {% comment %} <div class="meta-row"><span class="meta-label">Order No.</span><span class="meta-value">—</span></div> {% endcomment %}
+        <div class="meta-row"><span class="meta-label">Vendor</span><span class="meta-value">{{ delivery_note.bill.vendor.first_name }}</span></div>
+      </div>
+      <div class="meta-card">
+        <div class="meta-card-title">Additional Details</div>
+        {% comment %} <div class="meta-row"><span class="meta-label">Warehouse</span><span class="meta-value">Thrissur</span></div> {% endcomment %}
+        <div class="meta-row"><span class="meta-label">Received By</span><span class="meta-value">—</span></div>
+        <div class="meta-row"><span class="meta-label">Created</span><span class="meta-value">{{ delivery_note.created_at|date:"M d, Y H:i" }}</span></div>
+      </div>
+    </div>
+
+    <!-- NOTES -->
+    <div class="notes-block">
+      <span style="font-size:14px;flex-shrink:0;margin-top:1px">📌</span>
+      <span>Handle with care. Products must be checked upon delivery. Any discrepancy should be reported within 24 hours of receipt.</span>
+    </div>
+
+    <!-- ITEMS TABLE -->
+    <div class="section-title">Delivered Items</div>
+    <table class="items-table">
+      <thead>
+        <tr>
+          <th>Product</th>
+          <th>This Delivery</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in delivery_note.items.all %}
+                    {% with bill_item=item.bill_item %}
+        <tr>
+          <td><span class="td-name">{{ bill_item.product.name }}</span><span class="td-hsn"></span></td>
+
+          <td class="td-this">{{ bill_item.quantity }}</td>
+          
+       
+        </tr>
+        {% endwith %}
+                    {% endfor %}
+      </tbody>
+    </table>
+
+    <!-- SUMMARY -->
+    <div class="summary-row">
+      <div class="summary-box">
+        <div class="s-row"><span>Total Line Items</span><span>{{ total_line_items }}</span></div>
+        <div class="s-row total"><span>Total Units Delivered</span><span>{{ total_units_delivered }}</span></div>
+      </div>
+    </div>
+
+    <!-- SIGNATURES -->
+    <div class="sig-section">
+      <div class="sig-block"><div class="sig-line"></div><div class="sig-label">Prepared By</div></div>
+      <div class="sig-block"><div class="sig-line"></div><div class="sig-label">Received By</div></div>
+      <div class="sig-block"><div class="sig-line"></div><div class="sig-label">Authorized Signature</div></div>
+    </div>
+
+
+
+
+       <!-- FOOTER -->
+    <div class="doc-footer">
+      <span>{{ delivery_note.created_at|date:"M d, Y H:i" }} &nbsp;·&nbsp; {{delivery_note.delivery_note_number}} &nbsp;·&nbsp; This is a computer generated document.</span>
+      <span class="doc-footer-brand">TECHLYRA &nbsp;·&nbsp; LYRAERP</span>
+    </div>
+
+  </div><!-- /sheet-body -->
+</div><!-- /paper -->
+
+<script>
+  window.onload = function() { window.print(); }
+</script>
+
+</body>
+</html>

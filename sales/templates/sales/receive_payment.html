@@ -1,0 +1,626 @@
+{% extends "website/index.html" %}
+{% load static %}
+{% load widget_tweaks %}
+{% block exstyle %}
+<link href="{% static 'style/general.css' %}" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Ubuntu&display=swap" rel="stylesheet">
+
+
+
+<link href="{% static 'style/record_payments.css' %}" rel="stylesheet">
+
+{% endblock exstyle %}
+{% block page_title %}Recieve Payment - Invoice #{{ inv.inv_number }}{% endblock page_title %}<!--add title-->
+{% block scripts %}
+
+{% comment %} <script src="{% static 'js/purchase_order.js' %}"></script> {% endcomment %}
+{% endblock scripts%}
+
+{% block content %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    
+    <style>
+        
+    </style>
+</head>
+<body>
+    <div class="container">
+        
+        <form method="POST" action="{% url 'receive_payment' inv.id %}" enctype="multipart/form-data">
+            {% csrf_token %} 
+            <div class="form-row">
+                <!-- Hidden field to pass customer_id -->
+                <input type="hidden" name="customer_id" value="{{ inv.customer.id }}">
+                <div class="form-group">
+                        <label for="amount" class="required">Amount</label>
+                        <input type="number" id="amount" name="amount" step="0.01" class="form-control"
+                            value="{{ final_total }}" required>
+                        {% comment %} <div class="amount-display">₹ {{ final_total|floatformat:2 }}</div> {% endcomment %}
+                    </div>
+                <!-- Payment Mode -->
+                {% comment %} <div class="form-group">
+                    <label for="payment_mode">Payment Mode</label>
+                    <select id="payment_mode" name="payment_mode" class="select2-search" required>
+                        <option value="">Select Payment Mode</option>
+                        {% for mode in payment_modes %}
+                            <option value="{{ mode.id }}" {% if mode.name == 'Cash' %}selected{% endif %}>
+                                {{ mode.name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div> {% endcomment %}
+                <div class="form-group">
+                    <label for="payment_number" class="required">Payment #</label>
+                    <div class="payment-number-wrapper">
+                        <input type="text" id="payment_number" name="payment_number" class="form-control"
+                               value="{{ next_payment_number }}" required>
+                        {% comment %} <span class="refresh-icon" onclick="generatePaymentNumber()" title="Generate new number">↻</span> {% endcomment %}
+                    </div>
+                </div>
+            </div>
+            
+
+            <!-- Payment Date and Payment Number -->
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="payment_date" class="required">Payment Date</label>
+                    <input type="date" id="payment_date" name="payment_date" class="form-control"
+                           value="{{ request.POST.payment_date|default:'27/12/2025' }}" required>
+                </div>
+
+                
+
+                <div class="form-group">
+                    <label for="payment_made_on">Payment Made on</label>
+                    <input type="date" id="payment_made_on" name="payment_made_on" class="form-control"
+                           value="{{ request.POST.payment_made_on|default:'' }}" placeholder="dd/MM/yyyy">
+                </div>
+            </div>
+
+            <!-- Payment Made On and Paid Through -->
+            <div class="form-row">
+                
+
+                <div class="form-group">
+                    <label for="paid_through" class="required">Paid Through</label>
+                    <select id="paid_through" name="paid_through" class="select2-search" required>
+                        <option value="">Select Payment Account</option>
+                        {% comment %} changed on 18-2-26 by neha {% endcomment %}
+                        {% for group in payment_accounts_grouped %}
+                        
+                            {# Only 'Bank Accounts' header is non-selectable #}
+                            <option value="{{ group.header.id }}" data-is-header="true" {% if group.header.name == "Bank Accounts" %}disabled{% endif %}>
+                                {{ group.header.name }}
+                            </option>
+                            {% for child in group.children %}
+                                <option value="{{ child.id }}">{{ child.name }}</option>
+                            {% endfor %}
+                        
+                    {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="reference">Reference#</label>
+                    <input type="text" id="reference" name="reference" class="form-control"
+                           value="{{ request.POST.reference|default:'' }}" placeholder="Enter reference number">
+                </div>
+            </div>
+
+            <!-- Notes -->
+            <div class="form-group">
+                <label for="notes">Notes</label>
+                <textarea id="notes" name="notes" placeholder="Add any additional notes...">{{ request.POST.notes|default:'' }}</textarea>
+            </div>
+
+            <!-- Attachments -->
+            <div class="upload-section">
+                <label>Attachments</label>
+                <label class="upload-button">
+                    <span><i class="bi bi-upload"></i></span>
+                    <span>Upload File</span>
+                    <input type="file" id="file-input" name="attachments"  multiple hidden class="form-control"
+                        accept=".pdf,.jpg,.jpeg,.png,.doc,.docx">
+                </label>
+                <div class="upload-info">You can upload a maximum of 5 files, 10MB each</div>
+                <div id="error-message" class="error-message"></div>
+                <div id="file-list"></div>
+            </div>
+
+            <!-- Email Notification -->
+            <div class="checkbox-wrapper">
+                <input type="checkbox" id="send_email" name="send_email" value="1" class="form-check-input">
+                <label for="send_email">Send a Payment Made email notification.</label>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="button-group">
+                <button type="submit" name="action" value="save_paid" class="btn-primary">Save as Paid</button>
+                {% comment %} <button type="submit" name="action" value="save_draft" class="btn-secondary">Save as Draft</button> {% endcomment %}
+                <button type="button" class="btn-cancel" onclick="window.history.back()">Cancel</button>
+            </div>
+        </form>
+
+        <!-- Add Account Modal  added on 18-2-26 by neha-->
+    <div class="modal fade" id="addAccountModal" tabindex="-1" aria-labelledby="addAccountLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addAccountLabel">Add New Account</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form id="addAccountForm">
+                    <div class="modal-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <label class="form-label required">Name</label>
+                                <input type="text" name="name" id="modal-account-name" class="form-control" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label required">Account Type</label>
+                                <select id="modal-account-type" name="type" class="form-select">
+                                    <option value="">Select Account Type</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row mt-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Parent</label>
+                                <select id="modal-parent" name="parent" class="form-select">
+                                    <option value="">Select or search parent</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Account Code (optional)</label>
+                                <input type="text" name="search_code" id="modal-search-code" class="form-control">
+                            </div>
+                        </div>
+                        <div class="row mt-3">
+                            <div class="col-12">
+                                <label class="form-label">Description</label>
+                                <textarea name="description" id="modal-description" class="form-control" rows="3"></textarea>
+                            </div>
+                        </div>
+                        <div class="row mt-3">
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="modal-is-header" name="is_header">
+                                    <label class="form-check-label" for="modal-is-header">Is header</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="modal-active" name="active" checked>
+                                    <label class="form-check-label" for="modal-active">Active</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary" id="modal-save-account">Save Account</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+
+    </div>
+
+<script>
+    // Store files array
+    let uploadedFiles = [];
+    const maxFiles = 5;
+    const maxFileSize = 10 * 1024 * 1024; // 10MB in bytes
+
+    const fileInput = document.getElementById('file-input');
+    const fileList = document.getElementById('file-list');
+    const errorMessage = document.getElementById('error-message');
+    const form = document.querySelector('form');
+
+    fileInput.addEventListener('change', function(e) {
+        const newFiles = Array.from(e.target.files);
+        errorMessage.textContent = '';
+
+        // Check if adding new files exceeds the limit
+        if (uploadedFiles.length + newFiles.length > maxFiles) {
+            errorMessage.textContent = `You can only upload a maximum of ${maxFiles} files.`;
+            fileInput.value = ''; // Clear the input
+            return;
+        }
+
+        // Validate each file
+        for (let file of newFiles) {
+            if (file.size > maxFileSize) {
+                errorMessage.textContent = `File "${file.name}" exceeds 10MB limit.`;
+                fileInput.value = '';
+                return;
+            }
+        }
+
+        // Add new files to the array
+        uploadedFiles = uploadedFiles.concat(newFiles);
+        
+        // Clear the file input to allow selecting the same file again
+        fileInput.value = '';
+        
+        // Display the updated file list
+        displayFileList();
+    });
+
+    function displayFileList() {
+        fileList.innerHTML = '';
+
+        if (uploadedFiles.length === 0) {
+            return;
+        }
+
+        uploadedFiles.forEach((file, index) => {
+            const fileSize = (file.size / 1024 / 1024).toFixed(2);
+            
+            const fileItem = document.createElement('div');
+            fileItem.className = 'file-item';
+            
+            fileItem.innerHTML = `
+                <div class="file-info">
+                    ${index + 1}. ${file.name} (${fileSize} MB)
+                </div>
+                <button type="button" class="delete-btn" onclick="deleteFile(${index})"><i class="bi bi-trash" title="Remove file"></i></button>
+            `;
+            
+            fileList.appendChild(fileItem);
+        });
+    }
+
+    function deleteFile(index) {
+        uploadedFiles.splice(index, 1);
+        errorMessage.textContent = '';
+        displayFileList();
+    }
+
+    // Handle form submission with AJAX to support toast + delayed redirect flow.
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const notify = (message, type = 'info', delay = 4000) => {
+            if (typeof window.showToast === 'function') {
+                try {
+                    window.showToast(message, type, delay);
+                    return;
+                } catch (err) {}
+            }
+            try {
+                let toastContainer = document.getElementById('toastContainer');
+                if (!toastContainer) {
+                    toastContainer = document.createElement('div');
+                    toastContainer.id = 'toastContainer';
+                    toastContainer.className = 'position-fixed bottom-0 end-0 p-3';
+                    toastContainer.style.zIndex = '1080';
+                    document.body.appendChild(toastContainer);
+                }
+                const toastEl = document.createElement('div');
+                toastEl.className = `toast align-items-center text-bg-${type} border-0`;
+                toastEl.innerHTML = `<div class="d-flex"><div class="toast-body">${message}</div><button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button></div>`;
+                toastContainer.appendChild(toastEl);
+                if (window.bootstrap && window.bootstrap.Toast) {
+                    new bootstrap.Toast(toastEl, { delay }).show();
+                } else {
+                    toastEl.classList.add('show');
+                    setTimeout(() => toastEl.remove(), delay);
+                }
+            } catch (err) {
+                alert(message);
+            }
+        };
+
+        const shouldSendEmail = document.getElementById('send_email')?.checked;
+        if (shouldSendEmail) {
+            notify('Sending mail...', 'info', 2000);
+        }
+
+        const formAction = form.getAttribute('action') || window.location.href;
+        const formData = new FormData(form);
+
+        formData.delete('attachments');
+        uploadedFiles.forEach((file) => {
+            formData.append('attachments', file);
+        });
+
+        fetch(formAction, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            credentials: 'same-origin'
+        })
+        .then(async response => {
+            const raw = await response.text();
+            let data;
+            try {
+                data = JSON.parse(raw);
+            } catch (err) {
+                throw new Error('Non-JSON response');
+            }
+            if (!response.ok) {
+                throw new Error(data.message || 'Form submission failed');
+            }
+            return data;
+        })
+        .then(data => {
+            if (!data.success) {
+                notify(data.message || 'An error occurred.', 'danger', 5000);
+                return;
+            }
+
+            if (data.mail_message) {
+                notify(data.mail_message, data.mail_sent ? 'success' : 'warning', 4000);
+            }
+
+            if (data.redirect) {
+                const redirectUrl = data.redirect.includes('?')
+                    ? data.redirect + '&payment_saved=1'
+                    : data.redirect + '?payment_saved=1';
+
+                const delay = data.mail_message ? 2500 : 800;
+                setTimeout(() => {
+                    window.location.href = redirectUrl;
+                }, delay);
+            }
+        })
+        .catch(error => {
+            notify(error?.message || 'An error occurred while submitting the form.', 'danger', 5000);
+        });
+    });
+
+    // Update amount display when input changes
+    document.getElementById('amount').addEventListener('input', function(e) {
+        const value = parseFloat(e.target.value) || 0;
+        const amountDisplay = document.querySelector('.amount-display');
+        if (amountDisplay) {
+            amountDisplay.textContent = '₹ ' + value.toFixed(2);
+        }
+    });
+
+    // Set today's date as default for payment_date
+    document.addEventListener('DOMContentLoaded', function() {
+        const today = new Date().toISOString().split('T')[0];
+        const paymentDateInput = document.getElementById('payment_date');
+        const paymentMadeOnInput = document.getElementById('payment_made_on');
+
+        if (!paymentDateInput.value) {
+            paymentDateInput.value = today;
+        }
+        if (!paymentMadeOnInput.value) {
+            paymentMadeOnInput.value = today;
+        }
+    });
+    // Initialize Select2 for parent account dropdown in modal added on 18-2-26 by neha
+    function initParentSelect2() {
+        if ($('#modal-parent').hasClass('select2-hidden-accessible')) {
+            $('#modal-parent').select2('destroy');
+        }
+        $('#modal-parent').select2({
+            width: '100%',
+            minimumResultsForSearch: 0,
+            placeholder: "Select or search parent",
+            allowClear: true,
+            dropdownParent: $('#addAccountModal')  // important — keeps it inside the modal
+        });
+    }
+    // Initialize Select2
+    $(document).ready(function() {
+        //add focus to search field when dropdown opens by neha on 18-2-26
+        $(document).on('select2:open', function() {
+            document.querySelector('.select2-container--open .select2-search__field')?.focus();
+        });
+        $('.select2-search').select2({
+            placeholder: "Search...",
+            allowClear: true,
+            width: '100%'
+        });
+
+        // Custom rendering for payment account select added on 18-2-26 by neha
+    $('#paid_through').select2({
+        width: '100%',
+        minimumResultsForSearch: 0,
+        placeholder: "Search Payment Account...",
+        allowClear: true,
+        templateResult: function(data) {
+        if (!data.element) return data.text;
+
+        // Bold + styled for header options
+        if ($(data.element).data('is-header')) {
+            return $('<span style="font-weight:600; color:#111827;">' + data.text + '</span>');
+        }
+
+        // Indent children
+        return $('<span style="padding-left:10px;">' + data.text + '</span>');
+        },
+        templateSelection: function(data) {
+            return data.text;
+        }
+    }).on('select2:open', function() {
+        window.activeAccountSelect = $('#paid_through');
+
+        setTimeout(function() {
+            var $dropdown = $('.select2-dropdown');
+            var $results = $dropdown.find('.select2-results__options');
+            if ($results.length && $('.select2-add-item').length === 0) {
+                var $addItem = $("<li class='select2-results__option select2-add-item' role='treeitem' aria-selected='false'>+ New Account</li>");
+                $results.prepend($addItem);
+            }
+        }, 0);
+    });
+
+        $('#payment_mode').select2({
+            placeholder: "Search and select payment mode",
+            allowClear: true,
+            width: '100%'
+        });
+    });
+    // Open modal when "+ New Account" is clicked inside the dropdown added on 18-2-26 by neha
+$(document).on('click', '.select2-add-item', function(e) {
+    e.preventDefault();
+    try { $('#paid_through').select2('close'); } catch(err) {}
+
+    $('#addAccountForm')[0].reset();
+    $('#modal-parent').html('<option value="">Select or search parent</option>');
+    initParentSelect2();
+    loadAccountTypes();
+    var modal = new bootstrap.Modal(document.getElementById('addAccountModal'));
+    modal.show();
+});
+//added on 18-2-26 by neha
+function loadAccountTypes() {
+    console.log("Loading account types for modal...");
+    $.get("{% url 'get_account_types' %}", function(resp) {
+        console.log("Received account types:", resp);
+        var types = resp.types || [];
+        var $type = $('#modal-account-type');
+        $type.empty().append($('<option>').val('').text('Select Account Type'));
+        types.forEach(function(t) {
+            $type.append($('<option>').val(t.code).text(t.name));
+        });
+    });
+}
+
+// Submit the modal form and inject the new account into paid_through added on 18-2-26 by neha
+$('#addAccountForm').on('submit', function(e) {
+    e.preventDefault();
+    var data = {
+        name: $('#modal-account-name').val(),
+        type: $('#modal-account-type').val(),
+        parent: $('#modal-parent').val(),
+        description: $('#modal-description').val(),
+        search_code: $('#modal-search-code').val(),
+        is_header: $('#modal-is-header').is(':checked') ? 1 : 0,
+        active: $('#modal-active').is(':checked') ? 1 : 0,
+    };
+
+    $.ajax({
+        url: "{% url 'ajax-create-account' %}",
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCookie('csrftoken') },
+        data: data,
+        success: function(resp) {
+            if (resp.success) {
+                // Inject new account into the paid_through dropdown and select it
+                var newOption = new Option(resp.name, resp.id, true, true);
+                $('#paid_through').append(newOption).val(resp.id).trigger('change');
+
+                var modal = bootstrap.Modal.getInstance(document.getElementById('addAccountModal'));
+                if (modal) modal.hide();
+                showToast('Account created successfully', 'success');
+            } else {
+                showToast(resp.error || 'Failed to create account', 'error');
+            }
+        },
+        error: function(xhr) {
+            var err = xhr.responseJSON?.error || 'Error creating account';
+            showToast(err, 'error');
+        }
+    });
+});
+// Open modal from +New button; ensure we have an active select added on 18-2-26 by neha
+$('#open-add-account-modal').on('click', function() {
+    if (!window.activeAccountSelect || !window.activeAccountSelect.length) {
+        window.activeAccountSelect = $('select[name*="-account"]').first();
+    }
+    // Clear modal fields
+    $('#addAccountForm')[0].reset();
+    $('#modal-parent').html('<option value="">Select or search parent</option>');
+    initParentSelect2();
+    // Load account types
+    loadAccountTypes();
+    var modal = new bootstrap.Modal(document.getElementById('addAccountModal'));
+    modal.show();
+});
+//added on 18-2-26 by neha
+$('#modal-account-type').on('change', function() {
+    var code = $(this).val();
+    var $parent = $('#modal-parent');
+
+    // Destroy existing Select2 before modifying options
+    if ($parent.hasClass('select2-hidden-accessible')) {
+        $parent.select2('destroy');
+    }
+
+    $parent.html('<option value="">Loading...</option>');
+    if (!code) {
+        $parent.html('<option value="">Select or search parent</option>');
+        initParentSelect2();
+        return;
+    }
+    $.get("{% url 'get_parents_for_type' %}", {type_code: code}, function(resp) {
+        var parents = resp.parents || [];
+        $parent.empty();
+        $parent.append($('<option>').val('').text('Select or search parent'));
+        parents.forEach(function(p) {
+            $parent.append($('<option>').val(p.id).text(p.name));
+        });
+        // Initialize Select2 AFTER options are loaded
+        initParentSelect2();
+    });
+});
+// Utility: get CSRF token from cookie added on 18-2-26 by neha
+function getCookie(name) {
+    var cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        var cookies = document.cookie.split(';');
+        for (var i = 0; i < cookies.length; i++) {
+            var cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// Show error modal if there's an error message
+document.addEventListener('DOMContentLoaded', function() {
+  const showErrorModal = {{ show_error_modal|lower|default:"false" }};
+  const errorMessage = `{{ error_message|escapejs }}`;
+  
+  if (showErrorModal && errorMessage) {
+    const errorModal = document.getElementById('errorModal');
+    if (errorModal) {
+      const errorBodyElement = document.getElementById('errorModalBody');
+      errorBodyElement.innerHTML = errorMessage.replace(/\n/g, '<br>');
+      const modal = new bootstrap.Modal(errorModal);
+      modal.show();
+    }
+  }
+});
+
+</script>
+
+<!-- ERROR MODAL FOR PERIOD LOCK AND OTHER ERRORS -->
+<div class="modal fade" id="errorModal" tabindex="-1" aria-labelledby="errorModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="border: 2px solid #d9534f; border-radius: 8px;">
+      <div class="modal-header" style="background-color: #f8d7da; border-bottom: 2px solid #d9534f;">
+        <h5 class="modal-title" id="errorModalLabel" style="color: #721c24;">
+          <i class="bi bi-exclamation-circle" style="color: #d9534f;"></i> Cannot Receive Payment
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="errorModalBody" style="color: #721c24; padding: 20px; line-height: 1.6;">
+        <!-- Error message will be inserted here -->
+      </div>
+      <div class="modal-footer" style="border-top: 1px solid #dee2e6;">
+        <button type="button" class="btn btn-primary" data-bs-dismiss="modal">OK</button>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>
+{% endblock %}

@@ -1,0 +1,283 @@
+{% extends 'website/index.html' %}
+{% load static %}
+
+{% block page_title %}{{ action }} Bank Rule — {{ account.account_number }}{% endblock %}
+
+{% block exstyle %}
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+{% endblock %}
+
+{% block content %}
+<style>
+  :root {
+    --bg:           #f5f6fa;
+    --surface:      #ffffff;
+    --border:       #e4e8f0;
+    --text-primary: #111827;
+    --text-muted:   #6b7280;
+    --accent:       #4f46e5;
+    --accent-light: #eef2ff;
+    --green:        #059669;
+    --green-light:  #ecfdf5;
+    --red:          #dc2626;
+    --radius:       12px;
+    --shadow:       0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.05);
+  }
+
+  body { background: var(--bg); font-family: 'DM Sans', sans-serif; color: var(--text-primary); margin: 0; }
+
+  /* ── Topbar ── */
+  .hr-topbar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    display: flex; align-items: stretch;
+    min-height: 52px;
+  }
+  .hr-breadcrumb {
+    display: flex; align-items: center;
+    font-size: 13px; gap: 4px; color: var(--text-muted);
+  }
+  .hr-breadcrumb a {
+    color: var(--accent); text-decoration: none;
+    padding: 16px 8px; display: block;
+  }
+  .hr-breadcrumb a:hover { text-decoration: underline; }
+  .hr-breadcrumb .sep { color: #d1d5db; }
+  .hr-breadcrumb .current {
+    color: var(--text-primary); font-weight: 600;
+    padding: 16px 8px;
+    border-bottom: 2px solid var(--accent);
+  }
+
+  /* ── Content ── */
+  .hr-content { padding: 28px 24px; }
+
+  /* ── Form card ── */
+  .hr-form-card {
+    background: var(--surface);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+    max-width: 540px;
+    overflow: hidden;
+  }
+  .hr-form-card-header {
+    padding: 18px 24px;
+    border-bottom: 1px solid var(--border);
+  }
+  .hr-form-card-header h5 {
+    font-size: 16px; font-weight: 700; color: var(--text-primary); margin: 0;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .hr-form-card-header h5 i { color: var(--accent); }
+  .hr-form-card-header p { font-size: 12px; color: var(--text-muted); margin: 4px 0 0; }
+  .hr-form-card-body { padding: 24px; }
+  .hr-form-card-footer {
+    padding: 16px 24px;
+    border-top: 1px solid var(--border);
+    display: flex; gap: 10px; background: #fafafa;
+  }
+
+  /* ── Info box ── */
+  .hr-info-box {
+    background: var(--accent-light);
+    border: 1px solid #c7d2fe;
+    border-radius: 8px; padding: 12px 16px;
+    font-size: 12px; color: #3730a3;
+    margin-bottom: 22px;
+    display: flex; gap: 8px; align-items: flex-start;
+  }
+  .hr-info-box i { margin-top: 1px; flex-shrink: 0; }
+
+  /* ── Fields ── */
+  .hr-field { margin-bottom: 20px; }
+  .hr-field label {
+    display: block; font-size: 13px; font-weight: 600;
+    color: var(--text-primary); margin-bottom: 6px;
+  }
+  .hr-field label .req { color: var(--red); margin-left: 2px; }
+  .hr-field .hr-help { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+
+  /* Style Django form inputs */
+  .hr-form-card-body input[type="text"],
+  .hr-form-card-body input[type="number"],
+  .hr-form-card-body select,
+  .hr-form-card-body textarea {
+    width: 100%;
+    padding: 9px 12px;
+    border: 1.5px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 13px;
+    color: var(--text-primary);
+    font-family: 'DM Sans', sans-serif;
+    background: var(--surface);
+    box-sizing: border-box;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    outline: none;
+  }
+  .hr-form-card-body input[type="text"]:focus,
+  .hr-form-card-body input[type="number"]:focus,
+  .hr-form-card-body select:focus,
+  .hr-form-card-body textarea:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(79,70,229,0.1);
+  }
+
+  /* Checkbox toggle */
+  .hr-toggle-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 14px;
+    background: #f9fafb; border: 1.5px solid var(--border);
+    border-radius: 8px; margin-bottom: 14px;
+    cursor: pointer;
+  }
+  .hr-toggle-row input[type="checkbox"] {
+    width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer;
+  }
+  .hr-toggle-label { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+  .hr-toggle-sub   { font-size: 12px; color: var(--text-muted); }
+
+  /* ── Error ── */
+  .hr-form-error {
+    background: #fef2f2; border: 1px solid #fecaca;
+    border-radius: 8px; padding: 10px 14px;
+    margin-bottom: 16px; font-size: 13px; color: var(--red);
+  }
+  .hr-form-success {
+    background: var(--green-light); border: 1px solid #a7f3d0;
+    border-radius: 8px; padding: 10px 14px;
+    margin-bottom: 16px; font-size: 13px; color: var(--green);
+    display: flex; align-items: center; gap: 8px;
+  }
+
+  /* ── Buttons ── */
+  .btn-hr {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 9px 20px; border-radius: 8px;
+    font-size: 13px; font-weight: 600; cursor: pointer;
+    border: none; text-decoration: none;
+    transition: background 0.15s, box-shadow 0.15s; line-height: 1;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .btn-hr-primary { background: var(--accent); color: #fff; }
+  .btn-hr-primary:hover { background: #4338ca; color: #fff; text-decoration: none; box-shadow: 0 4px 12px rgba(79,70,229,0.25); }
+  .btn-hr-ghost { background: var(--surface); color: var(--text-muted); border: 1.5px solid var(--border); }
+  .btn-hr-ghost:hover { background: var(--bg); color: var(--text-primary); text-decoration: none; }
+
+  /* ── Divider ── */
+  .hr-divider { height: 1px; background: var(--border); margin: 4px 0 20px; }
+</style>
+
+<div>
+
+  <!-- Top nav -->
+  <div class="hr-topbar">
+    <nav class="hr-breadcrumb">
+      <a href="{% url 'reconciliation_list' account.id %}">{{ account.account_number }}</a>
+      <span class="sep">&rsaquo;</span>
+      <a href="{% url 'bank_rules_list' account.id %}">Bank Rules</a>
+      <span class="sep">&rsaquo;</span>
+      <span class="current">{{ action }}</span>
+    </nav>
+  </div>
+
+  <div class="hr-content">
+    <div class="hr-form-card">
+
+      <div class="hr-form-card-header">
+        <h5><i class="bi bi-funnel-fill"></i> {{ action }} Bank Rule</h5>
+        <p>{{ account.bank.bank_name }} — {{ account.account_number }}</p>
+      </div>
+
+      <div class="hr-form-card-body">
+
+        {% if messages %}
+          {% for message in messages %}
+            <div class="hr-form-success">
+              <i class="bi bi-check-circle-fill"></i> {{ message }}
+            </div>
+          {% endfor %}
+        {% endif %}
+
+        <div class="hr-info-box">
+          <i class="bi bi-info-circle-fill"></i>
+          <span>Rules define how bank statement lines are automatically matched to system transactions
+          during reconciliation. The pattern is matched against transaction descriptions.</span>
+        </div>
+
+        <form method="post" novalidate>
+          {% csrf_token %}
+
+          {% if form.non_field_errors %}
+            <div class="hr-form-error">{{ form.non_field_errors }}</div>
+          {% endif %}
+
+          <!-- Name -->
+          <div class="hr-field">
+            <label>Rule Name <span class="req">*</span></label>
+            {{ form.name }}
+            {% if form.name.errors %}<div class="hr-form-error" style="margin-top:4px;">{{ form.name.errors }}</div>{% endif %}
+            <div class="hr-help">A short, descriptive name for this rule.</div>
+          </div>
+
+          <!-- Pattern -->
+          <div class="hr-field">
+            <label>Pattern <span class="req">*</span></label>
+            {{ form.pattern }}
+            {% if form.pattern.errors %}<div class="hr-form-error" style="margin-top:4px;">{{ form.pattern.errors }}</div>{% endif %}
+            <div class="hr-help">Regex or plain text to match against the bank statement description.</div>
+          </div>
+
+          <!-- Amount tolerance & Date window side by side -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+            <div class="hr-field">
+              <label>Amount Tolerance</label>
+              {{ form.amount_tolerance }}
+              {% if form.amount_tolerance.errors %}<div class="hr-form-error" style="margin-top:4px;">{{ form.amount_tolerance.errors }}</div>{% endif %}
+              <div class="hr-help">Max allowed difference ({{ base_currency_symbol }}).</div>
+            </div>
+            <div class="hr-field">
+              <label>Date Window (days)</label>
+              {{ form.date_window }}
+              {% if form.date_window.errors %}<div class="hr-form-error" style="margin-top:4px;">{{ form.date_window.errors }}</div>{% endif %}
+              <div class="hr-help">Days around the transaction date to search.</div>
+            </div>
+          </div>
+
+          <div class="hr-divider"></div>
+
+          <!-- Checkboxes -->
+          <label class="hr-toggle-row">
+            {{ form.active }}
+            <div>
+              <div class="hr-toggle-label">Active</div>
+              <div class="hr-toggle-sub">Disable to pause this rule without deleting it.</div>
+            </div>
+          </label>
+
+          <label class="hr-toggle-row">
+            {{ form.auto_match }}
+            <div>
+              <div class="hr-toggle-label">Auto Match</div>
+              <div class="hr-toggle-sub">Automatically tick matched transactions during CSV upload.</div>
+            </div>
+          </label>
+
+        </div><!-- /body -->
+
+        <div class="hr-form-card-footer">
+          <button type="submit" class="btn-hr btn-hr-primary">
+            <i class="bi bi-check-lg"></i> {{ action }}
+          </button>
+          <a href="{% url 'bank_rules_list' account.id %}" class="btn-hr btn-hr-ghost">
+            Cancel
+          </a>
+        </div>
+
+        </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

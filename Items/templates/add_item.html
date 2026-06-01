@@ -1,0 +1,3111 @@
+{% extends "website/index.html" %}
+{% load static %}
+{% load widget_tweaks %}
+{% block exstyle %}
+<link href="{% static 'style/general.css' %}" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<style>
+/* Select2 styling copied from expenses/expense_form.html to match appearance */
+.select2-container {
+  width: 100% !important;
+}
+.select2-container--default .select2-selection--single {
+  height: 38px !important;
+  padding: 0.375rem 0.75rem !important;
+  font-size: 0.875rem !important;
+  line-height: 1.5 !important;
+  border: 1px solid #e5e7eb !important;
+  border-radius: 0.25rem !important;
+  background-color: #fff !important;
+  width: 100% !important;
+  box-shadow: none !important;
+  transition: border-color 0.15s ease-in-out !important;
+  display: flex !important;
+  align-items: center !important;
+}
+.select2-container--default .select2-selection--single .select2-selection__rendered {
+  line-height: 1.5 !important;
+  padding-left: 0.75rem !important;
+  padding-right: 30px !important;
+  color: #333 !important;
+}
+.select2-container--default .select2-selection--single .select2-selection__arrow {
+  height: 36px !important;
+  width: 25px !important;
+}
+.select2-container--default .select2-selection--single .select2-selection__clear {
+  position: absolute !important;
+  right: 30px !important;
+  font-size: 1.2rem !important;
+  color: #dc2626 !important;
+  margin: 0 !important;
+  padding: 0 3px !important;
+  cursor: pointer !important;
+}
+.select2-results__option div small { display:block; color:#6b7280; margin-top:0.25rem; }
+.select2-container--disabled .select2-selection { cursor: not-allowed !important; background-color: #e9ecef !important; }
+/* When a search term is present, hide optgroup headers so only matching children show */
+.select2-container--open.hide-groups .select2-results__group { display: none; }
+.barcode-status {
+  display: block;
+  margin-top: 0.35rem;
+  font-size: 0.875rem;
+}
+</style>
+{% endblock exstyle %}
+{% comment %} {% block page_title %}New Item{% endblock page_title %} {% endcomment %}
+{% block page_title %}
+  {% if item and item.pk %}
+    Item: {{ item.name }}
+  {% else %}
+    New Item
+  {% endif %}
+{% endblock page_title %}
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script>
+// Define global variables from Django context
+var companyCountry = "{{ company_country|default:'' }}";
+window.companyIsIndia = {% if company_is_india %}true{% else %}false{% endif %};
+window.companyTaxType = "{{ company_tax_type|default:'' }}";
+
+// Debug: log resolved company tax type from server context
+console.log('Resolved companyTaxType (server):', window.companyTaxType);
+
+function parseEmbeddedJsonArray(rawValue) {
+  if (!rawValue || !rawValue.trim()) {
+    return [];
+  }
+  try {
+    const parsed = JSON.parse(rawValue);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (err) {
+    console.warn('Failed to parse embedded JSON array:', err);
+    return [];
+  }
+}
+
+function isCompanyIndia() {
+  if (window.companyIsIndia === true || window.companyIsIndia === 'true') {
+    return true;
+  }
+  const normalizedCountry = String(companyCountry || '').toLowerCase().replace(/[^a-z]/g, '');
+  return normalizedCountry === 'india' || normalizedCountry === 'in' || normalizedCountry === 'ind' || normalizedCountry.includes('india');
+}
+
+$(document).ready(function() {
+    let lastVendorSearchTerm = '';
+
+  
+
+    $('#intra_tax_select').select2({
+      placeholder: 'Choose Tax Group',
+      allowClear: true,
+      ajax: {
+        url: '/Items/tax-groups/',
+        dataType: 'json',
+        delay: 250,
+        data: function (params) {
+          return { q: params.term };
+        },
+       processResults: function (data) {
+          return data; // already {results: [...]}
+        },
+        cache: true 
+        
+      }
+    });
+    $('#inter_tax_group_select').select2({
+      placeholder: 'Choose Inter State Tax Rate',
+      allowClear: true,
+      ajax: {
+        url: '/Items/inter-state-taxes/',
+        dataType: 'json',
+        delay: 250,
+        data: function (params) {
+          return { q: params.term, country: companyCountry, scope: 'inter' };
+        },
+        processResults: function (data) {
+          return data;  // already {results: [...]}
+        },
+        cache: true
+      }
+    });
+    $('#intra_tax_select').select2({
+      placeholder: 'Choose Tax Group',
+      allowClear: true,
+      ajax: {
+        url: '/Items/tax-groups/',
+        dataType: 'json',
+        delay: 250,
+        data: function (params) {
+          return { q: params.term, country: companyCountry };
+        },
+       processResults: function (data) {
+          return data; // already {results: [...]}
+        },
+        cache: true 
+        
+      }
+    });
+
+       $('#default_tax_select').select2({
+      placeholder: 'Choose Tax Rate',
+      allowClear: true,
+      ajax: {
+        url: '/Items/inter-state-taxes/',
+        dataType: 'json',
+        delay: 250,
+        data: function (params) {
+          const companyTaxType = String(window.companyTaxType || '').trim().toUpperCase();
+          const scope = companyTaxType === 'TURNOVER' ? 'local' : 'default';
+          return { q: params.term, country: companyCountry, scope: scope };
+        },
+        processResults: function (data) {
+          return data;
+        },
+        cache: true
+      }
+    });
+
+    $('#sales_tax_select').select2({
+      placeholder: 'Choose Sales Tax Rate',
+      allowClear: true,
+      ajax: {
+        url: '/Items/inter-state-taxes/',
+        dataType: 'json',
+        delay: 250,
+        data: function (params) {
+          return { q: params.term, country: companyCountry, scope: 'sales' };
+        },
+        processResults: function (data) {
+          return data;
+        },
+        cache: true
+      }
+    });
+
+    $('#purchase_tax_select').select2({
+      placeholder: 'Choose Purchase Tax Rate',
+      allowClear: true,
+      ajax: {
+        url: '/Items/inter-state-taxes/',
+        dataType: 'json',
+        delay: 250,
+        data: function (params) {
+          return { q: params.term, country: companyCountry, scope: 'purchase' };
+        },
+        processResults: function (data) {
+          return data;
+        },
+        cache: true
+      }
+    });
+
+
+    $('#hsn_code_select').select2({
+      placeholder: '',
+      allowClear: true,
+      minimumInputLength: 1,
+      ajax: {
+        url: '/Items/hsn-codes/',
+        dataType: 'json',
+        delay: 250,
+        data: function(params) {
+          return { q: params.term };
+        },
+        processResults: function(data) {
+          console.log("data"+data);
+          return {
+            results: data.map(function(item) {
+              return { id: item.id, text: item.code +' - '+ item.description };
+            })
+          };
+        },
+        cache: true
+      }
+    });
+    $('#sac_code_select').select2({
+      placeholder: '',
+      allowClear: true,
+      minimumInputLength: 1,
+      ajax: {
+        url: '/Items/sac-codes/',
+        dataType: 'json',
+        delay: 250,
+        data: function(params) {
+          return { q: params.term };
+        },
+        processResults: function(data) {
+          console.log("data"+data);
+          return {
+            results: data.map(function(item) {
+              return { id: item.id, text: item.code +' - '+ item.description };
+            })
+          };
+        },
+        cache: true
+      }
+    });
+
+    let lastUnitSearchTerm = '';
+
+    $('#unit_select').select2({
+      placeholder: '',
+      allowClear: true,
+      minimumInputLength: 1,
+      ajax: {
+        url: '/Items/unit/',
+        dataType: 'json',
+        delay: 250,
+        data: function(params) {
+          lastUnitSearchTerm = params.term;
+          return { q: params.term };
+        },
+        processResults: function(data) {
+          let results = data.map(function(item) {
+            return { id: item.id, text: item.name };
+          });
+          results.push({
+            id: 'new',
+            text: '+ New',
+            isNew: true // custom flag to identify this special option
+          });
+          return { results: results };
+        },
+        cache: true
+      },
+      //createTag: function(params) {
+        //return {
+          //id: params.term,
+          //text: params.term,
+          //newTag: true 
+          // add additional parameters if needed
+        //};
+      //}
+    });
+    
+    var currentUnitId = "{{ current_unit_id }}";
+    var currentUnitText = "{{ current_unit_name }}";
+
+    if (currentUnitId && currentUnitText) {
+      var option = new Option(currentUnitText, currentUnitId, true, true);
+      $('#unit_select').append(option).trigger('change');
+    }
+
+
+    let lastBrndSearchTerm = '';
+    $('#brand_select').select2({
+      placeholder: '',
+      allowClear: true,
+      minimumInputLength: 1,
+      ajax: {
+        url: '/Items/brand/',
+        dataType: 'json',
+        delay: 250,
+        data: function(params) {
+          lastBrndSearchTerm = params.term;
+          return { q: params.term };
+        },
+        processResults: function(data) {
+          let results = data.map(function(item) {
+            return { id: item.id, text: item.name };
+          });
+          results.push({
+            id: 'new',
+            text: '+ New',
+            isNew: true // custom flag to identify this special option
+          });
+          return { results: results };
+        },
+        cache: true
+      },
+      //createTag: function(params) {
+        //return {
+          //id: params.term,
+          //text: params.term,
+          //newTag: true 
+          // add additional parameters if needed
+        //};
+      //}
+    });
+
+    let lastCategorySearchTerm = '';
+    $('#category_select').select2({
+      placeholder: '',
+      allowClear: true,
+      minimumInputLength: 1,
+      ajax: {
+        url: "{% company_path '/Items/category/' %}",
+        dataType: 'json',
+        delay: 250,
+        data: function(params) {
+          lastCategorySearchTerm = params.term;
+          return { q: params.term };
+        },
+        processResults: function(data) {
+          let results = data.map(function(item) {
+            return { id: item.id, text: item.name };
+          });
+          results.push({
+            id: 'new',
+            text: '+ New',
+            isNew: true
+          });
+          return { results: results };
+        },
+        cache: true
+      }
+    });
+
+    let lastItemTypeSearchTerm = '';
+    $('#item_type_select').select2({
+      placeholder: '',
+      allowClear: true,
+      minimumInputLength: 1,
+      ajax: {
+        url: "{% company_path '/Items/item-type/' %}",
+        dataType: 'json',
+        delay: 250,
+        data: function(params) {
+          lastItemTypeSearchTerm = params.term;
+          return { q: params.term };
+        },
+        processResults: function(data) {
+          let results = data.map(function(item) {
+            return { id: item.id, text: item.name };
+          });
+          results.push({
+            id: 'new',
+            text: '+ New',
+            isNew: true
+          });
+          return { results: results };
+        },
+        cache: true
+      }
+    });
+
+     //warehouse
+    let lastWhSearchTerm = '';
+    $('#warehouse_select').select2({
+      placeholder: '',
+      allowClear: true,
+      minimumInputLength: 1,
+      ajax: {
+        url: '/Items/warehouse/',
+        dataType: 'json',
+        delay: 250,
+        data: function(params) {
+          lastWhSearchTerm = params.term;
+          return { q: params.term };
+        },
+        processResults: function(data) {
+          let results = data.map(function(item) {
+            return { id: item.id, text: item.name };
+          });
+          results.push({
+            id: 'new',
+            text: '+ New',
+            isNew: true // custom flag to identify this special option
+          });
+          return { results: results };
+        },
+        cache: true
+      },
+    });
+
+    // by adarshOpening Stock Equity Account
+    $('#id_opening_stock_equity_account').select2({
+      placeholder: 'Select equity account for opening balance...',
+      allowClear: true,
+      width: '100%'
+    });
+
+    $('#unit_select').on('select2:selecting', function(e) {
+      var data = (e.params && e.params.args && e.params.args.data) ? e.params.args.data : e.params.data;
+      if (data && data.isNew) {
+        e.preventDefault();
+        $.get('/Items/unit_createform/', function(formHtml) {
+          $('#unitCreateModal .modal-body').html(formHtml);
+          $('#unitCreateModal').modal('show');
+          $('#unitCreateModal').find('input[name="unit_name"]').val(lastUnitSearchTerm);
+        });
+        $('#unit_select').val(null).trigger('change');
+      }
+    });
+
+    $(document).on('select2:open', () => {
+      const $open = $('.select2-container--open');
+      const searchField = $open.find('.select2-search__field');
+      if (searchField.length) {
+        searchField[0].focus();
+      }
+
+      // Toggle a class on the open container when there's a search term
+      function toggleGroupHeaders() {
+        const val = $.trim(searchField.val() || '');
+        if (val.length) $open.addClass('hide-groups'); else $open.removeClass('hide-groups');
+      }
+
+      // run once and bind events (namespace to avoid doubling handlers)
+      toggleGroupHeaders();
+      searchField.off('.hideGroups').on('input.hideGroups keyup.hideGroups', toggleGroupHeaders);
+    });
+
+// var warehouses = {{ warehouses|safe }};
+// warehouses.forEach(function(wh) {
+//     var newOption = new Option(wh.name, wh.id, true, true);
+//     $('#warehouse_select').append(newOption).trigger('change');
+// });
+
+
+    $('#brand_select').on('select2:selecting', function(e) {
+      var data = (e.params && e.params.args && e.params.args.data) ? e.params.args.data : e.params.data;
+      if (data && data.isNew) {
+        e.preventDefault();
+        $.get('/Items/brand_createform/', function(formHtml) {
+          $('#brandCreateModal .modal-body').html(formHtml);
+          $('#brandCreateModal').modal('show');
+          $('#brandCreateModal').find('input[name="brand_name"]').val(lastBrndSearchTerm);
+        });
+        $('#brand_select').val(null).trigger('change');
+      }
+    });
+
+    $('#category_select').on('select2:selecting', function(e) {
+      var data = (e.params && e.params.args && e.params.args.data) ? e.params.args.data : e.params.data;
+      if (data && data.isNew) {
+        e.preventDefault();
+        $.get("{% company_path '/Items/category_createform/' %}", function(formHtml) {
+          $('#categoryCreateModal .modal-body').html(formHtml);
+          $('#categoryCreateModal').modal('show');
+          $('#categoryCreateModal').find('input[name=\"category_name\"]').val(lastCategorySearchTerm);
+        });
+        $('#category_select').val(null).trigger('change');
+      }
+    });
+
+    $('#item_type_select').on('select2:selecting', function(e) {
+      var data = (e.params && e.params.args && e.params.args.data) ? e.params.args.data : e.params.data;
+      if (data && data.isNew) {
+        e.preventDefault();
+        $.get("{% company_path '/Items/item_type_createform/' %}", function(formHtml) {
+          $('#itemTypeCreateModal .modal-body').html(formHtml);
+          $('#itemTypeCreateModal').modal('show');
+          $('#itemTypeCreateModal').find('input[name=\"type_name\"]').val(lastItemTypeSearchTerm);
+        });
+        $('#item_type_select').val(null).trigger('change');
+      }
+    });
+
+    $('#warehouse_select').on('select2:selecting', function(e) {
+      var data = (e.params && e.params.args && e.params.args.data) ? e.params.args.data : e.params.data;
+      if (data && data.isNew) {
+        e.preventDefault();
+        $.get('/Items/warehouse_createform/', function(formHtml) {
+          $('#warehouseCreateModal .modal-body').html(formHtml);
+          $('#warehouseCreateModal').modal('show');
+          $('#warehouseCreateModal').find('input[name="warehouse_name"]').val(lastWhSearchTerm);
+        });
+        $('#warehouse_select').val(null).trigger('change');
+      }
+    });
+
+    console.log("value of lastVendorSearchTerm:"+lastVendorSearchTerm);
+    $('#vendor_select').select2({
+      placeholder: '',
+      allowClear: true,
+      minimumInputLength: 1,
+      ajax: {
+        url: '/purchase/vendor/',
+        dataType: 'json',
+        delay: 250,
+        data: function(params) {
+        lastVendorSearchTerm = params.term || '';
+          return { q: params.term };
+        },
+        processResults: function(data) {
+          let results = data.map(function(item) {
+            return { id: item.id, text: item.name };
+          });
+          results.push({
+            id: 'new',
+            text: '+ New',
+            isNew: true // custom flag to mark special option
+          });
+          return { results: results };
+      
+        },
+        cache: true
+      }
+    });
+
+  
+
+    {% comment %} console.log("value of lastVendorSearchTerm:"+lastVendorSearchTerm); {% endcomment %}
+
+    $('#vendor_select').on('select2:selecting', function(e) {
+      var data = (e.params && e.params.args && e.params.args.data) ? e.params.args.data : e.params.data;
+      if (data && data.isNew) {
+        e.preventDefault();
+        $.get('/purchase/vendor_createform/', function(formHtml) {
+          var $mb = $('#vendorCreateModal .modal-body');
+          $mb.html(formHtml);
+          // Initialize select2 for any select elements injected into this modal
+          try {
+            if (window.jQuery && window.jQuery.fn && window.jQuery.fn.select2) {
+              $mb.find('.select2').each(function() {
+                var $el = $(this);
+                try { $el.select2('destroy'); } catch(e) {}
+                $el.select2({ placeholder: $el.data('placeholder') || 'Select', allowClear: true, width: 'resolve', dropdownParent: $('#vendorCreateModal') });
+              });
+            }
+          } catch (initErr) { console.warn('Select2 init failed in Items vendor modal:', initErr); }
+          $('#vendorCreateModal').modal('show');
+          $('#vendorCreateModal').find('input[name="first_name"]').val(lastVendorSearchTerm);
+          $('#vendorCreateModal').find('input[name="company_name"]').val(lastVendorSearchTerm);
+
+        });
+        // Reset selection after opening modal
+        $('#vendor_select').val(null).trigger('change');
+      }
+    });
+  });
+
+// AJAX submit for vendor modal: supports JSON success {id, name} or returns HTML with form (validation errors)
+$(document).on('submit', '#vendorCreateModal form', function(ev) {
+  console.log("submitting vendorCreateModal form");
+  ev.preventDefault();
+  var $form = $(this);
+  var action = $form.attr('action') || window.location.href;
+  var method = ($form.attr('method') || 'POST').toUpperCase();
+
+  var formData = new FormData(this);
+
+  $.ajax({
+    url: action,
+    type: method,
+    data: formData,
+    processData: false,
+    contentType: false,
+    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+    success: function(response, status, xhr) {
+      // Try to parse JSON
+      var ct = xhr.getResponseHeader('Content-Type') || '';
+      // Accept JSON responses even if content-type mismatches
+      var parsed = null;
+      try {
+        parsed = (typeof response === 'object') ? response : JSON.parse(response);
+      } catch (err) {
+        // ignore parse error
+      }
+      if (parsed && (parsed.success === true || (parsed.id && parsed.name))) {
+        var data = parsed;
+        // Close modal reliably: prefer existing instance, fallback to creating one, then jQuery
+        var modalEl = document.getElementById('vendorCreateModal');
+        try {
+          var modalEl = document.getElementById('vendorCreateModal');
+
+            if (window.bootstrap && bootstrap.Modal) {
+              var instance = bootstrap.Modal.getInstance(modalEl);
+              if (instance) {
+                instance.hide();
+              }
+            } else {
+              $('#vendorCreateModal').modal('hide');
+            }
+
+        } catch (e) {
+          try { $('#vendorCreateModal').modal('hide'); } catch (ee) { /* ignore */ }
+        }
+
+        // Remove any previous errors and clear modal body
+        $('#vendorCreateModal .modal-body .alert.alert-danger').remove();
+        $('#vendorCreateModal .modal-body .text-danger.small').remove();
+
+        var displayName = data.name || (data.first_name ? (data.first_name + (data.last_name ? ' ' + data.last_name : '')) : 'New');
+        var newOption = new Option(displayName, data.id, true, true);
+        var $sel = $('#vendor_select');
+        // Remove any existing option with same value to avoid duplicates
+        $sel.find('option[value="' + data.id + '"]').remove();
+        $sel.append(newOption).trigger('change');
+        console.log("just befor loadVendorDetails");
+        //added by neha on 4-2-26 
+        //loadVendorDetails(data.id);
+        // Also trigger select2 select programmatically
+        // $sel.val(data.id).trigger('select2:select');
+        $sel.append(newOption).val(data.id).trigger('change');
+
+        // Clear modal content after short delay to avoid race if Bootstrap animates
+        setTimeout(function() { $('#vendorCreateModal .modal-body').empty(); }, 300);
+        return;
+      }
+
+      // Otherwise assume HTML returned (form with errors or full form) - replace modal body
+      $('#vendorCreateModal .modal-body').html(response);
+      // Initialize by adarshselect2 for any selects injected into the modal (validation/error case)
+      try {
+        var $mbv = $('#vendorCreateModal .modal-body');
+        if (window.jQuery && window.jQuery.fn && window.jQuery.fn.select2) {
+          $mbv.find('.select2').each(function() {
+            var $el = $(this);
+            try { $el.select2('destroy'); } catch(e) {}
+            $el.select2({ placeholder: $el.data('placeholder') || 'Select', allowClear: true, width: 'resolve', dropdownParent: $('#vendorCreateModal') });
+          });
+        }
+      } catch (ie) { console.warn('Select2 init failed after vendor submit response:', ie); }//byadarsh
+      // Reveal errors because this was a submit attempt
+      try {
+        $('#vendorCreateModal').data('VendorFormSubmitted', true);
+        var $mb = $('#vendorCreateModal .modal-body');
+        $mb.find('.text-danger.small, .text-danger, .invalid-feedback, .alert.alert-danger').show();
+        $mb.find('*').filter(function() { return $(this).text().trim() === 'This field is required.'; }).show();
+      } catch (e) { }
+    },
+    error: function(xhr) {
+      // Better error handling: if server returned JSON errors, render them in modal
+      var ct = xhr.getResponseHeader('Content-Type') || '';
+      var handled = false;
+      try {
+        var json = xhr.responseJSON || JSON.parse(xhr.responseText || '{}');
+        if (json && json.errors) {
+          // Clear any previous field errors
+          $('#vendorCreateModal .text-danger.small').remove();
+          $('#vendorCreateModal .alert.alert-danger').remove();
+
+          // Render non-field errors
+          if (json.errors.__all__ || json.errors.non_field_errors) {
+            var nf = json.errors.__all__ || json.errors.non_field_errors;
+            $('#vendorCreateModal .modal-body').prepend('<div class="alert alert-danger">' + nf.join('<br>') + '</div>');
+          }
+
+          // Render field-specific errors next to inputs
+          Object.keys(json.errors).forEach(function(field) {
+            if (field === '__all__' || field === 'non_field_errors') return;
+            var msgs = json.errors[field];
+            // Try to find input/select/textarea with that name
+            var $field = $('#vendorCreateModal').find('[name="' + field + '"]');
+            if ($field.length) {
+              // Append error messages after the field (avoid duplicates)
+              $field.each(function() {
+                var $el = $(this);
+                msgs.forEach(function(m) {
+                  $el.after('<div class="text-danger small">' + m + '</div>');
+                });
+              });
+            } else {
+              // If not found, show at top
+              $('#vendorCreateModal .modal-body').prepend('<div class="alert alert-danger"><strong>' + field + ':</strong> ' + msgs.join(', ') + '</div>');
+            }
+          });
+
+          // Mark that the user attempted to submit so we reveal errors
+          $('#vendorCreateModal').data('VendorFormSubmitted', true);
+          // Reveal any errors we just added (CSS hides them by default inside the modal)
+          try {
+            var $mb_errors = $('#vendorCreateModal .modal-body');
+            $mb_errors.find('.text-danger.small, .text-danger, .invalid-feedback, .alert.alert-danger').show();
+            // scroll to first error
+            var $firstErr = $mb_errors.find('.text-danger.small, .alert.alert-danger').first();
+            if ($firstErr.length) {
+              // if modal body is scrollable, scroll that; otherwise scroll document
+              var $scrollParent = $mb_errors;
+              $scrollParent.animate({ scrollTop: ($firstErr.position().top - 20) }, 250);
+            }
+          } catch (ee) { }
+
+          handled = true;
+        }
+      } catch (err) {
+        // ignore parse errors
+      }
+
+      if (!handled) {
+        if (ct.indexOf('text/html') !== -1) {
+          $('#vendorCreateModal .modal-body').html(xhr.responseText);
+          try { //byadarsh
+            var $mb3 = $('#vendorCreateModal .modal-body');
+            if (window.jQuery && window.jQuery.fn && window.jQuery.fn.select2) {
+              $mb3.find('.select2').each(function() {
+                var $el = $(this);
+                try { $el.select2('destroy'); } catch(e) {}
+                $el.select2({ placeholder: $el.data('placeholder') || 'Select', allowClear: true, width: 'resolve', dropdownParent: $('#vendorCreateModal') });
+              });
+            }
+          } catch (ee) { console.warn('Select2 init failed for error HTML:', ee); }//byadarsh
+          // Reveal errors since this is response after failed submit
+          try {
+            $('#vendorCreateModal').data('VendorFormSubmitted', true);
+            var $mb2 = $('#vendorCreateModal .modal-body');
+            $mb2.find('.text-danger.small, .text-danger, .invalid-feedback, .alert.alert-danger').show();
+            $mb2.find('*').filter(function() { return $(this).text().trim() === 'This field is required.'; }).show();
+          } catch (ee) { }
+        } else {
+          alert('Error saving vendor. See console for details.');
+          console.error('Vendor save error', xhr);
+        }
+      }
+    }
+  });
+});
+
+
+
+  {% comment %} $(document).on('submit', '#uomCreateForm', function(e) {
+  e.preventDefault();
+  var $form = $(this);
+
+  $.ajax({
+    method: 'POST',
+    url: '/Items/add_uom/',   // force it to the correct view
+    data: $form.serialize(),
+    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+    success: function(response) {
+      if (response.success) {
+        // close modal
+        var modalEl = document.getElementById('uomCreateModal');
+        var modal = bootstrap.Modal.getInstance(modalEl);
+        if (modal) modal.hide();
+        
+
+        // add to select2
+        var newOption = new Option(response.name, response.id, true, true);
+        $('#unit_select').append(newOption).trigger('change');
+      }
+    },
+    error: function(xhr) {
+      var errors = xhr.responseJSON?.errors || {};
+      var errorMsg = errors.name ? errors.name.join(', ') : 'Error creating unit';
+      $('#uomCreateModal .modal-body').prepend(
+        `<div class="alert alert-danger">${errorMsg}</div>`
+      );
+    }
+  });
+}); {% endcomment %}
+
+// $(document).on('submit', '#unitCreateForm', function(e) {
+//   e.preventDefault();
+//   var $form = $(this);
+
+//   $.ajax({
+//     method: 'POST',
+//     url: '/Items/add_unit/',   // force it to the correct view
+//     data: $form.serialize(),
+//     headers: { 'X-Requested-With': 'XMLHttpRequest' },
+//     success: function(response) {
+//       if (response.success) {
+//         // close modal
+//         var modalEl = document.getElementById('unitCreateModal');
+//         var modal = bootstrap.Modal.getInstance(modalEl);
+//         if (modal) modal.hide();
+        
+
+//         // add to select2
+//         var newOption = new Option(response.name, response.id, true, true);
+//         $('#unit_select').append(newOption).trigger('change');
+//       }
+//     },
+//     error: function(xhr) {
+//       var errors = xhr.responseJSON?.errors || {};
+//       var errorMsg = errors.name ? errors.name.join(', ') : 'Error creating unit';
+//       $('#unitCreateModal .modal-body').prepend(
+//         `<div class="alert alert-danger">${errorMsg}</div>`
+//       );
+//     }
+//   });
+// });
+
+
+$(document).on('submit', '#unitCreateForm', function(e) {
+  e.preventDefault();
+  var $form = $(this);
+
+  $.ajax({
+    method: 'POST',
+    url: "{% company_path '/Items/add_unit/' %}",
+    data: $form.serialize(),
+    // Remove dataType: 'json' — let jQuery auto-detect
+    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+    success: function(response) {
+      // response may be a string (HTML) or already parsed object
+      var data = response;
+      if (typeof response === 'string') {
+        try { data = JSON.parse(response); } catch(e) { data = null; }
+      }
+      if (data && data.success) {
+        var modalEl = document.getElementById('unitCreateModal');
+        var modal = bootstrap.Modal.getInstance(modalEl);
+        if (modal) modal.hide();
+        var newOption = new Option(data.name, data.id, true, true);
+        $('#unit_select').append(newOption).trigger('change');
+      } else {
+        // HTML error form returned — show it in modal body
+        if (typeof response === 'string') {
+          $('#unitCreateModal .modal-body').html(response);
+        }
+      }
+    },
+    error: function(xhr) {
+      var data = null;
+      try { data = JSON.parse(xhr.responseText); } catch(e) {}
+      var errorMsg = (data && data.errors && data.errors.unit_name)
+        ? data.errors.unit_name.join(', ')
+        : 'Error creating unit';
+      $('#unitCreateModal .modal-body').prepend(
+        '<div class="alert alert-danger">' + errorMsg + '</div>'
+      );
+    }
+  });
+});
+
+$(document).on('submit', '#uomCreateForm', function(e) {
+  e.preventDefault();
+  var $form = $(this);
+
+  $.ajax({
+    method: 'POST',
+    url: "{% url 'add_uom' %}",   // reversed URL (auto-injects company_code)
+    data: $form.serialize(),
+    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+    success: function(response) {
+      if (response.success) {
+        // close modal
+        var modalEl = document.getElementById('uomCreateModal');
+        var modal = bootstrap.Modal.getInstance(modalEl);
+        if (modal) modal.hide();
+        console.log("response of add_uom:", response.name);
+
+        // add to select2
+        //var newOption = new Option(response.name, response.id, true, true);
+        //$('#uom_select').append(newOption).trigger('change');
+        var $select = $('.uom_select').last();  // last added select box
+        var newOption = new Option(response.name, response.id, true, true);
+        $select.append(newOption).trigger('change');
+        $select.select2('trigger', 'select', {
+          data: { id: response.id, text: response.name }
+        });
+        
+      }
+    },
+    error: function(xhr) {
+      var errors = xhr.responseJSON?.errors || {};
+      var errorMsg = errors.name ? errors.name.join(', ') : 'Error creating uom';
+      $('#uomCreateModal .modal-body').prepend(
+        `<div class="alert alert-danger">${errorMsg}</div>`
+      );
+    }
+  });
+});
+
+  $(document).on('submit', '#brandCreateForm', function(e) {
+  e.preventDefault();
+  var $form = $(this);
+
+  $.ajax({
+    method: 'POST',
+    url: "{% company_path '/Items/add_brand/' %}",
+    data: $form.serialize(),
+    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+    success: function(response) {
+      if (response.success) {
+        // close modal
+        var modalEl = document.getElementById('brandCreateModal');
+        var modal = bootstrap.Modal.getInstance(modalEl);
+        if (modal) modal.hide();
+
+        // add to select2
+        var newOption = new Option(response.name, response.id, true, true);
+        $('#brand_select').append(newOption).trigger('change');
+      }
+    },
+    error: function(xhr) {
+      var errors = xhr.responseJSON?.errors || {};
+      var errorMsg = errors.name ? errors.name.join(', ') : 'Error creating unit';
+      $('#brandCreateModal .modal-body').prepend(
+        `<div class="alert alert-danger">${errorMsg}</div>`
+      );
+    }
+  });
+});
+
+$(document).on('submit', '#categoryCreateForm', function(e) {
+  e.preventDefault();
+  var $form = $(this);
+
+  $.ajax({
+    method: 'POST',
+    url: "{% company_path '/Items/add_category/' %}",
+    data: $form.serialize(),
+    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+    success: function(response) {
+      if (response.success) {
+        var modalEl = document.getElementById('categoryCreateModal');
+        var modal = bootstrap.Modal.getInstance(modalEl);
+        if (modal) modal.hide();
+
+        var newOption = new Option(response.name, response.id, true, true);
+        $('#category_select').append(newOption).trigger('change');
+      }
+    },
+    error: function(xhr) {
+      var errors = xhr.responseJSON?.errors || {};
+      var errorMsg = errors.category_name ? errors.category_name.join(', ') : 'Error creating category';
+      $('#categoryCreateModal .modal-body').prepend(
+        '<div class=\"alert alert-danger\">' + errorMsg + '</div>'
+      );
+    }
+  });
+});
+
+$(document).on('submit', '#itemTypeCreateForm', function(e) {
+  e.preventDefault();
+  var $form = $(this);
+
+  $.ajax({
+    method: 'POST',
+    url: "{% company_path '/Items/add_item_type/' %}",
+    data: $form.serialize(),
+    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+    success: function(response) {
+      if (response.success) {
+        var modalEl = document.getElementById('itemTypeCreateModal');
+        var modal = bootstrap.Modal.getInstance(modalEl);
+        if (modal) modal.hide();
+
+        var newOption = new Option(response.name, response.id, true, true);
+        $('#item_type_select').append(newOption).trigger('change');
+      }
+    },
+    error: function(xhr) {
+      var errors = xhr.responseJSON?.errors || {};
+      var errorMsg = errors.type_name ? errors.type_name.join(', ') : 'Error creating type';
+      $('#itemTypeCreateModal .modal-body').prepend(
+        '<div class=\"alert alert-danger\">' + errorMsg + '</div>'
+      );
+    }
+  });
+});
+
+ $(document).on('submit', '#warehouseCreateForm', function(e) {
+  e.preventDefault();
+  var $form = $(this);
+
+  $.ajax({
+    method: 'POST',
+    url: "{% company_path '/Items/add_warehouse/' %}",
+    data: $form.serialize(),
+    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+    success: function(response) {
+      if (response.success) {
+        // close modal
+        var modalEl = document.getElementById('warehouseCreateModal');
+        var modal = bootstrap.Modal.getInstance(modalEl);
+        if (modal) modal.hide();
+
+        // add to select2
+        var newOption = new Option(response.name, response.id, true, true);
+        $('#warehouse_select').append(newOption).trigger('change');
+      } else {
+                // Clear old errors
+                $(".field-error").remove();
+
+                // Loop through errors
+                $.each(response.errors, function(field, messages) {
+                    let input = $("#id_" + field); // Django form fields have id="id_fieldname"
+                    $.each(messages, function(i, msg) {
+                        input.after(
+                            '<div class="text-danger small field-error">' + msg + "</div>"
+                        );
+                    });
+                });
+            }
+    },
+    error: function(xhr) {
+      var errors = xhr.responseJSON?.errors || {};
+      var errorMsg = errors.name ? errors.name.join(', ') : 'Error creating warehouse';
+      $('#warehouseCreateModal .modal-body').prepend(
+        `<div class="alert alert-danger">${errorMsg}</div>`
+      );
+    }
+  });
+});
+</script>
+{% endblock scripts %}
+
+
+{% block content %}
+
+
+<div class="container mt-4">
+  {% if messages %}
+  <div class="alert-messages">
+    {% for message in messages %}
+      <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+    {% endfor %}
+  </div>
+{% endif %}
+  <!-- <h2>New Item</h2> -->
+  <form id="uomCreateModalForm" method="post">
+    {% csrf_token %}
+    <div class="row mb-3">
+      <div class="col-md-6">
+         {% comment %} <p>form.data.type: {{ form.data.type }}</p>
+      <p>warehouse: {{ warehouse.id }}</p>
+      <p>item.taxincld_slprice: {{ item.taxincld_slprice }}</p>
+      <p>item.taxincld_costprice: {{ item.taxincld_costprice }}</p>   {% endcomment %}
+         
+        <label class="form-label">Type<span class="text-danger">*</span></label>
+        <div class="text-primary">
+          {% comment %} <input type="radio" name="type" value="goods"  {% if selected_type == "goods" %}checked{% endif %}> Goods
+          <input type="radio" name="type" value="service"  {% if selected_type == "service" %}checked{% endif %} class="ms-3"> Service {% endcomment %}
+          <input type="radio" name="type" value="goods" {% if item.type == "goods" %}checked{% endif %} checked > Goods
+          <input type="radio" name="type" value="service" class="ms-3" {% if item.type == "service" %}checked{% endif %}> Service
+        </div>
+      </div>
+    </div>
+    <div class="row mb-2">
+      <div class="col-md-4">
+        <label for="name" class="form-label">Name<span class="text-danger">*</span></label>
+        {% comment %} <input type="text" class="form-control" name="name" value="{% if form.data.name %}{{ form.data.name }}{% elif item %}{{ item.name }}{% endif %}" required> {% endcomment %}
+      <input type="text" class="form-control" name="name" id="name"
+         value="{% if form.data.name %}{{ form.data.name }}{% elif item %}{{ item.name }}{% endif %}" 
+         required>
+      </div>
+      <div class="col-md-4">
+        <label for="unit" class="form-label">Default Unit<span class="text-danger">*</span></label>
+         <select class="form-select" name="unit" id="unit_select" style="width: 100%;" required >
+            <option value="">Choose...</option>
+         </select>
+      </div>
+      <div class="col-md-4" id="hsn-wrapper">
+        <label for="hsn_code" class="form-label">HSN Code</label>
+        <select class="form-select" name="hsn_code" id="hsn_code_select" style="width: 100%;">
+          <option value="">Choose...</option>
+          {% if hsn_code_id and hsn_code_text %}
+          <option value="{{ hsn_code_id }}" selected="selected">{{ hsn_code_text }}</option>
+          {% endif %}
+        </select>
+
+        {% comment %} <input type="text" class="form-control" name="hsn_code">
+
+            <select class="form-select" name="hsn_code">
+              <option value="">Choose...</option>
+              {% for code in hsn %}
+              <option value="{{ code.id }}">{{ code.description }}</option>
+              {% endfor %}
+        </select> {% endcomment %} 
+      </div>
+      <!-- SAC Code (hidden initially, visible for Services) -->
+      <div class="col-md-4" id="sac-wrapper" style="display:none;">
+        <label for="sac_code" class="form-label">SAC Code</label>
+        <select class="form-select" name="sac_code" id="sac_code_select" style="width: 100%;">
+          <option value="">Choose...</option>
+          {% if sac_code_id and sac_code_text %}
+          <option value="{{ sac_code_id }}" selected="selected">{{ sac_code_text }}</option>
+          {% endif %}
+        </select>
+      </div>
+    </div>
+    <div class="row mb-2">
+      <div class="col-md-4">
+        <label for="tax_pref" class="form-label">Tax Preference<span class="text-danger">*</span></label>
+        <select class="form-select" name="tax_pref" id="tax_pref" {% if company_tax_type == 'NONE' %}disabled{% endif %}>
+          <option value="taxable" {% if item.tax_pref == "taxable" and company_tax_type != 'NONE' %}selected{% endif %}>Taxable</option>
+          <option value="non_taxable" {% if company_tax_type == 'NONE' or item.tax_pref == "non_taxable" %}selected{% endif %}>Non-Taxable</option>
+        </select>
+        <input type="hidden" id="company_tax_type_hidden" value="{{ company_tax_type|default:'' }}" />
+        {% if company_tax_type == 'NONE' %}
+          <input type="hidden" name="tax_pref" value="non_taxable">
+          <div class="form-text text-muted">Company tax type is {{ company_tax_type }}, so items are always non-taxable.</div>
+        {% endif %}
+      </div>
+      <div class="col-md-4">
+        <label for="brand" class="form-label">Brand</label>
+        <select class="form-select" name="brand" id="brand_select" style="width: 100%;">
+            <option value="">Choose...</option>
+            {% if brand_id and brand_text %}
+            <option value="{{ brand_id }}" selected="selected">{{ brand_text }}</option>
+            {% endif %}
+         </select>
+      </div>
+      <div class="col-md-4">
+        <label for="category" class="form-label">Category</label>
+        <select class="form-select" name="category" id="category_select" style="width: 100%;">
+            <option value="">Choose...</option>
+            {% if category_id and category_text %}
+            <option value="{{ category_id }}" selected="selected">{{ category_text }}</option>
+            {% endif %}
+         </select>
+      </div>
+    </div>
+    <div class="row mb-2">
+      <div class="col-md-4">
+        <label for="item_type" class="form-label">Type</label>
+        <select class="form-select" name="item_type" id="item_type_select" style="width: 100%;">
+            <option value="">Choose...</option>
+            {% if item_type_id and item_type_text %}
+            <option value="{{ item_type_id }}" selected="selected">{{ item_type_text }}</option>
+            {% endif %}
+         </select>
+      </div>
+      <div class="col-md-4">
+        <label for="brcd" class="form-label">Barcode<span class="text-danger">*</span></label>
+        <input type="text" class="form-control" name="brcd" id="brcd" value="{% if form.data.brcd %}{{ form.data.brcd }}{% elif item.barcode %}{{ item.barcode }}{% endif %}" required data-original-main-barcode="{% if form.data.brcd %}{{ form.data.brcd }}{% elif item.barcode %}{{ item.barcode }}{% endif %}">
+        <span class="barcode-status"></span>
+      </div>
+    </div>
+    
+
+    
+    <hr>
+
+    <div class="d-flex align-items-center" id="toggleUOM" aria-expanded="false">
+      
+      <h5 class="mb-0 d-inline">Units of Measure</h5> 
+      <img src="{% static 'icons/up-arrow.svg' %}" id="uom_arrow" class="ms-2" alt="arrow" style="width:16px; height:16px; cursor:pointer;">
+    </div>
+
+    <div id="uomSection" style="display:none;">
+      <table class="table table-bordered items-table uom-table mt-2">
+        <thead>
+          <tr>
+            <th style="width: 5%;">No.</th>
+            <th>UOM</th>
+            <th>Conversion factor</th>
+            <th>Barcode</th>
+            <th style="width: 5%;">&nbsp;</th>
+          </tr>
+        </thead>
+        <tbody id="uomTableBody">
+        
+        </tbody>
+      </table>
+      {% if can_create or can_edit %}
+      <button type="button" class="btn btn-secondary btn-sm add-row-btn mb-2 add-item-btn" onclick="addRow()">Add Row</button>
+      {% endif %}
+    </div>
+
+
+
+   
+    {% comment %} <div id="uomSection" style="display:none;">
+      <table class="table table-bordered uom-table mt-2">
+        <thead>
+          <tr>
+            <th style="width: 3%;"><input type="checkbox" disabled></th>
+            <th style="width: 5%;">No.</th>
+            <th>UOM</th>
+            <th>Conversion Factor</th>
+            <th style="width: 5%;">&nbsp;</th>
+          </tr>
+        </thead>
+        <tbody id="uomTableBody">
+          <!-- Existing UOM rows rendered by Django -->
+          <tr>
+            <td><input type="checkbox"></td>
+            <td><span class="edit-icon" onclick="editRow(this)">&#9998;</span></td>
+          </tr>
+          <tr>
+            <td colspan="5" class="text-center">No UOMs Added</td>
+          </tr>
+        </tbody>
+      </table>
+      <button class="btn btn-secondary btn-sm add-row-btn" onclick="addRow()">Add Row</button>
+    </div> {% endcomment %}
+<hr>
+     <div class="d-flex align-items-center" id="toggleBCD" aria-expanded="false">
+      
+      <h5 class="mb-0 d-inline">Alternative Barcodes</h5>
+      <img src="{% static 'icons/up-arrow.svg' %}" id="bcd-arrow" class="ms-2" alt="arrow" style="width:16px; height:16px; cursor:pointer;">
+    </div>
+
+    <div id="bcdSection" style="display:none;">
+      <table class="table table-bordered uom-table items-table mt-2">
+        <thead>
+          <tr>
+            <th style="width: 5%;">No.</th>
+            <th>Barcode</th>
+            <th style="width: 5%;">&nbsp;</th>
+          </tr>
+        </thead>
+        <tbody id="bcdTableBody">
+          <!-- Existing bcd rows rendered by Django -->
+          {% comment %} <tr> {% endcomment %}
+            {% comment %} <td><input type="checkbox"></td>
+            <td><span class="edit-icon" onclick="editbcdRow(this)">&#9998;</span></td> {% endcomment %}
+          {% comment %} </tr> {% endcomment %}
+          {% comment %} <tr>
+            <td colspan="5" class="text-center">No Barcodes Added</td>
+          </tr> {% endcomment %}
+        </tbody>
+      </table>
+        {% if can_create or can_edit %}
+        <button type="button" class="btn btn-secondary btn-sm add-row-btn mt-2 add-item-btn" onclick="addBcdRow()">Add Row</button>
+        {% endif %}
+    </div>
+<hr>
+    <div class="row mb-3">
+      <!-- Sales Information -->
+      <div class="col-md-6">
+        <div class="card p-3">
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" {% if form.sales_info.value or not item.pk %}checked{% endif %} id="sales_info" name="sales_info">
+            <label class="form-check-label" for="sales_info">Sales Information</label>
+          </div>
+          <div id="sales_fields">
+          <div class="mt-2">
+            <label for="selling_price" class="form-label">Selling Price<span class="text-danger">*</span></label>
+            <div class="input-group">
+              <span class="input-group-text">{{ base_currency|default:"INR" }}</span>
+              <input type="number" class="form-control" name="selling_price" value="{% if form.data.selling_price %}{{ form.data.selling_price }}{% elif item %}{{ item.selling_price }}{% endif %}" min="0.01" step="0.01" required>
+            </div>
+          </div>
+
+          <!-- New slprice Inclusive of GST Checkbox -->
+          <div class="mt-2">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox"
+                    id="taxincld_slprice"
+                    name="taxincld_slprice"
+                    
+                    {% comment %} {% if form.data.taxincld_slprice %}checked{% endif %} {% endcomment %}
+                    {% if form.data.taxincld_slprice %}
+                            checked
+                    {% elif item and item.taxincld_slprice %}
+                            checked
+                    {% endif %}>
+              <label class="form-check-label" for="taxincld_slprice">
+                Price is inclusive of Tax
+              </label>
+            </div>
+          </div>
+
+          <div class="mt-2">
+            <label for="id_sales_account" class="form-label required">Account</label>
+            {{ form.sales_account|add_class:"form-select select2"|attr:"data-placeholder:Search Sales Account..." }}
+            <div class="invalid-feedback">
+                Account field is required
+            </div>
+          </div>
+          <div class="mt-2">
+            <label for="sales_desc" class="form-label">Description</label>
+            <textarea class="form-control" name="sales_desc" >{% if form.data.sales_desc %}{{ form.data.sales_desc }}{% elif item %}{{ item.sales_desc }}{% endif %}</textarea>
+          </div>
+          
+        </div>
+        </div>
+      </div>
+      <!-- Purchase Information -->
+      <div class="col-md-6">
+        <div class="card p-3">
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" {% if form.purchase_info.value or not item.pk %}checked{% endif %} id="purchase_info" name="purchase_info">
+            <label class="form-check-label" for="purchase_info">Purchase Information</label>
+          </div>
+          <div id="purchase_fields">
+          <div class="mt-2">
+            <label class="form-label">Cost Price<span class="text-danger">*</span></label>
+            <div class="input-group">
+              <span class="input-group-text">{{ base_currency|default:"INR" }}</span>
+              <input type="number" class="form-control" name="cost_price" value="{% if form.data.cost_price %}{{ form.data.cost_price }}{% elif item %}{{ item.cost_price }}{% endif %}" min="0.01" step="0.01" required>
+            </div>
+          </div>
+
+          <!-- New costprice Inclusive of GST Checkbox -->
+          <div class="mt-2">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox"
+                    id="taxincld_costprice"
+                    name="taxincld_costprice"
+                    
+                    {% comment %} {% if form.data.taxincld_slprice %}checked{% endif %} {% endcomment %}
+                    {% if form.data.taxincld_costprice %}
+                            checked
+                    {% elif item and item.taxincld_costprice %}
+                            checked
+                    {% endif %}>
+              <label class="form-check-label" for="taxincld_costprice">
+                Price is inclusive of Tax
+              </label>
+            </div>
+          </div>
+
+
+
+
+
+
+          <div class="mt-2">
+            <label for="id_purchase_account" class="form-label required">Account</label>
+            {{ form.purchase_account|add_class:"form-select select2"|attr:"data-placeholder:Search Expense Account..." }}
+            <div class="invalid-feedback">Purchase account is required</div>
+          </div>
+          <div class="mt-2">
+            <label for="purchase_desc" class="form-label">Description</label>
+            <textarea class="form-control" name="purchase_desc">{% if form.data.purchase_desc %}{{ form.data.purchase_desc }}{% elif item %}{{ item.purchase_desc }}{% endif %}</textarea>
+          </div>
+          <div class="mt-2">
+            <label for="vendor" class="form-label">Preferred Vendor</label>
+              <select class="form-select" name="preferred_vendor" id="vendor_select" style="width: 100%;">
+              {% if vendor_id and vendor_text %}
+              <option value="{{ vendor_id }}" selected="selected">{{ vendor_text }}</option>
+              {% endif %}
+              </select>
+          </div>
+        </div>
+        </div>
+      </div>
+    </div>
+    <div id="defaultTaxField" class="row mt-4" {% if form.tax_pref.value != 'taxable' or company_tax_type == 'GST' or company_tax_type == 'SALES' %}style="display: none;"{% endif %}>
+            <hr>
+            <h5 class="mb-0">Default Tax</h5>
+            <div class="row mb-2">
+              <div class="col-md-3">
+                <label for="tax" class="form-label">Tax Rate</label>
+                <select class="form-select" name="tax" id="default_tax_select" style="width: 100%;">
+                    <option value="">Choose...</option>
+                    {% if default_tax_id and default_tax_text %}
+                    <option value="{{ default_tax_id }}" selected="selected">{{ default_tax_text }}</option>
+                    {% endif %}
+                </select>
+              </div>
+            </div>
+          </div>
+
+    <div id="salesPurchaseTaxFields" class="row mt-4" {% if form.tax_pref.value != 'taxable' or company_tax_type != 'SALES' %}style="display: none;"{% endif %}>
+            <hr>
+            <h5 class="mb-0">Sales/Purchase Tax</h5>
+            <div class="row mb-2">
+              <div class="col-md-3">
+                <label for="sales_tax" class="form-label">Sales Tax Rate</label>
+                <select class="form-select" name="sales_tax" id="sales_tax_select" style="width: 100%;">
+                    <option value="">Choose...</option>
+                    {% if sales_tax_id and sales_tax_text %}
+                    <option value="{{ sales_tax_id }}" selected="selected">{{ sales_tax_text }}</option>
+                    {% endif %}
+                </select>
+              </div>
+              <div class="col-md-3">
+                <label for="purchase_tax" class="form-label">Purchase Tax Rate</label>
+                <select class="form-select" name="purchase_tax" id="purchase_tax_select" style="width: 100%;">
+                    <option value="">Choose...</option>
+                    {% if purchase_tax_id and purchase_tax_text %}
+                    <option value="{{ purchase_tax_id }}" selected="selected">{{ purchase_tax_text }}</option>
+                    {% endif %}
+                </select>
+              </div>
+            </div>
+          </div>
+<div id="taxFields" class="row mt-4" {% if form.tax_pref.value != 'taxable' or company_tax_type != 'GST' %}style="display: none;"{% endif %}>
+            <hr>
+            <h5 class="mb-0">Tax Rates</h5>
+            <div class="row mb-2">
+              <div class="col-md-3">
+                <label for="intra_tax" class="form-label">Intra State Tax Rate</label>
+                <select class="form-select" name="intra_tax" id="intra_tax_select" style="width: 100%;">
+                    <option value="">Choose...</option>
+                    {% if intra_tax_id and intra_tax_text %}
+                    <option value="{{ intra_tax_id }}" selected="selected">{{ intra_tax_text }}</option>
+                    {% endif %}
+                </select>
+              </div>
+              <div class="col-md-3">
+                <label for="inter_tax_group" class="form-label">Inter State Tax Rate</label>
+                <select class="form-select" name="inter_tax_group" id="inter_tax_group_select" style="width: 100%;">
+                    <option value="">Choose...</option>
+                    {% if inter_tax_id and inter_tax_text %}
+                    <option value="{{ inter_tax_id }}" selected="selected">{{ inter_tax_text }}</option>
+                    {% endif %}
+                </select>
+              </div>
+            </div>
+          </div>
+    <hr>
+          
+        {% comment %} <hr> {% endcomment %}
+    {% comment %} <div class="row mb-2">
+      <div class="col-md-6 text-primary">
+        <strong>Default Tax Rates</strong>
+        <div>Intra State Tax Rate: GST18 (18%)</div>
+        <div>Inter State Tax Rate: IGST18 (18%)</div>
+      </div>
+    </div> {% endcomment %}
+      {% comment %} <hr> {% endcomment %}
+      <div class="col-md-6">
+        <div class="form-check mt-3">
+
+          <input class="form-check-input" type="checkbox" 
+          {% if form.track_inventory.value %}
+           checked
+       {% elif not form.track_inventory.value and not item.pk and form.type.value == 'goods' %}
+           checked
+       {% endif %}
+          id="track_inventory" name="track_inventory">
+          <label class="form-check-label" for="track_inventory">
+            Track Inventory for this item
+          </label>
+          <div class="text-muted" style="font-size:10px;">
+            You cannot enable/disable inventory tracking once you've created transactions for this item
+          </div>
+          
+        </div>
+        
+      </div>
+      <!-- Hidden by default -->
+        <div id="inventoryFields" class="row mb-2">
+            <div class="row mb-2">
+              <div class="col-md-4">
+                <label for="inv_acc" class="form-label">Inventory Account</label>
+                <select class="form-select" name="inv_acc" id="inv_acc_select" style="width: 100%;">
+                    {% comment %} <option value="">Choose...</option> {% endcomment %}
+                    <option value="inv_asset" {% if item.inv_acc == "inv_asset" %}selected{% endif %}>Inventory Asset</option>
+                </select>
+              </div>
+              <div class="col-md-4">
+                <label for="inv_method" class="form-label">Inventory Valuation Method</label>
+                <select class="form-select" name="inv_method">
+                  <option value="FIFO" {% if item.inv_method == "FIFO" %}selected{% endif %}>FIFO (First In First Out)</option>
+                  <option value="WAC" {% if item.inv_method == "WAC" %}selected{% endif %}>WAC (Weighted Average Costing)</option>
+                </select>
+              </div>
+              {% comment %} {% for wh in warehouses %}
+              <div class="col-md-4">
+                
+                <label for="op_stock" class="form-label">Opening Stock (Quantity)<span class="text-danger">*</span></label>
+                <input type="number" class="form-control" name="op_stock" value="{% if form.data.op_stock %}{{ form.data.op_stock }}{% elif warehouses %}{{  wh.opening_stock }}{% endif %}" required>
+               
+              </div>
+               {% endfor %} {% endcomment %}
+              
+              <div class="col-md-4">
+                  <label for="warehouse" class="form-label">Select Warehouse <span class="text-danger">*</span></label>
+                  {% comment %} <select class="form-select" name="warehouse" id="warehouse" required>
+                      <option value="">-- Select Warehouse --</option>
+                      {% for warehouse in warehouses %}
+                          <option value="{{ warehouse.id }}" {% if form.data.warehouse == warehouse.id|stringformat:"s" %}selected{% endif %}>
+                              {{ warehouse.warehouse_name }}
+                          </option>
+                      {% endfor %}
+                  </select> {% endcomment %}
+                  <select class="form-select" name="warehouse" id="warehouse_select" style="width: 100%;">
+                      <option value="">Choose...</option>
+                      {% comment %} {% if warehouse_id and warehouse_text %}
+                      <option value="{{ warehouse_id }}" selected="selected">{{ warehouse_text }}</option>
+                      {% endif %} {% endcomment %}
+                      {% if is_edit %}
+                          {% for wh in warehouses %}
+                              <option value="{{ wh.id }}" selected>{{ wh.name }}</option>
+                          {% endfor %}
+                      {% endif %}
+                  </select>
+              </div>
+               {% if is_edit %}
+                  {% if warehouses %}
+                        {% for wh in warehouses %}
+                            <div class="col-md-4">
+                                <label class="form-label">Opening Stock (Quantity)<span class="text-danger">*</span></label>
+                                <input type="number" id="op_stock_input"  class="form-control" name="op_stock_{{ wh.id }}" value="{{ wh.opening_stock }}" required step="0.01" >
+                            </div>
+
+                            {% comment %} # -------min_stock field aded by sree on 05-03-2026------ {% endcomment %}
+                            <div class="col-md-4">
+                              <label for="min_stock" class="form-label">Minimum Stock Level</label>
+                              <input type="number" class="form-control" name="min_stock" id="min_stock"
+                                    value="{% if form.data.min_stock %}{{ form.data.min_stock }}{% elif item %}{{ item.min_stock }}{% endif %}"
+                                    step="0.01" min="0"
+                                    placeholder="e.g. 10">
+                              
+                            </div>
+                        {% endfor %}
+
+                  {% else %}
+                    <div class="col-md-4">
+                          <label class="form-label">Opening Stock (Quantity)<span class="text-danger">*</span></label>
+                          <input type="number" class="form-control" id="op_stock" name="op_stock" value="" required step="0.01" >
+                      </div>
+
+                      <div class="col-md-4">
+                              <label for="min_stock" class="form-label">Minimum Stock Level</label>
+                              <input type="number" class="form-control" name="min_stock" id="min_stock_input"
+                                    value=""
+                                    step="0.01" min="0"
+                                    placeholder="e.g. 10">
+                              
+                        </div>
+                  {% endif %}
+
+                {% else %}
+                    <div class="col-md-4">
+                        <label class="form-label">Opening Stock (Quantity)<span class="text-danger">*</span></label>
+                        <input type="number" class="form-control" name="op_stock" value="" required step="0.01" >
+                    </div>
+                     <div class="col-md-4">
+                              <label for="min_stock" class="form-label">Minimum Stock Level</label>
+                              <input type="number" class="form-control" name="min_stock" id="min_stock_input"
+                                    value=""
+                                    step="0.01" min="0"
+                                    placeholder="e.g. 10">
+                              
+                            </div>
+
+              {% endif %}
+
+
+              <div class="col-md-4">
+                <label for="op_rate" class="form-label">Opening Stock Rate per Unit<span class="text-danger">*</span></label>
+                <input type="number" class="form-control" name="op_rate" value="{% if form.data.op_rate %}{{ form.data.op_rate }}{% elif item %}{{ item.op_rate }}{% endif %}" required step="0.01">
+              </div>
+
+              <div class="col-md-4">
+                <label for="opening_stock_equity_account" class="form-label">Opening Stock Equity Account</label>
+                {{ form.opening_stock_equity_account }}
+              </div>
+            </div>
+        </div>
+      </div>
+    <div class="mt-3 save-btns">
+    {% if item and item.pk %}
+      {% if can_edit %}
+        <button type="submit" class="btn btn-primary" id="saveBtn">Update</button>
+      {% else %}
+        <div class="alert alert-warning">You don't have permission to edit this item.</div>
+      {% endif %}
+    {% else %}
+      {% if can_create %}
+        <button type="submit" class="btn btn-primary" id="saveBtn">Save</button>
+      {% else %}
+        <div class="alert alert-warning">You don't have permission to create items.</div>
+      {% endif %}
+    {% endif %}
+    <a href="{% url 'items' %}" class="btn btn-secondary">Cancel</a>
+    {% comment %} <button type="button" class="btn btn-secondary">Cancel</button> {% endcomment %}
+    </div>
+</div>
+  </form>
+  
+
+
+<!-- Modal -->
+{% comment %} <div class="modal fade" id="uomCreateModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form id="uomCreateForm" method="post">
+        <div class="modal-header">
+          <h5 class="modal-title">Create New Unit</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <!-- Error messages here -->
+          <div class="mb-3">
+            
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="submit" class="btn btn-primary">Create</button>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>  {% endcomment %}
+
+<!-- Modal -->
+<div class="modal fade" id="uomCreateModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content custom-modal-content">
+      <form id="uomCreateForm" method="post" autocomplete="off">
+        <div class="modal-header border-0 pb-1">
+          <h5 class="modal-title fw-semibold">New UOM</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+         
+        </div>
+        <div class="modal-footer border-0 pt-1 d-flex">
+          {% comment %} <button type="button" class="btn custom-outline-btn">Edit Full Form</button> {% endcomment %}
+          <button type="submit" class="btn btn-primary">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal -->
+<div class="modal fade" id="unitCreateModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content custom-modal-content">
+      <form id="unitCreateForm" method="post" autocomplete="off">
+        <div class="modal-header border-0 pb-1">
+          <h5 class="modal-title fw-semibold">New Unit</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+         
+        </div>
+        <div class="modal-footer border-0 pt-1 d-flex">
+          {% comment %} <button type="button" class="btn custom-outline-btn">Edit Full Form</button> {% endcomment %}
+          <button type="submit" class="btn btn-primary">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="brandCreateModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content custom-modal-content">
+      <form id="brandCreateForm" method="post" autocomplete="off">
+        <div class="modal-header border-0 pb-1">
+          <h5 class="modal-title fw-semibold">New Brand</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+         
+        </div>
+        <div class="modal-footer border-0 pt-1 d-flex">
+          {% comment %} <button type="button" class="btn custom-outline-btn">Edit Full Form</button> {% endcomment %}
+          <button type="submit" class="btn btn-primary">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="categoryCreateModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content custom-modal-content">
+      <form id="categoryCreateForm" method="post" autocomplete="off">
+        <div class="modal-header border-0 pb-1">
+          <h5 class="modal-title fw-semibold">New Category</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+        </div>
+        <div class="modal-footer border-0 pt-1 d-flex">
+          <button type="submit" class="btn btn-primary">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="itemTypeCreateModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content custom-modal-content">
+      <form id="itemTypeCreateForm" method="post" autocomplete="off">
+        <div class="modal-header border-0 pb-1">
+          <h5 class="modal-title fw-semibold">New Type</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+        </div>
+        <div class="modal-footer border-0 pt-1 d-flex">
+          <button type="submit" class="btn btn-primary">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="warehouseCreateModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog ">
+    <div class="modal-content custom-modal-content">
+      <form id="warehouseCreateForm" method="post" autocomplete="off">
+        <div class="modal-header border-0 pb-1">
+          <h5 class="modal-title fw-semibold">New Warehouse</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+         
+        </div>
+        <div class="modal-footer border-0 pt-1 d-flex">
+          {% comment %} <button type="button" class="btn custom-outline-btn">Edit Full Form</button> {% endcomment %}
+          <button type="submit" class="btn btn-primary">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Vendor creation modal (AJAX loads the full form markup into .modal-body) -->
+<div class="modal fade" id="vendorCreateModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog ">
+    <div class="modal-content custom-modal-content">
+      <div class="modal-header border-0 pb-1">
+        <h5 class="modal-title fw-semibold">New Vendor</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <!-- form HTML loaded here via AJAX from /Items/vendor_createform/ -->
+      </div>
+      <!-- Footer buttons are provided by the AJAX-loaded vendor form; no duplicate Save here -->
+    </div>
+  </div>
+</div>
+
+<script src="{% static 'Items/js/items.js' %}"></script>
+<script>
+
+  const salesInfoCheckbox = document.getElementById("sales_info");
+  const salesFields = document.querySelectorAll("#sales_fields input, #sales_fields select, #sales_fields textarea");
+
+  function toggleSalesFields() {
+    salesFields.forEach(field => {
+      field.disabled = !salesInfoCheckbox.checked;
+    });
+  }
+
+  // Run once on page load
+  toggleSalesFields();
+
+  // Add event listener
+  salesInfoCheckbox.addEventListener("change", toggleSalesFields);
+
+
+  const purchaseInfoCheckbox = document.getElementById("purchase_info");
+  const purchaseFields = document.querySelectorAll("#purchase_fields input, #purchase_fields select, #purchase_fields textarea");
+
+  function togglePurchaseFields() {
+    purchaseFields.forEach(field => {
+      field.disabled = !purchaseInfoCheckbox.checked;
+    });
+  }
+
+  // Run once on page load
+  togglePurchaseFields();
+
+  // Add event listener
+  purchaseInfoCheckbox.addEventListener("change", togglePurchaseFields);
+
+    const radios = document.querySelectorAll('input[name="type"]');
+    const trackInventory = document.getElementById("track_inventory");
+    const inventoryFields = document.getElementById("inventoryFields");
+  const hsnWrapper = document.getElementById("hsn-wrapper");
+  const sacWrapper = document.getElementById("sac-wrapper");
+
+    function setInventoryFieldsVisibility(show) {
+      if (!inventoryFields) return;
+      inventoryFields.style.display = show ? "flex" : "none";
+      inventoryFields.querySelectorAll('input, select, textarea').forEach(field => {
+        field.disabled = !show;
+      });
+    }
+
+  {% comment %} radios.forEach(radio => {
+    radio.addEventListener("change", function() {
+      if (this.value === "service") {
+        trackInventory.disabled = true;
+        trackInventory.checked = false; // optional: uncheck if service
+        inventoryFields.style.display = "none";
+
+         // Switch HSN -> SAC
+      hsnWrapper.style.display = "none";
+      sacWrapper.style.display = "block";
+      } else {
+        trackInventory.disabled = false;
+        trackInventory.checked = true; 
+        inventoryFields.style.display = "block";
+
+         // Switch SAC -> HSN
+      sacWrapper.style.display = "none";
+      hsnWrapper.style.display = "block";
+      }
+    });
+  }); {% endcomment %}
+    function toggleFieldsBasedOnType() {
+    const selectedRadio = Array.from(radios).find(radio => radio.checked);
+    if (selectedRadio && selectedRadio.value === "service") {
+      trackInventory.disabled = true;
+      trackInventory.checked = false; // optional: uncheck if service
+
+      // Show SAC, hide HSN
+      sacWrapper.style.display = "block";
+      hsnWrapper.style.display = "none";
+    } else {
+      trackInventory.disabled = false;
+      
+      //trackInventory.checked = true;
+
+      // Show HSN, hide SAC
+      hsnWrapper.style.display = "block";
+      sacWrapper.style.display = "none";
+    }
+    setInventoryFieldsVisibility(trackInventory.checked);
+  }
+// On page load
+document.addEventListener("DOMContentLoaded", function() {
+  toggleFieldsBasedOnType();
+
+    radios.forEach(radio => {
+      radio.addEventListener("change", toggleFieldsBasedOnType);
+    });
+    if (trackInventory) {
+      trackInventory.addEventListener("change", () => setInventoryFieldsVisibility(trackInventory.checked));
+    }
+   var prefilledUoms = parseEmbeddedJsonArray('{{ prefilled_uom_data|default:'[]'|escapejs }}');
+  if (prefilledUoms.length > 0) {
+    uomSection.style.display = 'block';
+    uom_arrow.src = "{% static 'icons/down-arrow.svg' %}";
+    uom_arrow.classList.add('expanded');
+    uom_arrow.classList.remove('collapsed');
+
+    for (let item of prefilledUoms) {
+      addRowWithData(item.uom,item.uom_name,item.conversion_factor, item.barcode);
+    }
+  } else {
+    addNoUomRow();
+  }
+
+   var prefilledBarcodes = parseEmbeddedJsonArray('{{ prefilled_barcode_data|default:'[]'|escapejs }}');
+  const bcdSection = document.getElementById('bcdSection');
+  const bcd_arrow = document.getElementById('bcd-arrow');
+  const bcdTableBody = document.getElementById('bcdTableBody');
+
+  if (prefilledBarcodes.length > 0) {
+    bcdSection.style.display = 'block';
+    bcd_arrow.src = "{% static 'icons/down-arrow.svg' %}";
+    bcd_arrow.classList.add('expanded');
+    bcd_arrow.classList.remove('collapsed');
+
+    // Clear existing rows if any
+    bcdTableBody.innerHTML = '';
+
+    // Add prefilled rows
+    prefilledBarcodes.forEach(barcode => {
+      addBcdRowWithData(barcode);
+    });
+  } else {
+    addNoBcdRow();
+  }
+});
+
+
+  function applyTaxVisibility() {
+    const taxPref = document.getElementById("tax_pref");
+    const taxFields = document.getElementById("taxFields");
+    const defaultTaxField = document.getElementById("defaultTaxField");
+    const salesPurchaseTaxFields = document.getElementById("salesPurchaseTaxFields");
+    if (!taxPref) return;
+
+    // Debug logging to help trace why GST fields may not appear
+    let resolvedCompanyTaxType = String(window.companyTaxType || '').trim();
+    if (!resolvedCompanyTaxType) {
+      const hidden = document.getElementById('company_tax_type_hidden');
+      if (hidden) resolvedCompanyTaxType = String(hidden.value || '').trim();
+    }
+    resolvedCompanyTaxType = resolvedCompanyTaxType.toUpperCase();
+    console.log('applyTaxVisibility: taxPref.value=', taxPref.value, 'companyTaxType=', resolvedCompanyTaxType);
+
+    if (taxPref.value !== "taxable") {
+      console.log('applyTaxVisibility: taxPref is not taxable — hiding both tax sections');
+      if (taxFields) taxFields.style.display = "none";
+      if (defaultTaxField) defaultTaxField.style.display = "none";
+      if (salesPurchaseTaxFields) salesPurchaseTaxFields.style.display = "none";
+      return;
+    }
+
+    const companyTaxType = resolvedCompanyTaxType;
+    const isGST = companyTaxType === 'GST';
+    const isSalesTax = companyTaxType === 'SALES';
+    console.log('applyTaxVisibility: isGST=', isGST);
+
+    if (isGST) {
+      console.log('applyTaxVisibility: showing GST taxFields, hiding defaultTaxField');
+      if (taxFields) taxFields.style.display = "block";
+      if (defaultTaxField) defaultTaxField.style.display = "none";
+      if (salesPurchaseTaxFields) salesPurchaseTaxFields.style.display = "none";
+      return;
+    }
+
+    if (isSalesTax) {
+      console.log('applyTaxVisibility: showing salesPurchaseTaxFields, hiding others');
+      if (salesPurchaseTaxFields) salesPurchaseTaxFields.style.display = "block";
+      if (defaultTaxField) defaultTaxField.style.display = "none";
+      if (taxFields) taxFields.style.display = "none";
+      return;
+    }
+
+    console.log('applyTaxVisibility: showing defaultTaxField, hiding GST taxFields');
+    if (defaultTaxField) defaultTaxField.style.display = "block";
+    if (taxFields) taxFields.style.display = "none";
+    if (salesPurchaseTaxFields) salesPurchaseTaxFields.style.display = "none";
+  }
+
+  document.getElementById("tax_pref").addEventListener("change", function() {
+    applyTaxVisibility();
+  });
+
+  // Run once on page load
+  applyTaxVisibility();
+
+  const uom_arrow = document.getElementById('uom_arrow');
+const bcd_arrow = document.getElementById('bcd-arrow');
+
+const uomSection = document.getElementById('uomSection');
+const bcdSection = document.getElementById('bcdSection');
+
+const toggleUOM = document.getElementById('toggleUOM');
+const toggleBCD = document.getElementById('toggleBCD');
+
+{% comment %} var prefilledUoms = JSON.parse('{{ prefilled_uom_data|escapejs }}');
+for (let item of prefilledUoms) {
+    addRowWithData(item.uom, item.conversion_factor, item.barcode);
+} {% endcomment %}
+
+
+function addRowWithData(uomValue,uomName,conversionValue, barcodeValue) {
+  const tbody = document.getElementById('uomTableBody');
+
+  // Remove "No Rows Added" row if exists
+  const noRow = tbody.querySelector('td[colspan]');
+  if (noRow) {
+    noRow.parentElement.remove();
+  }
+
+  const dataRows = tbody.querySelectorAll('tr');
+  const currentRows = dataRows.length + 1;
+
+  const newRow = document.createElement('tr');
+
+  // Serial number cell
+  const tdNo = document.createElement('td');
+  tdNo.textContent = currentRows;
+  newRow.appendChild(tdNo);
+
+  // UOM input
+  // const tdUom = document.createElement('td');
+  // const inputUom = document.createElement('input');
+  // inputUom.type = 'text';
+  // inputUom.name = 'uom[]';
+  // inputUom.className = 'form-control form-control-sm';
+  // inputUom.value = uomValue || '';
+  // tdUom.appendChild(inputUom);
+  // newRow.appendChild(tdUom);
+
+  const tdUom = document.createElement('td');
+  const selectUom = document.createElement('select');
+  selectUom.name = 'uom[]';
+  selectUom.className = 'form-control form-control-sm uom_select';
+
+  // Add option for prefilled value
+  if (uomValue && uomName) {
+    const option = document.createElement('option');
+    option.value = uomValue;  // id of uom_name
+    option.textContent = uomName;
+    option.selected = true;
+    selectUom.appendChild(option);
+  }
+  tdUom.appendChild(selectUom);
+  newRow.appendChild(tdUom);
+  tbody.appendChild(newRow);
+
+    // Initialize Select2 for the select box with ajax etc.
+  $(selectUom).select2({
+    placeholder: '',
+    allowClear: true,
+    minimumInputLength: 1,
+    ajax: {
+      url: '/Items/uom_search/',
+      dataType: 'json',
+      delay: 250,
+      data: function(params) {
+        return { q: params.term };
+      },
+      processResults: function(data) {
+        let results = data.map(function(item) {
+          return { id: item.id, text: item.name };
+        });
+        results.push({
+          id: 'new',
+          text: '+ New',
+          isNew: true
+        });
+        return { results: results };
+      },
+      cache: true
+    }
+  });
+
+  $(selectUom).on('select2:selecting', function(e) {
+  var data = (e.params && e.params.args && e.params.args.data) ? e.params.args.data : e.params.data;
+  if (data && data.isNew) {
+    e.preventDefault();
+    $.get('/Items/uom_createform/', function(formHtml) {
+      $('#uomCreateModal .modal-body').html(formHtml);
+      $('#uomCreateModal').modal('show');
+      // Corrected variable here
+      $('#uomCreateModal').find('input[name="name"]').val(lastUomSearchTerm);
+    });
+    $(this).val(null).trigger('change');
+  }
+});
+  // Conversion factor input
+  const tdInput = document.createElement('td');
+  const input = document.createElement('input');
+  input.type = 'number';
+  input.name = 'conversion_factor[]';
+  input.className = 'form-control form-control-sm';
+  input.value = conversionValue || '';
+  tdInput.appendChild(input);
+  tdInput.appendChild(document.createElement('span')).className = 'barcode-status';
+  newRow.appendChild(tdInput);
+
+  // Barcode input
+  const tdBarcode = document.createElement('td');
+  const inputBarcode = document.createElement('input');
+  inputBarcode.type = 'text';
+  inputBarcode.name = 'barcode[]';
+  inputBarcode.className = 'form-control form-control-sm';
+  inputBarcode.value = barcodeValue || '';
+  // Set original barcode as data attribute
+  inputBarcode.dataset.originalSubBarcode = barcodeValue || '';
+  tdBarcode.appendChild(inputBarcode);
+  //tdBarcode.appendChild(document.createElement('span')).className = 'barcode-status';
+  const statusSpan = document.createElement('span');
+  statusSpan.className = 'barcode-status';
+  tdBarcode.appendChild(inputBarcode);
+  tdBarcode.appendChild(statusSpan);
+  newRow.appendChild(tdBarcode);
+
+
+  // Bind input event for uniqueness check
+  inputBarcode.addEventListener('input', () => checkForDuplicatesAndUpdateUI(inputBarcode));
+
+  // Delete button
+  const tdActions = document.createElement('td');
+  tdActions.style.width = '5%';
+  const btnDelete = document.createElement('button');
+  btnDelete.type = 'button';
+  btnDelete.className = 'btn btn-danger btn-sm';
+  btnDelete.textContent = '×';
+  btnDelete.title = 'Remove row';
+  btnDelete.onclick = () => {
+    newRow.remove();
+    updateUomSerialNumbers();
+    if (tbody.querySelectorAll('tr').length === 0) {
+      addNoUomRow();
+    }
+  };
+  tdActions.appendChild(btnDelete);
+  newRow.appendChild(tdActions);
+
+  tbody.appendChild(newRow);
+}
+
+
+toggleUOM.addEventListener('click', () => {
+  console.log("toggleUOM clicked");
+  if (uomSection.style.display === 'none') {
+    uomSection.style.display = 'block';
+    uom_arrow.classList.remove('collapsed');
+    uom_arrow.classList.add('expanded');
+    //arrow.innerHTML = ' v';
+    uom_arrow.src = "{% static 'icons/down-arrow.svg' %}";
+    if (uomTableBody.querySelectorAll('tr').length === 0) {
+      addRow();
+    }
+  } else {
+    uomSection.style.display = 'none';
+    uom_arrow.classList.remove('expanded');
+    uom_arrow.classList.add('collapsed');
+    //arrow.innerHTML = ' ^';
+    uom_arrow.src = "{% static 'icons/up-arrow.svg' %}";
+    //uomTableBody.innerHTML = '';
+    //addNoUomRow();
+  }
+});
+
+toggleBCD.addEventListener('click', () => {
+  if (bcdSection.style.display === 'none') {
+    bcdSection.style.display = 'block';
+    bcd_arrow.classList.remove('collapsed');
+    bcd_arrow.classList.add('expanded');
+    //bcd_arrow.innerHTML = ' v';
+    bcd_arrow.src = "{% static 'icons/down-arrow.svg' %}";
+    if (bcdTableBody.querySelectorAll('tr').length === 0) {
+    addBcdRow();
+    }
+  } else {
+    bcdSection.style.display = 'none';
+    bcd_arrow.classList.remove('expanded');
+    bcd_arrow.classList.add('collapsed');
+    //bcd_arrow.innerHTML = ' ^';
+    bcd_arrow.src = "{% static 'icons/up-arrow.svg' %}";
+    // bcdTableBody.innerHTML = '';
+    //addNoBcdRow(); // show "No Barcodes Added"
+  }
+});
+
+{% comment %} function addRow() {
+  const tbody = document.getElementById('uomTableBody');
+  const rowCount = tbody.rows.length;
+  // Remove 'No UOMs Added' row if exists
+  if(rowCount === 1 && tbody.rows[0].cells.length === 1) {
+    tbody.innerHTML = '';
+  }
+  const tr = document.createElement('tr');
+
+  tr.innerHTML = `
+    <td><input type="checkbox"></td>
+    <td>${rowCount + 1}</td>
+    <td><input type="text" class="form-control form-control-sm" name="uom_name"></td>
+    <td><input type="text" class="form-control form-control-sm" name="conversion_factor" value="0.000"></td>
+    <td><span class="edit-icon" onclick="editRow(this)">&#9998;</span></td>
+  `;
+  tbody.appendChild(tr);
+} {% endcomment %}
+
+function addRow() {
+  const tbody = document.getElementById('uomTableBody');
+
+  // Remove "No Rows Added" row if exists
+  const noRow = tbody.querySelector('td[colspan]');
+  if (noRow) {
+    noRow.parentElement.remove();
+  }
+
+  // Re-check current data rows
+  const dataRows = tbody.querySelectorAll('tr');
+  const currentRows = dataRows.length + 1;
+
+  // Create new row
+  const newRow = document.createElement('tr');
+
+  // 1. Serial number cell
+  const tdNo = document.createElement('td');
+  tdNo.textContent = currentRows;
+  newRow.appendChild(tdNo);
+
+  // 2. UOM select box cell
+ 
+  // const tdUom = document.createElement('td');
+  // const inputUom = document.createElement('input');
+  // inputUom.type = 'text';
+  // inputUom.name = 'uom[]';
+  // inputUom.className = 'form-control form-control-sm';
+  // tdUom.appendChild(inputUom);
+  // newRow.appendChild(tdUom);
+  const tdUom = document.createElement('td');
+  const selectUom = document.createElement('select');
+  selectUom.name = 'uom[]';
+  selectUom.className = 'form-control form-control-sm uom_select';
+  tdUom.appendChild(selectUom);
+  newRow.appendChild(tdUom);
+  tbody.appendChild(newRow);
+
+  let lastUomSearchTerm = '';
+
+$(selectUom).select2({
+  placeholder: '',
+  allowClear: true,
+  minimumInputLength: 1,
+  ajax: {
+    url: '/Items/uom_search/',
+    dataType: 'json',
+    delay: 250,
+    data: function(params) {
+      lastUomSearchTerm = params.term || '';
+      return { q: params.term };
+    },
+    processResults: function(data) {
+      let results = data.map(function(item) {
+        return { id: item.id, text: item.name };
+      });
+      results.push({
+        id: 'new',
+        text: '+ New',
+        isNew: true
+      });
+      return { results: results };
+    },
+    cache: true
+  }
+});
+
+$(selectUom).on('select2:selecting', function(e) {
+  var data = (e.params && e.params.args && e.params.args.data) ? e.params.args.data : e.params.data;
+  if (data && data.isNew) {
+    e.preventDefault();
+    $.get('/Items/uom_createform/', function(formHtml) {
+      $('#uomCreateModal .modal-body').html(formHtml);
+      $('#uomCreateModal').modal('show');
+      // Corrected variable here
+      $('#uomCreateModal').find('input[name="name"]').val(lastUomSearchTerm);
+    });
+    $(this).val(null).trigger('change');
+  }
+});
+  
+
+
+  // fetch('/Items/get-uoms/')
+  //   .then(response => response.json())
+  //   .then(data => {
+  //     data.forEach(unit => {
+  //       const option = document.createElement('option');
+  //       option.value = unit.id;
+  //       option.text = unit.unit_name;
+  //       selectUom.appendChild(option);
+  //     });
+  //   });
+
+  // tdUom.appendChild(selectUom);
+  // newRow.appendChild(tdUom);
+
+  // 3. Number input box cell
+  const tdInput = document.createElement('td');
+  const input = document.createElement('input');
+  input.type = 'number';
+  input.name = 'conversion_factor[]';
+  input.className = 'form-control form-control-sm';
+  tdInput.appendChild(input);
+  newRow.appendChild(tdInput);
+
+  // 4. Barcode input cell
+  const tdBarcode = document.createElement('td');
+  const inputBarcode = document.createElement('input');
+  inputBarcode.type = 'text';
+  inputBarcode.name = 'barcode[]';
+  inputBarcode.className = 'form-control form-control-sm';
+  // Set original barcode as data attribute
+  //inputBarcode.dataset.originalBarcode = barcodeValue || '';
+  tdBarcode.appendChild(inputBarcode);
+  //tdBarcode.appendChild(document.createElement('span')).className = 'barcode-status';
+  const statusSpan = document.createElement('span');
+  statusSpan.className = 'barcode-status';
+  tdBarcode.appendChild(inputBarcode);
+  tdBarcode.appendChild(statusSpan);
+  newRow.appendChild(tdBarcode);
+
+    // Bind input event for uniqueness check
+  inputBarcode.addEventListener('input', () => checkForDuplicatesAndUpdateUI(inputBarcode));
+
+  // 5. Delete button cell
+  const tdActions = document.createElement('td');
+  tdActions.style.width = '5%';
+  const btnDelete = document.createElement('button');
+  btnDelete.type = 'button';
+  btnDelete.className = 'btn btn-danger btn-sm';
+  btnDelete.textContent = '×';
+  btnDelete.title = 'Remove row';
+  btnDelete.onclick = () => {
+    newRow.remove();
+    updateUomSerialNumbers();
+    if (tbody.querySelectorAll('tr').length === 0) {
+      addNoUomRow();
+    }
+  };
+  tdActions.appendChild(btnDelete);
+  newRow.appendChild(tdActions);
+
+  tbody.appendChild(newRow);
+
+  // Initialize Select2 for this new select
+  
+}
+
+// Initialize Select2 for sales_account and purchase_account to match expense 'paid_through' behaviour
+$(document).ready(function() {
+  ['#id_sales_account', '#id_purchase_account'].forEach(function(selector) {
+    var $sel = $(selector);
+    if (!$sel.length) return;
+    try {
+      if ($sel.hasClass('select2-hidden-accessible')) $sel.select2('destroy');
+    } catch(e) {}
+
+    $sel.select2({
+      width: '100%',
+      minimumResultsForSearch: 0,
+      placeholder: $sel.data('placeholder') || ($sel.is('#id_sales_account') ? 'Search Sales Account...' : 'Select an expense account'),
+      allowClear: true,
+      dropdownParent: $sel.closest('.col-md-6, .col-md-4, .col-md-3, .card-body'),
+      matcher: function(params, data) {
+        // Default behaviour: return all when no term
+        if ($.trim(params.term) === '') return data;
+
+        // attach a per-search seen map on params so different matcher calls
+        // during the same search can deduplicate by visible text
+        if (!params._seen) params._seen = {};
+
+        var term = params.term.toLowerCase();
+
+        // If this is a group (has children), filter its children and
+        // return a modified group object containing only the first matching child
+        if (data.children && data.children.length > 0) {
+          var filtered = [];
+          for (var i = 0; i < data.children.length; i++) {
+            var child = data.children[i];
+            if (!child || !child.text) continue;
+            var txt = child.text.toLowerCase();
+            if (txt.indexOf(term) !== -1) {
+              if (!params._seen[txt]) {
+                params._seen[txt] = true;
+                filtered.push(child);
+              }
+            }
+          }
+          if (filtered.length) {
+            var modified = $.extend({}, data, true);
+            modified.children = filtered;
+            return modified;
+          }
+          return null;
+        }
+
+        // Otherwise it's a single option — do substring match (case-insensitive)
+        if (data.text && data.text.toLowerCase().indexOf(term) !== -1) {
+          var key = data.text.toLowerCase();
+          if (params._seen[key]) {
+            return null;
+          }
+          params._seen[key] = true;
+          return data;
+        }
+        return null;
+      }
+    });
+  });
+});
+
+// Helper: update SI numbers
+function updateUomSerialNumbers() {
+  const tbody = document.getElementById('uomTableBody');
+  const rows = tbody.querySelectorAll('tr');
+  rows.forEach((row, index) => {
+    row.cells[0].textContent = index + 1;
+  });
+}
+
+// Helper: show "No Rows Added"
+function addNoUomRow() {
+  const tbody = document.getElementById('uomTableBody');
+  const noRow = document.createElement('tr');
+  const td = document.createElement('td');
+  td.colSpan = 4;
+  td.className = 'text-center';
+  td.textContent = 'No Rows Added';
+  noRow.appendChild(td);
+  tbody.appendChild(noRow);
+}
+
+
+
+
+
+// Helper to update SI numbers after deletion
+function updateUomSerialNumbers() {
+  const tbody = document.getElementById('uomTableBody');
+  const rows = tbody.querySelectorAll('tr');
+  rows.forEach((row, index) => {
+    row.cells[0].textContent = index + 1;
+  });
+}
+
+// Helper to show "No Rows Added"
+function addNoUomRow() {
+  const tbody = document.getElementById('uomTableBody');
+  const noRow = document.createElement('tr');
+  const td = document.createElement('td');
+  td.colSpan = 4;
+  td.className = 'text-center';
+  td.textContent = 'No Rows Added';
+  noRow.appendChild(td);
+  tbody.appendChild(noRow);
+}
+
+
+function addBcdRow() {
+  const tbody = document.getElementById('bcdTableBody');
+
+  // Remove "No Barcodes Added" row if exists
+  const noBcdRow = tbody.querySelector('td[colspan="5"]');
+  if (noBcdRow) {
+    noBcdRow.parentElement.remove();
+  }
+
+  // Re-check current data rows
+  const dataRows = tbody.querySelectorAll('tr');
+  const currentRows = dataRows.length + 1;
+
+  // Create new row
+  const newRow = document.createElement('tr');
+
+  // Serial number cell
+  const tdNo = document.createElement('td');
+  tdNo.textContent = currentRows;
+  newRow.appendChild(tdNo);
+
+  // Barcode input cell
+  const tdInput = document.createElement('td');
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.name = 'barcodes[]';
+  input.className = 'form-control form-control-sm';
+  // Set original barcode as data attribute
+  //input.dataset.originalBarcode = barcodeValue || '';
+  //console.log('Original barcode for input:', currentInput.dataset.originalBarcode);
+  tdInput.appendChild(input);
+  tdInput.appendChild(document.createElement('span')).className = 'barcode-status';
+  newRow.appendChild(tdInput);
+
+    // Bind input event for uniqueness check
+  input.addEventListener('input', () => checkForDuplicatesAndUpdateUI(input));
+  // Actions cell (delete button)
+  const tdActions = document.createElement('td');
+  tdActions.style.width = '5%';
+  const btnDelete = document.createElement('button');
+  btnDelete.type = 'button';
+  btnDelete.className = 'btn btn-danger btn-sm';
+  btnDelete.textContent = '×';
+  btnDelete.title = 'Remove row';
+  btnDelete.onclick = () => {
+    newRow.remove();
+    updateBcdSerialNumbers();
+    if (tbody.querySelectorAll('tr').length === 0) {
+      addNoBcdRow();
+    }
+  };
+  tdActions.appendChild(btnDelete);
+  newRow.appendChild(tdActions);
+
+  tbody.appendChild(newRow);
+}
+
+
+function addBcdRowWithData(barcodeValue) {
+  const tbody = document.getElementById('bcdTableBody');
+
+  // Remove "No Barcodes Added" row if present
+  const noBcdRow = tbody.querySelector('td[colspan="5"]');
+  if (noBcdRow) {
+    noBcdRow.parentElement.remove();
+  }
+
+  const dataRows = tbody.querySelectorAll('tr');
+  const currentRows = dataRows.length + 1;
+
+  const newRow = document.createElement('tr');
+
+  // Serial number cell
+  const tdNo = document.createElement('td');
+  tdNo.textContent = currentRows;
+  newRow.appendChild(tdNo);
+
+  // Barcode input cell
+  const tdInput = document.createElement('td');
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.name = 'barcodes[]';
+  input.className = 'form-control form-control-sm';
+  input.value = barcodeValue || '';
+  // Set original barcode as data attribute
+  input.dataset.originalAltBarcode = barcodeValue || '';
+  //console.log('Original barcode for input:', currentInput.dataset.originalBarcode);
+  tdInput.appendChild(input);
+  tdInput.appendChild(document.createElement('span')).className = 'barcode-status';
+  newRow.appendChild(tdInput);
+
+  input.addEventListener('input', () => checkForDuplicatesAndUpdateUI(input));
+
+  // Delete button cell
+  const tdActions = document.createElement('td');
+  tdActions.style.width = '5%';
+  const btnDelete = document.createElement('button');
+  btnDelete.type = 'button';
+  btnDelete.className = 'btn btn-danger btn-sm';
+  btnDelete.textContent = '×';
+  btnDelete.title = 'Remove row';
+  btnDelete.onclick = () => {
+    newRow.remove();
+    updateBcdSerialNumbers();
+    if (tbody.querySelectorAll('tr').length === 0) {
+      addNoBcdRow();
+    }
+  };
+  tdActions.appendChild(btnDelete);
+  newRow.appendChild(tdActions);
+
+  tbody.appendChild(newRow);
+}
+
+function updateBcdSerialNumbers() {
+  const rows = document.querySelectorAll('#bcdTableBody tr');
+  rows.forEach((row, index) => {
+    const firstCell = row.querySelector('td');
+    if (firstCell) firstCell.textContent = index + 1;
+  });
+}
+
+function addNoBcdRow() {
+  const tbody = document.getElementById('bcdTableBody');
+  const noRow = document.createElement('tr');
+  const noCell = document.createElement('td');
+  noCell.colSpan = 5;
+  noCell.className = 'text-center';
+  noCell.textContent = 'No Barcodes Added';
+  noRow.appendChild(noCell);
+  tbody.appendChild(noRow);
+}
+
+
+{% comment %} function addBcdRow() {
+  const tbody = document.getElementById('bcdTableBody');
+  const rowCount = tbody.rows.length;
+  // Remove 'No UOMs Added' row if exists
+  if(rowCount === 1 && tbody.rows[0].cells.length === 1) {
+    tbody.innerHTML = '';
+  }
+  const tr = document.createElement('tr');
+
+  tr.innerHTML = `
+    <td><input type="checkbox"></td>
+    <td>${rowCount + 1}</td>
+    <td><input type="text" class="form-control form-control-sm" name="item_brcd"></td>
+
+  `;
+  tbody.appendChild(tr);
+} {% endcomment %}
+
+function editRow(el) {
+  const td = el.parentElement;
+  const tr = td.parentElement;
+  // Simple toggle edit, replace text with input fields to edit
+  if(td.querySelector('input')) return; // Already editing
+
+  const uomTd = tr.cells[2];
+  const convTd = tr.cells;
+
+  const uomText = uomTd.innerText;
+  const convText = convTd.innerText;
+
+  uomTd.innerHTML = `<input type="text" class="form-control form-control-sm" value="${uomText}" name="uom_name">`;
+  convTd.innerHTML = `<input type="text" class="form-control form-control-sm" value="${convText}" name="conversion_factor">`;
+
+  // Change edit icon to save
+  el.innerHTML = '&#10003;';
+  el.onclick = () => saveRow(el);
+}
+
+function saveRow(el) {
+  const td = el.parentElement;
+  const tr = td.parentElement;
+
+  const uomInput = tr.cells[2].querySelector('input');
+  const convInput = tr.cells.querySelector('input');
+
+  if(uomInput && convInput) {
+    tr.cells.innerText = uomInput.value;
+    tr.cells.innerText = convInput.value;
+  }
+
+  el.innerHTML = '&#9998;';
+  el.onclick = () => editRow(el);
+}
+
+document.getElementById('uomCreateModalForm').addEventListener('submit', function(event) {
+  const form = this;
+  const salesChecked = document.getElementById('sales_info').checked;
+  const purchaseChecked = document.getElementById('purchase_info').checked;
+
+  if (!form.checkValidity()) {
+    // Native validation failed; let browser show messages
+    // No need to preventDefault or show custom alerts here
+    return;
+  }
+  if (!salesChecked && !purchaseChecked) {
+    event.preventDefault();
+    alert("Please select at least one of Sales Information or Purchase Information.");
+    return;
+  }
+   // Check barcode errors presence
+   // current form
+  const errorSpans = form.querySelectorAll('span.barcode-status');
+  for (const statusElem of errorSpans) {
+    const msg = statusElem.textContent;
+    if (msg.includes('Duplicate barcode') || msg.includes('already exists')) {
+      event.preventDefault();
+      alert("Please fix the barcode errors before submitting the form.");
+      return;
+    }
+  }
+});
+// Check for local duplicate barcodes among all barcode inputs
+function checkForDuplicatesAndUpdateUI(currentInput) {
+  const barcodeInputs = document.querySelectorAll(
+    'input[name="brcd"], input[name="barcode[]"], input[name="barcodes[]"]'
+  );
+  
+  // Count occurrences for local duplicate detection
+  const valuesCount = {};
+  barcodeInputs.forEach(input => {
+    const val = input.value.trim();
+    if (!val) return;
+    valuesCount[val] = (valuesCount[val] || 0) + 1;
+  });
+
+  const val = currentInput.value.trim();
+  const statusElem = getBarcodeStatusElem(currentInput);
+
+  if (!val) {
+    statusElem.textContent = '';
+    statusElem.style.color = '';
+    return;
+  }
+
+  if (valuesCount[val] > 1) {
+    statusElem.textContent = 'Duplicate barcode entered in form!';
+    statusElem.style.color = 'orange';
+    return;
+  }
+
+  // Build params using the correct original value for THIS input
+  const params = new URLSearchParams();
+  params.append('barcode', val);
+  params.append('original_barcode',      currentInput.dataset.originalMainBarcode || '');
+  params.append('original_sub_barcode',  currentInput.dataset.originalSubBarcode  || '');
+  params.append('original_alt_barcode',  currentInput.dataset.originalAltBarcode  || '');
+
+  fetch('/Items/check_barcode_unique/?' + params.toString())
+    .then(res => {
+      if (!res.ok) throw new Error('Barcode check failed');
+      return res.json();
+    })
+    .then(data => {
+      if (data.exists) {
+        statusElem.textContent = 'Barcode already exists!';
+        statusElem.style.color = 'red';
+      } else {
+        statusElem.textContent = 'Barcode available';
+        statusElem.style.color = 'green';
+      }
+    })
+    .catch(() => {
+      statusElem.textContent = 'Could not verify barcode.';
+      statusElem.style.color = 'orange';
+    });
+}
+
+function getBarcodeStatusElem(input) {
+  // First try: direct next sibling
+  let statusElem = input.nextElementSibling;
+  if (statusElem && statusElem.classList.contains('barcode-status')) {
+    return statusElem;
+  }
+  // Second try: within same parent td
+  statusElem = input.parentNode.querySelector('.barcode-status');
+  if (statusElem) return statusElem;
+  
+  // Fallback: create one
+  statusElem = document.createElement('span');
+  statusElem.className = 'barcode-status';
+  input.parentNode.appendChild(statusElem);
+  return statusElem;
+}
+// Bind for all barcode inputs using event delegation
+// This works for both existing and dynamically added inputs
+document.addEventListener('input', (e) => {
+  if (e.target.matches('input[name="brcd"], input[name="barcode[]"], input[name="barcodes[]"]')) {
+    checkForDuplicatesAndUpdateUI(e.target);
+  }
+});
+
+// Fallback: Also bind on DOMContentLoaded for any existing inputs
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('input[name="brcd"], input[name="barcode[]"], input[name="barcodes[]"]').forEach(input => {
+    input.addEventListener('input', function() {
+      checkForDuplicatesAndUpdateUI(input);
+    });
+
+    // If barcode is already prefilled, validate once on load so status appears.
+    if (input.value && input.value.trim()) {
+      checkForDuplicatesAndUpdateUI(input);
+    }
+  });
+});
+
+// Example for dynamically added input rows (adjust based on your add row code)
+// function addNewBarcodeRow(barcodeValue='') {
+//   const newRow = document.createElement('tr');
+
+//   const tdBarcode = document.createElement('td');
+//   const inputBarcode = document.createElement('input');
+//   inputBarcode.type = 'text';
+//   inputBarcode.name = 'barcode[]';
+//   inputBarcode.className = 'form-control form-control-sm';
+//   inputBarcode.value = barcodeValue;
+//   tdBarcode.appendChild(inputBarcode);
+//   newRow.appendChild(tdBarcode);
+
+//   // Bind event handler for this new input
+//   inputBarcode.addEventListener('input', () => checkBarcodeUnique(inputBarcode));
+
+//   // ... add other cells and append newRow to table
+
+//   return newRow;
+// }
+
+
+ document.getElementById('saveBtn').addEventListener('click', function(event) {
+    const isValid = validateFormOnSaveClick();
+    if (!isValid) {
+      event.preventDefault();  // Prevent form submission if validation fails
+      
+    }
+  }); 
+  function validateFormOnSaveClick() {
+  const form = document.getElementById('uomCreateModalForm'); // Adjust if your form has different id
+
+  // Clear previous error messages
+  form.querySelectorAll('.text-danger').forEach(el => el.remove());
+
+  let valid = true;
+
+  // Validate name
+  const nameInput = document.getElementById('name');
+  console.log("nameInput:",nameInput);
+  if (!nameInput.value.trim()) {
+    valid = false;
+    const err = document.createElement('div');
+    err.className = 'text-danger';
+    err.textContent = 'Name is required.';
+    nameInput.parentNode.appendChild(err);
+    nameInput.focus();
+    
+  }
+
+  const trackInventoryCheckbox = document.getElementById('track_inventory');
+const warehouseSelect = document.getElementById('warehouse_select');
+
+if (trackInventoryCheckbox.checked) {
+  if (!warehouseSelect.value) {
+    valid = false;
+    // Avoid duplicate error messages
+    if (!warehouseSelect.parentNode.querySelector('.text-danger')) {
+      const err = document.createElement('div');
+      err.className = 'text-danger';
+      err.textContent = 'Warehouse selection is required when inventory is tracked.';
+      warehouseSelect.parentNode.appendChild(err);
+      warehouseSelect.focus();
+    }
+  }
+}
+
+
+  // Validate unit
+  const unitInput = document.getElementById('unit_select');
+  if (!unitInput.value) {
+    valid = false;
+    const err = document.createElement('div');
+    err.className = 'text-danger';
+    err.textContent = 'Unit is required.';
+    unitInput.parentNode.appendChild(err);
+    unitInput.focus();
+    
+  }
+  const brcdInput = document.getElementById('brcd');
+// Find existing status element (the span created for barcode status)
+let statusElem = getBarcodeStatusElem(brcdInput);
+
+if (!brcdInput.value.trim()) {
+  valid = false;
+  statusElem.textContent = 'Barcode is required.';
+  statusElem.style.color = 'red';
+  brcdInput.focus();
+} else {
+  // Keep async status ("Barcode available"/duplicate) intact.
+  // Only clear the explicit required-error state.
+  if (statusElem.textContent.trim() === 'Barcode is required.' || statusElem.style.color === 'red') {
+    statusElem.textContent = '';
+    statusElem.style.color = '';
+  }
+}
+
+// Tax preference / tax rate validation
+  const taxPrefSelect = document.getElementById("tax_pref");
+  console.log("taxPrefSelect:"+taxPrefSelect.value);
+  const intraTaxSelect = document.getElementById("intra_tax_select");
+  const interTaxSelect = document.getElementById("inter_tax_group_select");
+  const defaultTaxSelect = document.getElementById("default_tax_select");
+  const salesTaxSelect = document.getElementById("sales_tax_select");
+  const purchaseTaxSelect = document.getElementById("purchase_tax_select");
+  const taxFields = document.getElementById("taxFields");
+  const defaultTaxField = document.getElementById("defaultTaxField");
+  const salesPurchaseTaxFields = document.getElementById("salesPurchaseTaxFields");
+  const isVisible = (el) => !!(el && el.offsetParent !== null);
+  if (taxPrefSelect && taxPrefSelect.value === "taxable") {
+    // Validate whichever tax section is currently visible in the UI.
+    const useIndiaTax = isVisible(taxFields) && !isVisible(defaultTaxField) && !isVisible(salesPurchaseTaxFields);
+    const useSalesPurchaseTax = isVisible(salesPurchaseTaxFields);
+    if (useIndiaTax) {
+      if (!intraTaxSelect.value || intraTaxSelect.value === "Choose...") {
+        valid = false;
+        const err = document.createElement("div");
+        err.className = "text-danger tax-error";
+        err.textContent = "This is required.";
+        intraTaxSelect.parentNode.appendChild(err);
+        intraTaxSelect.focus();
+      }
+      if (!interTaxSelect.value || interTaxSelect.value === "Choose...") {
+        valid = false;
+        const err = document.createElement("div");
+        err.className = "text-danger tax-error";
+        err.textContent = "This is required.";
+        interTaxSelect.parentNode.appendChild(err);
+      }
+    } else if (useSalesPurchaseTax) {
+      if (!salesTaxSelect.value || salesTaxSelect.value === "Choose...") {
+        valid = false;
+        const err = document.createElement("div");
+        err.className = "text-danger tax-error";
+        err.textContent = "This is required.";
+        salesTaxSelect.parentNode.appendChild(err);
+        salesTaxSelect.focus();
+      }
+      if (!purchaseTaxSelect.value || purchaseTaxSelect.value === "Choose...") {
+        valid = false;
+        const err = document.createElement("div");
+        err.className = "text-danger tax-error";
+        err.textContent = "This is required.";
+        purchaseTaxSelect.parentNode.appendChild(err);
+      }
+    } else {
+      if (!defaultTaxSelect.value || defaultTaxSelect.value === "Choose...") {
+        valid = false;
+        const err = document.createElement("div");
+        err.className = "text-danger tax-error";
+        err.textContent = "This is required.";
+        defaultTaxSelect.parentNode.appendChild(err);
+        defaultTaxSelect.focus();
+      }
+    }
+  }
+
+
+  
+
+  return valid;
+}
+{% comment %} document.getElementById('warehouse_select').addEventListener('change', function() {
+    var selectedWarehouseId = this.value;
+    console.log("selectedWarehouseId",selectedWarehouseId);
+    var opStockInput = document.getElementById('op_stock_input');
+    if(opStockInput && selectedWarehouseId) {
+        opStockInput.name = 'op_stock_' + selectedWarehouseId;
+    }
+}); {% endcomment %}
+
+$('#warehouse_select').on('select2:select select2:unselect', function(){
+
+ var selectedWarehouseId = this.value;
+  
+    console.log("selectedWarehouseId",selectedWarehouseId);
+    var opStockInput = document.getElementById('op_stock_input');
+    var opStock2Input = document.getElementById('op_stock');
+
+    
+    
+    if(opStockInput && selectedWarehouseId) {
+        opStockInput.name = 'op_stock_' + selectedWarehouseId;
+        console.log("opStockInput.name:"+opStockInput.name);
+    }
+    else{
+      opStock2Input.name = 'op_stock_' + selectedWarehouseId;
+        console.log("opStock2Input.name:"+opStock2Input.name);
+    }
+});
+
+// Ensure clicking the Select2 clear (x) actually clears the underlying select
+$('#warehouse_select').on('select2:clear', function() {
+  $(this).val(null).trigger('change');
+});
+
+// Fallback: delegated handler for any Select2 clear buttons to clear the related select
+$(document).on('click', '.select2-selection__clear', function(e) {
+  var $container = $(this).closest('.select2-container');
+  var $select = $container.prevAll('select').first();
+  if ($select && $select.length) {
+    $select.val(null).trigger('change');
+  }
+});
+
+</script>
+
+<script>
+  // Hide main page Save button while any modal is open to avoid duplicate "Save" buttons
+  $(document).on('show.bs.modal', '.modal', function() {
+    $('#saveBtn').hide();
+    // prevent page/body from scrolling when modal is open
+    $('body').css('overflow', 'hidden');
+    // Close all Select2 dropdowns updt on 11-02-26 by neha 
+  $('.select2-hidden-accessible').select2('close');
+  });
+
+  $(document).on('hidden.bs.modal', '.modal', function() {
+    // If no other modals are still visible, show the page save button again
+    if ($('.modal.show').length === 0) {
+      $('#saveBtn').show();
+      // restore body scroll
+      $('body').css('overflow', '');
+    }
+  });
+</script>
+
+<style>
+  /* Keep page from showing an outer scrollbar while modal open and make modal body scrollable */
+  .modal-dialog.modal-lg {
+    margin: 20px auto;
+    display: flex;
+    align-items: flex-start;
+    max-width: 1200px; /* wider modal */
+  }
+
+  /* Ensure the modal wrapper itself does not scroll; only .modal-body should scroll */
+  .modal {
+    overflow: hidden !important;
+  }
+
+  /* Constrain modal-content height and prevent it from scrolling */
+  /* Allow the whole modal-content to scroll internally (single scrollbar).
+     Do NOT keep header/footer fixed; they should scroll with content. */
+  .modal-content {
+    max-height: calc(100vh - 40px);
+    width: 100%;
+    overflow-y: auto !important; /* single scrollbar inside modal */
+    display: block;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.12);
+    border-radius: 6px;
+  }
+
+  /* Make modal-body flow normally; footer will appear after body and scroll together */
+  .modal-body {
+    overflow: visible;
+    -webkit-overflow-scrolling: auto;
+    max-height: none;
+  }
+  /* Ensure Bootstrap modal-open keeps body from scrolling (defensive) */
+  body.modal-open {
+    overflow: hidden !important;
+  }
+</style>
+
+<!-- Navigation confirmation modal -->
+<div class="modal fade" id="unsavedChangesModal" tabindex="-1" aria-labelledby="unsavedChangesLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="unsavedChangesLabel">Unsaved Changes</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        You have unsaved changes. Do you want to leave without saving?
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" id="confirmNavigation" class="btn btn-primary">Leave</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+    // Track form changes - Global variable
+    let formChanged = false;
+    const form = document.querySelector('form');
+
+    if (form) {
+        form.addEventListener('change', () => { formChanged = true; });
+        form.addEventListener('input', () => { formChanged = true; });
+    }
+    
+    // Track Select2 changes using jQuery delegation (works regardless of initialization timing)
+    if (window.$ && window.jQuery) {
+        $(document).on('change', 'select.select2, .select2-hidden-accessible', function() {
+            formChanged = true;
+            console.log('Form changed via Select2 change event (delegation)');
+        });
+    }
+    
+    // Direct select element change listeners as fallback
+    document.addEventListener('change', function(e) {
+        if (e.target.tagName === 'SELECT') {
+            formChanged = true;
+            console.log('Form changed via direct select change event');
+        }
+    }, true);
+
+    // Global click interceptor for all links
+    document.addEventListener('click', function(e) {
+        let link = e.target.closest('a');
+        if (link && formChanged) {
+            const href = link.getAttribute('href');
+            if (href && !href.startsWith('#') && !link.getAttribute('data-bs-toggle') && !href.startsWith('javascript:')) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                const modal = new bootstrap.Modal(document.getElementById('unsavedChangesModal'));
+                const confirmBtn = document.getElementById('confirmNavigation');
+                
+                // Remove previous click handlers
+                const newConfirmBtn = confirmBtn.cloneNode(true);
+                confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+                
+                // Add new click handler
+                newConfirmBtn.addEventListener('click', () => {
+                    formChanged = false;
+                    window.location.href = href;
+                });
+                
+                modal.show();
+            }
+        }
+    }, true);
+</script>
+
+<!-- ERROR MODAL FOR PERIOD LOCK AND OTHER ERRORS -->
+<div class="modal fade" id="errorModal" tabindex="-1" aria-labelledby="errorModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="border: 2px solid #d9534f; border-radius: 8px;">
+      <div class="modal-header" style="background-color: #f8d7da; border-bottom: 2px solid #d9534f;">
+        <h5 class="modal-title" id="errorModalLabel" style="color: #721c24;">
+          <i class="bi bi-exclamation-circle" style="color: #d9534f;"></i> Error
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="errorModalBody" style="color: #721c24; padding: 20px; line-height: 1.6;">
+        <!-- Error message will be inserted here -->
+      </div>
+      <div class="modal-footer" style="border-top: 1px solid #dee2e6;">
+        <button type="button" class="btn btn-primary" data-bs-dismiss="modal">OK</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Show error modal if there's an error message
+document.addEventListener('DOMContentLoaded', function() {
+  const showErrorModal = {{ show_error_modal|lower|default:"false" }};
+  const errorMessage = `{{ error_message|escapejs }}`;
+  
+  if (showErrorModal && errorMessage) {
+    const errorBodyElement = document.getElementById('errorModalBody');
+    errorBodyElement.innerHTML = errorMessage.replace(/\n/g, '<br>');
+    
+    const errorModal = new bootstrap.Modal(document.getElementById('errorModal'));
+    errorModal.show();
+  }
+});
+</script>
+
+{% endblock %}
+
+
+
+
+
+

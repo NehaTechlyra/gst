@@ -1,0 +1,9 @@
+from django.apps import AppConfig
+
+
+class HrConfig(AppConfig):
+    default_auto_field = 'django.db.models.BigAutoField'
+    name = 'HR'
+
+    def ready(self):
+        import HR.signals  # noqa: F401

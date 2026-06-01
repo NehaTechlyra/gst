@@ -1,0 +1,1605 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Company Registration - Lyra ERP</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Poppins', sans-serif !important;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif !important;
+            background-color: #f5f6fa;
+            overflow: auto;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            padding: 40px 20px;
+        }
+
+        .container {
+            margin: 0 auto;
+            padding: 0;
+            max-width: 1200px !important;
+            width: 100%;
+        }
+
+        .account-content {
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            overflow: hidden;
+            display: flex;
+            min-height: 600px;
+        }
+
+        .left-section {
+            flex: 0 0 40%;
+            background: #55588b;
+            padding: 60px 40px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            color: white;
+        }
+
+        .logo-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 30px;
+        }
+
+        .logo-icon {
+            width: 50px;
+            height: 50px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        .logo-text {
+            font-size: 32px;
+            font-weight: 600;
+            color: white;
+            letter-spacing: -0.5px;
+        }
+
+        .left-section h1 {
+            font-size: 28px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            line-height: 1.3;
+        }
+
+        .left-section p {
+            font-size: 14px;
+            opacity: 0.9;
+            line-height: 1.6;
+        }
+
+        .progress-steps {
+            margin-top: 40px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .step-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            opacity: 0.5;
+            transition: opacity 0.3s;
+        }
+
+        .step-item.active   { opacity: 1; }
+        .step-item.completed { opacity: 0.7; }
+
+        .step-number {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 14px;
+            transition: background 0.3s, color 0.3s;
+        }
+
+        .step-item.active .step-number    { background: white; color: #55588b; }
+        .step-item.completed .step-number { background: rgba(255,255,255,0.3); }
+
+        .step-text { font-size: 14px; font-weight: 500; }
+
+        .right-section {
+            flex: 1;
+            padding: 40px 50px;
+            overflow-y: auto;
+        }
+
+        .form-header { margin-bottom: 30px; }
+
+        .form-header h2 {
+            font-size: 22px;
+            font-weight: 600;
+            color: #55588b;
+            margin: 0 0 8px 0;
+        }
+
+        .form-header p { font-size: 13px; color: #7d7cad; margin: 0; }
+
+        .form-section {
+            display: none;
+            animation: fadeIn 0.35s ease;
+        }
+
+        .form-section.active { display: block; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .form-label {
+            font-weight: 400;
+            color: #55588b;
+            margin-bottom: 6px;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .form-label i { font-size: 14px; color: #7d7cad; }
+        .required::after { content: " *"; color: #e74c3c; font-weight: bold; }
+
+        .form-control, .form-select {
+            border-radius: 5px;
+            border: 1px solid #dde0f2;
+            padding: 10px 12px;
+            font-size: 14px;
+            background: white;
+            transition: all 0.2s;
+        }
+
+        .form-control:focus, .form-select:focus {
+            border-color: #55588b;
+            box-shadow: 0 0 0 3px rgba(85,88,139,0.1);
+            outline: none;
+        }
+
+        .is-invalid { border-color: #e74c3c !important; background-color: #ffe6e6 !important; }
+
+        .mb-2 { margin-bottom: 16px; }
+
+        .text-muted {
+            color: #7d7cad !important;
+            font-size: 11px;
+            margin-top: 4px;
+            display: block;
+        }
+
+        .alert {
+            border-radius: 5px;
+            padding: 12px 16px;
+            margin-bottom: 20px;
+            font-size: 13px;
+            border: 1px solid #dce2f9;
+        }
+
+        .alert-info { background: #dce2f9; color: #55588b; }
+        .alert i { margin-right: 8px; }
+
+        .fy-info-card {
+            background: #f0f4ff;
+            border: 1px solid #c8d0f0;
+            border-radius: 8px;
+            padding: 14px 18px;
+            margin-bottom: 20px;
+            font-size: 13px;
+            color: #3d4080;
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+        }
+        .fy-info-card i { font-size: 18px; color: #55588b; flex-shrink: 0; margin-top: 1px; }
+
+        .gst-toggle {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+            margin-top: 20px;
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 48px;
+            height: 24px;
+        }
+
+        .switch input { opacity: 0; width: 0; height: 0; }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #dde0f2;
+            transition: .3s;
+            border-radius: 24px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .3s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider { background-color: #55588b; }
+        input:checked + .slider:before { transform: translateX(24px); }
+
+        .gst-toggle label { font-size: 13px; font-weight: 400; color: #55588b; cursor: pointer; }
+
+        .license-info-card {
+            background: #f8f9fb;
+            border-radius: 5px;
+            padding: 20px;
+            margin-top: 20px;
+            border: 1px solid #dde0f2;
+        }
+
+        .license-status {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #dde0f2;
+            font-size: 13px;
+        }
+
+        .license-status:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+        .license-status .fw-bold { color: #7d7cad; font-weight: 400; }
+        .license-status span:last-child { color: #55588b; font-weight: 500; }
+
+        .button-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #dde0f2;
+        }
+
+        .commmombtn {
+            background: #55588b;
+            border: 1px solid #55588b;
+            color: white;
+            border-radius: 5px;
+            padding: 12px 24px;
+            cursor: pointer;
+            transition: background 0.2s;
+            font-size: 14px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .commmombtn:hover { background: #44456e; border: 1px solid #44456e; color: white; }
+
+        .commmombtn:disabled {
+            background: #dde0f2;
+            border-color: #dde0f2;
+            color: #7d7cad;
+            cursor: not-allowed;
+        }
+
+        .next-btn { background-color: #198754 !important; border-color: #198754 !important; }
+        .next-btn:hover { background-color: #157246 !important; border-color: #157246 !important; }
+
+        .success-animation { text-align: center; padding: 40px 20px; }
+
+        .success-icon {
+            font-size: 80px;
+            color: #198754;
+            animation: scaleIn 0.6s cubic-bezier(0.34,1.56,0.64,1);
+        }
+
+        @keyframes scaleIn {
+            from { transform: scale(0); opacity: 0; }
+            to   { transform: scale(1); opacity: 1; }
+        }
+
+        .spinner-border-sm { width: 1rem; height: 1rem; border-width: 0.15em; }
+
+        .toast {
+            visibility: hidden;
+            min-width: 250px;
+            max-width: 600px;
+            background-color: #198754;
+            color: white;
+            text-align: center;
+            border-radius: 5px;
+            padding: 16px 24px;
+            position: fixed;
+            z-index: 20000;
+            left: 50%;
+            top: 30px;
+            transform: translateX(-50%);
+            font-size: 13px;
+            box-shadow: 0px 4px 6px rgba(0,0,0,0.2);
+            transition: opacity 0.5s linear;
+            opacity: 0;
+        }
+
+        .toast.show { visibility: visible; opacity: 1; }
+
+        /* ═══════════════════════════════════════
+           STEP 3 — Migration View + Success View
+        ═══════════════════════════════════════ */
+
+        #migrationView {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 50px 20px 40px;
+            animation: fadeIn 0.35s ease;
+        }
+
+        #migrationView.active { display: flex; }
+
+        #successView {
+            display: none;
+            animation: fadeIn 0.5s ease;
+        }
+
+        #successView.active { display: block; }
+
+        /* Spinner */
+        .mig-spinner {
+            width: 72px;
+            height: 72px;
+            border: 5px solid #e8eaf6;
+            border-top: 5px solid #55588b;
+            border-radius: 50%;
+            animation: spinRing 0.9s linear infinite;
+            margin-bottom: 28px;
+            flex-shrink: 0;
+        }
+
+        @keyframes spinRing { to { transform: rotate(360deg); } }
+
+        .mig-heading {
+            font-size: 20px;
+            font-weight: 600;
+            color: #55588b;
+            margin-bottom: 6px;
+        }
+
+        .mig-subtext {
+            font-size: 13px;
+            color: #7d7cad;
+            margin-bottom: 36px;
+            line-height: 1.6;
+            max-width: 360px;
+            min-height: 40px;
+            transition: opacity 0.4s;
+        }
+
+        /* ── Clean progress bar ── */
+        .mig-bar-wrap {
+            width: 100%;
+            max-width: 440px;
+            height: 10px;
+            background: #e8eaf6;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 14px;
+            position: relative;
+        }
+
+        /* Shimmer overlay on the filled portion */
+        .mig-bar-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #55588b 0%, #7d7cad 60%, #a8aad4 100%);
+            border-radius: 10px;
+            /* CSS transition handles smooth visual movement between poll updates */
+            transition: width 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Animated shimmer inside the bar */
+        .mig-bar-fill::after {
+            content: '';
+            position: absolute;
+            top: 0; left: -100%; right: 0; bottom: 0;
+            background: linear-gradient(
+                90deg,
+                transparent 0%,
+                rgba(255,255,255,0.35) 50%,
+                transparent 100%
+            );
+            animation: shimmer 1.8s ease-in-out infinite;
+        }
+
+        @keyframes shimmer {
+            0%   { left: -100%; }
+            100% { left: 200%; }
+        }
+
+        .mig-percent {
+            font-size: 15px;
+            font-weight: 700;
+            color: #55588b;
+            margin-bottom: 8px;
+            letter-spacing: 0.3px;
+            /* JS updates this directly — no transition needed */
+        }
+
+        .mig-note {
+            font-size: 11px;
+            color: #b8bace;
+            margin-top: 28px;
+            padding-top: 18px;
+            border-top: 1px solid #eef0f8;
+            max-width: 380px;
+        }
+
+        @media (max-width: 992px) {
+            .account-content { flex-direction: column; }
+            .left-section { flex: none; padding: 40px 30px; }
+            .right-section { padding: 30px; }
+            .left-section h1 { font-size: 24px; }
+            .progress-steps { margin-top: 30px; }
+        }
+
+        @media (max-width: 576px) {
+            .container { max-width: 100% !important; }
+            .left-section, .right-section { padding: 20px; }
+            .button-container { flex-direction: column; }
+            .commmombtn { width: 100%; justify-content: center; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="account-content">
+
+        <!-- ══ LEFT SIDEBAR ══ -->
+        <div class="left-section">
+            <div class="logo-container">
+                <div class="logo-icon">L</div>
+                <div class="logo-text">Lyra ERP</div>
+            </div>
+            <h1>Set up your organization</h1>
+            <p>Complete these steps to configure your ERP system and start managing your business operations.</p>
+
+            <div class="progress-steps">
+                <div class="step-item active" id="step1">
+                    <div class="step-number">1</div>
+                    <div class="step-text">Organization Details</div>
+                </div>
+                <div class="step-item" id="step2">
+                    <div class="step-number">2</div>
+                    <div class="step-text">Fiscal Year</div>
+                </div>
+                <div class="step-item" id="step3">
+                    <div class="step-number">3</div>
+                    <div class="step-text">License Activation</div>
+                </div>
+                <div class="step-item" id="step4">
+                    <div class="step-number">4</div>
+                    <div class="step-text">Complete Setup</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- RIGHT CONTENT -->
+        <div class="right-section">
+            <form id="registrationForm">
+
+                <!-- ── STEP 1: Organization Details ── -->
+                <div id="organization" class="form-section active">
+                    <div class="form-header">
+                        <h2>Organization Details</h2>
+                        <p>Tell us about your organization</p>
+                    </div>
+
+                    {% if not world_locations_ready %}
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i>
+                        The world location dataset is not loaded yet. Run
+                        <code>python manage.py seed_locations</code> to import countries, states, and cities.
+                    </div>
+                    {% endif %}
+
+                    <div class="row mb-2">
+                        <div class="col-12">
+                            <label class="form-label required">
+                                <i class="bi bi-building"></i>Organization Name
+                            </label>
+                            <input type="text" class="form-control" name="name"
+                                   placeholder="Enter your organization name" required>
+                        </div>
+                    </div>
+
+                    <div class="row mb-2">
+                        <div class="col-md-6">
+                            <label class="form-label">
+                                <i class="bi bi-briefcase"></i>Industry
+                            </label>
+                            <select class="form-select" name="industry">
+                                <option value="">Select Industry</option>
+                                <option value="manufacturing">Manufacturing</option>
+                                <option value="retail">Retail</option>
+                                <option value="services">Services</option>
+                                <option value="technology">Technology</option>
+                                <option value="healthcare">Healthcare</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label required">
+                                <i class="bi bi-globe"></i>Country / Organization Location
+                            </label>
+                            <select class="form-select" id="country" name="country" required>
+                                <option value="">Select Country</option>
+                                {% for code, name in countries %}
+                                <option value="{{ code }}">{{ name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row mb-2">
+                        <div class="col-md-6">
+                            <label class="form-label required">
+                                <i class="bi bi-map"></i>State / Union Territory / Province / Region
+                            </label>
+                            <select class="form-select" id="state" name="state" required disabled>
+                                <option value="">Select country first</option>
+                            </select>
+                            <small id="state-loading" class="text-muted" style="display:none;">Loading states...</small>
+                            <div style="margin-top: 16px;">
+                                <label class="form-label">
+                                    <i class="bi bi-pin-map"></i>City
+                                </label>
+                                <select class="form-select" id="city" name="city" disabled>
+                                    <option value="">Select state first</option>
+                                </select>
+                                <small id="city-loading" class="text-muted" style="display:none;">Loading cities...</small>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <input type="hidden" name="tax_type" value="GST">
+                            <div id="taxIdField" style="display:block;">
+                                <label class="form-label required">
+                                    <i class="bi bi-receipt"></i>Tax ID
+                                </label>
+                                <input type="text" class="form-control" id="taxIdInput" name="tax_id"
+                                       value="{{ company.tax_id|default:'' }}"
+                                       placeholder="Enter GST number" maxlength="100" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mb-2">
+                        <div class="col-12">
+                            <label class="form-label">
+                                <i class="bi bi-house"></i>Street 1
+                            </label>
+                            <input type="text" class="form-control" name="address_line1"
+                                   placeholder="Street address">
+                        </div>
+                    </div>
+
+                    <div class="row mb-2">
+                        <div class="col-12">
+                            <label class="form-label">Street 2</label>
+                            <input type="text" class="form-control" name="address_line2"
+                                   placeholder="Apartment, suite, etc.">
+                        </div>
+                    </div>
+
+                    <div class="row mb-2">
+                        <div class="col-md-6">
+                            <label class="form-label">
+                                <i class="bi bi-mailbox"></i>ZIP / Postal Code
+                            </label>
+                            <input type="text" class="form-control" name="postal_code"
+                                   placeholder="Postal code">
+                        </div>
+                    </div>
+
+                    <div class="button-container">
+                        <div></div>
+                        <button type="button" class="next-btn commmombtn" id="step1NextBtn" data-next="fiscal_year">
+                            Next <i class="bi bi-arrow-right"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- ────────────────────────────────────────────
+                     STEP 2: Fiscal Year  ← NEW
+                ──────────────────────────────────────────── -->
+                <div id="fiscal_year" class="form-section">
+                    <div class="form-header">
+                        <h2>Fiscal Year</h2>
+                        <p>Define your accounting period for Period Management &amp; Period Locking</p>
+                    </div>
+
+                    <div class="fy-info-card">
+                        <i class="bi bi-info-circle-fill"></i>
+                        <div>
+                            Define your fiscal year to manage accounting periods and period locking.
+                            Once created it will appear in <strong>System Settings → Period Management</strong>.
+                            You can add more fiscal years later.
+                        </div>
+                    </div>
+
+                    <div class="row mb-2">
+                        <div class="col-12">
+                            <label class="form-label required"><i class="bi bi-calendar-range"></i>Fiscal Year Name</label>
+                            <input type="text" class="form-control" id="fyName" name="fy_name"
+                                   placeholder="e.g., FY 2025-26" required>
+                            <small class="text-muted">Format: FY YYYY-YY (e.g., FY 2025-26)</small>
+                        </div>
+                    </div>
+
+                    <div class="row mb-2">
+                        <div class="col-md-6">
+                            <label class="form-label required"><i class="bi bi-calendar-event"></i>Start Date</label>
+                            <input type="date" class="form-control" id="fyStartDate" name="start_date" required>
+                            <small class="text-muted">📅 Example: 2025-04-01 (Apr 01, 2025)</small>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label required"><i class="bi bi-calendar-check"></i>End Date</label>
+                            <input type="date" class="form-control" id="fyEndDate" name="end_date" required>
+                            <small class="text-muted">📅 Example: 2026-03-31 (Mar 31, 2026)</small>
+                        </div>
+                    </div>
+
+                    <div class="row mb-2">
+                        <div class="col-md-6">
+                            <label class="form-label required"><i class="bi bi-toggle-on"></i>Status</label>
+                            <select class="form-select" id="fyStatus" name="status" required>
+                                <option value="active" selected>Active — Current Fiscal Year</option>
+                                <option value="closed">Closed — Ready for Locking</option>
+                                <option value="archived">Archived — Historical</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="button-container">
+                        <button type="button" class="commmombtn" data-prev="organization">
+                            <i class="bi bi-arrow-left"></i> Previous
+                        </button>
+                        <button type="button" class="next-btn commmombtn" id="fyNextBtn">
+                            <span id="fyNextText">Next <i class="bi bi-arrow-right"></i></span>
+                            <span id="fySpinner" class="spinner-border spinner-border-sm" style="display:none;"></span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- ────────────────────────────────────────────
+                     STEP 3: License Activation
+                ──────────────────────────────────────────── -->
+                <div id="license" class="form-section">
+                    <div class="form-header">
+                        <h2>License Activation</h2>
+                        {% if company.trial_active %}
+                            <p>Optional: Add your license key or continue with your free trial</p>
+                        {% else %}
+                            <p>Activate your ERP system license</p>
+                        {% endif %}
+                    </div>
+
+                    {% if company.trial_active %}
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle"></i>
+                            You're using a <strong>free trial account</strong>. License key is optional.
+                            You can add it anytime from company settings to unlock premium features.
+                        </div>
+                    {% else %}
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle"></i>
+                            Enter the license key provided by your vendor to activate all features of the ERP system.
+                        </div>
+                    {% endif %}
+
+                    <div class="row mb-2">
+                        <div class="col-12">
+                            <label class="form-label {% if not company.trial_active %}required{% endif %}">
+                                <i class="bi bi-key"></i>License Key
+                            </label>
+                            <input type="text" id="licenseKey" name="license_key" class="form-control"
+                                   placeholder="XXXX-XXXX-XXXX-XXXX" style="font-family:monospace;"
+                                   {% if not company.trial_active %}required{% endif %}>
+                            <small class="text-muted">
+                                {% if company.trial_active %}
+                                    (Optional) Enter the license key provided by your vendor
+                                {% else %}
+                                    Enter the license key provided by your vendor
+                                {% endif %}
+                            </small>
+                        </div>
+                    </div>
+
+                    <div id="licenseInfo" class="license-info-card" style="display:none;">
+                        <h6 style="margin-bottom:16px;font-weight:600;color:#55588b;">License Information</h6>
+                        <div class="license-status">
+                            <span class="fw-bold">Status:</span>
+                            <span id="licenseStatus">-</span>
+                        </div>
+                        <div class="license-status">
+                            <span class="fw-bold">Expiry Date:</span>
+                            <span id="licenseExpiry">-</span>
+                        </div>
+                        <div class="license-status">
+                            <span class="fw-bold">Max Users:</span>
+                            <span id="licenseMaxUsers">-</span>
+                        </div>
+                        <div class="license-status">
+                            <span class="fw-bold">ERP Version:</span>
+                            <span id="licenseVersion">1.0.0</span>
+                        </div>
+                    </div>
+
+                    <div class="button-container">
+                        <button type="button" class="commmombtn" data-prev="fiscal_year">
+                            <i class="bi bi-arrow-left"></i> Previous
+                        </button>
+                        <button type="button" class="next-btn commmombtn" id="activateLicenseBtn">
+                            <span id="activateText">
+                                {% if company.trial_active %}
+                                    {% if has_license %}Activate License & Continue{% else %}Continue{% endif %}
+                                {% else %}
+                                    Activate & Continue
+                                {% endif %}
+                            </span>
+                            <span id="activateSpinner" class="spinner-border spinner-border-sm"
+                                  style="display:none;"></span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- ── STEP 4: Complete Setup ── -->
+                <div id="complete" class="form-section">
+
+                    <!-- SUB-VIEW A: Migration progress — clean bar only -->
+                    <div id="migrationView">
+                        <div class="mig-spinner"></div>
+                        <div class="mig-heading">Setting Up Your Workspace</div>
+                        <div class="mig-subtext" id="migSubtext">
+                            Initializing database and configuring modules…
+                        </div>
+
+                        <!-- Single clean progress bar -->
+                        <div class="mig-bar-wrap">
+                            <div class="mig-bar-fill" id="migBarFill"></div>
+                        </div>
+                        <div class="mig-percent" id="migPercent">0%</div>
+
+                        <div class="mig-note">
+                            This usually takes 30–90 seconds. Please don't close this window.
+                        </div>
+                    </div>
+
+                    <!-- SUB-VIEW B: Success screen -->
+                    <div id="successView">
+                        <div class="success-animation">
+                            <i class="bi bi-check-circle-fill success-icon"></i>
+                            <h2 style="font-size:24px;font-weight:600;margin-bottom:12px;color:#55588b;">
+                                Setup Complete!
+                            </h2>
+                            <p style="color:#7d7cad;margin-bottom:32px;">
+                                Your organization has been successfully registered.
+                            </p>
+
+                            <!-- Fiscal year summary -->
+                            <div id="fyCreatedCard" class="license-info-card" style="display:none; margin-bottom:16px;">
+                                <h6 style="margin-bottom:12px;font-weight:600;color:#55588b;">
+                                    <i class="bi bi-calendar-check"></i> Fiscal Year Created
+                                </h6>
+                                <div class="license-status">
+                                    <span class="fw-bold">Name:</span><span id="summaryFyName">-</span>
+                                </div>
+                                <div class="license-status">
+                                    <span class="fw-bold">Period:</span><span id="summaryFyPeriod">-</span>
+                                </div>
+                                <div class="license-status">
+                                    <span class="fw-bold">Status:</span>
+                                    <span style="color:#198754;">Active ✓</span>
+                                </div>
+                            </div>
+
+                            <!-- License activated summary card -->
+                            <div id="licenseActivatedCard" class="license-info-card" style="display:none;">
+                                <div class="license-status">
+                                    <span class="fw-bold">Organization:</span>
+                                    <span id="summaryOrgName">-</span>
+                                </div>
+                                <div class="license-status">
+                                    <span class="fw-bold">License Status:</span>
+                                    <span id="summaryLicenseStatus" style="color:#198754;">Active ✓</span>
+                                </div>
+                                <div class="license-status">
+                                    <span class="fw-bold">Valid Until:</span>
+                                    <span id="summaryExpiry">-</span>
+                                </div>
+                                <div class="license-status">
+                                    <span class="fw-bold">Max Users:</span>
+                                    <span id="summaryMaxUsers">-</span>
+                                </div>
+                            </div>
+
+                            <!-- Trial summary card -->
+                            <div id="trialCard" class="license-info-card" style="display:none;">
+                                <div class="license-status">
+                                    <span class="fw-bold">Organization:</span>
+                                    <span id="summaryOrgNameTrial">-</span>
+                                </div>
+                                <div class="license-status">
+                                    <span class="fw-bold">Account Type:</span>
+                                    <span style="color:#667eea;">
+                                        <i class="bi bi-star-fill"></i> Free Trial
+                                    </span>
+                                </div>
+                                <div class="license-status">
+                                    <span class="fw-bold">Trial Duration:</span>
+                                    <span id="summaryTrialDuration">15 Days</span>
+                                </div>
+                                <div class="license-status"
+                                     style="background:#f0f4ff;padding:12px;border-radius:5px;margin-top:12px;">
+                                    <p style="margin:0;font-size:12px;color:#55588b;">
+                                        <i class="bi bi-info-circle"></i>
+                                        You can add a license key anytime to unlock premium features.
+                                        Visit Company Settings to activate a license.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <button type="button" class="commmombtn"
+                                    style="margin-top:32px;width:100%;justify-content:center;"
+                                    onclick="goToDashboard()">
+                                <i class="bi bi-house-door"></i> Go to Dashboard
+                            </button>
+                        </div>
+                    </div>
+
+                </div>
+                <!-- end #complete -->
+
+            </form>
+        </div>
+    </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+// ─────────────────────────────────────────────────────────
+//  DJANGO CONTEXT
+// ─────────────────────────────────────────────────────────
+const companyCode   = '{{ company_code }}';
+const companyDbName = '{{ company_db_name }}';
+
+
+const loadStatesUrl  = "{% url 'load_states' %}";
+const loadCitiesUrl  = "{% url 'load_cities' %}";
+const initialCountryCode = "{{ initial_country_code|default:''|escapejs }}";
+const initialStateId = "{{ initial_state_id|default:''|escapejs }}";
+const initialCityId = "{{ initial_city_id|default:''|escapejs }}";
+
+
+let currentStep      = 'organization';
+let registrationData = {};
+let fyData           = {};  // stores saved fiscal year info for summary card
+
+// ─────────────────────────────────────────────────────────
+//  TOAST
+// ─────────────────────────────────────────────────────────
+function showToast(msg, bg = '#198754') {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.style.backgroundColor = bg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// ─────────────────────────────────────────────────────────
+//  STEP INDICATORS  (4 steps now)
+// ─────────────────────────────────────────────────────────
+function updateStepIndicators(stepId) {
+    const steps = ['organization', 'fiscal_year', 'license', 'complete'];
+    const idx   = steps.indexOf(stepId);
+    steps.forEach((s, i) => {
+        const el = document.getElementById(`step${i + 1}`);
+        if (!el) return;
+        el.classList.remove('active', 'completed');
+        if (i < idx)        el.classList.add('completed');
+        else if (i === idx) el.classList.add('active');
+    });
+}
+
+function showFormById(id) {
+    document.querySelectorAll('.form-section').forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    currentStep = id;
+    updateStepIndicators(id);
+}
+
+// ─────────────────────────────────────────────────────────
+//  VALIDATION HELPERS
+// ─────────────────────────────────────────────────────────
+function validateField(f) {
+    if (f.value.trim() !== '') { f.classList.remove('is-invalid'); return true; }
+    f.classList.add('is-invalid');
+    return false;
+}
+
+function getCookie(name) {
+    let v = null;
+    if (document.cookie && document.cookie !== '') {
+        document.cookie.split(';').forEach(c => {
+            const t = c.trim();
+            if (t.startsWith(name + '='))
+                v = decodeURIComponent(t.substring(name.length + 1));
+        });
+    }
+    return v;
+}
+
+// ─────────────────────────────────────────────────────────
+//  TAX ID DISPLAY
+// ─────────────────────────────────────────────────────────
+function updateTaxIdField() {
+    const taxField = document.getElementById('taxIdField');
+    const taxInput = document.getElementById('taxIdInput');
+    if (!taxField || !taxInput) return;
+
+    taxField.style.display = 'block';
+    taxInput.setAttribute('required', 'required');
+}
+
+updateTaxIdField();
+
+// ─────────────────────────────────────────────────────────
+//  PREV BUTTONS  (generic)
+// ─────────────────────────────────────────────────────────
+document.querySelectorAll('[data-prev]').forEach(btn => {
+    btn.addEventListener('click', function () {
+        showFormById(this.getAttribute('data-prev'));
+    });
+});
+
+document.querySelectorAll('[required]').forEach(f => {
+    f.addEventListener('input', () => validateField(f));
+});
+
+// ─────────────────────────────────────────────────────────
+//  STEP 1 → STEP 2  (save company info)
+// ─────────────────────────────────────────────────────────
+document.getElementById('step1NextBtn').addEventListener('click', async function () {
+    const section = document.getElementById('organization');
+    const reqd    = Array.from(section.querySelectorAll('[required]'))
+                        .filter(f => f.offsetParent !== null);
+    let ok = true;
+    reqd.forEach(f => { if (!validateField(f)) ok = false; });
+    if (!ok) { showToast('Please fill all required fields', '#e74c3c'); return; }
+
+    const orig = this.innerHTML;
+    this.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Saving…';
+    this.disabled  = true;
+
+    try {
+        const fd = new FormData();
+        section.querySelectorAll('input,select,textarea').forEach(el => {
+            if (el.name) fd.append(el.name, el.value);
+        });
+
+        const res = await fetch(`/${companyCode}/company/setup/company-info/`, {
+            method: 'POST', body: fd,
+            headers: { 'X-CSRFToken': getCookie('csrftoken') }
+        });
+
+        let result;
+        try { result = JSON.parse(await res.text()); }
+        catch (_) { throw new Error('Server returned invalid response'); }
+
+        if (!result.success) throw new Error(result.message || 'Failed to save company info');
+
+        registrationData = Object.fromEntries(fd.entries());
+        showToast('Company information saved!', '#198754');
+
+        // Pre-fill fiscal year name from company's fiscal_year_start if available
+        _prefillFiscalYear();
+
+        showFormById('fiscal_year');
+    } catch (err) {
+        showToast(err.message, '#e74c3c');
+    } finally {
+        this.innerHTML = orig;
+        this.disabled  = false;
+    }
+});
+
+// ─────────────────────────────────────────────────────────
+//  AUTO-FILL FISCAL YEAR FIELDS
+// ─────────────────────────────────────────────────────────
+function _prefillFiscalYear() {
+    const fyNameEl  = document.getElementById('fyName');
+    const fyStartEl = document.getElementById('fyStartDate');
+    const fyEndEl   = document.getElementById('fyEndDate');
+
+    // Only pre-fill if still empty
+    if (fyNameEl.value) return;
+
+    const today = new Date();
+    // Standard Indian FY: Apr → Mar
+    const fyStartYear = today.getMonth() >= 3 ? today.getFullYear() : today.getFullYear() - 1;
+    const fyEndYear   = fyStartYear + 1;
+    const shortEnd    = String(fyEndYear).slice(-2);
+
+    fyNameEl.value  = `FY ${fyStartYear}-${shortEnd}`;
+    fyStartEl.value = `${fyStartYear}-04-01`;
+    fyEndEl.value   = `${fyEndYear}-03-31`;
+}
+
+// ─────────────────────────────────────────────────────────
+//  STEP 2 → STEP 3  (save fiscal year to company DB)
+// ─────────────────────────────────────────────────────────
+document.getElementById('fyNextBtn').addEventListener('click', async function () {
+    const section  = document.getElementById('fiscal_year');
+    const fyName   = document.getElementById('fyName').value.trim();
+    const startVal = document.getElementById('fyStartDate').value;
+    const endVal   = document.getElementById('fyEndDate').value;
+    const status   = document.getElementById('fyStatus').value;
+
+    // Validate
+    let ok = true;
+    [document.getElementById('fyName'),
+     document.getElementById('fyStartDate'),
+     document.getElementById('fyEndDate')].forEach(f => {
+        if (!validateField(f)) ok = false;
+    });
+    if (!ok) { showToast('Please fill all required fields', '#e74c3c'); return; }
+
+    if (startVal && endVal && new Date(startVal) >= new Date(endVal)) {
+        document.getElementById('fyEndDate').classList.add('is-invalid');
+        showToast('End date must be after start date', '#e74c3c');
+        return;
+    }
+
+    document.getElementById('fyNextText').style.display    = 'none';
+    document.getElementById('fySpinner').style.display     = 'inline-block';
+    this.disabled = true;
+
+    try {
+        const fd = new FormData();
+        fd.append('fy_name',    fyName);
+        fd.append('start_date', startVal);
+        fd.append('end_date',   endVal);
+        fd.append('status',     status);
+
+        const res = await fetch(`/${companyCode}/company/setup/fiscal-year/`, {
+            method: 'POST', body: fd,
+            headers: { 'X-CSRFToken': getCookie('csrftoken') }
+        });
+
+        let result;
+        try { result = JSON.parse(await res.text()); }
+        catch (_) { throw new Error('Server returned invalid response'); }
+
+        if (!result.success) throw new Error(result.message || 'Failed to save fiscal year');
+
+        // Store for summary card
+        fyData = { name: fyName, start: startVal, end: endVal };
+
+        showToast(result.skipped ? 'Fiscal year noted.' : `Fiscal Year "${fyName}" saved!`, '#198754');
+        showFormById('license');
+
+    } catch (err) {
+        showToast(err.message, '#e74c3c');
+    } finally {
+        document.getElementById('fyNextText').style.display = 'inline';
+        document.getElementById('fySpinner').style.display  = 'none';
+        this.disabled = false;
+    }
+});
+
+// ─────────────────────────────────────────────────────────
+//  STEP 3: LICENSE ACTIVATION
+// ─────────────────────────────────────────────────────────
+document.getElementById('activateLicenseBtn').addEventListener('click', async function () {
+    const keyInput = document.getElementById('licenseKey');
+    const key      = keyInput.value.trim();
+    const required = keyInput.hasAttribute('required');
+
+    if (required && !key) {
+        keyInput.classList.add('is-invalid');
+        showToast('Please enter a license key', '#e74c3c');
+        return;
+    }
+
+    if (key) {
+        const pat = /^[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/;
+        if (!pat.test(key)) {
+            keyInput.classList.add('is-invalid');
+            showToast('Invalid format. Use: XXXX-XXXX-XXXX-XXXX', '#e74c3c');
+            return;
+        }
+    }
+
+    keyInput.classList.remove('is-invalid');
+    document.getElementById('activateText').style.display    = 'none';
+    document.getElementById('activateSpinner').style.display = 'inline-block';
+    this.disabled = true;
+
+    try {
+        if (!key) {
+            showToast('Setting up your free trial account…', '#198754');
+            await _pause(600);
+
+            // Show fiscal year card in summary
+            _showFySummaryCard();
+
+            document.getElementById('trialCard').style.display            = 'block';
+            document.getElementById('licenseActivatedCard').style.display = 'none';
+            document.getElementById('summaryOrgNameTrial').textContent    = registrationData.name || '-';
+            document.getElementById('summaryTrialDuration').textContent   = '15 Days';
+            _enterStep4WithMigration();
+            return;
+        }
+
+        const res = await fetch(`/${companyCode}/company/setup/license-activation/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+            body: JSON.stringify({ license_key: key })
+        });
+
+        if (!res.ok) {
+            let msg = 'License activation failed';
+            try { const d = await res.json(); msg = d.message || msg; } catch (_) {}
+            throw new Error(msg);
+        }
+
+        const result = await res.json();
+        if (!result.success) throw new Error(result.message || 'License activation failed');
+
+        const lic = result.license;
+        const exp = lic.expiry_date ? new Date(lic.expiry_date) : new Date();
+
+        document.getElementById('licenseInfo').style.display   = 'block';
+        document.getElementById('licenseStatus').textContent   = 'Active ✓';
+        document.getElementById('licenseStatus').style.color   = '#198754';
+        document.getElementById('licenseExpiry').textContent   = exp.toLocaleDateString();
+        document.getElementById('licenseMaxUsers').textContent = lic.max_users || '10';
+
+        _showFySummaryCard();
+
+        document.getElementById('licenseActivatedCard').style.display = 'block';
+        document.getElementById('trialCard').style.display             = 'none';
+        document.getElementById('summaryOrgName').textContent          = registrationData.name || '-';
+        document.getElementById('summaryLicenseStatus').textContent    = 'Active ✓';
+        document.getElementById('summaryLicenseStatus').style.color    = '#198754';
+        document.getElementById('summaryExpiry').textContent           = exp.toLocaleDateString();
+        document.getElementById('summaryMaxUsers').textContent         = lic.max_users || '10';
+
+        showToast('License activated!', '#198754');
+        await _pause(700);
+        _enterStep4WithMigration();
+
+    } catch (err) {
+        keyInput.classList.add('is-invalid');
+        showToast(err.message, '#e74c3c');
+    } finally {
+        document.getElementById('activateText').style.display    = 'inline';
+        document.getElementById('activateSpinner').style.display = 'none';
+        this.disabled = false;
+    }
+});
+
+document.getElementById('licenseKey').addEventListener('input', function () {
+    if (this.value.trim()) this.classList.remove('is-invalid');
+});
+
+// Populate the fiscal year summary card on success screen
+function _showFySummaryCard() {
+    if (!fyData.name) return;
+    const card = document.getElementById('fyCreatedCard');
+    card.style.display = 'block';
+    document.getElementById('summaryFyName').textContent = fyData.name;
+    if (fyData.start && fyData.end) {
+        const s = new Date(fyData.start).toLocaleDateString('en-GB', {day:'2-digit', month:'short', year:'numeric'});
+        const e = new Date(fyData.end).toLocaleDateString('en-GB', {day:'2-digit', month:'short', year:'numeric'});
+        document.getElementById('summaryFyPeriod').textContent = `${s} – ${e}`;
+    }
+}
+
+// ─────────────────────────────────────────────────────────
+//  UTILITY
+// ─────────────────────────────────────────────────────────
+function _pause(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+function _enterStep4WithMigration() {
+    showFormById('complete');
+    document.getElementById('migrationView').classList.add('active');
+    document.getElementById('successView').classList.remove('active');
+
+    if (!companyDbName || companyDbName.trim() === '') {
+        setTimeout(_showSuccess, 1200);
+        return;
+    }
+    _startMigration(companyDbName);
+}
+
+// ═════════════════════════════════════════════════════════
+//  MIGRATION POLLING ENGINE
+//  ─ No stage track, no error messages shown to user
+//  ─ Real-time smooth % with autonomous drift between polls
+// ═════════════════════════════════════════════════════════
+// ═════════════════════════════════════════════════════════
+//  MIGRATION POLLING ENGINE — Real-time smooth progress
+// ═════════════════════════════════════════════════════════
+
+const STAGE_MIN_PCT = {
+    init:     5,
+    schema:   20,
+    modules:  42,
+    fixtures: 62,
+    setup:    80,
+    done:     100,
+};
+
+// Time-based auto-advance: expected durations per stage (ms)
+const STAGE_DURATIONS = {
+    init:     4000,
+    schema:   8000,
+    modules:  15000,
+    fixtures: 12000,
+    setup:    8000,
+};
+
+let _pollTimer        = null;
+let _pollDelay        = 2000;
+let _currentPct       = 0;
+let _targetPct        = 0;
+let _driftTimer       = null;
+let _consecutiveFails = 0;
+const _MAX_FAILS      = 15;
+
+let _migStartTime     = null;   // when migration started
+let _lastKnownStage   = 'init'; // last stage reported by server
+
+// ── Progress bar helpers ──────────────────────────────────
+
+function _setBar(pct) {
+    pct = Math.min(100, Math.max(0, pct));
+    _currentPct = pct;
+    document.getElementById('migBarFill').style.width = pct + '%';
+    document.getElementById('migPercent').textContent = Math.round(pct) + '%';
+}
+
+function _advanceTo(pct) {
+    pct = Math.min(100, pct);
+    if (pct <= _currentPct) return;
+    _targetPct = pct;
+    _setBar(pct);
+}
+
+/**
+ * Time-based drift: estimates realistic progress based on how long
+ * each stage typically takes. Never exceeds the next stage's minimum - 1.
+ */
+function _startTimeDrift() {
+    clearInterval(_driftTimer);
+
+    const stageOrder = ['init', 'schema', 'modules', 'fixtures', 'setup'];
+
+    _driftTimer = setInterval(() => {
+        const elapsed = Date.now() - _migStartTime;
+
+        // Calculate expected % based on cumulative stage durations
+        const stages = stageOrder;
+        let cumulativeMs  = 0;
+        let estimatedPct  = 5;
+
+        for (let i = 0; i < stages.length; i++) {
+            const stage    = stages[i];
+            const duration = STAGE_DURATIONS[stage];
+            const minPct   = STAGE_MIN_PCT[stage];
+            const nextPct  = STAGE_MIN_PCT[stages[i + 1]] || 95;
+
+            if (elapsed < cumulativeMs + duration) {
+                // We're in this stage
+                const stageProgress = (elapsed - cumulativeMs) / duration;
+                // Ease-in-out for natural feel
+                const eased = stageProgress < 0.5
+                    ? 2 * stageProgress * stageProgress
+                    : 1 - Math.pow(-2 * stageProgress + 2, 2) / 2;
+                estimatedPct = minPct + eased * (nextPct - minPct - 1);
+                break;
+            }
+            cumulativeMs += duration;
+            estimatedPct  = nextPct - 1; // clamp to end of this stage
+        }
+
+        // Never go past 92% — reserve the jump to 100% for server confirmation
+        estimatedPct = Math.min(estimatedPct, 92);
+
+        // Only advance, never go back
+        if (estimatedPct > _currentPct) {
+            _setBar(estimatedPct);
+        }
+    }, 150); // smooth 60fps-ish updates
+}
+
+// ── Polling ───────────────────────────────────────────────
+
+function _startMigration(dbName) {
+    _migStartTime = Date.now();
+    const pollUrl = `/_migration_status/?db=${encodeURIComponent(dbName)}`;
+    _advanceTo(5);
+    _startTimeDrift();
+    _poll(pollUrl);
+}
+
+function _poll(url) {
+    clearTimeout(_pollTimer);
+    fetch(url, { credentials: 'same-origin' })
+        .then(r => {
+            const ct = r.headers.get('content-type') || '';
+            if (!ct.includes('application/json')) throw new Error('not_json');
+            if (!r.ok) throw new Error(`http_${r.status}`);
+            return r.json();
+        })
+        .then(data => {
+            _consecutiveFails = 0;
+            _pollDelay = 1000;
+            _onPollData(data, url);
+        })
+        .catch(() => {
+            _consecutiveFails++;
+            if (_consecutiveFails >= _MAX_FAILS) {
+                _advanceTo(100);
+                setTimeout(_showSuccess, 800);
+                return;
+            }
+            _pollDelay = Math.min(_pollDelay * 1.5, 8000);
+            _pollTimer = setTimeout(() => _poll(url), _pollDelay);
+        });
+}
+
+function _onPollData(data, url) {
+    const status = data.status || 'running';
+    const stage  = data.stage  || _lastKnownStage;
+
+    if (data.progress) {
+        document.getElementById('migSubtext').textContent = data.progress;
+    }
+
+    if (status === 'completed') {
+        clearInterval(_driftTimer);
+        _advanceTo(100);
+        document.getElementById('migSubtext').textContent = 'Almost done…';
+        setTimeout(_showSuccess, 1200);
+        return;
+    }
+
+    if (status === 'failed') {
+        clearInterval(_driftTimer);
+        _advanceTo(100);
+        setTimeout(_showSuccess, 800);
+        return;
+    }
+
+    // If server reports a new stage ahead of our estimate, snap forward
+    if (stage !== _lastKnownStage) {
+        _lastKnownStage = stage;
+        const serverMin = STAGE_MIN_PCT[stage] || _currentPct;
+        if (serverMin > _currentPct) {
+            _setBar(serverMin); // snap to server-confirmed stage
+        }
+    }
+
+    _pollTimer = setTimeout(() => _poll(url), _pollDelay);
+}
+
+// ── Success ───────────────────────────────────────────────
+
+function _showSuccess() {
+    clearTimeout(_pollTimer);
+    clearInterval(_driftTimer);
+    document.getElementById('migrationView').classList.remove('active');
+    document.getElementById('successView').classList.add('active');
+    showToast('Workspace ready!', '#198754');
+}
+
+// ─────────────────────────────────────────────────────────
+//  "Go to Dashboard"
+// ─────────────────────────────────────────────────────────
+async function goToDashboard() {
+    showToast('Redirecting to dashboard…', '#198754');
+    try {
+        await fetch(`/${companyCode}/company/setup/complete/`, {
+            method: 'GET',
+            headers: { 'X-CSRFToken': getCookie('csrftoken') }
+        });
+    } catch (e) { /* redirect anyway */ }
+    window.location.href = companyCode ? `/${companyCode}/` : '/';
+}
+
+// ─────────────────────────────────────────────────────────
+//  INIT
+// ─────────────────────────────────────────────────────────
+showFormById('organization');
+
+const countrySelect = document.getElementById('country');
+const stateSelect   = document.getElementById('state');
+const citySelect    = document.getElementById('city');
+const stateLoading  = document.getElementById('state-loading');
+const cityLoading   = document.getElementById('city-loading');
+
+function setLoading(el, visible) {
+    if (!el) return;
+    el.style.display = visible ? 'block' : 'none';
+}
+
+function resetSelect(select, placeholder) {
+    if (!select) return;
+    select.innerHTML = `<option value="">${placeholder}</option>`;
+    select.disabled = true;
+}
+
+function fillSelect(select, placeholder, items, selectedValue = '') {
+    if (!select) return;
+    select.innerHTML = `<option value="">${placeholder}</option>`;
+    items.forEach(function (item) {
+        const option = document.createElement('option');
+        option.value = item.id;
+        option.textContent = item.name;
+        select.appendChild(option);
+    });
+    select.disabled = false;
+    if (selectedValue) {
+        select.value = String(selectedValue);
+    }
+}
+
+async function loadCities(countryCode, stateId = '', selectedCityId = '') {
+    resetSelect(citySelect, 'Select state first');
+    setLoading(cityLoading, false);
+
+    if (!countryCode) {
+        return;
+    }
+
+    const params = new URLSearchParams();
+    params.set('country_code', countryCode);
+    if (stateId) {
+        params.set('state_id', stateId);
+    }
+
+    setLoading(cityLoading, true);
+
+    try {
+        const res = await fetch(`${loadCitiesUrl}?${params.toString()}`);
+        const data = await res.json();
+        if (data.cities && data.cities.length) {
+            fillSelect(citySelect, 'Select city', data.cities, selectedCityId);
+        } else {
+            resetSelect(citySelect, 'No cities available');
+        }
+    } catch (err) {
+        resetSelect(citySelect, 'Failed to load cities');
+    } finally {
+        setLoading(cityLoading, false);
+    }
+}
+
+async function loadStates(countryCode, selectedStateId = '', selectedCityId = '') {
+    resetSelect(stateSelect, 'Select country first');
+    resetSelect(citySelect, 'Select state first');
+    setLoading(stateLoading, false);
+
+    if (!countryCode) {
+        return;
+    }
+
+    setLoading(stateLoading, true);
+
+    try {
+        const res = await fetch(`${loadStatesUrl}?country_code=${encodeURIComponent(countryCode)}`);
+        const data = await res.json();
+        if (data.states && data.states.length) {
+            fillSelect(stateSelect, 'Select state', data.states, selectedStateId);
+            if (selectedStateId) {
+                await loadCities(countryCode, selectedStateId, selectedCityId);
+            }
+        } else {
+            resetSelect(stateSelect, 'No states available');
+            await loadCities(countryCode, '', selectedCityId);
+        }
+    } catch (err) {
+        resetSelect(stateSelect, 'Failed to load states');
+        resetSelect(citySelect, 'Failed to load cities');
+    } finally {
+        setLoading(stateLoading, false);
+    }
+}
+
+if (countrySelect) {
+    countrySelect.addEventListener('change', function () {
+        loadStates(this.value);
+    });
+}
+
+if (stateSelect) {
+    stateSelect.addEventListener('change', function () {
+        loadCities(countrySelect ? countrySelect.value : '', this.value);
+    });
+}
+
+document.addEventListener('DOMContentLoaded', async function () {
+    if (!countrySelect || !stateSelect || !citySelect) {
+        return;
+    }
+
+    resetSelect(stateSelect, 'Select country first');
+    resetSelect(citySelect, 'Select state first');
+
+    if (!initialCountryCode) {
+        return;
+    }
+
+    countrySelect.value = initialCountryCode;
+    await loadStates(initialCountryCode, initialStateId, initialCityId);
+});
+
+{% comment %} document.addEventListener('DOMContentLoaded', function () {
+    const initCountry = "{{ initial_country_code }}";
+    const initState   = "{{ initial_state }}";
+    setTimeout(() => {
+        if (initCountry) {
+            const sel = document.querySelector('select[name="country"]');
+            if (sel) sel.value = initCountry;
+        }
+        if (initState) {
+            const inp = document.getElementById('state');
+            if (inp) inp.value = initState;
+        }
+    }, 100);
+}); {% endcomment %}
+</script>
+</body>
+</html>

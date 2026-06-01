@@ -1,0 +1,350 @@
+{% extends 'website/index.html' %}
+{% block page_title %}Expense {{ expense.pk }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <div>
+                <h5 class="mb-0">Expense #{{ expense.pk }}</h5>
+                <span class="text-muted small">Recorded on {{ expense.created_at|date:"d-m-Y H:i" }}</span>
+            </div>
+            <div class="text-end">
+                <span class="badge bg-success">Recorded</span>
+                <a href="{% url 'expenses:expense_list' %}" class="btn btn-light ms-2" onclick="return handleExpenseBackButton(event)">Back to List</a>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="row g-4">
+                <!-- Primary Details -->
+                <div class="col-md-6">
+                    <div class="detail-section">
+                        <h6 class="detail-section-title">Basic Details</h6>
+                        <dl class="row mb-0">
+                            <dt class="col-sm-4">Date</dt>
+                            <dd class="col-sm-8">{{ expense.date|date:"d-m-Y" }}</dd>
+                            
+                            <dt class="col-sm-4">Vendor</dt>
+                            <dd class="col-sm-8">{{ expense.vendor|default:"-" }}</dd>
+                            
+                            <dt class="col-sm-4">Customer</dt>
+                            <dd class="col-sm-8">{{ customer_display }}</dd>
+                            
+                            <dt class="col-sm-4">Invoice Number</dt>
+                            <dd class="col-sm-8">{{ expense.invoice_number|default:"-" }}</dd>
+                            
+                            <dt class="col-sm-4">Paid Through</dt>
+                            <dd class="col-sm-8">{{ expense.paid_through.name }}</dd>
+
+                            {% comment %} <dt class="col-sm-4">Notes</dt>
+                            <dd class="col-sm-8">{{ expense.notes|default:"-"|linebreaks }}</dd> {% endcomment %}
+                        </dl>
+                    </div>
+                </div>
+
+                <!-- Tax Details -->
+                <div class="col-md-6">
+                    <div class="detail-section">
+                        <h6 class="detail-section-title">Tax Information</h6>
+                        <dl class="row mb-0">
+                            <dt class="col-sm-4">GST Treatment</dt>
+                            <dd class="col-sm-8">{{ expense.get_gst_treatment_display|default:"-" }}</dd>
+                            
+                            <dt class="col-sm-4">Place of Supply</dt>
+                            <dd class="col-sm-8">{{ expense.get_place_of_supply_display|default:"-" }}</dd>
+                            
+                            <dt class="col-sm-4">Destination of Supply</dt>
+                            <dd class="col-sm-8">{{ expense.get_destination_of_supply_display|default:"-" }}</dd>
+                            
+                            <dt class="col-sm-4">SAC/HSN</dt>
+                            <dd class="col-sm-8">{{ expense.sac_hsn|default:"-" }}</dd>
+
+                            {% comment %} <dt class="col-sm-4">Reverse Charge</dt>
+                            <dd class="col-sm-8">
+                                {% if expense.reverse_charge %}Yes{% else %}No{% endif %}
+                            </dd> {% endcomment %}
+                        </dl>
+                    </div>
+                </div>
+            </div>
+
+            {% comment %} <!-- Journal Entries -->
+            <div class="detail-section mt-4">
+                <h6 class="detail-section-title">Journal Entries</h6>
+                <div class="table-responsive">
+                    <table class="table align-middle">
+                        <thead>
+                            <tr>
+                                <th>Account</th>
+                                <th class="text-end">Debit</th>
+                                <th class="text-end">Credit</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for line in lines %}
+                            <tr>
+                                <td>{{ line.account.name }}</td>
+                                <td class="text-end">{{ line.total_amount_display|floatformat:2 }}</td>
+                                <td class="text-end">0.00</td>
+                            </tr>
+                            {% endfor %}
+                            <tr>
+                                <td>{{ expense.paid_through.name }}</td>
+                                <td class="text-end">0.00</td>
+                                <td class="text-end">{{ display_total|floatformat:2 }}</td>
+                            </tr>
+                        </tbody>
+                        <tfoot>
+                            <tr class="table-light">
+                                <td><strong>Total</strong></td>
+                                <td class="text-end"><strong>{{ display_total|floatformat:2 }}</strong></td>
+                                <td class="text-end"><strong>{{ display_total|floatformat:2 }}</strong></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div> {% endcomment %}
+
+            <!-- Expense Lines -->
+            <div class="detail-section mt-4">
+                <h6 class="detail-section-title">Expense Items</h6>
+                <div class="table-responsive">
+                    <table class="table align-middle">
+                        <thead>
+                            <tr>
+                                <th>Expense Account</th>
+                                <th>Notes</th>
+                                <th>Tax</th>
+                                <th class="text-end">Amount</th>
+                                <th class="text-end">Tax Amount</th>
+                                <th class="text-end">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for line in lines %}
+                            <tr>
+                                <td>{{ line.account.name }}</td>
+                                <td>{{ line.notes|default:"-" }}</td>
+                                <td>
+                                    {% if line.tax_display %}
+                                        {{ line.tax_display }}
+                                    {% elif line.tax %}
+                                        {{ line.tax.taxname }} ({{ line.tax.rate }}%)
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">{{ line.amount|floatformat:2 }}</td>
+                                <td class="text-end">{{ line.tax_amount_display|floatformat:2 }}</td>
+                                <td class="text-end">{{ line.total_amount_display|floatformat:2 }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="6" class="text-center py-3 text-muted">
+                                    No expense items recorded
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                        <tfoot>
+                            <tr class="table-light">
+                                <td colspan="3" class="text-end">
+                                    <strong>Total ({{ expense.currency }})</strong>
+                                </td>
+                                <td class="text-end">
+                                    <strong>{{ display_subtotal|floatformat:2 }}</strong>
+                                </td>
+                                <td class="text-end">
+                                    <strong>{{ display_tax_total|floatformat:2 }}</strong>
+                                </td>
+                                <td class="text-end">
+                                    <strong>{{ display_total|floatformat:2 }}</strong>
+                                </td>
+                            </tr>
+                            {% if expense.currency != company_base_currency_code %}
+                            <tr class="table-info">
+                                <td colspan="3" class="text-end">
+                                    <div class="d-flex flex-column">
+                                        <strong>Total in Base Currency ( {{ company_base_currency_code }} )</strong>
+                                        <small class="text-muted">Equivalent amount in company base currency</small>
+                                    </div>
+                                </td>
+                                <td colspan="3" class="text-end fw-bold">
+                                    <div class="d-flex flex-column">
+                                        <span>{{ company_base_currency_symbol }} {{ expense.total_amount_base|floatformat:2 }}</span>
+                                        <small class="text-muted" style="font-weight: normal;">Rate: 1 {{ expense.currency }} = {{ expense.fx_rate_to_base|floatformat:6 }} {{ company_base_currency_code }}</small>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endif %}
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if messages %}
+<div aria-live="polite" aria-atomic="true" class="position-relative">
+    <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1055;">
+        {% for message in messages %}
+        <div class="toast align-items-center text-bg-success border-0 shadow" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body fw-medium">
+                    {{ message }}
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block exstyle %}
+<style>
+    /* Card styles */
+    .card {
+        background: white;
+        border: 1px solid #e5e7eb;
+        box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
+        border-radius: 8px;
+        margin-bottom: 1.5rem;
+    }
+    
+    .card-header {
+        background: white;
+        border-bottom: 1px solid #e5e7eb;
+        padding: 1rem;
+    }
+
+    /* Detail section styles */
+    .detail-section {
+        background: #f9fafb;
+        border: 1px solid #e5e7eb;
+        border-radius: 6px;
+        padding: 1.25rem;
+    }
+
+    .detail-section-title {
+        color: #374151;
+        font-size: 0.875rem;
+        font-weight: 600;
+        margin-bottom: 1rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    /* Description list styles */
+    dl.row {
+        margin-bottom: 0;
+    }
+
+    dt {
+        color: #6b7280;
+        font-weight: 500;
+        font-size: 0.875rem;
+    }
+
+    dd {
+        color: #111827;
+        font-size: 0.875rem;
+        margin-bottom: 0.75rem;
+    }
+
+    dd:last-child {
+        margin-bottom: 0;
+    }
+
+    /* Table styles */
+    .table {
+        margin-bottom: 0;
+    }
+
+    .table > thead > tr > th {
+        background: #f9fafb;
+        color: #6b7280;
+        font-weight: 500;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        padding: 0.75rem;
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    .table > tbody > tr > td {
+        padding: 1rem 0.75rem;
+        border-bottom: 1px solid #f3f4f6;
+        color: #374151;
+        font-size: 0.875rem;
+    }
+
+    .table > tfoot > tr > td {
+        padding: 0.75rem;
+        border-top: 2px solid #e5e7eb;
+    }
+
+    /* Badge styles */
+    .badge {
+        font-weight: 500;
+        padding: 0.35em 0.65em;
+    }
+
+    .bg-success {
+        background-color: #059669 !important;
+    }
+
+    /* Button styles */
+    .btn-light {
+        background-color: #f9fafb;
+        border-color: #e5e7eb;
+        color: #374151;
+    }
+
+    .btn-light:hover {
+        background-color: #f3f4f6;
+        border-color: #d1d5db;
+        color: #111827;
+    }
+
+    /* Text colors */
+    .text-muted {
+        color: #6b7280 !important;
+    }
+</style>
+{% endblock %}
+
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+//by adarsh Back button logic: if came from chart of accounts, go back there; otherwise go to expense list
+function handleExpenseBackButton(event) {
+  event.preventDefault();
+  const backSource = sessionStorage.getItem('expenseBackSource');
+  
+  if (backSource === 'chart_of_accounts') {
+    sessionStorage.removeItem('expenseBackSource');
+    window.history.back();
+    return false;
+  } else {
+    window.location.href = "{% url 'expenses:expense_list' %}";
+    return false;
+  }
+}//byadarsh
+
+document.addEventListener("DOMContentLoaded", function() {
+    const toastElList = [].slice.call(document.querySelectorAll('.toast'));
+    toastElList.forEach(function(toastEl) {
+        const toast = new bootstrap.Toast(toastEl, { delay: 3000 });
+        toast.show();
+    });
+});
+</script>
+
+
+
+{% endblock %}

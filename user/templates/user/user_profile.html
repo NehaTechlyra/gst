@@ -1,0 +1,639 @@
+{% extends 'website/index.html' %}
+{% load static %}
+
+{% block page_title %}Profile{% endblock %}
+
+{% block exstyle %}
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  /* ─── Design Tokens ─────────────────────────────────────────── */
+  :root {
+    --brand:        #55588b;
+    --brand-dark:   #3e4070;
+    --brand-light:  #8486b8;
+    --brand-pale:   #f0f0f8;
+    --brand-muted:  #f5f5fb;
+    --brand-border: #dcddf0;
+    --success:      #2a7a56;
+    --danger:       #c0392b;
+    --text-primary: #2c2d4a;
+    --text-secondary:#6b6d96;
+    --text-muted:   #a0a2c0;
+    --surface:      #ffffff;
+    --surface-alt:  #fafafa;
+    --border:       #eaeaef;
+    --shadow-xs:    0 1px 2px rgba(85,88,139,.06);
+    --shadow-sm:    0 2px 8px rgba(85,88,139,.08);
+    --shadow-md:    0 4px 16px rgba(85,88,139,.10);
+    --radius:       8px;
+    --radius-sm:    5px;
+    --radius-lg:    12px;
+    --font-main:    'DM Sans', sans-serif;
+    --font-mono:    'DM Mono', monospace;
+  }
+
+  body { font-family: var(--font-main); color: var(--text-primary); background: #f6f6fb; }
+  .crm-page { padding: 24px 16px 48px; }
+
+  /* ─── Action Bar ─────────────────────────────────────────────── */
+  .action-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; gap: 10px; flex-wrap: wrap; }
+  .action-bar .btn-back { display: inline-flex; align-items: center; gap: 6px; padding: 7px 16px; background: #fff; color: var(--brand); border: 1px solid var(--brand-border); border-radius: var(--radius-sm); font-size: 0.85rem; font-weight: 500; text-decoration: none; transition: all .15s; box-shadow: var(--shadow-xs); }
+  .action-bar .btn-back:hover { background: var(--brand-muted); border-color: var(--brand); color: var(--brand-dark); }
+
+  /* ─── Buttons ────────────────────────────────────────────────── */
+  .btn { font-family: var(--font-main); font-weight: 500; font-size: 0.85rem; border-radius: var(--radius-sm); transition: all .15s ease; letter-spacing: 0; }
+  .btn:hover { transform: translateY(-1px); box-shadow: var(--shadow-sm); }
+  .btn:active { transform: translateY(0); box-shadow: none; }
+  .btn-primary { background: var(--brand); border-color: var(--brand); color: #fff; }
+  .btn-primary:hover, .btn-primary:focus { background: var(--brand-dark); border-color: var(--brand-dark); color: #fff; }
+  .btn-warning { background: #fff8e1; border-color: #ffe082; color: #b8860b; }
+  .btn-warning:hover { background: #fff3cd; border-color: #ffc107; color: #856404; }
+  .btn-outline-secondary { border-color: var(--border); color: var(--text-secondary); background: #fff; }
+  .btn-outline-secondary:hover { background: var(--brand-muted); border-color: var(--brand-border); color: var(--brand); }
+
+  /* ─── Cards ──────────────────────────────────────────────────── */
+  .card { border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-xs); background: var(--surface); overflow: hidden; transition: box-shadow .2s; }
+  .card:hover { box-shadow: var(--shadow-sm); }
+  .card > .card-header, .card>.card-header { background: #ffffff !important; background-color: #ffffff !important; border-bottom: 1px solid var(--border) !important; border-left: 3px solid var(--brand) !important; padding: 13px 18px !important; position: relative; }
+  .card > .card-header::after, .card>.card-header::after { display: none; }
+  .card > .card-header h5, .card > .card-header h6, .card>.card-header h5, .card>.card-header h6 { color: var(--brand) !important; font-size: 0.82rem !important; font-weight: 700 !important; letter-spacing: .07em !important; text-transform: uppercase !important; margin: 0 !important; }
+  .card > .card-header i, .card>.card-header i { color: var(--brand-light) !important; }
+  .card-body { padding: 20px; }
+  .card-footer { background: var(--surface-alt); border-top: 1px solid var(--border); padding: 14px 20px; }
+
+  /* ─── Info Rows ──────────────────────────────────────────────── */
+  .info-row { display: flex; align-items: baseline; gap: 10px; padding: 8px 0; border-bottom: 1px dashed var(--border); font-size: 0.88rem; }
+  .info-row:last-child { border-bottom: none; }
+  .info-row strong { color: var(--text-muted); font-weight: 600; font-size: 0.74rem; text-transform: uppercase; letter-spacing: .07em; min-width: 130px; flex-shrink: 0; }
+  .info-row span { color: var(--text-primary); font-weight: 400; }
+  .info-row a { color: var(--brand); text-decoration: none; font-weight: 500; }
+  .info-row a:hover { text-decoration: underline; }
+
+  /* ─── Avatar strip ───────────────────────────────────────────── */
+  .avatar-strip { display: flex; align-items: center; gap: 16px; padding-bottom: 14px; margin-bottom: 4px; border-bottom: 1px dashed var(--border); }
+  .avatar-img { width: 60px; height: 60px; border-radius: var(--radius); border: 2px solid var(--brand-border); object-fit: cover; flex-shrink: 0; }
+  .avatar-name { font-size: 1rem; font-weight: 700; color: var(--text-primary); margin: 0 0 2px; }
+  .avatar-username { font-size: 0.76rem; color: var(--text-muted); font-family: var(--font-mono); margin: 0 0 6px; }
+  .role-badge { display: inline-flex; align-items: center; background: var(--brand-pale); color: var(--brand); border: 1px solid var(--brand-border); border-radius: 5px; padding: 2px 10px; font-size: 0.68rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+
+  /* ─── Quick Actions ──────────────────────────────────────────── */
+  .quick-actions-body { display: flex; flex-direction: column; gap: 8px; padding: 16px 20px; }
+
+  /* ─── Address-style two-col card ────────────────────────────── */
+  .address-card .card-header { display: flex !important; align-items: center !important; justify-content: space-between !important; gap: 10px !important; padding: 11px 18px !important; border-left: 3px solid var(--brand) !important; }
+  .address-divider { width: 1px; height: 16px; background: var(--brand-border); flex-shrink: 0; }
+  .address-col { padding: 16px 18px; }
+  .address-col + .address-col { border-left: 1px solid var(--border); }
+  .addr-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--text-muted); margin-bottom: 8px; }
+
+  /* ─── Permissions ────────────────────────────────────────────── */
+  .perm-card { border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; background: var(--surface); transition: box-shadow .15s, border-color .15s; }
+  .perm-card:hover { box-shadow: var(--shadow-sm); border-color: var(--brand-border); }
+  .perm-module { font-size: 0.8rem; font-weight: 700; color: var(--text-primary); margin-bottom: 5px; }
+  .perm-tags { display: flex; flex-wrap: wrap; gap: 4px; }
+  .perm-tag { font-size: 0.68rem; font-weight: 600; letter-spacing: .04em; padding: 2px 7px; border-radius: 4px; background: var(--brand-pale); color: var(--brand); border: 1px solid var(--brand-border); text-transform: uppercase; }
+
+  /* ─── Modal ──────────────────────────────────────────────────── */
+  .modal-content { border: none; border-radius: var(--radius-lg); box-shadow: var(--shadow-md); font-family: var(--font-main); }
+  .modal-header { background: var(--brand-muted) !important; border-bottom: 1px solid var(--brand-border) !important; border-top: 3px solid var(--brand) !important; border-radius: var(--radius-lg) var(--radius-lg) 0 0 !important; padding: 14px 20px; }
+  .modal-title { color: var(--brand) !important; font-weight: 700; font-size: 0.9rem; }
+  .modal-body { padding: 20px 24px; color: var(--text-primary); font-size: 0.88rem; }
+  .modal-footer { border-top: 1px solid var(--border); padding: 12px 20px; gap: 8px; }
+  .modal-body .form-label { font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); margin-bottom: 5px; }
+  .modal-body .form-control, .modal-body .form-select { border: 1px solid var(--brand-border); border-radius: var(--radius-sm); font-size: 0.875rem; color: var(--text-primary); font-family: var(--font-main); transition: border-color .15s, box-shadow .15s; }
+  .modal-body .form-control:focus, .modal-body .form-select:focus { border-color: var(--brand); box-shadow: 0 0 0 3px rgba(85,88,139,.12); }
+  .required-asterisk { color: var(--danger); margin-left: 2px; }
+  .profile-toast-stack { position: fixed; bottom: 20px; right: 20px; z-index: 2000; display: flex; flex-direction: column; gap: 10px; }
+  .profile-toast { min-width: 280px; max-width: 360px; border-radius: var(--radius); padding: 12px 14px; color: #fff; box-shadow: var(--shadow-md); font-size: 0.85rem; font-weight: 600; opacity: 0; transform: translateY(-8px); transition: opacity .2s ease, transform .2s ease; }
+  .profile-toast.show { opacity: 1; transform: translateY(0); }
+  .profile-toast.success { background: var(--success); }
+  .profile-toast.error { background: var(--danger); }
+  .profile-toast.info { background: var(--brand); }
+
+  @media (max-width: 768px) {
+    .address-col + .address-col { border-left: none; border-top: 1px solid var(--border); }
+    .action-bar { flex-direction: column; align-items: flex-start; }
+    .profile-toast-stack { left: 12px; right: 12px; bottom: 12px; }
+    .profile-toast { min-width: 0; max-width: none; width: 100%; }
+  }
+  /* Password toggle + feedback consistent with signup/login styles */
+  /* Keep the eye toggle on the right when input becomes valid */
+  .password-input-wrapper .form-control.is-valid ~ .password-toggle { right: 12px !important; left: auto !important; }
+  .password-input-wrapper .form-control.is-valid { padding-right: 40px !important; padding-left: 12px !important; background-image: none !important; box-shadow: none !important; }
+  .password-toggle { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; color: #7d7cad; cursor: pointer; padding: 4px; font-size: 16px; }
+  .invalid-feedback { font-size: 12px; margin-top: 4px; color: #e74c3c; display: none; }
+  .valid-feedback { font-size: 12px; margin-top: 4px; color: #198754; display: none; }
+  .is-invalid ~ .invalid-feedback { display: block; }
+  .is-valid ~ .valid-feedback { display: block; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid crm-page">
+
+  <!-- ── Action Bar ─────────────────────────────────────────────── -->
+  <div class="action-bar">
+    <a href="javascript:history.back()" class="btn-back">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
+      Back
+    </a>
+  </div>
+
+  <!-- ── Main Info Row ──────────────────────────────────────────── -->
+  <div class="row g-4">
+
+    <!-- LEFT: Profile Information -->
+    <div class="col-md-6">
+      <div class="card h-100">
+        <div class="card-header">
+          <h5><i class="bi bi-person me-2"></i>Profile Information</h5>
+        </div>
+        <div class="card-body">
+
+          <div class="avatar-strip">
+            <img src="{% static 'images/user_profile.png' %}" alt="Avatar" class="avatar-img">
+            <div>
+              <p class="avatar-name">{{ app_user.usr_fname|default:app_user.usr_name }}</p>
+              <p class="avatar-username">@{{ app_user.usr_name }}</p>
+              {% if app_user.usr_roleid %}
+              <span class="role-badge"><i class="bi bi-shield-check me-1"></i>{{ app_user.usr_roleid.role_name }}</span>
+              {% endif %}
+            </div>
+          </div>
+
+          <div class="info-row">
+            <strong>User ID</strong>
+            <span style="font-family:var(--font-mono);">{{ app_user.id }}</span>
+          </div>
+          <div class="info-row">
+            <strong>Full Name</strong>
+            <span>{{ app_user.usr_fname|default:'—' }}</span>
+          </div>
+          <div class="info-row">
+            <strong>Username</strong>
+            <span style="font-family:var(--font-mono);">{{ app_user.usr_name }}</span>
+          </div>
+          <div class="info-row">
+            <strong>Email</strong>
+            <span>{{ app_user.usr_mail|default:'—' }}</span>
+          </div>
+          <div class="info-row">
+            <strong>Phone</strong>
+            <span>{{ app_user.usr_phn|default:'—' }}</span>
+          </div>
+          <div class="info-row">
+            <strong>Role</strong>
+            <span>{% if app_user.usr_roleid %}{{ app_user.usr_roleid.role_name }}{% else %}—{% endif %}</span>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Quick Actions + Employment/Activity -->
+    <div class="col-md-6 d-flex flex-column gap-4">
+
+      <div class="card">
+        <div class="card-header">
+          <h5><i class="bi bi-lightning me-2"></i>Quick Actions</h5>
+        </div>
+        <div class="quick-actions-body">
+          <button type="button" class="btn btn-primary w-100" id="btn-open-edit" data-can-edit="{% if can_edit %}1{% else %}0{% endif %}">
+            <i class="bi bi-pencil me-2"></i>Edit Profile
+          </button>
+          <button type="button" class="btn btn-outline-secondary w-100" id="btn-open-password" data-can-edit="{% if can_edit %}1{% else %}0{% endif %}">
+            <i class="bi bi-key me-2"></i>Change Password
+          </button>
+        </div>
+      </div>
+
+      <div class="card address-card flex-grow-1">
+        <div class="card-header">
+          {% if employee %}
+          <h6><i class="bi bi-briefcase me-2"></i>Employment</h6>
+          <div class="address-divider"></div>
+          {% endif %}
+          <h6><i class="bi bi-clock-history me-2"></i>Account Activity</h6>
+        </div>
+        <div class="row g-0">
+
+          {% if employee %}
+          <div class="col-md-6 address-col">
+            <p class="addr-label">Employment Details</p>
+            <div class="info-row">
+              <strong>Employee ID</strong>
+              <span style="font-family:var(--font-mono);">{{ employee.emp_code }}</span>
+            </div>
+            {% if employee.department %}
+            <div class="info-row">
+              <strong>Department</strong>
+              <span>{{ employee.department.department_name }}</span>
+            </div>
+            {% endif %}
+            {% if employee.designation %}
+            <div class="info-row">
+              <strong>Designation</strong>
+              <span>{{ employee.designation.designation_name }}</span>
+            </div>
+            {% endif %}
+          </div>
+          <div class="col-md-6 address-col">
+            <p class="addr-label">Activity</p>
+            <div class="info-row">
+              <strong>Created At</strong>
+              <span>{{ app_user.crtd_at|date:'d M Y, H:i' }}</span>
+            </div>
+            <div class="info-row">
+              <strong>Updated At</strong>
+              <span>{{ app_user.updt_at|date:'d M Y, H:i' }}</span>
+            </div>
+          </div>
+
+          {% else %}
+          <div class="col-12 address-col">
+            <p class="addr-label">Activity</p>
+            <div class="info-row">
+              <strong>Created At</strong>
+              <span>{{ app_user.crtd_at|date:'d M Y, H:i' }}</span>
+            </div>
+            <div class="info-row">
+              <strong>Updated At</strong>
+              <span>{{ app_user.updt_at|date:'d M Y, H:i' }}</span>
+            </div>
+          </div>
+          {% endif %}
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── Permissions ────────────────────────────────────────────── -->
+  {% if permissions_list %}
+  <div class="card mt-4">
+    <div class="card-header">
+      <h5><i class="bi bi-shield-lock me-2"></i>Permissions</h5>
+    </div>
+    <div class="card-body">
+      <div class="row g-3">
+        {% for item in permissions_list %}
+        <div class="col-md-4 col-sm-6">
+          <div class="perm-card">
+            <div class="perm-module">{{ item.module }}</div>
+            <div class="perm-tags">
+              {% for perm in item.perms %}
+              <span class="perm-tag">{{ perm }}</span>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+
+<!-- ── Edit / Password Modal ──────────────────────────────────── -->
+<div class="modal fade" id="userEditModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="userEditModalTitle">Edit Profile</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="userEditModalBody">
+        <div class="text-center py-4">Loading…</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="profileToastStack" class="profile-toast-stack"></div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const editBtn = document.getElementById('btn-open-edit');
+    const pwBtn   = document.getElementById('btn-open-password');
+    const modalEl = document.getElementById('userEditModal');
+    const modalTitle = document.getElementById('userEditModalTitle');
+    const modalBody  = document.getElementById('userEditModalBody');
+    const bsModal = new bootstrap.Modal(modalEl, { backdrop: 'static' });
+    const toastStack = document.getElementById('profileToastStack');
+
+    function showToast(message, type) {
+      if (!toastStack || !message) return;
+      const toast = document.createElement('div');
+      toast.className = `profile-toast ${type || 'info'}`;
+      toast.textContent = message;
+      toastStack.appendChild(toast);
+      requestAnimationFrame(() => toast.classList.add('show'));
+      setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 220);
+      }, 3200);
+    }
+
+    // Attach validation to Edit Profile form fields inside modal
+    function attachEditValidation(container) {
+      try {
+        // find the profile form (has button[name="update_profile"]) if multiple forms present
+        const form = container.querySelector('form button[name="update_profile"]') ? container.querySelector('form button[name="update_profile"]').closest('form') : container.querySelector('form');
+        if (!form) return;
+
+        const username = form.querySelector('input[name="usr_name"], input[id*="usr_name"]');
+        const fullname = form.querySelector('input[name="usr_fname"], select[name="usr_fname"]');
+        const email = form.querySelector('input[name="usr_mail"], input[id*="usr_mail"]');
+        const phone = form.querySelector('input[name="usr_phn"], input[id*="usr_phn"]');
+
+        function ensureFeedback(el) {
+          if (!el) return { invalid: null, valid: null };
+          let invalid = el.parentNode.querySelector('.invalid-feedback');
+          let valid = el.parentNode.querySelector('.valid-feedback');
+          if (!invalid) {
+            invalid = document.createElement('div'); invalid.className = 'invalid-feedback'; invalid.style.display = 'none'; el.parentNode.appendChild(invalid);
+          }
+          if (!valid) {
+            valid = document.createElement('div'); valid.className = 'valid-feedback'; valid.style.display = 'none'; el.parentNode.appendChild(valid);
+          }
+          return { invalid: invalid, valid: valid };
+        }
+
+        const fbUsername = ensureFeedback(username);
+        const fbFullname = ensureFeedback(fullname);
+        const fbEmail = ensureFeedback(email);
+        const fbPhone = ensureFeedback(phone);
+
+        const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/;
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        const phoneRegex = /^[0-9]{8,15}$/;
+
+        function validateField(field) {
+          if (!field) return true;
+          const name = (field.name || field.id || '').toLowerCase();
+          const val = (field.value || '').trim();
+          if (name.indexOf('usr_name') !== -1) {
+            if (usernameRegex.test(val)) {
+              field.classList.remove('is-invalid'); field.classList.add('is-valid');
+              if (fbUsername && fbUsername.invalid) { fbUsername.invalid.style.display = 'none'; }
+              return true;
+            }
+            field.classList.remove('is-valid'); field.classList.add('is-invalid');
+            if (fbUsername && fbUsername.invalid) { fbUsername.invalid.textContent = '3-20 chars: letters, numbers or underscore'; fbUsername.invalid.style.display = 'block'; fbUsername.valid.style.display = 'none'; }
+            return false;
+          }
+
+          if (field.type === 'email' || name.indexOf('usr_mail') !== -1) {
+            if (emailRegex.test(val)) {
+              field.classList.remove('is-invalid'); field.classList.add('is-valid');
+              if (fbEmail && fbEmail.invalid) { fbEmail.invalid.style.display = 'none'; }
+              return true;
+            }
+            field.classList.remove('is-valid'); field.classList.add('is-invalid');
+            if (fbEmail && fbEmail.invalid) { fbEmail.invalid.textContent = 'Enter a valid email'; fbEmail.invalid.style.display = 'block'; fbEmail.valid.style.display = 'none'; }
+            return false;
+          }
+
+          if (name.indexOf('usr_phn') !== -1 || field.type === 'tel') {
+            const cleaned = val.replace(/\D/g,'');
+            if (phoneRegex.test(cleaned)) {
+              field.classList.remove('is-invalid'); field.classList.add('is-valid');
+              if (fbPhone && fbPhone.invalid) { fbPhone.invalid.style.display = 'none'; }
+              return true;
+            }
+            field.classList.remove('is-valid'); field.classList.add('is-invalid');
+            if (fbPhone && fbPhone.invalid) { fbPhone.invalid.textContent = 'Enter a valid phone (8-15 digits)'; fbPhone.invalid.style.display = 'block'; fbPhone.valid.style.display = 'none'; }
+            return false;
+          }
+
+          // default: non-empty
+          if (val !== '') { field.classList.remove('is-invalid'); field.classList.add('is-valid'); if (fbFullname && fbFullname.invalid) { fbFullname.invalid.style.display = 'none'; } return true; }
+          field.classList.remove('is-valid'); field.classList.add('is-invalid'); if (fbFullname && fbFullname.invalid) { fbFullname.invalid.textContent = 'This field is required'; fbFullname.invalid.style.display = 'block'; fbFullname.valid.style.display = 'none'; }
+          return false;
+        }
+
+        [username, fullname, email, phone].forEach(f => {
+          if (!f) return;
+          f.addEventListener('input', () => validateField(f));
+          f.addEventListener('blur', () => validateField(f));
+        });
+
+        form.addEventListener('submit', function(e) {
+          const fields = [username, fullname, email, phone];
+          let all = true;
+          for (const f of fields) {
+            if (f && !validateField(f)) { all = false; }
+          }
+          if (!all) {
+            e.preventDefault(); e.stopPropagation();
+            const firstInvalid = form.querySelector('.is-invalid'); if (firstInvalid) { firstInvalid.focus(); if (typeof firstInvalid.scrollIntoView === 'function') firstInvalid.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
+          }
+        });
+
+      } catch (e) { console.debug('attachEditValidation failed', e); }
+    }
+
+    function loadFragment(which) {
+      const embeddedId = (which === 'password') ? 'embedded-user-password-form' : 'embedded-user-edit-form';
+      const embedded = document.getElementById(embeddedId);
+      modalTitle.textContent = (which === 'password') ? 'Change Password' : 'Edit Profile';
+      if (embedded) { modalBody.innerHTML = embedded.innerHTML; if (which === 'password') { attachPasswordValidation(modalBody); } else { attachEditValidation(modalBody); } bsModal.show(); return; }
+      modalBody.innerHTML = '<div class="text-center py-4">Loading…</div>';
+      fetch(`{% url 'user_edit' app_user.id %}?modal=1`, { credentials: 'same-origin' })
+        .then(r => { if (!r.ok) throw new Error('Network error'); return r.text(); })
+        .then(html => { modalBody.innerHTML = html; if (which === 'password') { attachPasswordValidation(modalBody); } else { attachEditValidation(modalBody); } bsModal.show(); })
+        .catch(() => { modalBody.innerHTML = '<div class="text-danger p-3">Form not available.</div>'; bsModal.show(); });
+    }
+
+    if (editBtn) editBtn.addEventListener('click', () => loadFragment('edit'));
+    if (pwBtn)   pwBtn.addEventListener('click',   () => loadFragment('password'));
+
+    // Attach real-time password validation when modal content is loaded
+    function attachPasswordValidation(container) {
+      try {
+        const form = container.querySelector('#password-section');
+        if (!form) return;
+
+        const pwd = form.querySelector('input[name="usr_pwd"]') || form.querySelector('input[id*="usr_pwd"]');
+        const confirm = form.querySelector('input[name="confirm_pwd"]') || form.querySelector('input[id*="confirm_pwd"]');
+
+        function ensureFeedback(el) {
+          if (!el) return { invalid: null, valid: null };
+          let invalid = el.parentNode.querySelector('.invalid-feedback');
+          let valid = el.parentNode.querySelector('.valid-feedback');
+          if (!invalid) {
+            invalid = document.createElement('div');
+            invalid.className = 'invalid-feedback';
+            invalid.style.display = 'none';
+            el.parentNode.appendChild(invalid);
+          }
+          if (!valid) {
+            valid = document.createElement('div');
+            valid.className = 'valid-feedback';
+            valid.style.display = 'none';
+            el.parentNode.appendChild(valid);
+          }
+          return { invalid: invalid, valid: valid };
+        }
+
+        const fbPwd = ensureFeedback(pwd);
+        const fbConfirm = ensureFeedback(confirm);
+
+        // Add eye toggle to a password input
+        function addToggle(el) {
+          if (!el) return;
+          // avoid duplicate
+          if (el.parentNode && el.parentNode.classList && el.parentNode.classList.contains('password-input-wrapper')) return;
+
+          const wrapper = document.createElement('div');
+          wrapper.className = 'password-input-wrapper';
+          // copy styles from parent to wrapper to avoid layout shift
+          const parent = el.parentNode;
+          parent.replaceChild(wrapper, el);
+          wrapper.appendChild(el);
+
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'password-toggle';
+          btn.innerHTML = '<i class="bi bi-eye"></i>';
+          // styling moved to CSS so it can be overridden when input becomes valid
+          btn.style.cursor = 'pointer';
+
+          wrapper.style.position = 'relative';
+          // Give the input extra right padding so the eye does not overlap the validation tick
+          try { 
+            const existing = window.getComputedStyle ? window.getComputedStyle(el).paddingRight : null;
+            el.style.paddingRight = (existing && existing !== '0px' ? existing : '0px');
+            // ensure at least 44px padding for icons
+            el.style.paddingRight = Math.max(parseInt(el.style.paddingRight || '0'), 44) + 'px';
+          } catch (e) { /* ignore */ }
+          wrapper.appendChild(btn);
+
+          btn.addEventListener('click', function () {
+            if (el.type === 'password') {
+              el.type = 'text';
+              this.querySelector('i').classList.remove('bi-eye');
+              this.querySelector('i').classList.add('bi-eye-slash');
+            } else {
+              el.type = 'password';
+              this.querySelector('i').classList.remove('bi-eye-slash');
+              this.querySelector('i').classList.add('bi-eye');
+            }
+          });
+        }
+
+        addToggle(pwd);
+        addToggle(confirm);
+
+        function validate() {
+          let ok = true;
+          if (pwd) {
+            if (pwd.value && pwd.value.length >= 8) {
+              pwd.classList.remove('is-invalid'); pwd.classList.add('is-valid');
+              if (fbPwd && fbPwd.valid) { fbPwd.valid.textContent = 'Good: at least 8 characters'; fbPwd.valid.style.display = 'block'; fbPwd.invalid.style.display = 'none'; }
+            } else {
+              pwd.classList.remove('is-valid'); pwd.classList.add('is-invalid');
+              if (fbPwd && fbPwd.invalid) { fbPwd.invalid.textContent = 'Password must be at least 8 characters'; fbPwd.invalid.style.display = 'block'; fbPwd.valid.style.display = 'none'; }
+              ok = false;
+            }
+          }
+          if (confirm && pwd) {
+            if (confirm.value && confirm.value === pwd.value) {
+              confirm.classList.remove('is-invalid'); confirm.classList.add('is-valid');
+              if (fbConfirm && fbConfirm.valid) { fbConfirm.valid.textContent = 'Passwords match'; fbConfirm.valid.style.display = 'block'; fbConfirm.invalid.style.display = 'none'; }
+            } else {
+              confirm.classList.remove('is-valid'); confirm.classList.add('is-invalid');
+              if (fbConfirm && fbConfirm.invalid) { fbConfirm.invalid.textContent = 'Passwords do not match'; fbConfirm.invalid.style.display = 'block'; fbConfirm.valid.style.display = 'none'; }
+              ok = false;
+            }
+          }
+          return ok;
+        }
+
+        ['input','blur'].forEach(evt => {
+          if (pwd) pwd.addEventListener(evt, validate);
+          if (confirm) confirm.addEventListener(evt, validate);
+        });
+
+        // Prevent submission if validation fails — show inline messages and focus first invalid
+        form.addEventListener('submit', function(e) {
+          const ok = validate();
+          if (!ok) {
+            e.preventDefault(); e.stopPropagation();
+            // focus first invalid field and ensure message visible
+            const firstInvalid = form.querySelector('.is-invalid');
+            if (firstInvalid) {
+              firstInvalid.focus();
+              // scroll into view if inside modal
+              if (typeof firstInvalid.scrollIntoView === 'function') {
+                firstInvalid.scrollIntoView({ block: 'center', behavior: 'smooth' });
+              }
+            }
+          }
+        });
+
+      } catch (e) {
+        console.debug('attachPasswordValidation failed', e);
+      }
+    }
+
+    {% if messages %}
+      {% for message in messages %}
+        showToast("{{ message|escapejs }}", "{% if message.tags == 'success' %}success{% elif message.tags == 'error' %}error{% else %}info{% endif %}");
+      {% endfor %}
+    {% endif %}
+  });
+</script>
+
+<!-- Hidden embedded forms -->
+<div style="display:none;">
+  {% if company_user %}
+  <div id="embedded-user-edit-form">
+    <form method="post" action="{% url 'user_edit' company_user.id %}" enctype="multipart/form-data">
+      {% csrf_token %}
+      <input type="hidden" name="next" value="profile">
+      <div class="row">
+        {% for field in edit_form %}
+        <div class="col-md-12 mb-3">
+          <label for="{{ field.id_for_label }}" class="form-label">
+            {{ field.label }}{% if field.field.required %}<span class="required-asterisk">*</span>{% endif %}
+          </label>
+          {{ field }}
+          {% for error in field.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+        </div>
+        {% endfor %}
+      </div>
+      <div class="modal-footer">
+        <button type="submit" name="update_profile" class="btn btn-primary">Update Profile</button>
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+      </div>
+    </form>
+  </div>
+  <div id="embedded-user-password-form">
+    <form method="post" action="{% url 'user_edit' company_user.id %}" id="password-section">
+      {% csrf_token %}
+      <input type="hidden" name="next" value="profile">
+      <div class="row">
+        {% for field in password_form %}
+        <div class="col-md-12 mb-3">
+          <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+          {{ field }}
+          {% for error in field.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+        </div>
+        {% endfor %}
+      </div>
+      <div class="modal-footer">
+        <button type="submit" name="update_password" class="btn btn-warning">Change Password</button>
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+      </div>
+    </form>
+  </div>
+  {% else %}
+  <div id="embedded-user-edit-form"><div class="p-3">Edit form not available.</div></div>
+  <div id="embedded-user-password-form"><div class="p-3">Password form not available.</div></div>
+  {% endif %}
+</div>
+
+{% endblock %}

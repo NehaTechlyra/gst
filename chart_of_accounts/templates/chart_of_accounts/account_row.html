@@ -1,0 +1,20 @@
+{% comment %} Recursive template to display account hierarchy with indentation {% endcomment %}
+<div style="margin-left: {% widthratio account.level 1 20 %}px; margin-bottom: 0px; display: flex; justify-content: space-between; align-items: center; padding: {% if account.has_children %}12px 12px; margin-top: 8px;{% else %}8px 12px;{% endif %} border-bottom: {% if account.has_children %}1px solid #e8e8e8{% else %}1px solid #f5f5f5{% endif %}; background: {% if account.has_children %}#f9f9fb; border-radius: 3px;{% endif %};">
+    {% if account.has_children %}
+        <a href="{% url 'account_detail' account.id %}{% if selected_fy %}?fy_id={{ selected_fy.pk }}{% endif %}" style="text-decoration: none; color: #55588b;">
+            <strong style="color: #55588b; font-size: 0.97rem; letter-spacing: 0.2px; font-weight: 700;">{{ account.name }}</strong>
+        </a>
+    {% else %}
+        <a href="{% url 'account_detail' account.id %}{% if selected_fy %}?fy_id={{ selected_fy.pk }}{% endif %}" style="text-decoration: none; color: #555;">
+            <span style="color: #555; font-size: 0.93rem; margin-left: 0px; font-weight: 400;">{{ account.name }}</span>
+        </a>
+    {% endif %}
+    <span style="font-weight: {% if account.has_children %}700{% else %}500{% endif %}; color: {% if account.has_children %}#55588b{% else %}#333{% endif %}; text-align: right; margin-left: auto; padding-left: 30px; font-size: {% if account.has_children %}0.96rem{% else %}0.92rem{% endif %};">
+        ₹ {{ account.balance|floatformat:2 }}
+    </span>
+</div>
+
+{% comment %} Recursively render children if they exist {% endcomment %}
+{% for child in account.children %}
+    {% include "chart_of_accounts/account_row.html" with account=child %}
+{% endfor %}

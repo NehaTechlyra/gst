@@ -1,0 +1,284 @@
+{% extends 'website/index.html' %}
+{% load static %}
+{% block page_title %}Employees{% endblock %}
+{% block exstyle %}
+{% comment %} <link href="{% static 'css/general.css' %}" rel="stylesheet"> {% endcomment %}
+<link href="{% static 'style/general.css' %}" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+{% endblock exstyle %}
+{% block content %}
+{% comment %} <div style="max-width:1100px;margin:20px auto;"> {% endcomment %}
+<div class="container mt-4"> <!-- Success toast (shown when redirected with ?success=Message) -->
+  <script>
+    (function(){
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const msg = params.get('success');
+        if (msg) {
+          const el = document.createElement('div');
+          el.textContent = decodeURIComponent(msg);
+          el.style.position = 'fixed';
+          el.style.right = '20px';
+          el.style.bottom = '20px';
+          el.style.background = '#28a745';
+          el.style.color = '#fff';
+          el.style.padding = '10px 14px';
+          el.style.borderRadius = '6px';
+          el.style.zIndex = 20000;
+          el.style.boxShadow = '0 4px 10px rgba(0,0,0,0.12)';
+          el.style.opacity = '0';
+          el.style.transition = 'opacity 240ms ease-in-out, transform 240ms ease-in-out';
+          el.style.transform = 'translateY(8px)';
+          document.addEventListener('DOMContentLoaded', function() { 
+            document.body.appendChild(el); 
+            // small entrance animation
+            requestAnimationFrame(function(){ el.style.opacity = '1'; el.style.transform = 'translateY(0)'; });
+            setTimeout(function(){ try{ el.style.opacity='0'; el.style.transform='translateY(8px)'; setTimeout(function(){ try{ el.remove(); }catch(e){} }, 240); }catch(e){} }, 3500);
+          });
+        }
+      } catch (e) { console.error('toast error', e); }
+    })();
+  </script>
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+    <div>
+      <a href="{% url 'hr_dashboard' %}" class="btn btn-outline-secondary">← Back</a>
+    </div>
+    <div>
+      {% if can_create_employees %}
+        <a href="{% url 'employee_register' %}" class="btn btn-success">+ Add Employee</a>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if employees_page and employees_page.object_list %}
+    <table class="items-table" style="width:100%;border-collapse:collapse;">
+      <thead lass="table-light"> 
+        <tr style="background:#f7f7f7;text-align:left;">
+          <th>SL</th>
+          <th>Employee ID</th>
+          <th >Name</th>
+          <th>Email</th>
+          <th>Phone</th>
+          <th>Department</th>
+          <th>Designation</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for emp in employees_page.object_list %}
+          <tr>
+            <td>{{ forloop.counter0|add:employees_page.start_index }}</td>
+            <td>{{ emp.emp_code  }}</td>
+            <td>{{ emp.first_name }} {{ emp.last_name }}</td>
+            <td>{{ emp.email }}</td>
+            <td>{{ emp.phone }}</td>
+            <td>{% if emp.department %}{{ emp.department.department_name }}{% else %}-{% endif %}</td>
+            <td>{% if emp.designation %}{{ emp.designation.designation_name }}{% else %}-{% endif %}</td>
+            <td>
+              {% if can_edit_employees %}
+                <a class="delete-btn" href="{% url 'employee_edit' emp.id %}"><i class="bi bi-pencil"></i></a>
+              {% endif %}
+              {% if can_delete_employees %}
+                <form method="POST" style="display:inline;" class="deactivate-form" data-emp-id="{{ emp.id }}">
+                    {% csrf_token %}
+                    <button type="button" class="delete-btn deactivate-btn" style="background:#d9534f;margin-left:6px;border:none;"><i class="bi bi-trash"></i></button>
+                </form>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <nav aria-label="Employees pagination" style="margin-top:12px;">
+      <ul class="pagination pagination-sm">
+        {% if employees_page.has_previous %}
+          <li class="page-item"><a class="page-link" href="?page={{ employees_page.previous_page_number }}">Previous</a></li>
+        {% else %}
+          <li class="page-item disabled"><span class="page-link">Previous</span></li>
+        {% endif %}
+
+        {% for p in employees_page.paginator.page_range %}
+          <li class="page-item {% if employees_page.number == p %}active{% endif %}"><a class="page-link" href="?page={{ p }}">{{ p }}</a></li>
+        {% endfor %}
+
+        {% if employees_page.has_next %}
+          <li class="page-item"><a class="page-link" href="?page={{ employees_page.next_page_number }}">Next</a></li>
+        {% else %}
+          <li class="page-item disabled"><span class="page-link">Next</span></li>
+        {% endif %}
+      </ul>
+    </nav>
+  {% else %}
+    <div class="alert alert-info text-center">
+      No employees found.
+      {% if can_create_employees %}
+        <a href="{% url 'employee_register' %}" class="alert-link">Add your first Employee</a>.
+      {% endif %}
+    </div>
+  {% endif %}
+</div>
+
+<script>
+// Replace confirm() with a nicer modal and show toast on success
+document.addEventListener('DOMContentLoaded', function() {
+    // Helper function to get CSRF token
+    function getCsrfToken() {
+        // Try to find CSRF token in the page
+        const input = document.querySelector('input[name="csrfmiddlewaretoken"]');
+        if (input) return input.value;
+        
+        // If not found, get from cookie
+        const name = 'csrftoken';
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    // Track the form/row we intend to delete
+    let pendingDelete = {
+      form: null,
+      row: null,
+      empId: null,
+    };
+
+    function showDeleteModal(empId, form, row) {
+      pendingDelete.form = form;
+      pendingDelete.row = row;
+      pendingDelete.empId = empId;
+      const modal = document.getElementById('deletePromptEmp');
+      if (modal) modal.style.display = 'flex';
+    }
+
+    function hideDeleteModal() {
+      const modal = document.getElementById('deletePromptEmp');
+      if (modal) modal.style.display = 'none';
+      pendingDelete.form = null;
+      pendingDelete.row = null;
+      pendingDelete.empId = null;
+    }
+
+    // Show toast (Bootstrap if available, fallback otherwise)
+    function showToast(message, type) {
+      const toastContainer = document.getElementById('toastContainer') || document.body;
+      // Try Bootstrap toast
+      try {
+        if (typeof bootstrap !== 'undefined' && bootstrap.Toast && toastContainer) {
+          const toastEl = document.createElement('div');
+          toastEl.className = `toast align-items-center text-bg-${type || 'success'} border-0`;
+          toastEl.setAttribute('role', 'alert');
+          toastEl.setAttribute('aria-live', 'assertive');
+          toastEl.setAttribute('aria-atomic', 'true');
+          toastEl.innerHTML = `
+            <div class="d-flex">
+              <div class="toast-body">${message}</div>
+              <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>`;
+          toastContainer.appendChild(toastEl);
+          const t = new bootstrap.Toast(toastEl, { delay: 3000 });
+          t.show();
+          // remove after hidden
+          toastEl.addEventListener('hidden.bs.toast', () => { try{ toastEl.remove(); }catch(e){} });
+          return;
+        }
+      } catch (e) {
+        // fallthrough to simple toast
+        console.error('Bootstrap toast failed', e);
+      }
+
+      // Simple fallback toast
+      const el = document.createElement('div');
+      el.textContent = message;
+      el.style.position = 'fixed';
+      el.style.right = '20px';
+      el.style.bottom = '20px';
+      el.style.background = type === 'danger' ? '#d9534f' : '#28a745';
+      el.style.color = '#fff';
+      el.style.padding = '10px 14px';
+      el.style.borderRadius = '6px';
+      el.style.zIndex = 20000;
+      el.style.boxShadow = '0 4px 10px rgba(0,0,0,0.12)';
+      document.body.appendChild(el);
+      setTimeout(() => { try{ el.remove(); }catch(e){} }, 3500);
+    }
+
+    // Add click handlers to all delete buttons to open modal
+    document.querySelectorAll('.deactivate-btn').forEach(button => {
+      button.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        const form = this.closest('form.deactivate-form');
+        if (!form) return console.error('No form found');
+        const empId = form.getAttribute('data-emp-id');
+        if (!empId) return console.error('No employee ID found');
+        const row = form.closest('tr');
+        showDeleteModal(empId, form, row);
+      });
+    });
+
+    // Confirm modal action -> perform AJAX deactivate
+    document.getElementById && document.getElementById('confirmDeleteEmp') && document.getElementById('confirmDeleteEmp').addEventListener('click', function() {
+      if (!pendingDelete.form || !pendingDelete.empId) return hideDeleteModal();
+
+      // Extract company code from URL
+      const pathParts = window.location.pathname.split('/').filter(p => p);
+      const companyCode = pathParts[0];
+      const deleteUrl = `/${companyCode}/HR/employee/${pendingDelete.empId}/deactivate/`;
+
+      const csrfToken = getCsrfToken();
+      const formData = new FormData();
+      if (csrfToken) formData.append('csrfmiddlewaretoken', csrfToken);
+
+      fetch(deleteUrl, {
+        method: 'POST',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        body: formData
+      })
+      .then(response => {
+        if (!response.ok) throw new Error('Network response was not ok');
+        return response.json();
+      })
+      .then(data => {
+        if (data.status === 'success') {
+          // Remove the row from the table
+          try { pendingDelete.row && pendingDelete.row.remove(); } catch(e){}
+          showToast('Employee removed successfully.', 'success');
+        } else {
+          showToast(data.message || 'Failed to remove employee', 'danger');
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        showToast('Error removing employee: ' + error.message, 'danger');
+      })
+      .finally(() => { hideDeleteModal(); });
+    });
+
+    // Cancel button
+    document.getElementById && document.getElementById('cancelDeleteEmp') && document.getElementById('cancelDeleteEmp').addEventListener('click', function() {
+      hideDeleteModal();
+    });
+});
+</script>
+
+  <!-- Delete confirmation modal (hidden by default) -->
+  <div id="deletePromptEmp" class="prompt-modal">
+    <div class="prompt-modal-content">
+      <p>Are you sure you want to delete this employee?</p>
+      <div class="prompt-buttons">
+        <button id="confirmDeleteEmp" class="prompt-btn prompt-ok-btn">OK</button>
+        <button id="cancelDeleteEmp" class="prompt-btn prompt-cancel-btn">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+{% endblock %}

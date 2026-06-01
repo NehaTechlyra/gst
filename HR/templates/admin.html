@@ -1,0 +1,667 @@
+{% extends 'website/index.html' %}
+{% load static %}
+
+{% block exstyle %}
+{% comment %} <link href="{% static 'css/general.css' %}" rel="stylesheet"> {% endcomment %}
+<link href="{% static 'style/general.css' %}" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+<style>
+/* make a column take the full row when active */
+.full-width{ flex: 0 0 100% !important; max-width: 100% !important; }
+/* ensure the inner card stretches */
+.full-width .card { width: 100%; }
+/* admin top cards styling: clean card design like recruit dashboard */
+.admin-top-cards { 
+    display: grid; 
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); 
+    gap: 16px; 
+    max-width: 100%;
+}
+.admin-top-cards .admin-card { 
+    border-radius: 10px; 
+    background: #fff; 
+    padding: 20px; 
+    box-shadow: 0 4px 12px rgba(15,23,42,0.06); 
+    border: 1px solid #eef2ff; 
+    transition: transform 0.2s, box-shadow 0.2s;
+    cursor: pointer;
+}
+.admin-top-cards .admin-card:hover { 
+    transform: translateY(-3px); 
+    box-shadow: 0 8px 24px rgba(15,23,42,0.08);
+}
+.admin-top-cards .admin-card.border-2 {
+    border: 2px solid #4f46e5;
+    box-shadow: 0 8px 24px rgba(79,70,229,0.15);
+}
+.admin-top-cards .admin-card .card-body { 
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+.admin-top-cards .stat-icon { 
+    font-size: 28px; 
+    margin-bottom: 12px;
+}
+.admin-top-cards .card-title { 
+    font-size: 14px; 
+    color: #4b5563; 
+    margin-bottom: 8px; 
+    font-weight: 500; 
+}
+.admin-top-cards .card-text { 
+    font-size: 24px; 
+    font-weight: 600; 
+    color: #111827;
+    margin: 0;
+}
+
+@media (max-width: 900px) { 
+    .admin-top-cards { 
+        grid-template-columns: repeat(2, 1fr); 
+    }
+}
+@media (max-width: 576px) { 
+    .admin-top-cards { 
+        grid-template-columns: 1fr; 
+    }
+}
+
+
+/* admin tables: allow tables to expand vertically instead of showing internal scrollbars
+	- Targets the `.master-table` wrapper used around tables in this template
+	- This will remove internal vertical scrollbars; page scrollbar will appear if needed
+*/
+.master-table, .table-responsive.master-table { overflow: visible !important; max-height: none !important; }
+/* color icons inside action buttons */
+.btn-outline-primary i.bi-pencil { color: #55588b; }
+.btn-outline-danger i.bi-trash { color: #a7aaad; }
+/* make section cards look like plain table blocks */
+.card.mb-3 { background: transparent; box-shadow: none; border: none; }
+.card-body { padding: 0; }
+.card-title { margin: 0 0 8px 0; font-weight:600; }
+.master-table table { border-collapse: collapse; width: 100%; }
+.master-table table thead th { border-bottom: 2px solid #e9ecef; background: #f8f9fa; padding: 10px; text-align: left; }
+.master-table table tbody td { border-bottom: 1px solid #eee; padding: 10px; vertical-align: middle; }
+.master-table .text-end { text-align: right; }
+.master-table .btn { padding: 6px 8px; font-size: 0.85rem; }
+.master-table .btn i { vertical-align: middle; }
+/* empty-state used across list pages */
+.empty-state { text-align: center; padding: 20px; border: 1px dashed #e9ecef; border-radius: 8px; margin-top: 12px; }
+.empty-state h3 { margin-bottom: 8px; }
+.empty-state p { color: #6b7280; }
+</style>
+{% endblock exstyle %}
+
+{% block page_title %}Admin{% endblock page_title %}
+
+{% block content %}
+
+<div class="container mt-2">
+	<!-- Top summary cards (click to filter sections) -->
+	<div class="admin-top-cards mb-4">
+		<div class="card admin-card" data-target="designations">
+			<div class="card-body">
+				<div class="stat-icon"><i class="bi bi-people-fill text-info"></i></div>
+				<div class="card-title">Designations</div>
+				<div class="card-text">{{ designation_count|default:0 }}</div>
+			</div>
+		</div>
+		<div class="card admin-card" data-target="departments">
+			<div class="card-body">
+				<div class="stat-icon"><i class="bi bi-building text-success"></i></div>
+				<div class="card-title">Departments</div>
+				<div class="card-text">{{ department_count|default:0 }}</div>
+			</div>
+		</div>
+		<div class="card admin-card" data-target="allowances">
+			<div class="card-body">
+				<div class="stat-icon"><i class="bi bi-cash-stack text-warning"></i></div>
+				<div class="card-title">Allowances</div>
+				<div class="card-text">{{ allowances_count|default:0 }}</div>
+			</div>
+		</div>
+		<div class="card admin-card" data-target="leaves">
+			<div class="card-body">
+				<div class="stat-icon"><i class="bi bi-calendar-check text-primary"></i></div>
+				<div class="card-title">Leaves</div>
+				<div class="card-text">{{ leaves_count|default:0 }}</div>
+			</div>
+		</div>
+		<div class="card admin-card" data-target="banks">
+			<div class="card-body">
+				<div class="stat-icon"><i class="bi bi-bank2 text-danger"></i></div>
+				<div class="card-title">Banks</div>
+				<div class="card-text">{{ bank_count|default:0 }}</div>
+			</div>
+		</div>
+		<div class="card admin-card" data-target="personal_docs">
+			<div class="card-body">
+				<div class="stat-icon"><i class="bi bi-file-earmark-text-fill text-secondary"></i></div>
+				<div class="card-title">Personal ID</div>
+				<div class="card-text">{{ personal_docs_count|default:0 }}</div>
+			</div>
+		</div>
+	</div>
+
+	<div class="row">
+		<div class="col-md-6" data-section="designations" style="display:none;">
+			<div class="card mb-3">
+				<div class="card-body">
+					<h5 class="card-title">Designations</h5>
+					<p class="card-text">Total: {{ designation_count|default:0 }}</p>
+										{% if can_create_master %}
+											<a href="{% url 'designation_add' %}?next=designations" class="btn btn-sm btn-success">+ Add</a>
+										{% endif %}
+
+					{% if designations_page and designations_page.object_list %}
+						<div class="table-responsive mt-3 master-table">
+						<table class="items-table">
+							<thead class="table-light"><tr><th>Name</th><th>Department</th><th class="text-end">Actions</th></tr></thead>
+							<tbody>
+							{% for d in designations_page.object_list %}
+							<tr>
+								<td>{{ d.designation_name }}</td>
+								<td>{{ d.departments.department_name }}</td>
+																<td class="text-end">
+																				{% if can_edit_master %}
+																					<a href="{% url 'designation_edit' d.id %}?next=designations" class="delete-btn" title="Edit" aria-label="Edit"><i class="bi bi-pencil"></i></a>
+																				{% endif %}
+																				{% if can_delete_master %}
+																					<form method="post" action="{% url 'designation_deactivate' d.id %}?next=designations" class="d-inline">
+																							{% csrf_token %}
+																							<button type="submit" class="delete-btn" title="Delete" aria-label="Delete"><i class="bi bi-trash"></i></button>
+																					</form>
+																				{% endif %}
+																</td>
+							</tr>
+							{% endfor %}
+							</tbody>
+						</table>
+						</div>
+
+						<!-- pagination controls -->
+						<nav aria-label="Designations pagination">
+							<ul class="pagination pagination-sm justify-content-end">
+								{% if designations_page.has_previous %}
+									<li class="page-item"><a class="page-link" href="?designations_page={{ designations_page.previous_page_number }}#designations">Previous</a></li>
+								{% else %}
+									<li class="page-item disabled"><span class="page-link">Previous</span></li>
+								{% endif %}
+								{% for p in designations_paginator.page_range %}
+									<li class="page-item {% if designations_page.number == p %}active{% endif %}"><a class="page-link" href="?designations_page={{ p }}#designations">{{ p }}</a></li>
+								{% endfor %}
+								{% if designations_page.has_next %}
+									<li class="page-item"><a class="page-link" href="?designations_page={{ designations_page.next_page_number }}#designations">Next</a></li>
+								{% else %}
+									<li class="page-item disabled"><span class="page-link">Next</span></li>
+								{% endif %}
+							</ul>
+						</nav>
+					{% else %}
+						<div class="empty-state">
+							<div style="font-size:48px; margin-bottom:12px;">👥</div>
+							<h3>No Designations Found</h3>
+							<p>Use the <strong>+ Add</strong> button to create your first designation.</p>
+						</div>
+					{% endif %}
+				</div>
+			</div>
+		</div>
+	<div class="col-md-6" data-section="departments" style="display:none;">
+			<div class="card mb-3">
+				<div class="card-body">
+					<h5 class="card-title">Departments</h5>
+					<p class="card-text">Total: {{ department_count|default:0 }}</p>
+										{% if can_create_master %}
+											<a href="{% url 'department_add' %}?next=departments" class="btn btn-sm btn-success">+ Add</a>
+										{% endif %}
+
+					{% if departments_page and departments_page.object_list %}
+						<div class="table-responsive mt-3 master-table">
+						<table class="items-table">
+							<thead class="table-light"><tr><th>Name</th><th class="text-end">Actions</th></tr></thead>
+							<tbody>
+							{% for dep in departments_page.object_list %}
+							<tr>
+								<td>{{ dep.department_name }}</td>
+																<td class="text-end">
+																		{% if can_edit_master %}
+																			<a href="{% url 'department_edit' dep.id %}?next=departments" class="delete-btn" title="Edit" aria-label="Edit"><i class="bi bi-pencil"></i></a>
+																		{% endif %}
+																		{% if can_delete_master %}
+																			<form method="post" action="{% url 'department_deactivate' dep.id %}?next=departments" class="d-inline">
+																					{% csrf_token %}
+																					<button type="submit" class="delete-btn" title="Delete" aria-label="Delete"><i class="bi bi-trash"></i></button>
+																			</form>
+																		{% endif %}
+																</td>
+							</tr>
+							{% endfor %}
+							</tbody>
+						</table>
+						</div>
+
+						<nav aria-label="Departments pagination">
+							<ul class="pagination pagination-sm justify-content-end">
+								{% if departments_page.has_previous %}
+									<li class="page-item"><a class="page-link" href="?departments_page={{ departments_page.previous_page_number }}#departments">Previous</a></li>
+								{% else %}
+									<li class="page-item disabled"><span class="page-link">Previous</span></li>
+								{% endif %}
+								{% for p in departments_paginator.page_range %}
+									<li class="page-item {% if departments_page.number == p %}active{% endif %}"><a class="page-link" href="?departments_page={{ p }}#departments">{{ p }}</a></li>
+								{% endfor %}
+								{% if departments_page.has_next %}
+									<li class="page-item"><a class="page-link" href="?departments_page={{ departments_page.next_page_number }}#departments">Next</a></li>
+								{% else %}
+									<li class="page-item disabled"><span class="page-link">Next</span></li>
+								{% endif %}
+							</ul>
+						</nav>
+					{% else %}
+						<div class="empty-state">
+							<div style="font-size:48px; margin-bottom:12px;">🏢</div>
+							<h3>No Departments Found</h3>
+							<p>Use the <strong>+ Add</strong> button to create your first department.</p>
+						</div>
+					{% endif %}
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<div class="row">
+	<div class="col-md-6" data-section="allowances" style="display:none;">
+			<div class="card mb-3">
+				<div class="card-body">
+					<h5 class="card-title">Allowances</h5>
+					<p class="card-text">Total: {{ allowances_count|default:0 }}</p>
+										{% if can_create_master %}
+											<a href="{% url 'allowances_add' %}?next=allowances" class="btn btn-sm btn-success">+ Add</a>
+										{% endif %}
+
+					{% if allowances_page and allowances_page.object_list %}
+						<div class="table-responsive mt-3 master-table">
+						<table class="items-table">
+							<thead class="table-light"><tr><th>Name</th><th class="text-end">Actions</th></tr></thead>
+							<tbody>
+							{% for a in allowances_page.object_list %}
+							<tr>
+								<td>{{ a.allowances_name }}</td>
+																<td class="text-end">
+																		{% if can_edit_master %}
+																			<a href="{% url 'allowances_edit' a.id %}?next=allowances" class="delete-btn" title="Edit" aria-label="Edit"><i class="bi bi-pencil"></i></a>
+																		{% endif %}
+																		{% if can_delete_master %}
+																			<form method="post" action="{% url 'allowances_deactivate' a.id %}?next=allowances" class="d-inline">
+																					{% csrf_token %}
+																					<button type="submit" class="delete-btn" title="Delete" aria-label="Delete"><i class="bi bi-trash"></i></button>
+																			</form>
+																		{% endif %}
+																</td>
+							</tr>
+							{% endfor %}
+							</tbody>
+						</table>
+						</div>
+
+						<nav aria-label="Allowances pagination">
+							<ul class="pagination pagination-sm justify-content-end">
+								{% if allowances_page.has_previous %}
+									<li class="page-item"><a class="page-link" href="?allowances_page={{ allowances_page.previous_page_number }}#allowances">Previous</a></li>
+								{% else %}
+									<li class="page-item disabled"><span class="page-link">Previous</span></li>
+								{% endif %}
+								{% for p in allowances_paginator.page_range %}
+									<li class="page-item {% if allowances_page.number == p %}active{% endif %}"><a class="page-link" href="?allowances_page={{ p }}#allowances">{{ p }}</a></li>
+								{% endfor %}
+								{% if allowances_page.has_next %}
+									<li class="page-item"><a class="page-link" href="?allowances_page={{ allowances_page.next_page_number }}#allowances">Next</a></li>
+								{% else %}
+									<li class="page-item disabled"><span class="page-link">Next</span></li>
+								{% endif %}
+							</ul>
+						</nav>
+					{% else %}
+						<div class="empty-state">
+							<div style="font-size:48px; margin-bottom:12px;">💰</div>
+							<h3>No Allowances Found</h3>
+							<p>Use the <strong>+ Add</strong> button to create your first allowance.</p>
+						</div>
+					{% endif %}
+				</div>
+			</div>
+		</div>
+	<div class="col-md-6" data-section="leaves" style="display:none;">
+			<div class="card mb-3">
+				<div class="card-body">
+					<h5 class="card-title">Leaves</h5>
+					<p class="card-text">Total: {{ leaves_count|default:0 }}</p>
+										{% if can_create_master %}
+											<a href="{% url 'leaves_add' %}?next=leaves" class="btn btn-sm btn-success">+ Add</a>
+										{% endif %}
+
+					{% if leaves_page and leaves_page.object_list %}
+						<div class="table-responsive mt-3 master-table">
+						<table class="items-table">
+							<thead class="table-light"><tr><th>Name</th><th class="text-end">Actions</th></tr></thead>
+							<tbody>
+							{% for l in leaves_page.object_list %}
+							<tr>
+								<td>{{ l.leaves_name }}</td>
+																<td class="text-end">
+																		{% if can_edit_master %}
+																			<a href="{% url 'leaves_edit' l.id %}?next=leaves" class="delete-btn" title="Edit" aria-label="Edit"><i class="bi bi-pencil"></i></a>
+																		{% endif %}
+																		{% if can_delete_master %}
+																			<form method="post" action="{% url 'leaves_deactivate' l.id %}?next=leaves" class="d-inline">
+																					{% csrf_token %}
+																					<button type="submit" class="delete-btn" title="Delete" aria-label="Delete"><i class="bi bi-trash"></i></button>
+																			</form>
+																		{% endif %}
+																</td>
+							</tr>
+							{% endfor %}
+							</tbody>
+						</table>
+						</div>
+
+						<nav aria-label="Leaves pagination">
+							<ul class="pagination pagination-sm justify-content-end">
+								{% if leaves_page.has_previous %}
+									<li class="page-item"><a class="page-link" href="?leaves_page={{ leaves_page.previous_page_number }}#leaves">Previous</a></li>
+								{% else %}
+									<li class="page-item disabled"><span class="page-link">Previous</span></li>
+								{% endif %}
+								{% for p in leaves_paginator.page_range %}
+									<li class="page-item {% if leaves_page.number == p %}active{% endif %}"><a class="page-link" href="?leaves_page={{ p }}#leaves">{{ p }}</a></li>
+								{% endfor %}
+								{% if leaves_page.has_next %}
+									<li class="page-item"><a class="page-link" href="?leaves_page={{ leaves_page.next_page_number }}#leaves">Next</a></li>
+								{% else %}
+									<li class="page-item disabled"><span class="page-link">Next</span></li>
+								{% endif %}
+							</ul>
+						</nav>
+					{% else %}
+						<div class="empty-state">
+							<div style="font-size:48px; margin-bottom:12px;">📅</div>
+							<h3>No Leave Types Found</h3>
+							<p>Use the <strong>+ Add</strong> button to create your first leave type.</p>
+						</div>
+					{% endif %}
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<div class="row">
+	<div class="col-md-6" data-section="banks" style="display:none;">
+			<div class="card mb-3">
+				<div class="card-body">
+					<h5 class="card-title">Banks</h5>
+					<p class="card-text">Total: {{ bank_count|default:0 }}</p>
+										{% if can_create_master %}
+											<a href="{% url 'bank_add' %}?next=banks" class="btn btn-sm btn-success">+ Add</a>
+										{% endif %}
+
+					{% if banks_page and banks_page.object_list %}
+						<div class="table-responsive mt-3 master-table">
+						<table class="items-table">
+							<thead class="table-light"><tr><th>Name</th><th class="text-end">Actions</th></tr></thead>
+							<tbody>
+							{% for b in banks_page.object_list %}
+							<tr>
+								<td>{{ b.bank_name }}</td>
+																<td class="text-end">
+																		{% if can_edit_master %}
+																			<a href="{% url 'bank_edit' b.id %}?next=banks" class="delete-btn" title="Edit" aria-label="Edit"><i class="bi bi-pencil"></i></a>
+																		{% endif %}
+																		{% if can_delete_master %}
+																			<form method="post" action="{% url 'bank_deactivate' b.id %}?next=banks" class="d-inline">
+																					{% csrf_token %}
+																					<button type="submit" class="delete-btn" title="Delete" aria-label="Delete"><i class="bi bi-trash"></i></button>
+																			</form>
+																		{% endif %}
+																</td>
+							</tr>
+							{% endfor %}
+							</tbody>
+						</table>
+						</div>
+
+						<nav aria-label="Banks pagination">
+							<ul class="pagination pagination-sm justify-content-end">
+								{% if banks_page.has_previous %}
+									<li class="page-item"><a class="page-link" href="?banks_page={{ banks_page.previous_page_number }}#banks">Previous</a></li>
+								{% else %}
+									<li class="page-item disabled"><span class="page-link">Previous</span></li>
+								{% endif %}
+								{% for p in banks_paginator.page_range %}
+									<li class="page-item {% if banks_page.number == p %}active{% endif %}"><a class="page-link" href="?banks_page={{ p }}#banks">{{ p }}</a></li>
+								{% endfor %}
+								{% if banks_page.has_next %}
+									<li class="page-item"><a class="page-link" href="?banks_page={{ banks_page.next_page_number }}#banks">Next</a></li>
+								{% else %}
+									<li class="page-item disabled"><span class="page-link">Next</span></li>
+								{% endif %}
+							</ul>
+						</nav>
+					{% else %}
+						<div class="empty-state">
+							<div style="font-size:48px; margin-bottom:12px;">🏦</div>
+							<h3>No Banks Found</h3>
+							<p>Use the <strong>+ Add</strong> button to create your first bank.</p>
+						</div>
+					{% endif %}
+				</div>
+			</div>
+		</div>
+	</div>
+<div class="row">
+  <div class="col-md-6" data-section="personal_docs" style="display:none;">
+    <div class="card mb-3">
+      <div class="card-body">
+        <h5 class="card-title">Personal Document Types</h5>
+        <p class="card-text">Total: {{ personal_docs_count|default:0 }}</p>
+        <a href="{% url 'personal_document_type_add' %}?next=personal_docs" class="btn btn-sm btn-success ms-2">+ Add</a>
+
+        {% if personal_docs_page and personal_docs_page.object_list %}
+          <div class="table-responsive mt-3 master-table">
+            <table class="items-table">
+              <thead class="table-light">
+                <tr>
+                  <th>Name</th>
+                  <th>Example Format</th>
+                  <th class="text-end">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for p in personal_docs_page.object_list %}
+                <tr>
+                  <td>{{ p.name }}</td>
+                  <td>{{ p.example_format|default:"—" }}</td>
+                  <td class="text-end">
+                    <a href="{% url 'personal_document_type_edit' p.id %}?next=personal_docs" class="delete-btn" title="Edit" aria-label="Edit"><i class="bi bi-pencil"></i></a>
+                    <form method="post" action="{% url 'personal_document_type_deactivate' p.id %}?next=personal_docs" class="d-inline">
+                      {% csrf_token %}
+                      <button type="submit" class="delete-btn" title="Delete" aria-label="Delete"><i class="bi bi-trash"></i></button>
+                    </form>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+
+          <nav aria-label="Personal Docs pagination">
+            <ul class="pagination pagination-sm justify-content-end">
+              {% if personal_docs_page.has_previous %}
+                <li class="page-item"><a class="page-link" href="?personal_docs_page={{ personal_docs_page.previous_page_number }}#personal_docs">Previous</a></li>
+              {% else %}
+                <li class="page-item disabled"><span class="page-link">Previous</span></li>
+              {% endif %}
+              {% for p in personal_docs_paginator.page_range %}
+                <li class="page-item {% if personal_docs_page.number == p %}active{% endif %}">
+                  <a class="page-link" href="?personal_docs_page={{ p }}#personal_docs">{{ p }}</a>
+                </li>
+              {% endfor %}
+              {% if personal_docs_page.has_next %}
+                <li class="page-item"><a class="page-link" href="?personal_docs_page={{ personal_docs_page.next_page_number }}#personal_docs">Next</a></li>
+              {% else %}
+                <li class="page-item disabled"><span class="page-link">Next</span></li>
+              {% endif %}
+            </ul>
+          </nav>
+				{% else %}
+					<div class="empty-state">
+						<div style="font-size:48px; margin-bottom:12px;">📄</div>
+						<h3>No Personal Document Types Found</h3>
+						<p>Use the <strong>+ Add</strong> button to create your first personal document type.</p>
+					</div>
+				{% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Admin page: filter master sections by top cards
+(function(){
+	var cards = document.querySelectorAll('.admin-card');
+	var sections = document.querySelectorAll('[data-section]');
+	function hideAll(){ sections.forEach(function(s){ s.style.display='none'; }); cards.forEach(function(c){ c.classList.remove('border','border-2'); }); }
+
+	function showSection(name){
+		hideAll();
+		document.querySelectorAll('[data-section]').forEach(function(c){ c.classList.remove('full-width'); });
+		var sec = document.querySelector('[data-section="'+name+'"]');
+		var card = document.querySelector('.admin-card[data-target="'+name+'"]');
+		if(sec){ sec.style.display=''; sec.classList.add('full-width'); }
+		if(card) card.classList.add('border','border-2');
+		if(sec) sec.scrollIntoView({behavior:'smooth', block:'start'});
+	}
+
+	// decide which section to show on load: default to 'designations' when no URL hash is present
+	var hash = (window.location.hash || '').replace('#','');
+	if(!hash){
+		// default landing: designations
+		hash = 'designations';
+		// update URL hash so pagination links keep context
+		history.replaceState(null, '', '#'+hash);
+	}
+	if(hash){ showSection(hash); }
+
+	// click handlers
+	cards.forEach(function(card){
+		card.addEventListener('click', function(){
+			var t = card.getAttribute('data-target');
+			// update URL hash so pagination links keep context
+			history.replaceState(null, '', '#'+t);
+			showSection(t);
+		});
+	});
+})();
+</script>
+
+<div id="confirm-delete-modal" class="prompt-modal">
+	<div class="prompt-modal-content">
+		<p>Are you sure you want to delete this item? This action cannot be undone.</p>
+		<div class="prompt-buttons">
+			<button type="button" id="confirm-delete-ok" class="prompt-btn prompt-ok-btn">OK</button>
+			<button type="button" id="confirm-delete-cancel" class="prompt-btn prompt-cancel-btn">Cancel</button>
+		</div>
+	</div>
+</div>
+
+<script>
+// Delegated handler: intercept delete forms and show modal
+(function(){
+	var deleteModal = document.getElementById('confirm-delete-modal');
+	if (!deleteModal) return;
+
+	// store the form to submit when confirmed
+	var pendingForm = null;
+
+	function showDeletePrompt() {
+		deleteModal.style.display = 'flex';
+	}
+
+	function hideDeletePrompt() {
+		deleteModal.style.display = 'none';
+		pendingForm = null;
+	}
+
+	document.addEventListener('click', function(e){
+		var t = e.target;
+		// allow clicks on inner icons or buttons
+		if (t.closest && t.closest('form') && t.closest('form').querySelector('button[title="Delete"]')){
+			var frm = t.closest('form');
+			// only intercept forms inside this admin template
+			if (frm && frm.method && frm.action){
+				e.preventDefault();
+				pendingForm = frm;
+				showDeletePrompt();
+			}
+		}
+	}, true);
+
+	document.getElementById('confirm-delete-ok').addEventListener('click', function(){
+		if (!pendingForm) return;
+		// submit the form (will perform server-side deactivate)
+		pendingForm.submit();
+		hideDeletePrompt();
+	});
+
+	document.getElementById('confirm-delete-cancel').addEventListener('click', function(){
+		hideDeletePrompt();
+	});
+
+	deleteModal.addEventListener('click', function(e){
+		if (e.target === deleteModal) {
+			hideDeletePrompt();
+		}
+	});
+
+	document.addEventListener('keydown', function(e){
+		if (e.key === 'Escape' && deleteModal.style.display === 'flex') {
+			hideDeletePrompt();
+		}
+	});
+})();
+(function(){
+	var cards = document.querySelectorAll('.admin-card');
+	var sections = document.querySelectorAll('[data-section]');
+	function hideAll(){ sections.forEach(function(s){ s.style.display='none'; }); cards.forEach(function(c){ c.classList.remove('border','border-2'); }); }
+
+	function showSection(name){
+		hideAll();
+		document.querySelectorAll('[data-section]').forEach(function(c){ c.classList.remove('full-width'); });
+		var sec = document.querySelector('[data-section="'+name+'"]');
+		var card = document.querySelector('.admin-card[data-target="'+name+'"]');
+		if(sec){ sec.style.display=''; sec.classList.add('full-width'); }
+		if(card) card.classList.add('border','border-2');
+		if(sec) sec.scrollIntoView({behavior:'smooth', block:'start'});
+	}
+
+	var hash = (window.location.hash || '').replace('#','');
+	if(!hash){
+		hash = 'designations';
+		history.replaceState(null, '', '#'+hash);
+	}
+	if(hash){ showSection(hash); }
+
+	cards.forEach(function(card){
+		card.addEventListener('click', function(){
+			var t = card.getAttribute('data-target');
+			history.replaceState(null, '', '#'+t);
+			showSection(t);
+		});
+	});
+})();
+
+</script>
+
+{% endblock %}

@@ -1,0 +1,502 @@
+{% extends "website/index.html" %}
+{% load static %}
+{% block page_title %}{{ price_list.name }}{% endblock %}
+
+{% block exstyle %}
+<link href="{% static 'style/general.css' %}" rel="stylesheet">
+<style>
+  .pl-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 10px; border-radius: 20px; font-size: 11.5px; font-weight: 500;
+  }
+  .pl-badge-blue   { background: rgba(85,88,139,0.12); color: #55588b; }
+  .pl-badge-purple { background: rgba(192,132,252,0.12); color: #a855f7; }
+  .pl-badge-green  { background: #d4edda; color: #155724; }
+  .pl-badge-red    { background: #f8d7da; color: #721c24; }
+  .pl-badge-yellow { background: #fff3cd; color: #856404; }
+  .pl-badge-gray   { background: #e9ecef; color: #6c757d; }
+  .pl-badge .dot   { width: 5px; height: 5px; border-radius: 50%; background: currentColor; display: inline-block; }
+  .row-actions { display: flex; gap: 5px; opacity: 0; transition: opacity 0.2s; }
+  tbody tr:hover .row-actions { opacity: 1; }
+  .btn-icon-sm {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 27px; height: 27px; border-radius: 5px;
+    border: 1px solid #dde0f2; background: #f7f7fa;
+    color: #55588b; cursor: pointer; transition: background 0.15s; text-decoration: none;
+  }
+  .btn-icon-sm:hover { background: #e2e5f3; color: #55588b; }
+  .btn-icon-sm.danger { color: #dc3545; border-color: #f5c6cb; background: #fff5f5; }
+  .btn-icon-sm.danger:hover { background: #f8d7da; }
+  .pl-stat-mini {
+    background: #f7f7fa; border: 1px solid #dde0f2;
+    border-radius: 8px; padding: 12px 16px; text-align: center;
+  }
+  .pl-stat-mini .label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: #9898b0; margin-bottom: 4px; }
+  .pl-stat-mini .value { font-size: 17px; font-weight: 700; color: #55588b; }
+  .page-header-bar { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 16px; }
+  .breadcrumb-bar { font-size: 12px; color: #9898b0; margin-bottom: 3px; }
+  .breadcrumb-bar a { color: #9898b0; text-decoration: none; }
+  .breadcrumb-bar a:hover { color: #55588b; }
+  .page-main-title { font-size: 19px; font-weight: 700; color: #55588b !important; margin: 0; }
+  /* Bootstrap modal overrides to match site theme */
+  .modal-header { background: #f7f7fa; border-bottom: 1px solid #dde0f2; }
+  .modal-title { color: #55588b !important; font-size: 15px !important; font-weight: 600 !important; }
+  .price-final { font-weight: 600; color: #198754; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-3 px-4">
+
+  <!-- Header -->
+  <div class="page-header-bar">
+    <div>
+      <div class="breadcrumb-bar">
+        <a href="{% url 'pricelists:index' company_code=request.resolver_match.kwargs.company_code %}">Price Lists</a> / <span>{{ price_list.name }}</span>
+      </div>
+      <h1 class="page-main-title">
+        {{ price_list.name }}
+        {% if price_list.is_active %}
+          <span class="pl-badge pl-badge-green ms-2" style="font-size:11px; vertical-align:middle;"><span class="dot"></span> Active</span>
+        {% else %}
+          <span class="pl-badge pl-badge-red ms-2" style="font-size:11px; vertical-align:middle;"><span class="dot"></span> Inactive</span>
+        {% endif %}
+      </h1>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+      <a href="{% url 'pricelists:export_csv' company_code=request.resolver_match.kwargs.company_code pk=price_list.pk %}" class="commmombtn px-3 py-1" style="text-decoration:none; font-size:12px;">
+        ↓ Export CSV
+      </a>
+      <a href="{% url 'pricelists:assign_contacts' company_code=request.resolver_match.kwargs.company_code pk=price_list.pk %}" class="commmombtn px-3 py-1" style="text-decoration:none; font-size:12px;">
+        👥 Assign Contacts
+      </a>
+      <a href="{% url 'pricelists:edit' company_code=request.resolver_match.kwargs.company_code pk=price_list.pk %}" class="commmombtn px-3 py-1" style="text-decoration:none; font-size:12px;">
+        ✎ Edit
+      </a>
+      <button class="add-item-btn px-3 py-1" onclick="document.getElementById('addItemModal').style.display='flex'">
+        + Add Item
+      </button>
+    </div>
+  </div>
+
+  <!-- Info Stats Row -->
+  <div class="row g-2 mb-3">
+    <div class="col-6 col-md">
+      <div class="pl-stat-mini">
+        <div class="label">Type</div>
+        {% if price_list.price_type == 'sales' %}
+          <div class="value" style="color:#55588b;">Sales</div>
+        {% else %}
+          <div class="value" style="color:#a855f7;">Purchase</div>
+        {% endif %}
+      </div>
+    </div>
+    <div class="col-6 col-md">
+      <div class="pl-stat-mini">
+        <div class="label">Currency</div>
+        <div class="value" style="color:#856404;">{{ price_list.currency }}</div>
+      </div>
+    </div>
+    <div class="col-6 col-md">
+      <div class="pl-stat-mini">
+        <div class="label">Total Items</div>
+        <div class="value" style="color:#198754;" id="item-count">{{ item_count }}</div>
+      </div>
+    </div>
+    <div class="col-6 col-md">
+      <div class="pl-stat-mini">
+        <div class="label">Rounding</div>
+        <div class="value">{{ price_list.get_rounding_display }}</div>
+      </div>
+    </div>
+    <div class="col-12 col-md">
+      <div class="pl-stat-mini">
+        <div class="label">Pricing Scheme</div>
+        <div class="value" style="font-size:14px;">
+          {% if price_list.pricing_scheme == 'percentage' %}
+            {{ price_list.get_percentage_type_display }} ({{ price_list.percentage_value }}%)
+          {% else %}
+            Individual Rates
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Items Table Card -->
+  <div class="card" style="border:1px solid #dde0f2; border-radius:8px;">
+    <div class="card-body pb-0">
+      <div class="d-flex align-items-center justify-content-between mb-3">
+        <h6 style="color:#55588b; margin:0; font-weight:600;">Price List Items</h6>
+        <form method="get" class="d-flex gap-2 align-items-center">
+          <div class="input-group input-group-sm" style="width:220px;">
+            <span class="input-group-text" style="background:#f7f7fa; border-color:#dde0f2;">
+              <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="#9898b0"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0"/></svg>
+            </span>
+            <input type="text" name="q" value="{{ query }}" class="form-control form-control-sm" placeholder="Search items..." style="border-color:#dde0f2;">
+          </div>
+          <button type="submit" class="commmombtn px-2 py-1" style="font-size:12px;">Search</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="table-responsive">
+      {% if page_obj %}
+      <table class="items-table mb-0" id="items-table">
+        <thead>
+          <tr>
+            <th>Item Name</th>
+            <th>SKU</th>
+            <th>Unit</th>
+            <th>Base Price</th>
+            <th>Discount</th>
+            <th>Final Price</th>
+            <th>Min Qty</th>
+            <th>Max Qty</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="items-tbody">
+          {% for item in page_obj %}
+          <tr data-item-id="{{ item.id }}">
+            <td style="font-weight:500;">{{ item.item_name }}</td>
+            <td><code style="font-size:11px; color:#9898b0; background:#f7f7fa; padding:1px 4px; border-radius:3px;">{{ item.item_sku|default:"—" }}</code></td>
+            <td style="color:#9898b0;">{{ item.unit|default:"—" }}</td>
+            <td style="color:#9898b0;">{{ price_list.currency }} {{ item.base_price }}</td>
+            <td>
+              {% if item.discount_type == 'percentage' %}
+                <span class="pl-badge pl-badge-yellow">-{{ item.discount_value }}%</span>
+              {% elif item.discount_type == 'fixed' %}
+                <span class="pl-badge pl-badge-blue">-{{ item.discount_value }}</span>
+              {% else %}
+                <span class="pl-badge pl-badge-gray">Custom</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if item.final_price != item.base_price %}
+                <strong class="price-final">{{ price_list.currency }} {{ item.final_price }}</strong>
+              {% else %}
+                <strong>{{ price_list.currency }} {{ item.final_price }}</strong>
+              {% endif %}
+            </td>
+            <td style="color:#9898b0;">{{ item.min_quantity }}</td>
+            <td style="color:#9898b0;">{{ item.max_quantity|default:"—" }}</td>
+            <td>
+              <div class="row-actions">
+                <button class="btn-icon-sm" title="Edit"
+                  onclick="openEditModal({{ item.id }}, '{{ item.item_name|escapejs }}', '{{ item.item_sku|default:''|escapejs }}', '{{ item.unit|default:''|escapejs }}', {{ item.base_price }}, '{{ item.discount_type }}', {{ item.discount_value }}, {% if item.custom_price %}{{ item.custom_price }}{% else %}null{% endif %}, {{ item.min_quantity }}, {% if item.max_quantity %}{{ item.max_quantity }}{% else %}null{% endif %})">
+                  <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                </button>
+                <button class="btn-icon-sm danger" title="Delete" onclick="deleteItem({{ item.id }}, this)">
+                  <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                </button>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
+      {% if page_obj.has_other_pages %}
+      <div class="d-flex justify-content-end p-3">
+        <nav>
+          <ul class="pagination pagination-sm mb-0">
+            {% if page_obj.has_previous %}<li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}&q={{ query }}">‹</a></li>{% endif %}
+            {% for num in page_obj.paginator.page_range %}
+              <li class="page-item {% if page_obj.number == num %}active{% endif %}"><a class="page-link" href="?page={{ num }}&q={{ query }}">{{ num }}</a></li>
+            {% endfor %}
+            {% if page_obj.has_next %}<li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}&q={{ query }}">›</a></li>{% endif %}
+          </ul>
+        </nav>
+      </div>
+      {% endif %}
+
+      {% else %}
+      <div class="text-center py-5">
+        <svg width="40" height="40" fill="none" viewBox="0 0 24 24" stroke="#c3c3ce" style="display:block;margin:0 auto 10px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+        <p style="color:#9898b0;">No items yet. Add items to define custom rates.</p>
+        <button class="add-item-btn px-3 py-1 mt-2" onclick="document.getElementById('addItemModal').style.display='flex'">+ Add Item</button>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+</div>
+
+<!-- ── ADD ITEM MODAL ── -->
+<div id="addItemModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:1050; align-items:center; justify-content:center;">
+  <div style="background:#fff; border-radius:10px; width:100%; max-width:560px; max-height:90vh; overflow-y:auto; padding:24px; position:relative; box-shadow:0 8px 32px rgba(0,0,0,0.15);">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+      <h6 style="margin:0; color:#55588b; font-weight:600;">Add Item to Price List</h6>
+      <button onclick="document.getElementById('addItemModal').style.display='none'" style="background:none; border:none; font-size:18px; color:#9898b0; cursor:pointer; line-height:1;">×</button>
+    </div>
+    <div id="add-error" class="alert alert-danger" style="display:none;"></div>
+    <div class="row g-3">
+      <div class="col-md-6">
+        <label class="form-label">Item Name *</label>
+        <input type="text" id="add-item-name" class="form-control form-control-sm" placeholder="e.g. Premium Widget">
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">SKU</label>
+        <input type="text" id="add-item-sku" class="form-control form-control-sm" placeholder="e.g. SKU-001">
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Unit</label>
+        <input type="text" id="add-unit" class="form-control form-control-sm" placeholder="pcs, kg, box...">
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Base Price *</label>
+        <input type="number" id="add-base-price" class="form-control form-control-sm" step="0.01" min="0" placeholder="0.00">
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Discount Type</label>
+        <select id="add-discount-type" class="form-select form-select-sm" onchange="handleDiscountTypeChange('add')">
+          <option value="percentage">Percentage (%)</option>
+          <option value="fixed">Fixed Amount</option>
+          <option value="custom">Custom Price</option>
+        </select>
+      </div>
+      <div class="col-md-6" id="add-discount-value-group">
+        <label class="form-label" id="add-discount-label">Discount Value (%)</label>
+        <input type="number" id="add-discount-value" class="form-control form-control-sm" step="0.01" min="0" value="0">
+      </div>
+      <div class="col-md-6" id="add-custom-price-group" style="display:none;">
+        <label class="form-label">Custom Price</label>
+        <input type="number" id="add-custom-price" class="form-control form-control-sm" step="0.01" min="0">
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Min Quantity</label>
+        <input type="number" id="add-min-qty" class="form-control form-control-sm" min="1" value="1">
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Max Quantity</label>
+        <input type="number" id="add-max-qty" class="form-control form-control-sm" min="1" placeholder="No limit">
+      </div>
+    </div>
+    <div class="d-flex justify-content-end gap-2 mt-4 pt-3" style="border-top:1px solid #dde0f2;">
+      <button class="commmombtn px-3 py-1" onclick="document.getElementById('addItemModal').style.display='none'">Cancel</button>
+      <button class="add-item-btn px-3 py-1" onclick="submitAddItem()">Add Item</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── EDIT ITEM MODAL ── -->
+<div id="editItemModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:1050; align-items:center; justify-content:center;">
+  <div style="background:#fff; border-radius:10px; width:100%; max-width:560px; max-height:90vh; overflow-y:auto; padding:24px; position:relative; box-shadow:0 8px 32px rgba(0,0,0,0.15);">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+      <h6 style="margin:0; color:#55588b; font-weight:600;">Edit Item</h6>
+      <button onclick="document.getElementById('editItemModal').style.display='none'" style="background:none; border:none; font-size:18px; color:#9898b0; cursor:pointer; line-height:1;">×</button>
+    </div>
+    <div id="edit-error" class="alert alert-danger" style="display:none;"></div>
+    <input type="hidden" id="edit-item-id">
+    <div class="row g-3">
+      <div class="col-md-6">
+        <label class="form-label">Item Name *</label>
+        <input type="text" id="edit-item-name" class="form-control form-control-sm">
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">SKU</label>
+        <input type="text" id="edit-item-sku" class="form-control form-control-sm">
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Unit</label>
+        <input type="text" id="edit-unit" class="form-control form-control-sm">
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Base Price *</label>
+        <input type="number" id="edit-base-price" class="form-control form-control-sm" step="0.01" min="0">
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Discount Type</label>
+        <select id="edit-discount-type" class="form-select form-select-sm" onchange="handleDiscountTypeChange('edit')">
+          <option value="percentage">Percentage (%)</option>
+          <option value="fixed">Fixed Amount</option>
+          <option value="custom">Custom Price</option>
+        </select>
+      </div>
+      <div class="col-md-6" id="edit-discount-value-group">
+        <label class="form-label" id="edit-discount-label">Discount Value</label>
+        <input type="number" id="edit-discount-value" class="form-control form-control-sm" step="0.01" min="0">
+      </div>
+      <div class="col-md-6" id="edit-custom-price-group" style="display:none;">
+        <label class="form-label">Custom Price</label>
+        <input type="number" id="edit-custom-price" class="form-control form-control-sm" step="0.01" min="0">
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Min Quantity</label>
+        <input type="number" id="edit-min-qty" class="form-control form-control-sm" min="1">
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Max Quantity</label>
+        <input type="number" id="edit-max-qty" class="form-control form-control-sm" min="1" placeholder="No limit">
+      </div>
+    </div>
+    <div class="d-flex justify-content-end gap-2 mt-4 pt-3" style="border-top:1px solid #dde0f2;">
+      <button class="commmombtn px-3 py-1" onclick="document.getElementById('editItemModal').style.display='none'">Cancel</button>
+      <button class="add-item-btn px-3 py-1" onclick="submitEditItem()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+const PRICE_LIST_ID = {{ price_list.id }};
+const CURRENCY = '{{ price_list.currency }}';
+
+function getCsrfToken() {
+  return document.cookie.split(';').map(c => c.trim())
+    .find(c => c.startsWith('csrftoken='))?.split('=')[1] || '';
+}
+
+function openEditModal(id, name, sku, unit, basePrice, discountType, discountValue, customPrice, minQty, maxQty) {
+  document.getElementById('edit-item-id').value = id;
+  document.getElementById('edit-item-name').value = name;
+  document.getElementById('edit-item-sku').value = sku;
+  document.getElementById('edit-unit').value = unit;
+  document.getElementById('edit-base-price').value = basePrice;
+  document.getElementById('edit-discount-type').value = discountType;
+  document.getElementById('edit-discount-value').value = discountValue;
+  document.getElementById('edit-custom-price').value = customPrice || '';
+  document.getElementById('edit-min-qty').value = minQty;
+  document.getElementById('edit-max-qty').value = maxQty || '';
+  handleDiscountTypeChange('edit');
+  document.getElementById('editItemModal').style.display = 'flex';
+}
+
+function handleDiscountTypeChange(prefix) {
+  const type = document.getElementById(`${prefix}-discount-type`).value;
+  const dvGroup = document.getElementById(`${prefix}-discount-value-group`);
+  const cpGroup = document.getElementById(`${prefix}-custom-price-group`);
+  const label = document.getElementById(`${prefix}-discount-label`);
+  if (type === 'custom') {
+    dvGroup.style.display = 'none';
+    cpGroup.style.display = 'block';
+  } else {
+    dvGroup.style.display = 'block';
+    cpGroup.style.display = 'none';
+    if (label) label.textContent = type === 'percentage' ? 'Discount Value (%)' : 'Discount Amount';
+  }
+}
+
+function submitAddItem() {
+  const payload = {
+    item_name: document.getElementById('add-item-name').value,
+    item_sku: document.getElementById('add-item-sku').value,
+    unit: document.getElementById('add-unit').value,
+    base_price: document.getElementById('add-base-price').value,
+    discount_type: document.getElementById('add-discount-type').value,
+    discount_value: document.getElementById('add-discount-value').value || '0',
+    custom_price: document.getElementById('add-custom-price').value || null,
+    min_quantity: document.getElementById('add-min-qty').value || '1',
+    max_quantity: document.getElementById('add-max-qty').value || null,
+  };
+  const companyCode = window.location.pathname.split('/')[1];
+  fetch(`/${companyCode}/pricelists/${PRICE_LIST_ID}/items/create/`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
+    body: JSON.stringify(payload)
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.success) {
+      document.getElementById('addItemModal').style.display = 'none';
+      appendItemRow(data.item);
+      updateItemCount(1);
+    } else {
+      const err = Object.values(data.errors).flat().join(', ');
+      const el = document.getElementById('add-error');
+      el.textContent = err; el.style.display = 'block';
+    }
+  });
+}
+
+function submitEditItem() {
+  const id = document.getElementById('edit-item-id').value;
+  const payload = {
+    item_name: document.getElementById('edit-item-name').value,
+    item_sku: document.getElementById('edit-item-sku').value,
+    unit: document.getElementById('edit-unit').value,
+    base_price: document.getElementById('edit-base-price').value,
+    discount_type: document.getElementById('edit-discount-type').value,
+    discount_value: document.getElementById('edit-discount-value').value || '0',
+    custom_price: document.getElementById('edit-custom-price').value || null,
+    min_quantity: document.getElementById('edit-min-qty').value || '1',
+    max_quantity: document.getElementById('edit-max-qty').value || null,
+  };
+  const companyCode = window.location.pathname.split('/')[1];
+  fetch(`/${companyCode}/pricelists/items/${id}/update/`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
+    body: JSON.stringify(payload)
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.success) {
+      document.getElementById('editItemModal').style.display = 'none';
+      location.reload();
+    } else {
+      const err = Object.values(data.errors).flat().join(', ');
+      const el = document.getElementById('edit-error');
+      el.textContent = err; el.style.display = 'block';
+    }
+  });
+}
+
+function deleteItem(id, btn) {
+  if (!confirm('Delete this item from the price list?')) return;
+  const companyCode = window.location.pathname.split('/')[1];
+  fetch(`/${companyCode}/pricelists/items/${id}/delete/`, {
+    method: 'DELETE',
+    headers: { 'X-CSRFToken': getCsrfToken() }
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.success) {
+      document.querySelector(`tr[data-item-id="${id}"]`)?.remove();
+      updateItemCount(-1);
+    }
+  });
+}
+
+function appendItemRow(item) {
+  const tbody = document.getElementById('items-tbody');
+  if (!tbody) { location.reload(); return; }
+  const discountLabel = item.discount_type === 'Percentage (%)' ? 'pl-badge-yellow' :
+                        item.discount_type === 'Fixed Amount' ? 'pl-badge-blue' : 'pl-badge-gray';
+  const row = document.createElement('tr');
+  row.dataset.itemId = item.id;
+  row.innerHTML = `
+    <td style="font-weight:500;">${item.item_name}</td>
+    <td><code style="font-size:11px;color:#9898b0;background:#f7f7fa;padding:1px 4px;border-radius:3px;">${item.item_sku || '—'}</code></td>
+    <td style="color:#9898b0;">${item.unit || '—'}</td>
+    <td style="color:#9898b0;">${CURRENCY} ${item.base_price}</td>
+    <td><span class="pl-badge ${discountLabel}">${item.discount_type === 'Percentage (%)' ? '-'+item.discount_value+'%' : item.discount_type === 'Fixed Amount' ? '-'+item.discount_value : 'Custom'}</span></td>
+    <td><strong class="price-final">${CURRENCY} ${item.final_price}</strong></td>
+    <td style="color:#9898b0;">${item.min_quantity}</td>
+    <td style="color:#9898b0;">${item.max_quantity || '—'}</td>
+    <td><div class="row-actions">
+      <button class="btn-icon-sm" onclick="openEditModal(${item.id},'${item.item_name}','${item.item_sku||''}','${item.unit||''}',${item.base_price},'percentage',0,null,${item.min_quantity},${item.max_quantity||null})">
+        <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+      </button>
+      <button class="btn-icon-sm danger" onclick="deleteItem(${item.id},this)">
+        <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+      </button>
+    </div></td>`;
+  tbody.appendChild(row);
+}
+
+function updateItemCount(delta) {
+  const el = document.getElementById('item-count');
+  if (el) el.textContent = parseInt(el.textContent) + delta;
+}
+
+// Close modals on outside click
+['addItemModal','editItemModal'].forEach(id => {
+  document.getElementById(id).addEventListener('click', function(e) {
+    if (e.target === this) this.style.display = 'none';
+  });
+});
+</script>
+{% endblock %}

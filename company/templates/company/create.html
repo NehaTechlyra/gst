@@ -1,0 +1,4411 @@
+{% extends 'website/index.html' %}
+{% load static %}
+
+{% block page_title %}{% if company %}Edit Company{% else %}Create Company{% endif %}{% endblock %}
+
+{% block exstyle %}
+<link href="{% static 'style/general.css' %}" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+
+<style>
+/* Layout */
+.templates-flex-row { 
+    display: flex; 
+    min-height: 100vh; 
+    gap: 0; 
+    background: #f8f9fa; 
+}
+
+/* Sidebar */
+.settings-sidebar { 
+    flex: 0 0 280px; 
+    background: #fff; 
+    border-right: 1px solid #ddd; 
+    height: 100vh; 
+    padding: 20px 0; 
+    overflow-y: auto; 
+    position: sticky; 
+    top: 0; 
+}
+
+.settings-sidebar-title {
+    font-weight: 600; 
+    color: #55588b; 
+    font-size: 13px;
+    padding: 0 20px 15px; 
+    text-transform: uppercase; 
+    letter-spacing: 0.5px;
+}
+
+.side-nav-link {
+    padding: 12px 20px; 
+    display: flex; 
+    align-items: center;
+    cursor: pointer; 
+    font-size: 14px; 
+    color: #555; 
+    transition: all .2s ease;
+    font-weight: 500; 
+    border-left: 3px solid transparent; 
+    text-decoration: none;
+    position: relative;
+}
+
+.side-nav-link i { 
+    margin-right: 12px; 
+    font-size: 16px; 
+}
+
+.side-nav-link.active { 
+    background: #f0f7ff; 
+    color: #55588b; 
+    border-left-color: #55588b; 
+    font-weight: 600; 
+}
+
+.side-nav-link:hover { 
+    background: #f8f9fa; 
+    color: #55588b; 
+}
+
+.side-nav-link.completed::after {
+    content: '\f26b';
+    font-family: 'bootstrap-icons';
+    position: absolute;
+    right: 20px;
+    color: #28a745;
+    font-size: 16px;
+}
+
+
+/* Content Wrapper */
+.template-content-wrapper { 
+    flex: 1; 
+    position: relative; 
+    overflow: hidden; 
+}
+
+.template-group {
+    position: absolute; 
+    top: 0; 
+    left: 0; 
+    right: 0;
+    padding: 30px 40px; 
+    overflow-y: auto; 
+    height: 100%;
+    opacity: 0; 
+    transform: translateX(100%);
+    transition: transform 0.4s cubic-bezier(0.4,0,0.2,1), opacity 0.4s cubic-bezier(0.4,0,0.2,1);
+    pointer-events: none;
+}
+
+.template-group.active { 
+    opacity: 1; 
+    transform: translateX(0); 
+    position: relative;
+    pointer-events: auto;
+}
+
+.template-group.slide-out-left { 
+    transform: translateX(-100%); 
+    opacity: 0; 
+}
+
+.template-group.slide-out-right { 
+    transform: translateX(100%); 
+    opacity: 0; 
+}
+
+/* Section Styles */
+.template-section-title { 
+    font-weight: 700; 
+    color: #55588b; 
+    font-size: 24px; 
+    margin-bottom: 10px; 
+}
+
+.template-section-subtitle {
+    color: #666;
+    font-size: 14px;
+    margin-bottom: 25px;
+}
+
+.section-card {
+    background: #fff;
+    border-radius: 8px;
+    padding: 24px;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.section-card-title {
+    font-weight: 600;
+    color: #333;
+    font-size: 16px;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #eee;
+}
+
+/* Form Elements */
+.form-label.required::after {
+    content: " *";
+    color: #dc3545;
+}
+
+.logo-preview {
+    margin-top: 10px;
+    max-width: 200px;
+}
+
+.logo-preview img {
+    max-width: 100%;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 5px;
+}
+
+/* Button Actions */
+.btn-group-actions {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 30px;
+    gap: 10px;
+}
+
+/* Lists */
+.added-items-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.item-card {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    padding: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.item-info h6 {
+    margin: 0 0 5px 0;
+    color: #333;
+    font-weight: 600;
+}
+
+.item-info p {
+    margin: 0;
+    font-size: 13px;
+    color: #666;
+}
+
+.item-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: #999;
+}
+
+.empty-state i {
+    font-size: 48px;
+    margin-bottom: 10px;
+    display: block;
+}
+
+/* Badge */
+.badge-default {
+    background: #28a745;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+}
+
+/* Loading */
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.5);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+}
+
+.loading-overlay.show {
+    display: flex;
+}
+
+.spinner-border {
+    width: 3rem;
+    height: 3rem;
+}
+/* Validation - EXACT from email template */
+.is-invalid {
+  border-color: #dc3545 !important;
+  box-shadow: 0 0 0 0.08rem rgba(220, 53, 69, 0.08);
+}
+
+input[name="credit_limit"],
+input[name="credit_limit"]:focus,
+input[name="credit_limit"]:active {
+  background-color: #fff !important;
+  border-color: #ced4da !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+/* Toast - EXACT from email template */
+#topcenter-toast {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%) !important;
+  margin: 0 !important;
+  rotate: 0deg !important;
+  background-color: #d4edda !important;  
+  color: #155724 !important;              
+  border: 1px solid #c3e6cb !important; 
+  border-radius: 6px;
+  padding: 10px 18px;
+  font-weight: 500;
+  text-align: center;
+  min-width: 300px;
+  z-index: 99999;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .25s ease-in-out;
+}
+
+/* Required field indicator - EXACT from email template */
+.form-label.required::after {
+  content: " *";
+  color: #dc3545;
+  font-weight: 700;
+}
+.form-check {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.form-check-input {
+    margin-top: 0;
+    flex-shrink: 0;
+}
+/* GST Toggle Styles */
+.gst-toggle {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 0;
+}
+
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 48px;
+    height: 24px;
+}
+
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #dde0f2;
+    transition: .3s;
+    border-radius: 24px;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: .3s;
+    border-radius: 50%;
+}
+
+input:checked + .slider {
+    background-color: #55588b;
+}
+
+input:checked + .slider:before {
+    transform: translateX(24px);
+}
+.logo-print-toggle {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.logo-print-toggle .switch {
+    position: relative;
+    display: inline-block;
+    width: 54px;
+    height: 30px;
+}
+
+.logo-print-toggle .switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.logo-print-toggle .slider {
+    position: absolute;
+    cursor: pointer;
+    inset: 0;
+    background-color: #cfd4da;
+    border-radius: 30px;
+    transition: .25s;
+}
+
+.logo-print-toggle .slider:before {
+    position: absolute;
+    content: "";
+    height: 22px;
+    width: 22px;
+    left: 4px;
+    bottom: 4px;
+    background-color: #fff;
+    border-radius: 50%;
+    transition: .25s;
+}
+
+.logo-print-toggle input:checked + .slider {
+    background-color: #79aef5;
+}
+
+.logo-print-toggle input:checked + .slider:before {
+    transform: translateX(24px);
+}
+
+.logo-print-toggle input:disabled + .slider {
+    cursor: not-allowed;
+    opacity: .55;
+}
+</style>
+{% endblock %}
+
+
+{% block content %}
+ <div class="container mt-4">
+
+ <div
+    data-location-load-countries-url="{% url 'load_countries' %}"
+    data-location-load-states-url="{% url 'load_states' %}"
+    data-location-load-cities-url="{% url 'load_cities' %}"
+    hidden
+></div>
+   
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+    <a href="{% url 'settings_page' %}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Back 
+    </a>
+</div>
+
+<!-- Loading Overlay -->
+<div class="loading-overlay" id="loadingOverlay">
+    <div class="spinner-border text-light" role="status">
+        <span class="visually-hidden">Loading...</span>
+    </div>
+</div>
+<div class="section-group mb-3">
+<div class="templates-flex-row">
+    <!-- Sidebar -->
+    <div class="settings-sidebar">
+        <div class="settings-sidebar-title">Setup Progress</div>
+        <a class="side-nav-link active" data-index="0">
+            <span class="icon-group"><i class="bi bi-building"></i> Company Info</span>
+        </a>
+        <a class="side-nav-link" data-index="1">
+            <span class="icon-group"><i class="bi bi-bank"></i> Bank Accounts</span>
+        </a>
+        <a class="side-nav-link" data-index="2">
+            <span class="icon-group"><i class="bi bi-geo-alt"></i> Locations</span>
+        </a>
+        <a class="side-nav-link" data-index="3">
+        <span class="icon-group"><i class="bi bi-key"></i> License Key</span>
+        </a>
+    </div>
+
+    <!-- Content -->
+    <div class="template-content-wrapper">
+        <!-- COMPANY INFO -->
+        <div class="template-group active" data-step="0">
+            <h1 class="template-section-title">Company Information</h1>
+            <p class="template-section-subtitle">{% if company %}Update{% else %}Enter{% endif %} your company's basic details, contact information, and preferences</p>
+
+            <form id="companyForm" enctype="multipart/form-data">
+                {% csrf_token %}
+                {% if company %}
+                <input type="hidden" name="company_id" value="{{ company.id }}">
+                {% endif %}
+
+                <div class="section-card">
+                    <h5 class="section-card-title">Basic Information</h5>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label required">Company Name</label>
+                            <input type="text" name="name" class="form-control" placeholder="Enter company name" value="{{ company.name|default:'' }}" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label required">Legal Name</label>
+                            <input type="text" name="legal_name" class="form-control" placeholder="Legal registered name" value="{{ company.legal_name|default:'' }}">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label required">Company ID</label>
+                            <input type="text" name="company_id" class="form-control" placeholder="CIN/Registration number" value="{{ company.company_id|default:'' }}">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section-card">
+                    <h5 class="section-card-title">Address</h5>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label required">Address Line 1</label>
+                            <input type="text" name="address_line1" class="form-control" placeholder="Street address" value="{{ company.address_line1|default:'' }}">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Address Line 2</label>
+                            <input type="text" name="address_line2" class="form-control" placeholder="Building, floor, suite" value="{{ company.address_line2|default:'' }}">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label required">City</label>
+                            <input type="text" name="city" class="form-control" placeholder="City" value="{{ company.city|default:'' }}">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label required">State</label>
+                            <input type="text" name="state" class="form-control" placeholder="State/Province" value="{{ company.state|default:'' }}">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label required">Country</label>
+                            <select name="country" class="form-select">
+                                <option value="">Select Country</option>
+                                {% for code, name in countries %}
+                                <option value="{{ code }}" {% if company.country == code or company.country.code == code %}selected{% endif %}>
+                                    {{ name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label required">Postal Code</label>
+                            <input type="text" name="postal_code" class="form-control" placeholder="Postal/ZIP code" value="{{ company.postal_code|default:'' }}">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section-card">
+                    <h5 class="section-card-title">Contact Details</h5>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label required">Email</label>
+                            <input type="email" name="email" class="form-control" placeholder="company@example.com" value="{{ company.email|default:'' }}">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label required">Phone</label>
+                            <input type="text" name="phone" class="form-control" placeholder="+91 XXXXXXXXXX" value="{{ company.phone|default:'' }}">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Fax</label>
+                            <input type="text" name="fax" class="form-control" placeholder="Fax number" value="{{ company.fax|default:'' }}">
+                        </div>
+                        <div class="col-md-12 mb-3">
+                            <label class="form-label">Website</label>
+                            <input type="url" name="website" class="form-control" placeholder="https://www.example.com" value="{{ company.website|default:'' }}">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section-card">
+                    <h5 class="section-card-title">Primary Contact Person</h5>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label required">Full Name</label>
+                            <input type="text" name="contact_person" class="form-control" placeholder="Contact person name" value="{{ company.contact_person|default:'' }}">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label required">Email</label>
+                            <input type="email" name="contact_email" class="form-control" placeholder="contact@example.com" value="{{ company.contact_email|default:'' }}">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label required">Phone</label>
+                            <input type="text" name="contact_phone" class="form-control" placeholder="Contact phone" value="{{ company.contact_phone|default:'' }}">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section-card">
+                    <h5 class="section-card-title">Tax & Financial Information</h5>
+                    <!-- GST Toggle -->
+                    <div class="gst-toggle mb-3">
+                        <label class="switch">
+                            <input type="checkbox" id="gstToggle" {% if company.tax_id %}checked{% endif %}>
+                            <span class="slider"></span>
+                        </label>
+                        <label for="gstToggle" style="cursor: pointer; font-size: 14px; color: #55588b; font-weight: 500;">
+                            <i class="bi bi-receipt me-1"></i>
+                            Is this business registered for GST?
+                        </label>
+                    </div>
+                    <div class="row">
+                        <input type="hidden" name="tax_type" value="GST">
+                        <!-- GST Field - Always Show -->
+                        <div class="col-md-6 mb-3" id="gstField" style="display: block;">
+                            <label class="form-label required">Tax ID / GSTIN</label>
+                            <input type="text" name="tax_id" class="form-control" placeholder="GST/VAT/Tax number (e.g., 29AABCE1234F2ZS)" value="{{ company.tax_id|default:'' }}" maxlength="15">
+                            <small class="text-muted">15-digit GST Identification Number</small>
+                        </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label required">Base Currency</label>
+                        <select name="base_currency" class="form-select">
+                            <option value="" {% if not selected_base_currency %}selected{% endif %}>Choose base currency...</option>
+                            {% for code, label in base_currency_choices %}
+                            <option value="{{ code }}" {% if code == selected_base_currency %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Credit Limit</label>
+                        <input type="number" name="credit_limit" class="form-control" min="0" step="0.01" value="{{ company.credit_limit|default:'' }}">
+                        <small class="text-muted">Leave blank for no invoice credit limit.</small>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label required">Fiscal Year Start</label>
+                        <input type="date" name="fiscal_year_start" class="form-control" value="{{ company.fiscal_year_start|date:'Y-m-d'|default:'' }}">
+                    </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label required">Report Basis</label>
+                            <select name="report_basis" class="form-select">
+                                <option value="accrual" {% if company.report_basis == 'accrual' %}selected{% endif %}>Accrual – Tax at Invoice Date</option>
+                                <option value="cash" {% if company.report_basis == 'cash' %}selected{% endif %}>Cash – Tax at Payment Receipt</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section-card">
+                    <h5 class="section-card-title">Social Media Links</h5>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label"><i class="bi bi-facebook"></i> Facebook</label>
+                            <input type="url" name="facebook" class="form-control" placeholder="https://facebook.com/..." value="{{ company.facebook|default:'' }}">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label"><i class="bi bi-instagram"></i> Instagram</label>
+                            <input type="url" name="instagram" class="form-control" placeholder="https://instagram.com/..." value="{{ company.instagram|default:'' }}">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label"><i class="bi bi-linkedin"></i> LinkedIn</label>
+                            <input type="url" name="linkedin" class="form-control" placeholder="https://linkedin.com/..." value="{{ company.linkedin|default:'' }}">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section-card">
+                    <h5 class="section-card-title">Logo & Additional Information</h5>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label required">Company Logo</label>
+                            <input type="file" name="logo" class="form-control" accept="image/*" id="logoInput">
+                            <div class="logo-preview" id="logoPreview">
+                                {% if company.logo %}
+                                <img src="{{ company.logo.url }}" alt="Current Logo">
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3 d-flex align-items-end" style="padding-bottom:10px;">
+                            <div class="logo-print-toggle">
+                                <label class="switch" for="showLogoInPrintPdf">
+                                    <input type="checkbox"
+                                           id="showLogoInPrintPdf"
+                                           name="show_logo_in_print_pdf"
+                                           {% if company.show_logo_in_print_pdf %}checked{% endif %}
+                                           {% if not company.logo %}disabled{% endif %}>
+                                    <span class="slider"></span>
+                                </label>
+                                <label class="form-label mb-0" for="showLogoInPrintPdf">
+                                    Show logo in Print/PDF
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-12 mb-3">
+                            <label class="form-label">Terms &amp; Conditions</label>
+                            <textarea name="terms_and_conditions" class="form-control" rows="4" placeholder="Enter company terms and conditions">{{ company.terms_and_conditions|default:'' }}</textarea>
+                        </div>
+                        <div class="col-md-12 mb-3">
+                            <label class="form-label">Additional Information</label>
+                            <textarea name="additional_information" class="form-control" rows="4" placeholder="Any additional notes or information about the company">{{ company.additional_information|default:'' }}</textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="btn-group-actions" style="justify-content: flex-end;">
+                    <!-- <a href="{% url 'company_list' %}" class="btn btn-outline-secondary">Cancel</a> -->
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-success" onclick="submitCompanyForm()">
+                            {% if company %}
+                            <i class="bi bi-check-circle"></i> Update Company
+                            {% else %}
+                            <i class="bi bi-plus-circle"></i> Save Company
+                            {% endif %}
+                        </button>
+                        <button type="button" class="btn btn-primary" onclick="goToNextStep()">
+                            Next: Bank Accounts <i class="bi bi-chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <!-- BANK ACCOUNTS -->
+<div class="template-group" data-step="1">
+    <h1 class="template-section-title">Bank Accounts</h1>
+    <p class="template-section-subtitle">Add your company's bank account details for transactions</p>
+
+    <div class="section-card">
+        <h5 class="section-card-title">Add Bank Account</h5>
+        <form id="bankAccountForm">
+            {% csrf_token %}
+            
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label required">Bank</label>
+                    <div class="input-group">
+                        <select name="bank" class="form-select" required>
+                            <option value="">Select Bank</option>
+                            {% for bank in banks %}
+                            <option value="{{ bank.id }}">{{ bank.bank_name }}</option>
+                            {% endfor %}
+                        </select>
+                        <button type="button" class="btn btn-outline-success" onclick="openAddBankModal()">
+                            <i class="bi bi-plus-lg"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="col-md-6 mb-3">
+                    <label class="form-label required">Account Holder Name</label>
+                    <input type="text" name="account_name" class="form-control" placeholder="Account holder name">
+                </div>
+
+                <div class="col-md-6 mb-3">
+                    <label class="form-label required">Account Number</label>
+                    <input type="text" name="account_number" class="form-control" placeholder="Account number">
+                </div>
+
+                <div class="col-md-6 mb-3">
+                    <label class="form-label required">IFSC/SWIFT Code</label>
+                    <input type="text" name="ifsc_swift_code" class="form-control" placeholder="IFSC or SWIFT code">
+                </div>
+
+                <div class="col-md-6 mb-3">
+                    <label class="form-label required">Branch Name</label>
+                    <input type="text" name="branch_name" class="form-control" placeholder="Branch name">
+                </div>
+
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Set as Default</label>
+                    <div class="form-check mt-2">
+                        <input class="form-check-input" type="checkbox" name="is_default" id="isDefaultBank">
+                        <label class="form-check-label" for="isDefaultBank">
+                            Use this as default bank account
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <div class="section-card">
+        <h5 class="section-card-title">Added Bank Accounts</h5>
+        <div id="bankAccountsList" class="added-items-list">
+            <div class="empty-state">
+                <i class="bi bi-bank"></i>
+                <p>No bank accounts added yet</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="btn-group-actions">
+        <button type="button" class="btn btn-outline-secondary" onclick="goToPreviousStep()">
+            <i class="bi bi-chevron-left"></i> Previous
+        </button>
+        <div class="d-flex gap-2">
+            <button type="button" class="btn btn-success" onclick="submitBankAccountForm()">
+                <i class="bi bi-plus-circle"></i> Save Bank Account
+            </button>
+            <button type="button" class="btn btn-primary" onclick="goToNextStep()">
+                Next: Locations <i class="bi bi-chevron-right"></i>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Add Bank Modal -->
+<div class="modal fade" id="addBankModal" tabindex="-1" aria-labelledby="addBankModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addBankModalLabel">
+                    <i class="bi bi-bank me-2"></i>Add New Bank
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addBankForm">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label class="form-label required">Bank Name</label>
+                        <input type="text" name="bank_name" class="form-control" placeholder="Enter bank name (e.g., State Bank of India)" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success" onclick="saveNewBank()">
+                    <i class="bi bi-check-circle"></i> Save Bank
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bank Account Edit Modal -->
+<div class="modal fade" id="bankAccountEditModal" tabindex="-1" aria-labelledby="bankAccountEditModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="bankAccountEditModalLabel">Edit Bank Account</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="bankAccountEditForm">
+                    {% csrf_token %}
+                    <input type="hidden" name="account_id" id="editAccountId">
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label required">Bank</label>
+                            <select name="bank" id="editBank" class="form-select" required>
+                                <option value="">Select Bank</option>
+                                {% for bank in banks %}
+                                <option value="{{ bank.id }}">{{ bank.bank_name }}</option>
+                                {% endfor %}
+                            </select>
+                            <button type="button" class="btn btn-outline-success" onclick="openAddBankModal()" title="Add New Bank">
+                            <i class="bi bi-plus-lg"></i>
+                        </button>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label required">Account Holder Name</label>
+                            <input type="text" name="account_name" id="editAccountName" class="form-control" placeholder="Account holder name" required>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label required">Account Number</label>
+                            <input type="text" name="account_number" id="editAccountNumber" class="form-control" placeholder="Account number" required>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label required">IFSC/SWIFT Code</label>
+                            <input type="text" name="ifsc_swift_code" id="editIfscSwift" class="form-control" placeholder="IFSC or SWIFT code" required>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label required">Branch Name</label>
+                            <input type="text" name="branch_name" id="editBranchName" class="form-control" placeholder="Branch name" required>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Set as Default</label>
+                            <div class="form-check mt-2">
+                                <input class="form-check-input" type="checkbox" name="is_default" id="editIsDefault">
+                                <label class="form-check-label" for="editIsDefault">
+                                    Use this as default bank account
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success" onclick="updateBankAccount()">
+                    <i class="bi bi-check-circle"></i> Update
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- LOCATIONS -->
+<div class="template-group" data-step="2">
+    <h1 class="template-section-title">Locations</h1>
+    <p class="template-section-subtitle">Add your company's warehouses, offices, or other locations</p>
+
+    <div class="section-card">
+        <h5 class="section-card-title">Add Location</h5>
+        <form id="locationForm">
+            {% csrf_token %}
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label required">Location Type</label>
+                    <div class="input-group">
+                        <select name="location_type" class="form-select" required>
+                            <option value="">Select Type</option>
+                            {% for type in location_types %}
+                            <option value="{{ type.id }}">{{ type.name }}</option>
+                            {% endfor %}
+                        </select>
+                        <button type="button" class="btn btn-outline-success" onclick="openLocationTypeModal()">
+                            <i class="bi bi-plus-lg"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label required">Location Name</label>
+                    <input type="text" name="name" class="form-control" placeholder="Location name" required>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label required">Location Code</label>
+                    <input type="text" name="code" class="form-control" placeholder="Location code">
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label required">Manager Name</label>
+                    <input type="text" name="manager_name" class="form-control" placeholder="Manager name">
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label required">Manager Email</label>
+                    <input type="email" name="manager_email" class="form-control" placeholder="manager@example.com">
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label required">Manager Phone</label>
+                    <input type="text" name="manager_phone" class="form-control" placeholder="Manager phone">
+                </div>
+            </div>
+
+            <h6 class="mt-3 mb-3 fw-bold">Address</h6>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label required">Address Line 1</label>
+                    <input type="text" name="address_line1" class="form-control" placeholder="Street address" required>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Address Line 2</label>
+                    <input type="text" name="address_line2" class="form-control" placeholder="Building, floor">
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label required">City</label>
+                    <input type="text" name="city" class="form-control" placeholder="City" required>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label required">State</label>
+                    <input type="text" name="state" class="form-control" placeholder="State" required>
+                </div>
+                <div class="col-md-4 mb-3">
+                            <label class="form-label required">Country</label>
+                            <select name="country" class="form-select">
+                                <option value="">Select Country</option>
+                                {% for code, name in countries %}
+                                <option value="{{ code }}" {% if company.country == code %}selected{% endif %}>
+                                    {{ name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label required">Postal Code</label>
+                    <input type="text" name="postal_code" class="form-control" placeholder="Postal code" required>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label required">Phone</label>
+                    <input type="text" name="phone" class="form-control" placeholder="Location phone">
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label required">Working Hours</label>
+                    <input type="text" name="working_hours" class="form-control" placeholder="e.g., 9 AM - 6 PM">
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <div class="section-card">
+        <h5 class="section-card-title">Added Locations</h5>
+        <div id="locationsList" class="added-items-list">
+            <div class="empty-state">
+                <i class="bi bi-geo-alt"></i>
+                <p>No locations added yet</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="btn-group-actions">
+        <button type="button" class="btn btn-outline-secondary" onclick="goToPreviousStep()">
+            <i class="bi bi-chevron-left"></i> Previous
+        </button>
+        <div class="d-flex gap-2">
+            <button type="button" class="btn btn-success" onclick="submitLocationForm()">
+                <i class="bi bi-plus-circle"></i> Save Location
+            </button>
+            <button type="button" class="btn btn-primary" onclick="goToNextStep()">
+                Next: License Key <i class="bi bi-chevron-right"></i>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Location Edit Modal -->
+<div class="modal fade" id="locationEditModal" tabindex="-1" aria-labelledby="locationEditModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="locationEditModalLabel">Edit Location</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="locationEditForm">
+                    {% csrf_token %}
+                    <input type="hidden" name="location_id" id="editLocationId">
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label required">Location Type</label>
+                            <select name="location_type" id="editLocationType" class="form-select" required>
+                                <option value="">Select Type</option>
+                                {% for type in location_types %}
+                                <option value="{{ type.id }}">{{ type.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label required">Location Name</label>
+                            <input type="text" name="name" id="editLocationName" class="form-control" placeholder="Location name" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label required">Location Code</label>
+                            <input type="text" name="code" id="editLocationCode" class="form-control" placeholder="Location code" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label required">Manager Name</label>
+                            <input type="text" name="manager_name" id="editManagerName" class="form-control" placeholder="Manager name" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label required">Manager Email</label>
+                            <input type="email" name="manager_email" id="editManagerEmail" class="form-control" placeholder="manager@example.com" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label required">Manager Phone</label>
+                            <input type="text" name="manager_phone" id="editManagerPhone" class="form-control" placeholder="Manager phone" required>
+                        </div>
+                    </div>
+
+                    <h6 class="mt-3 mb-3 fw-bold">Address</h6>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label required">Address Line 1</label>
+                            <input type="text" name="address_line1" id="editAddressLine1" class="form-control" placeholder="Street address" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Address Line 2</label>
+                            <input type="text" name="address_line2" id="editAddressLine2" class="form-control" placeholder="Building, floor">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label required">City</label>
+                            <input type="text" name="city" id="editCity" class="form-control" placeholder="City" required>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label required">State</label>
+                            <input type="text" name="state" id="editState" class="form-control" placeholder="State" required>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label required">Country</label>
+                            <select name="country" class="form-select">
+                                <option value="">Select Country</option>
+                                {% for code, name in countries %}
+                                <option value="{{ code }}" {% if company.country == code %}selected{% endif %}>
+                                    {{ name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label required">Postal Code</label>
+                            <input type="text" name="postal_code" id="editPostalCode" class="form-control" placeholder="Postal code" required>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label required">Phone</label>
+                            <input type="text" name="phone" id="editPhone" class="form-control" placeholder="Location phone" required>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label required">Working Hours</label>
+                            <input type="text" name="working_hours" id="editWorkingHours" class="form-control" placeholder="e.g., 9 AM - 6 PM" required>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success" onclick="updateLocation()">
+                    <i class="bi bi-check-circle"></i> Update
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- LICENSE KEY SECTION -->
+<div class="template-group" data-step="3">
+    <h1 class="template-section-title">License Key Management</h1>
+    <p class="template-section-subtitle">Enter and activate your license key to enable modules</p>
+    
+    <div class="section-card">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="section-card-title mb-0">License Information</h5>
+            <button type="button" 
+                    class="btn btn-success btn-sm" 
+                    id="addNewLicenseBtn"
+                    onclick="openAddNewLicenseModal()"
+                    style="display: none;">
+                <i class="bi bi-plus-circle"></i> Add New License
+            </button>
+        </div>
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label class="form-label required">License Key</label>
+                <div class="input-group">
+                    <input type="text"
+                        name="license_key"
+                        class="form-control"
+                        placeholder="Enter your license key"
+                        id="licenseKeyInput">
+                    <button type="button"
+                            class="btn btn-primary"
+                            id="activateLicenseBtn"
+                            onclick="activateLicense()">
+                        <i class="bi bi-key"></i> Activate
+                    </button>
+                </div>
+                <small class="text-muted">
+                    Enter the license key provided by your vendor
+                </small>
+            </div>
+
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Expiry Date</label>
+                <input type="date" 
+                       name="license_expiry" 
+                       class="form-control" 
+                       id="licenseExpiryInput"
+                       readonly>
+                <small class="text-muted">
+                    Automatically populated after activation
+                </small>
+            </div>
+        </div>
+
+        <!-- License Status Info -->
+        <div id="licenseStatusInfo" class="mt-3 p-3 bg-light rounded" style="display: none;">
+            <div class="row">
+                <div class="col-md-3">
+                    <small class="text-muted">Status</small>
+                    <div class="fw-bold" id="licenseStatus">-</div>
+                </div>
+                <div class="col-md-3">
+                    <small class="text-muted">Max Users</small>
+                    <div class="fw-bold" id="licenseMaxUsers">-</div>
+                </div>
+                <div class="col-md-3">
+                    <small class="text-muted">Days Remaining</small>
+                    <div class="fw-bold" id="licenseDaysRemaining">-</div>
+                </div>
+                <div class="col-md-3">
+                    <small class="text-muted">ERP Version</small>
+                    <div class="fw-bold" id="licenseErpVersion">-</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="section-card">
+        <h5 class="section-card-title">Module Access Control</h5>
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle"></i> 
+            Module access is determined by your activated license. Core modules are always enabled.
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead class="table-light">
+                    <tr>
+                        <th>Module Name</th>
+                        <th class="text-center">Access</th>
+                    </tr>
+                </thead>
+                <tbody id="moduleAccessTableBody">
+                    <!-- Modules will be populated here -->
+                </tbody>
+            </table>
+        </div>
+        <div class="mt-3 p-3 bg-light rounded">
+            <p class="mb-0 text-muted">
+                <i class="bi bi-info-circle"></i> 
+                <span id="activeModulesCount">0</span> modules enabled
+            </p>
+        </div>
+    </div>
+
+    <div class="btn-group-actions">
+        <button type="button" class="btn btn-outline-secondary" onclick="goToPreviousStep()">
+            <i class="bi bi-chevron-left"></i> Previous
+        </button>
+        <div class="d-flex gap-2">
+            <button type="button" class="btn btn-primary" onclick="finishSetup()">
+                <i class="bi bi-check-circle"></i> Finish Setup
+            </button>
+        </div>
+    </div>
+</div>
+
+    </div>
+</div>
+
+
+<!-- ADD NEW LICENSE MODAL -->
+<div class="modal fade" id="addNewLicenseModal" tabindex="-1" aria-labelledby="addNewLicenseModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addNewLicenseModalLabel">
+                    <i class="bi bi-key-fill me-2"></i>Add New License Key
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i> 
+                    <span id="licenseModalInfo">Adding a new license will replace your existing license configuration.</span>
+                </div>
+                
+                <!-- Show existing license info -->
+                <div id="existingLicenseInfo" class="card bg-light mb-3" style="display: none;">
+                    <div class="card-body">
+                        <h6 class="card-subtitle mb-2 text-muted">Current License</h6>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <small class="text-muted">Key:</small>
+                                <div class="fw-bold" id="currentLicenseKey">-</div>
+                            </div>
+                            <div>
+                                <small class="text-muted">Expiry:</small>
+                                <div class="fw-bold" id="currentLicenseExpiry">-</div>
+                            </div>
+                            <div>
+                                <small class="text-muted">Status:</small>
+                                <div class="fw-bold" id="currentLicenseStatus">-</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <form id="newLicenseForm">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label class="form-label required">New License Key</label>
+                        <input type="text" 
+                               name="new_license_key" 
+                               id="newLicenseKeyInput"
+                               class="form-control" 
+                               placeholder="Enter new license key" 
+                               required>
+                        <small class="text-muted">Enter the license key provided by your vendor</small>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle"></i> Cancel
+                </button>
+                <button type="button" class="btn btn-primary" onclick="activateNewLicense()">
+                    <i class="bi bi-key"></i> Activate New License
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Location Type Modal -->
+<div class="modal fade" id="locationTypeModal" tabindex="-1" aria-labelledby="locationTypeModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="locationTypeModalLabel">Add Location Type</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="locationTypeForm">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label class="form-label required">Type Name</label>
+                        <input type="text" name="name" class="form-control" placeholder="e.g., Warehouse, Office, Store" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Description</label>
+                        <textarea name="description" class="form-control" rows="3" placeholder="Optional description"></textarea>
+                    </div>
+                    <div class="form-check">
+                        <input type="checkbox" name="status" class="form-check-input" id="locationTypeStatus" checked>
+                        <label class="form-check-label" for="locationTypeStatus">Active</label>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success" onclick="saveLocationType()">
+                    <i class="bi bi-check-circle"></i> Save
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+ </div>
+ </div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{% static 'js/location_selects.js' %}"></script>
+
+<script>
+// ========================================================
+// GLOBAL VARIABLES
+// ========================================================
+let createdCompanyId = {% if company %}{{ company.id }}{% else %}null{% endif %};
+const isEditMode = {% if company %}true{% else %}false{% endif %};
+const isSuperUser = true;
+let modules = [];
+const ERP_VERSION = "1.0.0"; //  Define ERP version globally
+
+// ========================================================
+//  by adarshCONFIGURATION
+// ========================================================
+const CONFIG = {
+    TOAST_DURATION: 5000, // milliseconds - change this value to adjust toast display time
+    VALIDATION_DEBOUNCE: 300, // milliseconds
+    LICENSE_API_TIMEOUT: 30000 // milliseconds
+};
+const LICENSE_API_URL = "{{ license_api_url }}"; // Configured from Django settingsby adarsh
+
+// ========================================================
+// UTILITY FUNCTIONS
+// ========================================================
+//by adarsh Debounce utility for input validation
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}//by adarsh
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// Toast Helper
+(function () {
+    let confirmCallback = null;
+    let cancelCallback = null;
+    
+    function createTopCenterToastDOM() {
+        let el = document.getElementById("topcenter-toast");
+        if (!el) {
+            el = document.createElement("div");
+            el.id = "topcenter-toast";
+            el.style.position = "fixed";
+            el.style.top = "20px";
+            el.style.left = "50%";
+            el.style.transform = "translateX(-50%)";
+            el.style.zIndex = "99999";
+            el.style.minWidth = "320px";
+            el.style.maxWidth = "500px";
+            el.style.textAlign = "center";
+            el.style.borderRadius = "6px";
+            el.style.fontWeight = "500";
+            el.style.padding = "12px 18px";
+            el.style.opacity = "0";
+            el.style.transition = "opacity .25s ease-in-out";
+            el.style.boxShadow = "0 4px 12px rgba(0,0,0,0.15)";
+            el.style.pointerEvents = "auto";
+            document.body.appendChild(el);
+        }
+        return el;
+    }
+
+    window.showToast = function (msg, type = 'error') {
+        const el = createTopCenterToastDOM();
+        
+        // Clear any pending callbacks
+        confirmCallback = null;
+        cancelCallback = null;
+        
+        // Set colors based on type
+        if (type === 'success') {
+            el.style.backgroundColor = "#d4edda";
+            el.style.color = "#155724";
+            el.style.border = "1px solid #c3e6cb";
+        } else if (type === 'warning') {
+            el.style.backgroundColor = "#fff3cd";
+            el.style.color = "#856404";
+            el.style.border = "1px solid #ffeaa7";
+        } else if (type === 'info') {
+            el.style.backgroundColor = "#d1ecf1";
+            el.style.color = "#0c5460";
+            el.style.border = "1px solid #bee5eb";
+        } else { // error
+            el.style.backgroundColor = "#f8d7da";
+            el.style.color = "#721c24";
+            el.style.border = "1px solid #f5c6cb";
+        }
+        
+        el.innerHTML = msg;
+        el.style.display = "block";
+        
+        // Force reflow
+        void el.offsetWidth;
+        
+        el.style.opacity = "1";
+
+        // ⏱️ TOAST DISPLAY DURATION - Change CONFIG.TOAST_DURATION to adjust how long the toast shows
+        setTimeout(() => {
+            el.style.opacity = "0";
+            setTimeout(() => {
+                el.style.display = "none";
+            }, 300);
+        }, CONFIG.TOAST_DURATION);
+    };
+
+    // Confirmation prompt with the shared Unit-style modal
+    window.showConfirmToast = function(message, onConfirm, onCancel) {
+        const existing = document.getElementById("globalDeletePrompt");
+        if (existing) existing.remove();
+
+        const box = document.createElement("div");
+        box.id = "globalDeletePrompt";
+        box.className = "prompt-modal";
+        box.style.display = "flex";
+        box.innerHTML = `
+            <div class="prompt-modal-content">
+                <p>${message}</p>
+                <div class="prompt-buttons">
+                    <button type="button" class="prompt-btn prompt-ok-btn ok-btn">OK</button>
+                    <button type="button" class="prompt-btn prompt-cancel-btn cancel-btn">Cancel</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(box);
+
+        const closePrompt = () => {
+            box.remove();
+            confirmCallback = null;
+            cancelCallback = null;
+        };
+
+        confirmCallback = onConfirm;
+        cancelCallback = onCancel;
+
+        box.querySelector(".cancel-btn").onclick = () => {
+            const cb = cancelCallback;
+            closePrompt();
+            if (cb) cb();
+        };
+        box.querySelector(".ok-btn").onclick = () => {
+            const cb = confirmCallback;
+            closePrompt();
+            if (cb) cb();
+        };
+        box.addEventListener("click", (e) => {
+            if (e.target === box) {
+                const cb = cancelCallback;
+                closePrompt();
+                if (cb) cb();
+            }
+        });
+    };
+
+    window.hideToast = function() {
+        const prompt = document.getElementById("globalDeletePrompt");
+        if (prompt) {
+            prompt.remove();
+        }
+
+        const el = document.getElementById("topcenter-toast");
+        if (el) {
+            el.style.opacity = "0";
+            setTimeout(() => {
+                el.style.display = "none";
+                el.innerHTML = '';
+                // Clear callbacks
+                confirmCallback = null;
+                cancelCallback = null;
+            }, 300);
+        }
+    };
+    
+})();
+// ========================================================
+// VALIDATION FUNCTIONS
+// ========================================================
+
+/**
+ * Main validation function - checks if a field is valid
+ * Returns: true if valid, false if invalid
+ */
+function validateField(field) {
+    const $field = $(field);
+    
+    // Handle Select2 dropdowns
+    if ($field.hasClass('select2-hidden-accessible')) {
+        const val = $field.val();
+        if (val && val.length > 0) {
+            $field.next('.select2-container').addClass('valid').removeClass('is-invalid');
+            return true;
+        } else {
+            $field.next('.select2-container').addClass('is-invalid').removeClass('valid');
+            return false;
+        }
+    } 
+    // Handle radio buttons
+    else if ($field.attr('type') === 'radio') {
+        const name = $field.attr('name');
+        if ($(`input[name="${name}"]:checked`).length > 0) {
+            $(`input[name="${name}"]`).closest('.category').addClass('valid').removeClass('is-invalid');
+            return true;
+        } else {
+            $(`input[name="${name}"]`).closest('.category').addClass('is-invalid').removeClass('valid');
+            return false;
+        }
+    } 
+    // Handle regular inputs
+    else {
+        if ($field.val().trim() !== '') {
+            $field.addClass('valid').removeClass('is-invalid');
+            return true;
+        } else {
+            $field.addClass('is-invalid').removeClass('valid');
+            return false;
+        }
+    }
+}
+
+// ========================================================
+// ENHANCED VALIDATION FUNCTIONS WITH FORMAT CHECKING
+// ========================================================
+
+/**
+ * Email validation with format checking
+ */
+function validateEmail(email) {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+}
+
+/**
+ * Phone validation - accepts various formats
+ */
+function validatePhone(phone) {
+    // Remove all non-numeric characters for validation
+    const cleaned = phone.replace(/\D/g, '');
+    // Accept 10-15 digits
+    return cleaned.length >= 10 && cleaned.length <= 15;
+}
+
+/**
+ * Postal code validation
+ */
+function validatePostalCode(code) {
+    // Accept 4-10 alphanumeric characters
+    return /^[A-Za-z0-9\s-]{4,10}$/.test(code);
+}
+
+/**
+ * GST/Tax ID validation (Indian GSTIN format)
+ */
+function validateGSTIN(gstin) {
+    // Indian GSTIN: 2 digits + 10 chars + 1 digit + 1 char + 1 digit
+    const gstinRegex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
+    return gstinRegex.test(gstin.toUpperCase());
+}
+
+/**
+ * URL validation
+ */
+function validateURL(url) {
+    try {
+        new URL(url);
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+/**
+ * IFSC Code validation (Indian bank code)
+ */
+function validateIFSC(ifsc) {
+    const ifscRegex = /^[A-Z]{4}0[A-Z0-9]{6}$/;
+    return ifscRegex.test(ifsc.toUpperCase());
+}
+
+/**
+ * Account Number validation
+ */
+function validateAccountNumber(accountNumber) {
+    // Accept 9-18 digits
+    const cleaned = accountNumber.replace(/\D/g, '');
+    return cleaned.length >= 9 && cleaned.length <= 18;
+}
+
+/**
+ * Show inline error message under a field
+ */
+function showFieldError($field, message) {
+    // Remove existing error message
+    $field.siblings('.field-error-message').remove();
+    
+    // Add new error message
+    const $errorMsg = $('<small class="field-error-message text-danger d-block mt-1"></small>').text(message);
+    $field.after($errorMsg);
+    
+    // Mark field as invalid
+    $field.addClass('is-invalid').removeClass('valid');
+}
+
+/**
+ * Clear inline error message
+ */
+function clearFieldError($field) {
+    $field.siblings('.field-error-message').remove();
+    $field.removeClass('is-invalid').addClass('valid');
+}
+
+// ========================================================
+// COMPANY FORM VALIDATION WITH REAL-TIME FEEDBACK
+// ========================================================
+$(document).ready(function() {
+    
+    // Company Name - Required
+    $(document).on('input change', '#companyForm input[name="name"]', function() {
+        const $this = $(this);
+        if ($this.val().trim() === '') {
+            showFieldError($this, 'Company name is required');
+        } else if ($this.val().trim().length < 2) {
+            showFieldError($this, 'Company name must be at least 2 characters');
+        } else {
+            clearFieldError($this);
+        }
+    });
+    
+    // Legal Name - Required
+    $(document).on('input change', '#companyForm input[name="legal_name"]', function() {
+        const $this = $(this);
+        if ($this.val().trim() === '') {
+            showFieldError($this, 'Legal name is required');
+        } else {
+            clearFieldError($this);
+        }
+    });
+    
+    // Company ID - Required
+    $(document).on('input change', '#companyForm input[name="company_id"][type="text"]', function() {
+        const $this = $(this);
+        if ($this.val().trim() === '') {
+            showFieldError($this, 'Company ID/CIN is required');
+        } else {
+            clearFieldError($this);
+        }
+    });
+    
+    // Email Validation - Real-time
+    $(document).on('input change', '#companyForm input[name="email"], #companyForm input[name="contact_email"]', function() {
+        const $this = $(this);
+        const email = $this.val().trim();
+        
+        if (email === '') {
+            showFieldError($this, 'Email is required');
+        } else if (!validateEmail(email)) {
+            showFieldError($this, 'Please enter a valid email address (e.g., name@example.com)');
+        } else {
+            clearFieldError($this);
+        }
+    });
+    
+    // Phone Validation - Real-time
+    $(document).on('input change', '#companyForm input[name="phone"], #companyForm input[name="contact_phone"]', function() {
+        const $this = $(this);
+        const phone = $this.val().trim();
+        
+        if (phone === '') {
+            showFieldError($this, 'Phone number is required');
+        } else if (!validatePhone(phone)) {
+            showFieldError($this, 'Phone must be 10-15 digits (e.g., +91 9876543210)');
+        } else {
+            clearFieldError($this);
+        }
+    });
+    
+    // Address Line 1 - Required
+    $(document).on('input change', '#companyForm input[name="address_line1"]', function() {
+        const $this = $(this);
+        if ($this.val().trim() === '') {
+            showFieldError($this, 'Address is required');
+        } else {
+            clearFieldError($this);
+        }
+    });
+    
+    // City - Required
+    $(document).on('input change', '#companyForm input[name="city"]', function() {
+        const $this = $(this);
+        if ($this.val().trim() === '') {
+            showFieldError($this, 'City is required');
+        } else {
+            clearFieldError($this);
+        }
+    });
+    
+    // State - Required
+    $(document).on('input change', '#companyForm input[name="state"]', function() {
+        const $this = $(this);
+        if ($this.val().trim() === '') {
+            showFieldError($this, 'State is required');
+        } else {
+            clearFieldError($this);
+        }
+    });
+    
+    // Country - Required
+    $(document).on('input change', '#companyForm input[name="country"]', function() {
+        const $this = $(this);
+        if ($this.val().trim() === '') {
+            showFieldError($this, 'Country is required');
+        } else {
+            clearFieldError($this);
+        }
+    });
+    
+    // Postal Code - Format validation
+    $(document).on('input change', '#companyForm input[name="postal_code"]', function() {
+        const $this = $(this);
+        const code = $this.val().trim();
+        
+        if (code === '') {
+            showFieldError($this, 'Postal code is required');
+        } else if (!validatePostalCode(code)) {
+            showFieldError($this, 'Invalid postal code format (e.g., 560001 or SW1A 1AA)');
+        } else {
+            clearFieldError($this);
+        }
+    });
+    
+    // Tax ID/GSTIN - Format validation
+    $(document).on('input change', '#companyForm input[name="tax_id"]', function() {
+        const $this = $(this);
+        const taxId = $this.val().trim();
+        
+        if (taxId === '') {
+            showFieldError($this, 'Tax ID/GSTIN is required');
+        } else if (taxId.length === 15) {
+            // Assume Indian GSTIN if 15 characters
+            if (!validateGSTIN(taxId)) {
+                showFieldError($this, 'Invalid GSTIN format (e.g., 22AAAAA0000A1Z5)');
+            } else {
+                clearFieldError($this);
+            }
+        } else {
+            // Generic tax ID - just check it's not empty
+            clearFieldError($this);
+        }
+    });
+    
+    // Website URL - Optional but format checked if filled
+    $(document).on('input change', '#companyForm input[name="website"]', function() {
+        const $this = $(this);
+        const url = $this.val().trim();
+        
+        if (url !== '' && !validateURL(url)) {
+            showFieldError($this, 'Invalid URL format (e.g., https://www.example.com)');
+        } else {
+            clearFieldError($this);
+        }
+    });
+    
+    // Base Currency - Required
+    $(document).on('input change', '#companyForm input[name="base_currency"]', function() {
+        const $this = $(this);
+        if ($this.val().trim() === '') {
+            showFieldError($this, 'Base currency is required (e.g., INR, USD)');
+        } else {
+            clearFieldError($this);
+        }
+    });
+    
+    // Fiscal Year Start - Required
+    $(document).on('change', '#companyForm input[name="fiscal_year_start"]', function() {
+        const $this = $(this);
+        if ($this.val().trim() === '') {
+            showFieldError($this, 'Fiscal year start date is required');
+        } else {
+            clearFieldError($this);
+        }
+    });
+    
+    // Contact Person - Required
+    $(document).on('input change', '#companyForm input[name="contact_person"]', function() {
+        const $this = $(this);
+        if ($this.val().trim() === '') {
+            showFieldError($this, 'Contact person name is required');
+        } else {
+            clearFieldError($this);
+        }
+    });
+    
+    // Report Basis - Required (select)
+    $(document).on('change', '#companyForm select[name="report_basis"]', function() {
+        const $this = $(this);
+        if ($this.val() === '') {
+            showFieldError($this, 'Please select a report basis');
+        } else {
+            clearFieldError($this);
+        }
+    });
+    
+    // Logo - Required for new company
+    $(document).on('change', '#logoInput', function() {
+        const $this = $(this);
+        const file = this.files[0];
+        const hasExistingLogo = $('#logoPreview img').length > 0;
+        
+        if (!isEditMode && !file) {
+            showFieldError($this, 'Company logo is required');
+        } else if (file) {
+            // Validate file type
+            const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
+            if (!validTypes.includes(file.type)) {
+                showFieldError($this, 'Logo must be JPG, PNG, or GIF');
+            } else if (file.size > 2 * 1024 * 1024) {
+                showFieldError($this, 'Logo file size must be under 2MB');
+            } else {
+                clearFieldError($this);
+            }
+        } else if (isEditMode && hasExistingLogo) {
+            clearFieldError($this);
+        }
+    });
+});
+
+// ========================================================
+// by adarshIMPROVED VALIDATION WITH DEBOUNCING AND BLUR EVENTS
+// ========================================================
+$(document).ready(function() {
+    // Create debounced validation functions
+    const validateCompanyNameDebounced = debounce(function($field) {
+        if ($field.val().trim() === '') {
+            showFieldError($field, 'Company name is required');
+        } else if ($field.val().trim().length < 2) {
+            showFieldError($field, 'Company name must be at least 2 characters');
+        } else {
+            clearFieldError($field);
+        }
+    }, CONFIG.VALIDATION_DEBOUNCE);
+    
+    const validateEmailDebounced = debounce(function($field) {
+        const email = $field.val().trim();
+        if (email === '') {
+            showFieldError($field, 'Email is required');
+        } else if (!validateEmail(email)) {
+            showFieldError($field, 'Please enter a valid email address');
+        } else {
+            clearFieldError($field);
+        }
+    }, CONFIG.VALIDATION_DEBOUNCE);
+    
+    const validatePhoneDebounced = debounce(function($field) {
+        const phone = $field.val().trim();
+        if (phone === '') {
+            showFieldError($field, 'Phone number is required');
+        } else if (!validatePhone(phone)) {
+            showFieldError($field, 'Phone must be 10-15 digits');
+        } else {
+            clearFieldError($field);
+        }
+    }, CONFIG.VALIDATION_DEBOUNCE);
+    
+    // Use blur event for text inputs (better UX)
+    $(document).on('blur', '#companyForm input[name="name"]', function() {
+        validateCompanyNameDebounced($(this));
+    });
+    
+    $(document).on('blur', '#companyForm input[name="email"], #companyForm input[name="contact_email"]', function() {
+        validateEmailDebounced($(this));
+    });
+    
+    $(document).on('blur', '#companyForm input[name="phone"], #companyForm input[name="contact_phone"]', function() {
+        validatePhoneDebounced($(this));
+    });
+    
+    // Use change event for selects and dates
+    $(document).on('change', '#companyForm select', function() {
+        const $this = $(this);
+        if ($this.val() === '') {
+            showFieldError($this, 'This field is required');
+        } else {
+            clearFieldError($this);
+        }
+    });
+    
+    $(document).on('change', '#companyForm input[type="date"]', function() {
+        const $this = $(this);
+        if ($this.val() === '') {
+            showFieldError($this, 'This field is required');
+        } else {
+            clearFieldError($this);
+        }
+    });
+}); //by adarsh
+
+// ========================================================
+// BANK ACCOUNT FORM VALIDATION WITH REAL-TIME FEEDBACK
+// ========================================================
+$(document).ready(function() {
+    
+    // Bank Selection - Required
+    $(document).on('change', '#bankAccountForm select[name="bank"], #bankAccountEditForm select[name="bank"]', function() {
+        const $this = $(this);
+        if ($this.val() === '' || $this.val() === null) {
+            showFieldError($this, 'Please select a bank');
+        } else {
+            clearFieldError($this);
+        }
+    });
+    
+    // Account Holder Name - Required
+    $(document).on('input change', '#bankAccountForm input[name="account_name"], #bankAccountEditForm input[name="account_name"]', function() {
+        const $this = $(this);
+        if ($this.val().trim() === '') {
+            showFieldError($this, 'Account holder name is required');
+        } else {
+            clearFieldError($this);
+        }
+    });
+    
+    // Account Number - Format validation
+    $(document).on('input change', '#bankAccountForm input[name="account_number"], #bankAccountEditForm input[name="account_number"]', function() {
+        const $this = $(this);
+        const accountNum = $this.val().trim();
+        
+        if (accountNum === '') {
+            showFieldError($this, 'Account number is required');
+        } else if (!validateAccountNumber(accountNum)) {
+            showFieldError($this, 'Account number must be 9-18 digits');
+        } else {
+            clearFieldError($this);
+        }
+    });
+    
+    // IFSC/SWIFT Code - Format validation
+    $(document).on('input change', '#bankAccountForm input[name="ifsc_swift_code"], #bankAccountEditForm input[name="ifsc_swift_code"]', function() {
+        const $this = $(this);
+        const code = $this.val().trim().toUpperCase();
+        $this.val(code); // Convert to uppercase as user types
+        
+        if (code === '') {
+            showFieldError($this, 'IFSC/SWIFT code is required');
+        } else if (code.length === 11) {
+            // Assume IFSC if 11 characters
+            if (!validateIFSC(code)) {
+                showFieldError($this, 'Invalid IFSC format (e.g., SBIN0001234)');
+            } else {
+                clearFieldError($this);
+            }
+        } else {
+            // Generic SWIFT/other code
+            clearFieldError($this);
+        }
+    });
+    
+    // Branch Name - Required
+    $(document).on('input change', '#bankAccountForm input[name="branch_name"], #bankAccountEditForm input[name="branch_name"]', function() {
+        const $this = $(this);
+        if ($this.val().trim() === '') {
+            showFieldError($this, 'Branch name is required');
+        } else {
+            clearFieldError($this);
+        }
+    });
+});
+
+// ========================================================
+// LOCATION FORM VALIDATION WITH REAL-TIME FEEDBACK
+// ========================================================
+$(document).ready(function() {
+    
+    // Location Type - Required
+    $(document).on('change', '#locationForm select[name="location_type"], #locationEditForm select[name="location_type"]', function() {
+        const $this = $(this);
+        if ($this.val() === '' || $this.val() === null) {
+            showFieldError($this, 'Please select a location type');
+        } else {
+            clearFieldError($this);
+        }
+    });
+    
+        // COUNTRY -> BASE CURRENCY INFERENCE (AJAX)
+        // Calls server endpoint to infer currency code and updates the base currency select.
+        (function(){
+            const inferUrl = "{% url 'company_infer_currency' %}";
+
+            function updateBaseCurrencyFromCountry(countryCode){
+                if(!countryCode) return;
+                fetch(inferUrl + '?country=' + encodeURIComponent(countryCode))
+                    .then(r => r.json())
+                    .then(data => {
+                        if(data && data.success && data.currency){
+                            const cur = data.currency;
+                            const $select = document.querySelector('select[name="base_currency"]');
+                            if(!$select) return;
+                            // If option exists, select it; otherwise add it to top and select
+                            let opt = $select.querySelector('option[value="' + cur + '"]');
+                            if(opt){
+                                $select.value = cur;
+                            } else {
+                                const newOpt = document.createElement('option');
+                                newOpt.value = cur;
+                                newOpt.text = cur;
+                                $select.insertBefore(newOpt, $select.firstChild.nextSibling);
+                                $select.value = cur;
+                            }
+                        }
+                    }).catch(()=>{});
+            }
+
+            document.addEventListener('change', function(e){
+                if(e.target && e.target.matches('select[name="country"]')){
+                    updateBaseCurrencyFromCountry(e.target.value);
+                }
+            });
+
+            // On load: if no selected base currency, attempt to infer from selected country
+            (function(){
+                const selected = "{{ selected_base_currency|default:'' }}";
+                if(!selected){
+                    const countryEl = document.querySelector('select[name="country"]');
+                    if(countryEl && countryEl.value){
+                        updateBaseCurrencyFromCountry(countryEl.value);
+                    }
+                }
+            })();
+        })();
+
+    // Location Name - Required
+    $(document).on('input change', '#locationForm input[name="name"], #locationEditForm input[name="name"]', function() {
+        const $this = $(this);
+        if ($this.val().trim() === '') {
+            showFieldError($this, 'Location name is required');
+        } else {
+            clearFieldError($this);
+        }
+    });
+    
+    // Location Code - Required
+    $(document).on('input change', '#locationForm input[name="code"], #locationEditForm input[name="code"]', function() {
+        const $this = $(this);
+        if ($this.length && $this.val().trim() === '') {
+            showFieldError($this, 'Location code is required');
+        } else if ($this.length) {
+            clearFieldError($this);
+        }
+    });
+    
+    // Manager Name - Required
+    $(document).on('input change', '#locationForm input[name="manager_name"], #locationEditForm input[name="manager_name"]', function() {
+        const $this = $(this);
+        if ($this.val().trim() === '') {
+            showFieldError($this, 'Manager name is required');
+        } else {
+            clearFieldError($this);
+        }
+    });
+    
+    // Manager Email - Format validation
+    $(document).on('input change', '#locationForm input[name="manager_email"], #locationEditForm input[name="manager_email"]', function() {
+        const $this = $(this);
+        const email = $this.val().trim();
+        
+        if (email === '') {
+            showFieldError($this, 'Manager email is required');
+        } else if (!validateEmail(email)) {
+            showFieldError($this, 'Please enter a valid email address');
+        } else {
+            clearFieldError($this);
+        }
+    });
+    
+    // Manager Phone - Format validation
+    $(document).on('input change', '#locationForm input[name="manager_phone"], #locationEditForm input[name="manager_phone"]', function() {
+        const $this = $(this);
+        const phone = $this.val().trim();
+        
+        if (phone === '') {
+            showFieldError($this, 'Manager phone is required');
+        } else if (!validatePhone(phone)) {
+            showFieldError($this, 'Phone must be 10-15 digits');
+        } else {
+            clearFieldError($this);
+        }
+    });
+    
+    // Location Address - Required
+    $(document).on('input change', '#locationForm input[name="address_line1"], #locationEditForm input[name="address_line1"]', function() {
+        const $this = $(this);
+        if ($this.val().trim() === '') {
+            showFieldError($this, 'Address is required');
+        } else {
+            clearFieldError($this);
+        }
+    });
+    
+    // Location City - Required
+    $(document).on('input change', '#locationForm input[name="city"], #locationEditForm input[name="city"]', function() {
+        const $this = $(this);
+        if ($this.val().trim() === '') {
+            showFieldError($this, 'City is required');
+        } else {
+            clearFieldError($this);
+        }
+    });
+    
+    // Location State - Required
+    $(document).on('input change', '#locationForm input[name="state"], #locationEditForm input[name="state"]', function() {
+        const $this = $(this);
+        if ($this.val().trim() === '') {
+            showFieldError($this, 'State is required');
+        } else {
+            clearFieldError($this);
+        }
+    });
+    
+    // Location Country - Required
+    $(document).on('input change', '#locationForm input[name="country"], #locationEditForm input[name="country"]', function() {
+        const $this = $(this);
+        if ($this.val().trim() === '') {
+            showFieldError($this, 'Country is required');
+        } else {
+            clearFieldError($this);
+        }
+    });
+    
+    // Location Postal Code - Format validation
+    $(document).on('input change', '#locationForm input[name="postal_code"], #locationEditForm input[name="postal_code"]', function() {
+        const $this = $(this);
+        const code = $this.val().trim();
+        
+        if (code === '') {
+            showFieldError($this, 'Postal code is required');
+        } else if (!validatePostalCode(code)) {
+            showFieldError($this, 'Invalid postal code format');
+        } else {
+            clearFieldError($this);
+        }
+    });
+    
+    // Location Phone - Format validation
+    $(document).on('input change', '#locationForm input[name="phone"], #locationEditForm input[name="phone"]', function() {
+        const $this = $(this);
+        const phone = $this.val().trim();
+        
+        if (phone === '') {
+            showFieldError($this, 'Location phone is required');
+        } else if (!validatePhone(phone)) {
+            showFieldError($this, 'Phone must be 10-15 digits');
+        } else {
+            clearFieldError($this);
+        }
+    });
+    
+    // Working Hours - Required
+    $(document).on('input change', '#locationForm input[name="working_hours"], #locationEditForm input[name="working_hours"]', function() {
+        const $this = $(this);
+        if ($this.val().trim() === '') {
+            showFieldError($this, 'Working hours are required (e.g., 9 AM - 6 PM)');
+        } else {
+            clearFieldError($this);
+        }
+    });
+});
+
+// ========================================================
+// LICENSE FORM VALIDATION WITH REAL-TIME FEEDBACK
+// ========================================================
+$(document).ready(function() {
+    
+    // License Key - Required
+    $(document).on('input change', '#licenseKeyInput', function() {
+        const $this = $(this);
+        if ($this.val().trim() === '') {
+            showFieldError($this, 'License key is required');
+        } else {
+            clearFieldError($this);
+        }
+    });
+    
+    // License Expiry - Date validation
+    $(document).on('change', '#licenseExpiryInput', function() {
+        const $this = $(this);
+        const selectedDate = new Date($this.val());
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        selectedDate.setHours(0, 0, 0, 0);
+        
+        if ($this.val().trim() === '') {
+            showFieldError($this, 'License expiry date is required');
+        } else if (selectedDate < today) {
+            showFieldError($this, 'License expiry date cannot be in the past');
+        } else {
+            clearFieldError($this);
+        }
+    });
+});
+
+// ========================================================
+// UPDATE VALIDATION FUNCTIONS TO USE NEW ERROR SYSTEM
+// ========================================================
+function validateCompanyForm() {
+    let invalid = false;
+    
+    // Clear all previous error messages
+    $('#companyForm .field-error-message').remove();
+    $('#companyForm .is-invalid').removeClass('is-invalid');
+    
+    // Validate all required fields
+    const requiredFields = [
+        { selector: 'input[name="name"]', name: 'Company Name' },
+        { selector: 'input[name="legal_name"]', name: 'Legal Name' },
+        { selector: 'input[name="address_line1"]', name: 'Address Line 1' },
+        { selector: 'input[name="city"]', name: 'City' },
+        { selector: 'input[name="state"]', name: 'State' },
+        { selector: 'input[name="country"]', name: 'Country' },
+        { selector: 'input[name="postal_code"]', name: 'Postal Code' },
+        { selector: 'input[name="email"]', name: 'Email' },
+        { selector: 'input[name="phone"]', name: 'Phone' },
+        { selector: 'input[name="contact_person"]', name: 'Contact Person' },
+        { selector: 'input[name="contact_email"]', name: 'Contact Email' },
+        { selector: 'input[name="contact_phone"]', name: 'Contact Phone' },
+        { selector: 'input[name="base_currency"]', name: 'Base Currency' },
+        { selector: 'input[name="fiscal_year_start"]', name: 'Fiscal Year Start' },
+        { selector: 'select[name="report_basis"]', name: 'Report Basis' }
+    ];
+    // Add Tax ID to required fields only if GST toggle is checked
+    const gstToggle = document.getElementById('gstToggle');
+    if (gstToggle && gstToggle.checked) {
+        requiredFields.push({ selector: 'input[name="tax_id"]', name: 'Tax ID / GSTIN' });
+    }
+    
+    requiredFields.forEach(field => {
+        const $element = $(`#companyForm ${field.selector}`);
+        if ($element.length && $element.val().trim() === '') {
+            showFieldError($element, `${field.name} is required`);
+            invalid = true;
+        }
+    });
+    
+    // Company ID validation
+    const $companyId = $('#companyForm input[name="company_id"][type="text"]');
+    if ($companyId.length && $companyId.val().trim() === '') {
+        showFieldError($companyId, 'Company ID/CIN is required');
+        invalid = true;
+    }
+    
+    // Logo validation
+    const $logoInput = $('#logoInput');
+    if ($logoInput.length) {
+        const hasExistingLogo = $('#logoPreview img').length > 0;
+        if (!isEditMode && !$logoInput[0].files.length) {
+            showFieldError($logoInput, 'Company logo is required');
+            invalid = true;
+        } else if (isEditMode && !hasExistingLogo && !$logoInput[0].files.length) {
+            showFieldError($logoInput, 'Company logo is required');
+            invalid = true;
+        }
+    }
+    
+    if (invalid) {
+        showToast("⚠️ Please fill all required fields correctly.");
+        return false;
+    }
+    return true;
+}
+
+function validateBankAccountForm() {
+    let invalid = false;
+    
+    $('#bankAccountForm .field-error-message').remove();
+    $('#bankAccountForm .is-invalid').removeClass('is-invalid');
+    
+    const requiredFields = [
+        { selector: 'select[name="bank"]', name: 'Bank' },
+        { selector: 'input[name="account_name"]', name: 'Account Holder Name' },
+        { selector: 'input[name="account_number"]', name: 'Account Number' },
+        { selector: 'input[name="ifsc_swift_code"]', name: 'IFSC/SWIFT Code' },
+        { selector: 'input[name="branch_name"]', name: 'Branch Name' }
+    ];
+    
+    requiredFields.forEach(field => {
+        const $element = $(`#bankAccountForm ${field.selector}`);
+        if ($element.length && $element.val().trim() === '') {
+            showFieldError($element, `${field.name} is required`);
+            invalid = true;
+        }
+    });
+    
+    if (invalid) {
+        showToast("⚠️ Please fill all required fields correctly.");
+        return false;
+    }
+    return true;
+}
+
+function validateBankAccountEditForm() {
+    let invalid = false;
+    
+    $('#bankAccountEditForm .field-error-message').remove();
+    $('#bankAccountEditForm .is-invalid').removeClass('is-invalid');
+    
+    const requiredFields = [
+        { selector: 'select[name="bank"]', name: 'Bank' },
+        { selector: 'input[name="account_name"]', name: 'Account Holder Name' },
+        { selector: 'input[name="account_number"]', name: 'Account Number' },
+        { selector: 'input[name="ifsc_swift_code"]', name: 'IFSC/SWIFT Code' },
+        { selector: 'input[name="branch_name"]', name: 'Branch Name' }
+    ];
+    
+    requiredFields.forEach(field => {
+        const $element = $(`#bankAccountEditForm ${field.selector}`);
+        if ($element.length && $element.val().trim() === '') {
+            showFieldError($element, `${field.name} is required`);
+            invalid = true;
+        }
+    });
+    
+    if (invalid) {
+        showToast("⚠️ Please fill all required fields correctly.");
+        return false;
+    }
+    return true;
+}
+
+function validateLocationForm() {
+    let invalid = false;
+    
+    $('#locationForm .field-error-message').remove();
+    $('#locationForm .is-invalid').removeClass('is-invalid');
+
+    const requiredFields = [
+        { selector: 'select[name="location_type"]', name: 'Location Type' },
+        { selector: 'input[name="name"]', name: 'Location Name' },
+        { selector: 'input[name="code"]', name: 'Location Code' },
+        { selector: 'input[name="manager_name"]', name: 'Manager Name' },
+        { selector: 'input[name="manager_email"]', name: 'Manager Email' },
+        { selector: 'input[name="manager_phone"]', name: 'Manager Phone' },
+        { selector: 'input[name="address_line1"]', name: 'Address Line 1' },
+        { selector: 'input[name="city"]', name: 'City' },
+        { selector: 'input[name="state"]', name: 'State' },
+        { selector: 'input[name="country"]', name: 'Country' },
+        { selector: 'input[name="postal_code"]', name: 'Postal Code' },
+        { selector: 'input[name="phone"]', name: 'Phone' },
+        { selector: 'input[name="working_hours"]', name: 'Working Hours' }
+    ];
+
+    requiredFields.forEach(field => {
+        const $element = $(`#locationForm ${field.selector}`);
+        if ($element.length && !$element.val().trim()) {
+            showFieldError($element, `${field.name} is required`);
+            invalid = true;
+        }
+    });
+
+    if (invalid) {
+        showToast("⚠️ Please fill all required fields correctly.");
+        return false;
+    }
+    return true;
+}
+
+function validateLocationEditForm() {
+    let invalid = false;
+    
+    $('#locationEditForm .field-error-message').remove();
+    $('#locationEditForm .is-invalid').removeClass('is-invalid');
+
+    const requiredFields = [
+        { selector: 'select[name="location_type"]', name: 'Location Type' },
+        { selector: 'input[name="name"]', name: 'Location Name' },
+        { selector: 'input[name="code"]', name: 'Location Code' },
+        { selector: 'input[name="manager_name"]', name: 'Manager Name' },
+        { selector: 'input[name="manager_email"]', name: 'Manager Email' },
+        { selector: 'input[name="manager_phone"]', name: 'Manager Phone' },
+        { selector: 'input[name="address_line1"]', name: 'Address Line 1' },
+        { selector: 'input[name="city"]', name: 'City' },
+        { selector: 'input[name="state"]', name: 'State' },
+        { selector: 'input[name="country"]', name: 'Country' },
+        { selector: 'input[name="postal_code"]', name: 'Postal Code' },
+        { selector: 'input[name="phone"]', name: 'Phone' },
+        { selector: 'input[name="working_hours"]', name: 'Working Hours' }
+    ];
+
+    requiredFields.forEach(field => {
+        const $element = $(`#locationEditForm ${field.selector}`);
+        if ($element.length && !$element.val().trim()) {
+            showFieldError($element, `${field.name} is required`);
+            invalid = true;
+        }
+    });
+
+    if (invalid) {
+        showToast("⚠️ Please fill all required fields correctly.");
+        return false;
+    }
+    return true;
+}
+function validateLicenseForm() {
+    let invalid = false;
+    document.querySelectorAll('.template-group[data-step="3"] .is-invalid').forEach(el => el.classList.remove('is-invalid'));
+
+    const licenseKey = document.getElementById('licenseKeyInput').value.trim();
+    const licenseExpiry = document.getElementById('licenseExpiryInput').value.trim();
+
+    if (!licenseKey) {
+        document.getElementById('licenseKeyInput').classList.add('is-invalid');
+        invalid = true;
+    }
+
+    if (!licenseExpiry) {
+        document.getElementById('licenseExpiryInput').classList.add('is-invalid');
+        invalid = true;
+    } else {
+        // Validate that expiry date is not in the past
+        const selectedDate = new Date(licenseExpiry);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        selectedDate.setHours(0, 0, 0, 0);
+
+        if (selectedDate < today) {
+            document.getElementById('licenseExpiryInput').classList.add('is-invalid');
+            showToast('⚠️ License expiry date cannot be in the past');
+            invalid = true;
+        }
+    }
+
+    if (invalid && !licenseExpiry) {
+        showToast("Please fill all required fields correctly.");
+        return false;
+    }
+
+    return !invalid;
+}
+
+// Update saveLicenseConfiguration to validate before saving
+function saveLicenseConfiguration() {
+    if (!createdCompanyId) {
+        showToast('Please create company first');
+        return;
+    }
+    
+    // Validate license form including expiry date
+    if (!validateLicenseForm()) return;
+
+    const licenseKey = document.getElementById('licenseKeyInput').value.trim();
+    const licenseExpiry = document.getElementById('licenseExpiryInput').value;
+
+    const modulesList = [];
+    const checkboxes = document.querySelectorAll('.module-toggle');
+    
+    if (checkboxes.length > 0) {
+        checkboxes.forEach(checkbox => {
+            const code = checkbox.dataset.moduleCode;
+            const hasAccess = checkbox.checked;
+            const isCore = checkbox.dataset.isCore === 'true';
+            
+            modulesList.push({
+                code: code,
+                hasAccess: hasAccess || isCore
+            });
+        });
+    } else {
+        modulesList.push(...modules.map(m => ({
+            code: m.code,
+            hasAccess: m.hasAccess
+        })));
+    }
+
+    const licenseData = {
+        company_id: createdCompanyId,
+        license_key: licenseKey,
+        license_expiry: licenseExpiry,
+        modules: modulesList
+    };
+
+    document.getElementById('loadingOverlay').classList.add('show');
+
+    fetch("{% url 'save_license_configuration' %}", {
+        method: 'POST',
+        body: JSON.stringify(licenseData),
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken'),
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        document.getElementById('loadingOverlay').classList.remove('show');
+        if (data.success) {
+            document.querySelector('.side-nav-link[data-index="3"]')?.classList.add('completed');
+            showToast('✓ ' + (data.message || 'License saved successfully!'));
+        } else {
+            showToast(data.message || 'Failed to save license');
+        }
+    })
+    .catch(error => {
+        document.getElementById('loadingOverlay').classList.remove('show');
+        console.error('Error:', error);
+        showToast('Failed to save license');
+    });
+}
+
+// Add real-time validation on license expiry input change
+// Add this to your DOMContentLoaded section:
+document.addEventListener('DOMContentLoaded', function() {
+    // ... your existing DOMContentLoaded code ...
+    
+    // Add real-time validation for license expiry date
+    const licenseExpiryInput = document.getElementById('licenseExpiryInput');
+    if (licenseExpiryInput) {
+        licenseExpiryInput.addEventListener('change', function() {
+            validateLicenseExpiryDate();
+        });
+        
+        // Also set min attribute to today's date
+        const today = new Date().toISOString().split('T')[0];
+        licenseExpiryInput.setAttribute('min', today);
+    }
+});
+
+// ========================================================
+// STEP NAVIGATION
+// ========================================================
+function showStep(step) {
+    document.querySelectorAll('.template-group').forEach(g => g.classList.remove('active'));
+    document.querySelectorAll('.settings-sidebar a').forEach(a => a.classList.remove('active'));
+
+    const targetGroup = document.querySelector(`.template-group[data-step="${step}"]`);
+    if (targetGroup) targetGroup.classList.add('active');
+
+    const targetLink = document.querySelector(`.settings-sidebar a[data-index="${step}"]`);
+    if (targetLink) targetLink.classList.add('active');
+
+    if (step === 1) {
+        loadBankAccounts();
+    } else if (step === 2) {
+        loadLocations();
+    } else if (step === 3) {
+        loadModuleAccessTable();
+    }
+}
+
+function goToNextStep() {
+    const currentStep = parseInt(document.querySelector('.template-group.active').dataset.step);
+    let nextStep = currentStep + 1;
+    const totalSteps = document.querySelectorAll('.template-group').length;
+    
+    // Validate current step before proceeding
+    if (currentStep === 0) {
+        // Validate company info
+        if (!createdCompanyId) {
+            showToast('⚠️ Please save Company Information before proceeding');
+            return;
+        }
+    }
+    
+    if (nextStep < totalSteps) {
+        showStep(nextStep);
+    }
+}
+function goToPreviousStep() {
+    const currentStep = parseInt(document.querySelector('.template-group.active').dataset.step);
+    if(currentStep > 0) showStep(currentStep - 1);
+}
+
+// ========================================================
+// COMPANY FORM
+// ========================================================
+function submitCompanyForm() {
+    if (!validateCompanyForm()) return;
+
+    const form = document.getElementById('companyForm');
+    const formData = new FormData(form);
+    
+    document.getElementById('loadingOverlay').classList.add('show');
+
+    const url = isEditMode 
+        ? "{% if company %}{% url 'company_update' company.id %}{% endif %}" 
+        : "{% url 'company_create' %}";
+
+    fetch(url, {
+        method: 'POST',
+        body: formData,
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(response => response.json())
+    .then(data => {
+        document.getElementById('loadingOverlay').classList.remove('show');
+        if (data.success) {
+            if (!isEditMode) createdCompanyId = data.company_id;
+            document.querySelector('.side-nav-link[data-index="0"]').classList.add('completed');
+            showToast('✓ ' + data.message);
+        } else {
+            showToast(data.message);
+        }
+    })
+    .catch(error => {
+        document.getElementById('loadingOverlay').classList.remove('show');
+        showToast('Failed to save company: ' + error);
+    });
+}
+
+// ========================================================
+// BANK ACCOUNTS
+// ========================================================
+function submitBankAccountForm() {
+    if (!createdCompanyId) {
+        showToast('Please create company first');
+        return;
+    }
+    if (!validateBankAccountForm()) return;
+
+    const form = document.getElementById('bankAccountForm');
+    const formData = new FormData(form);
+    formData.append('company_id', createdCompanyId);
+
+    document.getElementById('loadingOverlay').classList.add('show');
+
+    fetch("{% url 'bank_account_ajax_create' %}", {
+        method: 'POST',
+        body: formData,
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(response => response.json())
+    .then(data => {
+        document.getElementById('loadingOverlay').classList.remove('show');
+        if (data.success) {
+            showToast('✓ ' + data.message);
+            form.reset();
+            loadBankAccounts();
+        } else {
+            showToast(data.message);
+        }
+    })
+    .catch(error => {
+        document.getElementById('loadingOverlay').classList.remove('show');
+        showToast('Failed to add bank account: ' + error);
+    });
+}
+
+function loadBankAccounts() {
+    if (!createdCompanyId) return;
+
+    fetch(`{% url 'bank_accounts_ajax_list' %}?company_id=${createdCompanyId}`)
+    .then(response => response.json())
+    .then(data => {
+        const list = document.getElementById('bankAccountsList');
+        if (data.accounts && data.accounts.length === 0) {
+            list.innerHTML = `<div class="empty-state"><i class="bi bi-bank"></i><p>No bank accounts added yet</p></div>`;
+        } else if (data.accounts) {
+            list.innerHTML = data.accounts.map(account => `
+                <div class="item-card">
+                    <div class="item-info">
+                        <h6>${account.account_name} ${account.is_default ? '<span class="badge-default">Default</span>' : ''}</h6>
+                        <p>${account.bank_name} - ${account.account_number}</p>
+                    </div>
+                    <div class="item-actions">
+                        <button class="btn btn-sm btn-primary" onclick="editBankAccount(${account.id})" title="Edit">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                        <button class="btn btn-sm btn-danger" onclick="deleteBankAccount(${account.id})" title="Delete">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+            document.querySelector('.side-nav-link[data-index="1"]').classList.add('completed');
+        }
+    })
+    .catch(error => console.error('Error loading bank accounts:', error));
+}
+
+function deleteBankAccount(accountId) {
+    showConfirmToast(
+        'Are you sure you want to delete this bank account?',
+        function () {
+            document.getElementById('loadingOverlay').classList.add('show');
+
+            // Use the Django-generated URL from template
+            const deleteUrl = "{% url 'bank_account_ajax_delete' 0 %}".replace('/0/', `/${accountId}/`);
+
+            fetch(deleteUrl, {
+                method: "POST",
+                headers: {
+                    "X-CSRFToken": getCookie("csrftoken"),
+                    "X-Requested-With": "XMLHttpRequest"
+                }
+            })
+            .then(res => {
+                if (!res.ok) {
+                    throw new Error(`HTTP error! status: ${res.status}`);
+                }
+                return res.json();
+            })
+            .then(data => {
+                document.getElementById('loadingOverlay').classList.remove('show');
+                if (data.success) {
+                    showToast('✓ ' + data.message, "success");
+                    loadBankAccounts();
+                } else {
+                    showToast(data.message, "error");
+                }
+            })
+            .catch(err => {
+                document.getElementById('loadingOverlay').classList.remove('show');
+                console.error('Delete error:', err);
+                showToast("Delete failed: " + err.message, "error");
+            });
+        },
+        function () {
+            // Cancel - do nothing
+        }
+    );
+}
+// ========================================================
+// BANK ACCOUNTS - EDIT
+// ========================================================
+function editBankAccount(accountId) {
+    // Fetch account details
+    fetch(`{% url 'bank_account_ajax_get' 0 %}`.replace('/0/', `/${accountId}/`), {
+        method: 'GET',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const account = data.account;
+            
+            // Populate modal fields
+            document.getElementById('editAccountId').value = account.id;
+            document.getElementById('editBank').value = account.bank_id;
+            document.getElementById('editAccountName').value = account.account_name;
+            document.getElementById('editAccountNumber').value = account.account_number;
+            document.getElementById('editIfscSwift').value = account.ifsc_swift_code || '';
+            document.getElementById('editBranchName').value = account.branch_name || '';
+            document.getElementById('editIsDefault').checked = account.is_default;
+            
+            // Clear validation errors
+            document.querySelectorAll('#bankAccountEditForm .is-invalid').forEach(el => el.classList.remove('is-invalid'));
+            
+            // Show modal
+            const modal = new bootstrap.Modal(document.getElementById('bankAccountEditModal'));
+            modal.show();
+        } else {
+            showToast(data.message || 'Failed to load bank account details');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast('Failed to load bank account details');
+    });
+}
+
+function updateBankAccount() {
+    if (!validateBankAccountEditForm()) return;
+
+    const form = document.getElementById('bankAccountEditForm');
+    const formData = new FormData(form);
+    const accountId = document.getElementById('editAccountId').value;
+    
+    formData.append('company_id', createdCompanyId);
+
+    document.getElementById('loadingOverlay').classList.add('show');
+
+    fetch(`{% url 'bank_account_ajax_update' 0 %}`.replace('/0/', `/${accountId}/`), {
+        method: 'POST',
+        body: formData,
+        headers: { 
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        document.getElementById('loadingOverlay').classList.remove('show');
+        if (data.success) {
+            showToast('✓ ' + data.message);
+            
+            // Close modal
+            const modalElement = document.getElementById('bankAccountEditModal');
+            const modal = bootstrap.Modal.getInstance(modalElement);
+            if (modal) modal.hide();
+            
+            // Reload bank accounts list
+            loadBankAccounts();
+        } else {
+            showToast(data.message);
+        }
+    })
+    .catch(error => {
+        document.getElementById('loadingOverlay').classList.remove('show');
+        showToast('Failed to update bank account: ' + error);
+    });
+}
+
+// ========================================================
+// LOCATIONS - LIST
+// ========================================================
+function loadLocations() {
+    if (!createdCompanyId) return;
+
+    fetch(`{% url 'locations_ajax_list' %}?company_id=${createdCompanyId}`)
+    .then(response => response.json())
+    .then(data => {
+        const list = document.getElementById('locationsList');
+        if (data.locations && data.locations.length === 0) {
+            list.innerHTML = `<div class="empty-state"><i class="bi bi-geo-alt"></i><p>No locations added yet</p></div>`;
+        } else if (data.locations) {
+            list.innerHTML = data.locations.map(location => `
+                <div class="item-card">
+                    <div class="item-info">
+                        <h6>${location.name}</h6>
+                        <p>${location.location_type} - ${location.city}, ${location.state}</p>
+                    </div>
+                    <div class="item-actions">
+                        <button class="btn btn-sm btn-primary" onclick="editLocation(${location.id})" title="Edit">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                        <button class="btn btn-sm btn-danger" onclick="deleteLocation(${location.id})" title="Delete">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+            document.querySelector('.side-nav-link[data-index="2"]').classList.add('completed');
+        }
+    })
+    .catch(error => console.error('Error loading locations:', error));
+}
+
+// ========================================================
+// LOCATIONS - EDIT
+// ========================================================
+function editLocation(locationId) {
+    console.log(`📝 Editing location ID: ${locationId}`);
+    
+    fetch(`{% url 'location_ajax_get' 0 %}`.replace('/0/', `/${locationId}/`), {
+        method: 'GET',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => {
+        console.log(`📥 Response status: ${response.status}`);
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        console.log('📦 Received data:', data);
+        
+        if (data.success) {
+            const location = data.location;
+            
+            // Populate modal fields with validation
+            document.getElementById('editLocationId').value = location.id || '';
+            document.getElementById('editLocationType').value = location.location_type_id || '';
+            document.getElementById('editLocationName').value = location.name || '';
+            document.getElementById('editLocationCode').value = location.code || '';
+            document.getElementById('editManagerName').value = location.manager_name || '';
+            document.getElementById('editManagerEmail').value = location.manager_email || '';
+            document.getElementById('editManagerPhone').value = location.manager_phone || '';
+            document.getElementById('editAddressLine1').value = location.address_line1 || '';
+            document.getElementById('editAddressLine2').value = location.address_line2 || '';
+            document.getElementById('editCity').value = location.city || '';
+            document.getElementById('editState').value = location.state || '';
+            document.getElementById('editPostalCode').value = location.postal_code || '';
+            document.getElementById('editPhone').value = location.phone || '';
+            document.getElementById('editWorkingHours').value = location.working_hours || '';
+            
+            // ✅ FIX: Handle country select field properly
+            const countrySelect = document.querySelector('#locationEditForm select[name="country"]');
+            if (countrySelect && location.country) {
+                countrySelect.value = location.country;
+                console.log(`✓ Set country to: ${location.country}`);
+            } else {
+                console.warn('⚠️ Country select not found or no country value');
+            }
+            
+            // Clear validation errors
+            document.querySelectorAll('#locationEditForm .is-invalid').forEach(el => el.classList.remove('is-invalid'));
+            document.querySelectorAll('#locationEditForm .field-error-message').forEach(el => el.remove());
+            
+            // Show modal
+            const modal = new bootstrap.Modal(document.getElementById('locationEditModal'));
+            modal.show();
+            
+            console.log('✅ Location edit modal opened successfully');
+        } else {
+            throw new Error(data.message || 'Failed to load location details');
+        }
+    })
+    .catch(error => {
+        console.error('❌ Error loading location:', error);
+        showToast(`Failed to load location details: ${error.message}`, 'error');
+    });
+}
+
+
+
+function updateLocation() {
+    if (!validateLocationEditForm()) return;
+
+    const form = document.getElementById('locationEditForm');
+    const formData = new FormData(form);
+    const locationId = document.getElementById('editLocationId').value;
+    
+    formData.append('company_id', createdCompanyId);
+
+    document.getElementById('loadingOverlay').classList.add('show');
+
+    fetch(`{% url 'location_ajax_update' 0 %}`.replace('/0/', `/${locationId}/`), {
+        method: 'POST',
+        body: formData,
+        headers: { 
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        document.getElementById('loadingOverlay').classList.remove('show');
+        if (data.success) {
+            showToast('✓ ' + data.message);
+            
+            // Close modal
+            const modalElement = document.getElementById('locationEditModal');
+            const modal = bootstrap.Modal.getInstance(modalElement);
+            if (modal) modal.hide();
+            
+            // Reload locations list
+            loadLocations();
+        } else {
+            showToast(data.message);
+        }
+    })
+    .catch(error => {
+        document.getElementById('loadingOverlay').classList.remove('show');
+        showToast('Failed to update location: ' + error);
+    });
+}
+// ========================================================
+// LOCATIONS
+// ========================================================
+function submitLocationForm() {
+    if (!createdCompanyId) {
+        showToast('Please create company first');
+        return;
+    }
+    if (!validateLocationForm()) return;
+
+    const form = document.getElementById('locationForm');
+    const formData = new FormData(form);
+    formData.append('company_id', createdCompanyId);
+
+    document.getElementById('loadingOverlay').classList.add('show');
+
+    fetch("{% url 'location_ajax_create' %}", {
+        method: 'POST',
+        body: formData,
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(response => response.json())
+    .then(data => {
+        document.getElementById('loadingOverlay').classList.remove('show');
+        if (data.success) {
+            showToast('✓ ' + data.message);
+            form.reset();
+            const countryField = form.querySelector('select[name="country"]');
+            if (countryField) countryField.value = '';
+            loadLocations();
+        } else {
+            showToast(data.message);
+        }
+    })
+    .catch(error => {
+        document.getElementById('loadingOverlay').classList.remove('show');
+        showToast('Failed to add location: ' + error);
+    });
+}
+function deleteLocation(locationId) {
+    showConfirmToast(
+        'Are you sure you want to delete this location?',
+        function() {
+            document.getElementById('loadingOverlay').classList.add('show');
+
+            // Use the Django-generated URL from template
+            const deleteUrl = "{% url 'location_ajax_delete' 0 %}".replace('/0/', `/${locationId}/`);
+
+            fetch(deleteUrl, {
+                method: "POST",
+                headers: {
+                    "X-CSRFToken": getCookie("csrftoken"),
+                    "X-Requested-With": "XMLHttpRequest"
+                }
+            })
+            .then(res => {
+                if (!res.ok) {
+                    throw new Error(`HTTP error! status: ${res.status}`);
+                }
+                return res.json();
+            })
+            .then(data => {
+                document.getElementById('loadingOverlay').classList.remove('show');
+                if (data.success) {
+                    showToast('✓ ' + data.message, "success");
+                    loadLocations();
+                } else {
+                    showToast(data.message, "error");
+                }
+            })
+            .catch(err => {
+                document.getElementById('loadingOverlay').classList.remove('show');
+                console.error('Delete error:', err);
+                showToast("Delete failed: " + err.message, "error");
+            });
+        },
+        function() {
+            // Cancel - do nothing
+        }
+    );
+}
+
+function openLocationTypeModal() {
+    document.getElementById('locationTypeForm').reset();
+    const modal = new bootstrap.Modal(document.getElementById('locationTypeModal'));
+    modal.show();
+}
+
+function saveLocationType() {
+    const form = document.getElementById('locationTypeForm');
+    const formData = new FormData(form);
+    
+    const saveBtn = event.target;
+    const originalText = saveBtn.innerHTML;
+    saveBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Saving...';
+    saveBtn.disabled = true;
+    
+    fetch("{% url 'location_type_create' %}", {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': formData.get('csrfmiddlewaretoken'),
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const modalElement = document.getElementById('locationTypeModal');
+            const modal = bootstrap.Modal.getInstance(modalElement);
+            if (modal) modal.hide();
+            
+            showToast('✓ ' + (data.message || 'Location type added successfully!'));
+            refreshLocationTypeDropdown();
+        } else {
+            showToast(data.message || 'Failed to save location type');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast('Error saving location type');
+    })
+    .finally(() => {
+        saveBtn.innerHTML = originalText;
+        saveBtn.disabled = false;
+    });
+}
+
+function refreshLocationTypeDropdown() {
+    fetch("{% url 'location_type_list' %}?ajax=1", {
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(response => response.json())
+    .then(data => {
+        // Update the ADD form dropdown
+        const dropdown = document.querySelector('select[name="location_type"]');
+        const currentValue = dropdown.value;
+        
+        dropdown.innerHTML = '<option value="">Select Type</option>';
+        
+        // Update the EDIT form dropdown
+        const editDropdown = document.getElementById('editLocationType');
+        const editCurrentValue = editDropdown ? editDropdown.value : null;
+        
+        if (editDropdown) {
+            editDropdown.innerHTML = '<option value="">Select Type</option>';
+        }
+        
+        if (data.types && data.types.length > 0) {
+            data.types.forEach(type => {
+                // Add to create form dropdown
+                const option = document.createElement('option');
+                option.value = type.id;
+                option.textContent = type.name;
+                dropdown.appendChild(option);
+                
+                // Add to edit form dropdown
+                if (editDropdown) {
+                    const editOption = document.createElement('option');
+                    editOption.value = type.id;
+                    editOption.textContent = type.name;
+                    editDropdown.appendChild(editOption);
+                }
+            });
+            
+            // Restore previous selection or select the newly added one
+            if (currentValue) {
+                dropdown.value = currentValue;
+            } else {
+                dropdown.value = data.types[data.types.length - 1].id;
+            }
+            
+            // Restore edit dropdown value
+            if (editDropdown && editCurrentValue) {
+                editDropdown.value = editCurrentValue;
+            }
+        }
+    })
+    .catch(error => console.error('Error refreshing dropdown:', error));
+}
+// ========================================================
+// FINISH SETUP WITH VALIDATION
+// ========================================================
+function finishSetup() {
+    // Check if company has been created
+    if (!createdCompanyId) {
+        showToast('⚠️ Please complete Company Information before finishing setup');
+        showStep(0); // Go back to company info step
+        return;
+    }
+
+    // Show loading
+    document.getElementById('loadingOverlay').classList.add('show');
+
+    // Validate that required data exists
+    Promise.all([
+        // Check bank accounts
+        fetch(`{% url 'bank_accounts_ajax_list' %}?company_id=${createdCompanyId}`, {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        }).then(r => r.json()),
+        
+        // Check locations
+        fetch(`{% url 'locations_ajax_list' %}?company_id=${createdCompanyId}`, {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        }).then(r => r.json()),
+        
+        // Check license configuration
+        fetch("{% url 'get_license_configuration' company_id=0 %}".replace('/0/', `/${createdCompanyId}/`), {
+            method: 'GET',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        }).then(r => r.json())
+    ])
+    .then(([bankData, locationData, licenseData]) => {
+        document.getElementById('loadingOverlay').classList.remove('show');
+        
+        const errors = [];
+        const incompleteSteps = [];
+        
+        // Check bank accounts
+        if (!bankData.accounts || bankData.accounts.length === 0) {
+            errors.push('• At least one Bank Account');
+            incompleteSteps.push(1);
+        }
+        
+        // Check locations
+        if (!locationData.locations || locationData.locations.length === 0) {
+            errors.push('• At least one Location');
+            incompleteSteps.push(2);
+        }
+        
+        // Check license configuration
+        if (!licenseData.success || !licenseData.license || !licenseData.license.license_key) {
+            errors.push('• License Key Configuration');
+            incompleteSteps.push(3);
+        }
+        
+        // If there are missing items, show error
+        if (errors.length > 0) {
+            showToast('Please complete the following before finishing setup:\n' + errors.join('\n'));
+            
+            // Remove any existing incomplete-warning classes first
+            document.querySelectorAll('.side-nav-link').forEach(link => {
+                link.classList.remove('incomplete-warning');
+            });
+            
+            // Highlight incomplete steps in sidebar
+            incompleteSteps.forEach(stepIndex => {
+                const link = document.querySelector(`.side-nav-link[data-index="${stepIndex}"]`);
+                if (link) {
+                    link.classList.add('incomplete-warning');
+                }
+            });
+            
+            // Navigate to first incomplete step
+            if (incompleteSteps.length > 0) {
+                setTimeout(() => {
+                    showStep(incompleteSteps[0]);
+                }, 1500);
+            }
+            
+            return;
+        }
+        
+        // All validations passed
+        showToast('✓ Setup completed successfully!');
+        setTimeout(() => {
+            window.location.href = "{% url 'company_list' %}";
+        }, 1000);
+    })
+    .catch(error => {
+        document.getElementById('loadingOverlay').classList.remove('show');
+        console.error('Validation error:', error);
+        showToast('⚠️ Error validating setup completion. Please try again.');
+    });
+}
+
+// ========================================================
+// CHECK COMPLETION STATUS
+// ========================================================
+function checkAllStepsCompletion() {
+    if (!isEditMode || !createdCompanyId) return;
+    
+    document.querySelector('.side-nav-link[data-index="0"]')?.classList.add('completed');
+    
+    fetch(`{% url 'bank_accounts_ajax_list' %}?company_id=${createdCompanyId}`)
+    .then(response => response.json())
+    .then(data => {
+        if (data.accounts && data.accounts.length > 0) {
+            document.querySelector('.side-nav-link[data-index="1"]')?.classList.add('completed');
+        }
+    })
+    .catch(error => console.error('Error:', error));
+    
+    fetch(`{% url 'locations_ajax_list' %}?company_id=${createdCompanyId}`)
+    .then(response => response.json())
+    .then(data => {
+        if (data.locations && data.locations.length > 0) {
+            document.querySelector('.side-nav-link[data-index="2"]')?.classList.add('completed');
+        }
+    })
+    .catch(error => console.error('Error:', error));
+    
+    fetch("{% url 'get_license_configuration' company_id=0 %}".replace('/0/', `/${createdCompanyId}/`), {
+        method: 'GET',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            modules = data.modules || [];
+            if (data.license && data.license.license_key) {
+                document.querySelector('.side-nav-link[data-index="3"]')?.classList.add('completed');
+            }
+        }
+    })
+    .catch(error => console.error('Error:', error));
+}
+
+// ========================================================
+// INITIALIZATION
+// ========================================================
+document.addEventListener('DOMContentLoaded', function() {
+    const sidebarLinks = document.querySelectorAll('.settings-sidebar a');
+    sidebarLinks.forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            const step = parseInt(this.dataset.index);
+            showStep(step);
+        });
+    });
+
+    const logoInput = document.getElementById('logoInput');
+    const logoPreview = document.getElementById('logoPreview');
+    if(logoInput) {
+        logoInput.addEventListener('change', function() {
+            if (!isEditMode) {
+                logoPreview.innerHTML = '';
+            } else {
+                const existingImg = logoPreview.querySelector('img');
+                if (existingImg) existingImg.remove();
+            }
+            
+            const file = this.files[0];
+            if(file) {
+                const img = document.createElement('img');
+                img.src = URL.createObjectURL(file);
+                logoPreview.appendChild(img);
+            }
+        });
+    }
+
+    showStep(0);
+
+    if (isEditMode && createdCompanyId) {
+        checkAllStepsCompletion();
+    }
+});
+
+function activateLicense() {
+    if (!createdCompanyId) {
+        showToast('⚠️ Please create company first before activating license', 'error');
+        return;
+    }
+
+    const licenseKeyInput = document.getElementById('licenseKeyInput');
+    const licenseKey = licenseKeyInput.value.trim();
+
+    if (!licenseKey) {
+        licenseKeyInput.classList.add('is-invalid');
+        showToast('⚠️ Please enter a license key', 'error');
+        return;
+    }
+
+    // Get company details from form
+    const companyName = document.querySelector('input[name="name"]')?.value.trim();
+    const companyGst = document.querySelector('input[name="tax_id"]')?.value.trim();
+
+    if (!companyName || !companyGst) {
+        showToast('⚠️ Company name and GST number are required for license activation', 'error');
+        return;
+    }
+
+    console.log('🔄 Starting activation...');
+    console.log(`Company: ${companyName} (ID: ${createdCompanyId})`);
+    console.log(`GST: ${companyGst}`);
+    console.log(`License: ${licenseKey}`);
+    console.log(`ERP Version: ${ERP_VERSION}`); //  NEW
+
+    document.getElementById('loadingOverlay').classList.add('show');
+
+    //  PHASE 1: VALIDATE in generator with VERSION CHECK
+    console.log('📤 PHASE 1: Validating license with version check...');
+
+    fetch(`${LICENSE_API_URL}/api/activate/`, {
+        
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken'),
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: JSON.stringify({
+            license_key: licenseKey,
+            company_id: createdCompanyId,
+            company_name: companyName,
+            company_gst: companyGst,
+            erp_version: ERP_VERSION,  //  Send ERP version
+            erp_confirmed: false
+        })
+    })
+    
+    .then(response => {
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            throw new Error('Generator returned HTML instead of JSON. Check generator server.');
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            console.log('✅ PHASE 1: Generator validation successful');
+            
+            //  NEW: Check version compatibility
+            const licenseVersion = data.license.erp_version;
+            const licenseSchemaVersion = data.license.license_version;
+            
+            console.log(`License ERP Version: ${licenseVersion}`);
+            console.log(`License Schema Version: ${licenseSchemaVersion}`);
+            console.log(`Current ERP Version: ${ERP_VERSION}`);
+            
+            //  VERSION VALIDATION
+            if (licenseVersion !== ERP_VERSION) {
+                document.getElementById('loadingOverlay').classList.remove('show');
+                
+                showToast(
+                    `❌ Version Mismatch!\n\n` +
+                    `License ERP Version: ${licenseVersion}\n` +
+                    `Current ERP Version: ${ERP_VERSION}\n\n` +
+                    `This license was generated for ERP version ${licenseVersion}, ` +
+                    `but you are running version ${ERP_VERSION}.\n\n` +
+                    `Please contact your vendor for a license compatible with version ${ERP_VERSION}.`,
+                    'error'
+                );
+                
+                return Promise.reject('VERSION_MISMATCH');
+            }
+            
+            console.log('✅ Version check passed - versions match');
+            
+            //  PHASE 2: SAVE to ERP database
+            return saveLicenseToERPDatabase(data.license);
+        } else {
+            throw new Error(data.message || 'License validation failed');
+        }
+    })
+    .then(erpSaveResponse => {
+        if (erpSaveResponse === 'VERSION_MISMATCH') return;
+        
+        if (erpSaveResponse.success) {
+            console.log('✅ PHASE 2: ERP database save successful');
+            
+            //  PHASE 3: CONFIRM activation in generator
+            return confirmActivationInGenerator(licenseKey, createdCompanyId, companyName, companyGst)
+                .then(() => {
+                    document.getElementById('loadingOverlay').classList.remove('show');
+                    handleSuccessfulActivation(erpSaveResponse.license);
+                });
+        } else {
+            throw new Error(erpSaveResponse.message || 'Failed to save license');
+        }
+    })
+    .catch(error => {
+        if (error === 'VERSION_MISMATCH') return;
+        
+        document.getElementById('loadingOverlay').classList.remove('show');
+        console.error('❌ Activation error:', error);
+        
+        //by adarsh Enhanced error message with troubleshooting hints
+        let errorMsg = '❌ License Activation Failed\n\n';
+        
+        if (error.message && (error.message.includes('Network') || error.message.includes('fetch'))) {
+            errorMsg = 'Cannot reach license server. Please check:\n';
+            errorMsg += '• Internet connection\n';
+            errorMsg += '• License server is running\n';
+            errorMsg += '• Firewall settings\n';
+            errorMsg += '• Server URL is correct';
+        } else if (error.message && error.message.includes('Generator returned HTML')) {
+            errorMsg = 'License server configuration error.\n';
+            errorMsg += 'Please contact your system administrator.\n\n';
+            errorMsg += 'Error details: ' + error.message.slice(0, 100);
+        } else if (error.message && error.message.includes('JSON')) {
+            errorMsg = 'Invalid response from license server.\n';
+            errorMsg += 'Please verify the server is responding correctly.\n';
+            errorMsg += 'Error: ' + error.message;
+        } else {
+            errorMsg += error.message || 'An unknown error occurred';
+        }
+        
+        showToast(errorMsg, 'error'); //by adarsh
+    });
+}
+
+
+// ========================================================
+// PHASE 2: Save to ERP database
+// ========================================================
+// function saveLicenseToERPDatabase(licenseData) {
+//     console.log('💾 PHASE 2: Saving license to ERP database');
+//     console.log('License data to save:', licenseData);
+    
+//     return fetch('/company/license/save/', {
+//         method: 'POST',
+//         headers: {
+//             'Content-Type': 'application/json',
+//             'X-CSRFToken': getCookie('csrftoken'),
+//             'X-Requested-With': 'XMLHttpRequest'
+//         },
+//         body: JSON.stringify({
+//             company_id: createdCompanyId,
+//             license_key: licenseData.license_key,
+//             issue_date: licenseData.issue_date,
+//             expiry_date: licenseData.expiry_date,
+//             max_users: licenseData.max_users,
+//             max_locations: licenseData.max_locations,
+//             company_gst: licenseData.company_gst,
+//             company_pan: licenseData.company_pan,
+//             is_active: true,
+//             module_access: licenseData.module_access,
+//             erp_version: licenseData.erp_version,
+//             license_version: licenseData.license_version,
+//             notes: `Activated on ${new Date().toLocaleString()}`
+//         })
+//     })
+//     .then(response => {
+//         if (!response.ok) {
+//             throw new Error(`HTTP ${response.status}: Failed to save license`);
+//         }
+//         return response.json();
+//     })
+//     .then(data => {
+//         if (data.success) {
+//             console.log('✓ License saved to ERP database');
+//             return { success: true, license: licenseData };
+//         } else {
+//             throw new Error(data.message || 'Failed to save to ERP');
+//         }
+//     });
+// }
+
+
+function saveLicenseToERPDatabase(licenseData) {
+    console.log('💾 PHASE 2: Saving license to ERP database');
+    console.log('License data to save:', licenseData);
+
+    // ✅ FIX: Use Django template tag instead of hardcoded URL
+    const saveUrl = "{% url 'save_license_configuration' %}";
+
+    return fetch(saveUrl, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken'),
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: JSON.stringify({
+            company_id: createdCompanyId,
+            license_key: licenseData.license_key,
+            issue_date: licenseData.issue_date,
+            expiry_date: licenseData.expiry_date,
+            max_users: licenseData.max_users,
+            max_locations: licenseData.max_locations,
+            company_gst: licenseData.company_gst,
+            company_pan: licenseData.company_pan,
+            is_active: true,
+            module_access: licenseData.module_access,
+            erp_version: licenseData.erp_version,
+            license_version: licenseData.license_version,
+            notes: `Activated on ${new Date().toLocaleString()}`
+        })
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: Failed to save license`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            console.log('✓ License saved to ERP database');
+            return { success: true, license: licenseData };
+        } else {
+            throw new Error(data.message || 'Failed to save to ERP');
+        }
+    });
+}
+
+// ========================================================
+// PHASE 3: Confirm activation in generator
+// ========================================================
+function confirmActivationInGenerator(licenseKey, companyId, companyName, companyGst) {
+    console.log('📤 PHASE 3: Confirming activation in generator');
+    console.log(`License Key: ${licenseKey}`);
+    console.log(`Company: ${companyName} (${companyGst})`);
+
+    return fetch(`${LICENSE_API_URL}/api/activate/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: JSON.stringify({
+            license_key: licenseKey,
+            company_id: companyId,
+            company_name: companyName,
+            company_gst: companyGst,
+            erp_confirmed: true,
+            erp_version: ERP_VERSION
+        })
+    })
+    .then(async response => {
+        const contentType = response.headers.get('content-type');
+
+        if (!contentType || !contentType.includes('application/json')) {
+            const text = await response.text();
+            throw new Error(
+                'Generator returned non-JSON response during confirmation:\n' +
+                text.slice(0, 300)
+            );
+        }
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.message || 'Generator confirmation failed');
+        }
+
+        return data;
+    })
+    .then(data => {
+        if (data.success) {
+            console.log('✅ PHASE 3: Generator activation confirmed');
+        } else {
+            console.warn('⚠️ Generator confirmation returned warning:', data.message);
+        }
+        return data;
+    })
+    .catch(error => {
+        console.error('❌ Generator confirmation error:', error.message);
+        // Do NOT break ERP flow — ERP already saved the license
+        return { success: false, message: error.message };
+    });
+}
+
+// ========================================================
+// INITIALIZATION - LOAD LICENSE IN EDIT MODE
+// ========================================================
+document.addEventListener('DOMContentLoaded', function() {
+    // ... your existing initialization code ...
+    
+    //  LOAD EXISTING LICENSE INFO IN EDIT MODE
+    if (isEditMode && createdCompanyId) {
+        console.log('🔄 Edit mode detected - loading existing license info');
+        // Wait a bit for the page to fully render
+        setTimeout(() => {
+            loadExistingLicenseInfo();
+        }, 500);
+    }
+});
+
+/**
+ * Load module access table
+ */
+function loadModuleAccessTable() {
+    const tbody = document.getElementById('moduleAccessTableBody');
+    if (!tbody) return;
+
+    if (!createdCompanyId) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="2" class="text-center text-muted">
+                    Please create company first
+                </td>
+            </tr>`;
+        return;
+    }
+
+    modules = [];
+
+    tbody.innerHTML = `
+        <tr>
+            <td colspan="2" class="text-center">
+                <div class="spinner-border spinner-border-sm"></div>
+                Loading modules...
+            </td>
+        </tr>`;
+
+    fetch(`/company/license/configuration/${createdCompanyId}/`, {
+        method: 'GET',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response failed');
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (!data.success) {
+            throw new Error(data.message || 'Failed to load license configuration');
+        }
+
+        if (typeof updateLicenseUI === 'function') {
+            updateLicenseUI(data.license);
+        }
+
+        modules = data.modules || [];
+
+        if (modules.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="2" class="text-center text-muted">
+                        No modules available
+                    </td>
+                </tr>`;
+            return;
+        }
+
+        renderModulesTable();
+        updateActiveModulesCount();
+    })
+    .catch(error => {
+        console.error('Module load error:', error);
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="2" class="text-center text-danger">
+                    Error loading modules
+                </td>
+            </tr>`;
+        showToast(error.message || 'Failed to load modules', 'error');
+    });
+}
+
+/**
+ * Render modules table
+ */
+function renderModulesTable() {
+    const tbody = document.getElementById('moduleAccessTableBody');
+    
+    if (!tbody) return;
+    
+    if (modules.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="2" class="text-center text-muted">No modules available</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = modules.map(module => {
+        const isDisabled = module.is_core || module.hasAccess !== undefined;
+        const tooltipText = module.is_core 
+            ? 'Core module - always enabled' 
+            : 'Module access controlled by license';
+        
+        return `
+            <tr>
+                <td>
+                    <div class="d-flex align-items-center">
+                        <i class="bi ${module.icon || 'bi-puzzle'} me-2"></i>
+                        <div>
+                            <strong>${module.name}</strong>
+                            ${module.is_core ? '<span class="badge bg-primary ms-2">Core</span>' : ''}
+                            ${module.description ? `<br><small class="text-muted">${module.description}</small>` : ''}
+                        </div>
+                    </div>
+                </td>
+                <td class="text-center">
+                    <div class="form-check form-switch d-inline-block" title="${tooltipText}">
+                        <input type="checkbox" 
+                               class="form-check-input module-toggle" 
+                               data-module-code="${module.code}"
+                               data-is-core="${module.is_core}"
+                               ${module.hasAccess ? 'checked' : ''} 
+                               ${isDisabled ? 'disabled' : ''}
+                               style="width: 50px; height: 24px; cursor: ${isDisabled ? 'not-allowed' : 'pointer'};">
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+/**
+ * Helper function to get CSRF token
+ */
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+/**
+ * Update active modules count display
+ */
+function updateActiveModulesCount() {
+    const count = modules.filter(m => m.hasAccess).length;
+    const countElement = document.getElementById('activeModulesCount');
+    if (countElement) {
+        countElement.textContent = count;
+    }
+}
+// ========================================================
+// LICENSE MANAGEMENT - GLOBAL VARIABLES
+// ========================================================
+let existingLicenseKey = null;
+let existingLicenseExpiry = null;
+let existingLicenseStatus = null;
+
+// ========================================================
+// LOAD EXISTING LICENSE INFO
+// ========================================================
+function loadExistingLicenseInfo() {
+    if (!createdCompanyId) return;
+
+    console.log(`🔍 Loading license info for company ${createdCompanyId}`);
+
+    fetch(`/company/license/configuration/${createdCompanyId}/`, {
+        method: 'GET',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log('📄 License data received:', data);
+
+        const licenseKeyInput = document.getElementById('licenseKeyInput');
+        const expiryInput = document.getElementById('licenseExpiryInput');
+        const activateBtn = document.getElementById('activateLicenseBtn');
+        const addNewBtn = document.getElementById('addNewLicenseBtn');
+
+        // Clear any previous expired license info
+        $('.expired-license-info').remove();
+        document.getElementById('licenseStatusInfo')?.style.setProperty('display', 'none');
+
+        // NO LICENSE FOUND
+        if (!data.success || !data.license) {
+            console.warn('ℹ️ No license found for this company');
+
+            existingLicenseKey = null;
+            existingLicenseExpiry = null;
+            existingLicenseStatus = null;
+
+            if (licenseKeyInput) {
+                licenseKeyInput.value = '';
+                licenseKeyInput.readOnly = false;
+                licenseKeyInput.placeholder = 'Enter license key';
+                licenseKeyInput.classList.remove('border-success', 'border-warning');
+            }
+
+            if (expiryInput) {
+                expiryInput.value = '';
+                expiryInput.readOnly = false;
+                expiryInput.placeholder = 'Expiry date will appear here';
+                expiryInput.classList.remove('border-success', 'border-warning');
+            }
+
+            if (activateBtn) {
+                activateBtn.disabled = false;
+                activateBtn.style.display = 'inline-block';
+                activateBtn.innerHTML = '<i class="bi bi-key"></i> Activate';
+                activateBtn.classList.remove('btn-success', 'btn-warning');
+                activateBtn.classList.add('btn-primary');
+            }
+
+            if (addNewBtn) {
+                addNewBtn.style.display = 'none';
+            }
+
+            return;
+        }
+
+        // LICENSE FOUND - Store for comparison
+        const license = data.license;
+        existingLicenseKey = license.license_key;
+        existingLicenseExpiry = license.expiry_date;
+        existingLicenseStatus = license.is_expired ? 'Expired' : 'Active';
+
+        // Show "Add New License" button
+        if (addNewBtn) {
+            addNewBtn.style.display = 'inline-block';
+        }
+
+        // Hide the main activate button
+        if (activateBtn) {
+            activateBtn.style.display = 'none';
+        }
+
+        const isExpired = license.is_expired || false;
+
+        console.log(`✓ License found: ${license.license_key}, Expired: ${isExpired}`);
+
+        // Display license info
+        if (licenseKeyInput) {
+            licenseKeyInput.value = license.license_key;
+            licenseKeyInput.readOnly = true;
+            if (isExpired) {
+                licenseKeyInput.classList.add('border-warning');
+                licenseKeyInput.classList.remove('border-success');
+            } else {
+                licenseKeyInput.classList.add('border-success');
+                licenseKeyInput.classList.remove('border-warning');
+            }
+        }
+
+        if (expiryInput) {
+            expiryInput.value = license.expiry_date;
+            expiryInput.readOnly = true;
+            if (isExpired) {
+                expiryInput.classList.add('border-warning');
+                expiryInput.classList.remove('border-success');
+            } else {
+                expiryInput.classList.add('border-success');
+                expiryInput.classList.remove('border-warning');
+            }
+        }
+
+        // Mark step as completed if not expired
+        if (!isExpired) {
+            document.querySelector('.side-nav-link[data-index="3"]')?.classList.add('completed');
+        }
+
+        // Show license status
+        updateLicenseStatusDisplay({
+            is_expired: isExpired,
+            max_users: license.max_users || 'Unlimited',
+            days_remaining: license.days_remaining || 0,
+            erp_version: license.erp_version || '1.0.0'
+        });
+
+        // Update module access
+        if (license.module_access) {
+            updateModuleAccess(license.module_access);
+        }
+
+        // Show warning for expired license
+        if (isExpired) {
+            showToast('⚠️ License expired. Click "Add New License" to activate a new one.', 'warning');
+        }
+    })
+    .catch(error => {
+        console.error('❌ Error loading license info:', error);
+    });
+}
+
+// ========================================================
+// OPEN ADD NEW LICENSE MODAL
+// ========================================================
+function openAddNewLicenseModal() {
+    const modal = new bootstrap.Modal(document.getElementById('addNewLicenseModal'));
+    const newLicenseInput = document.getElementById('newLicenseKeyInput');
+    const existingLicenseInfo = document.getElementById('existingLicenseInfo');
+    
+    // Clear the form
+    document.getElementById('newLicenseForm').reset();
+    
+    // Update info message based on existing license status
+    const isExpired = existingLicenseStatus === 'Expired';
+    const infoElement = document.getElementById('licenseModalInfo');
+    
+    if (infoElement) {
+        if (isExpired) {
+            infoElement.innerHTML = '<strong>Your current license is expired.</strong> Adding a new license will replace it and restore module access.';
+            infoElement.parentElement.classList.remove('alert-info');
+            infoElement.parentElement.classList.add('alert-warning');
+        } else {
+            infoElement.innerHTML = 'Adding a new license will replace your existing active license configuration.';
+            infoElement.parentElement.classList.remove('alert-warning');
+            infoElement.parentElement.classList.add('alert-info');
+        }
+    }
+    
+    // Show existing license info
+    if (existingLicenseKey && existingLicenseInfo) {
+        existingLicenseInfo.style.display = 'block';
+        document.getElementById('currentLicenseKey').textContent = existingLicenseKey;
+        document.getElementById('currentLicenseExpiry').textContent = existingLicenseExpiry ? 
+            new Date(existingLicenseExpiry).toLocaleDateString() : '-';
+        
+        const statusElement = document.getElementById('currentLicenseStatus');
+        statusElement.textContent = existingLicenseStatus;
+        statusElement.className = 'fw-bold ' + (isExpired ? 'text-danger' : 'text-success');
+    }
+    
+    // Clear validation
+    if (newLicenseInput) {
+        newLicenseInput.classList.remove('is-invalid');
+        clearFieldError($(newLicenseInput));
+    }
+    
+    modal.show();
+}
+
+// ========================================================
+// ACTIVATE NEW LICENSE
+// ========================================================
+
+function activateNewLicense() {
+    if (!createdCompanyId) {
+        showToast('⚠️ Please create company first before activating license', 'error');
+        return;
+    }
+
+    const newLicenseInput = document.getElementById('newLicenseKeyInput');
+    const newLicenseKey = newLicenseInput.value.trim();
+
+    if (!newLicenseKey) {
+        showFieldError($(newLicenseInput), 'Please enter a license key');
+        return;
+    }
+    clearFieldError($(newLicenseInput));
+
+    const companyName = document.querySelector('input[name="name"]')?.value.trim();
+    const companyGst  = document.querySelector('input[name="tax_id"]')?.value.trim();
+
+    if (!companyName || !companyGst) {
+        showToast('⚠️ Company name and GST number are required for license activation', 'error');
+        return;
+    }
+
+    console.log('🔄 Starting new license activation...');
+    console.log('New License Key:', newLicenseKey);
+    console.log('Company:', companyName, companyGst);
+    console.log('ERP Version:', ERP_VERSION);
+
+    document.getElementById('loadingOverlay').classList.add('show');
+
+    /* ======================================================
+       PHASE 1: VALIDATE LICENSE IN GENERATOR
+    ====================================================== */
+
+    fetch(`${LICENSE_API_URL}/api/activate/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: JSON.stringify({
+            license_key: newLicenseKey,
+            company_id: createdCompanyId,
+            company_name: companyName,
+            company_gst: companyGst,
+            erp_version: ERP_VERSION,
+            erp_confirmed: false
+        })
+    })
+    .then(async response => {
+        const contentType = response.headers.get('content-type');
+
+        if (!contentType || !contentType.includes('application/json')) {
+            const text = await response.text();
+            throw new Error(
+                'Generator returned non-JSON response:\n' +
+                text.slice(0, 300)
+            );
+        }
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.message || 'Generator validation failed');
+        }
+
+        return data;
+    })
+    .then(data => {
+        if (!data.success) {
+            console.error('❌ Generator rejected license:', data);
+            throw new Error(data.message || 'Generator validation failed');
+        }
+
+        if (!data.license) {
+            throw new Error('License data missing from generator response');
+        }
+
+        const license = data.license;
+
+        console.log('✅ Generator validation success');
+        console.log('License ERP Version:', license.erp_version);
+        console.log('Current ERP Version:', ERP_VERSION);
+
+        /* =============================
+           ERP VERSION CHECK
+        ============================= */
+
+        if (license.erp_version !== ERP_VERSION) {
+            document.getElementById('loadingOverlay').classList.remove('show');
+
+            const msg =
+                `❌ ERP Version Mismatch\n\n` +
+                `License ERP Version : ${license.erp_version}\n` +
+                `Running ERP Version : ${ERP_VERSION}\n\n` +
+                `This license was generated for ERP ${license.erp_version}.\n` +
+                `Please contact your vendor for a compatible license.`;
+
+            showToast(msg, 'error');
+            throw new Error('VERSION_MISMATCH');
+        }
+
+        /* =============================
+           SAME LICENSE CHECK
+        ============================= */
+
+        if (
+            newLicenseKey === existingLicenseKey &&
+            license.expiry_date === existingLicenseExpiry
+        ) {
+            document.getElementById('loadingOverlay').classList.remove('show');
+            showToast('ℹ️ This license is already active with the same expiry', 'info');
+            throw new Error('SAME_LICENSE');
+        }
+
+        /* =============================
+           PHASE 2: SAVE TO ERP DATABASE
+        ============================= */
+
+        console.log('📥 Saving license to ERP database...');
+        return saveLicenseToERPDatabase(license);
+    })
+    .then(erpResponse => {
+        if (!erpResponse || !erpResponse.success) {
+            throw new Error(erpResponse?.message || 'Failed to save license in ERP');
+        }
+
+        console.log('✅ ERP save successful');
+
+        /* =============================
+           PHASE 3: CONFIRM IN GENERATOR
+        ============================= */
+
+        return confirmActivationInGenerator(
+            newLicenseKey,
+            createdCompanyId,
+            companyName,
+            companyGst
+        ).then(() => erpResponse);
+    })
+    .then(erpResponse => {
+        document.getElementById('loadingOverlay').classList.remove('show');
+
+        const modalEl = document.getElementById('addNewLicenseModal');
+        const modal = bootstrap.Modal.getInstance(modalEl);
+        if (modal) modal.hide();
+
+        handleSuccessfulActivation(erpResponse.license);
+
+        setTimeout(() => {
+            loadExistingLicenseInfo();
+        }, 500);
+
+        showToast('✅ License activated successfully', 'success');
+    })
+    .catch(error => {
+        document.getElementById('loadingOverlay').classList.remove('show');
+
+        if (error.message === 'VERSION_MISMATCH' || error.message === 'SAME_LICENSE') {
+            console.log('ℹ️ Activation stopped:', error.message);
+            return;
+        }
+
+        console.error('❌ Activation error:', error);
+        showToast('❌ ' + error.message, 'error');
+    });
+}
+
+
+// ========================================================
+// UPDATE LICENSE STATUS DISPLAY
+// ========================================================
+function updateLicenseStatusDisplay(licenseInfo) {
+    const statusInfo = document.getElementById('licenseStatusInfo');
+    if (!statusInfo) return;
+    
+    statusInfo.style.display = 'block';
+    
+    const statusClass = licenseInfo.is_expired ? 'text-danger' : 'text-success';
+    const statusText = licenseInfo.is_expired ? 'Expired' : 'Active';
+    const daysClass = licenseInfo.days_remaining < 30 ? 'text-warning' : 'text-success';
+    
+    statusInfo.innerHTML = `
+        <div class="row">
+            <div class="col-md-3">
+                <small class="text-muted">Status</small>
+                <div class="fw-bold ${statusClass}">
+                    <i class="bi ${licenseInfo.is_expired ? 'bi-x-circle' : 'bi-check-circle'}"></i>
+                    ${statusText}
+                </div>
+            </div>
+            <div class="col-md-3">
+                <small class="text-muted">ERP Version</small>
+                <div class="fw-bold text-primary">${licenseInfo.erp_version || '1.0.0'}</div>
+            </div>
+            <div class="col-md-3">
+                <small class="text-muted">Max Users</small>
+                <div class="fw-bold">${licenseInfo.max_users || 'Unlimited'}</div>
+            </div>
+            <div class="col-md-3">
+                <small class="text-muted">Days Remaining</small>
+                <div class="fw-bold ${daysClass}">
+                    ${licenseInfo.days_remaining} days
+                </div>
+            </div>
+        </div>
+    `;
+}
+// ========================================================
+// UPDATE MODULE ACCESS
+// ========================================================
+function updateModuleAccess(moduleAccess) {
+    Object.keys(moduleAccess).forEach(moduleCode => {
+        const hasAccess = moduleAccess[moduleCode];
+        const checkbox = document.querySelector(`.module-toggle[data-module-code="${moduleCode}"]`);
+        
+        if (checkbox) {
+            checkbox.checked = hasAccess;
+            checkbox.disabled = true;
+        }
+    });
+    
+    modules = modules.map(m => ({
+        ...m,
+        hasAccess: moduleAccess[m.code] || false
+    }));
+    
+    updateActiveModulesCount();
+}
+
+// ========================================================
+// UPDATE ACTIVE MODULES COUNT
+// ========================================================
+function updateActiveModulesCount() {
+    const count = modules.filter(m => m.hasAccess).length;
+    const countElement = document.getElementById('activeModulesCount');
+    if (countElement) {
+        countElement.textContent = count;
+    }
+}
+
+// ========================================================
+// HANDLE SUCCESSFUL ACTIVATION
+// ========================================================
+function handleSuccessfulActivation(licenseInfo) {
+    const licenseKeyInput = document.getElementById('licenseKeyInput');
+    const expiryInput = document.getElementById('licenseExpiryInput');
+    const activateBtn = document.getElementById('activateLicenseBtn');
+    const addNewBtn = document.getElementById('addNewLicenseBtn');
+    
+    // Clear any expired license warnings
+    $('.expired-license-info').remove();
+    
+    if (licenseKeyInput) {
+        licenseKeyInput.classList.remove('border-warning', 'is-invalid');
+        licenseKeyInput.classList.add('border-success');
+        licenseKeyInput.value = licenseInfo.license_key;
+        licenseKeyInput.readOnly = true;
+    }
+    
+    if (expiryInput && licenseInfo.expiry_date) {
+        expiryInput.classList.remove('border-warning', 'is-invalid');
+        expiryInput.classList.add('border-success');
+        expiryInput.value = licenseInfo.expiry_date;
+        expiryInput.readOnly = true;
+    }
+    
+    updateLicenseStatusDisplay(licenseInfo);
+    
+    if (licenseInfo.module_access) {
+        updateModuleAccess(licenseInfo.module_access);
+    }
+    
+    // Hide activate button, show "Add New License" button
+    if (activateBtn) {
+        activateBtn.style.display = 'none';
+    }
+    
+    if (addNewBtn) {
+        addNewBtn.style.display = 'inline-block';
+    }
+    
+    document.querySelector('.side-nav-link[data-index="3"]')?.classList.add('completed');
+    
+    showToast(
+        `✅ License activated successfully!\n` +
+        `Expiry: ${new Date(licenseInfo.expiry_date).toLocaleDateString()}\n` +
+        `Days Remaining: ${licenseInfo.days_remaining}`, 
+        'success'
+    );
+    
+    loadModuleAccessTable();
+}
+
+// GST Toggle Functionality (informational only - tax_type is always GST)
+document.addEventListener('DOMContentLoaded', function() {
+    const gstField = document.getElementById('gstField');
+    const taxIdInput = document.querySelector('input[name="tax_id"]');
+    
+    // Always show the tax_id field since tax_type is always GST
+    if (gstField && taxIdInput) {
+        gstField.style.display = 'block';
+        taxIdInput.setAttribute('required', 'required');
+    }
+});
+
+// Enhanced Tax ID validation with real-time feedback
+$(document).on('input change', '#companyForm input[name="tax_id"]', function() {
+    const $this = $(this);
+    const taxId = $this.val().trim();
+    
+    if (taxId === '') {
+        showFieldError($this, 'Tax ID/GSTIN is required');
+    } else if (taxId.length === 15) {
+        // Assume Indian GSTIN if 15 characters
+        if (!validateGSTIN(taxId)) {
+            showFieldError($this, 'Invalid GSTIN format (e.g., 22AAAAA0000A1Z5)');
+        } else {
+            clearFieldError($this);
+        }
+    } else if (taxId.length > 0 && taxId.length < 15) {
+        showFieldError($this, 'GSTIN must be 15 characters');
+    } else {
+        clearFieldError($this);
+    }
+});
+
+// ========================================================
+// BANK MANAGEMENT FUNCTIONS
+// ========================================================
+
+/**
+ * Open Add Bank Modal
+ */
+function openAddBankModal() {
+    // Clear the form
+    document.getElementById('addBankForm').reset();
+    
+    // Show the modal
+    const modal = new bootstrap.Modal(document.getElementById('addBankModal'));
+    modal.show();
+}
+
+/**
+ * Extract company code from URL
+ */
+function getCompanyCodeFromURL() {
+    const match = window.location.pathname.match(/^\/([A-Za-z0-9\-]+)\//);
+    return match ? match[1] : '';
+}
+
+/**
+ * Save New Bank
+ */
+function saveNewBank() {
+    const form = document.getElementById('addBankForm');
+    const bankName = form.querySelector('input[name="bank_name"]').value.trim();
+    
+    // Validation
+    if (!bankName) {
+        showToast('Please enter a bank name', 'error');
+        return;
+    }
+    
+    // Show loading overlay
+    document.getElementById('loadingOverlay').classList.add('show');
+    
+    // Get company code from URL
+    const companyCode = getCompanyCodeFromURL();
+    let url = '/company/company/bank/add/';
+    if (companyCode) {
+        url = `/${companyCode}/company/company/bank/add/`;
+    }
+    
+    // Send to backend
+    fetch(url, {
+        method: 'POST',
+        credentials: 'same-origin',  // Include session/cookies
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({
+            bank_name: bankName
+        })
+    })
+    .then(response => {
+        // Check if response is ok, if not try to parse error
+        if (!response.ok) {
+            return response.text().then(text => {
+                console.error(`HTTP Error ${response.status}:`, text);
+                throw new Error(`HTTP ${response.status}: ${text.substring(0, 100)}`);
+            });
+        }
+        return response.json();
+    })
+    .then(data => {
+        document.getElementById('loadingOverlay').classList.remove('show');
+        
+        if (data.success) {
+            showToast('Bank added successfully', 'success');
+            
+            // Add the new bank to both dropdowns
+            const option = document.createElement('option');
+            option.value = data.bank_id;
+            option.textContent = bankName;
+            
+            // Update main form bank dropdown
+            const mainBankSelect = document.querySelector('select[name="bank"]');
+            if (mainBankSelect) {
+                mainBankSelect.appendChild(option.cloneNode(true));
+                mainBankSelect.value = data.bank_id;
+            }
+            
+            // Update edit modal bank dropdown
+            const editBankSelect = document.getElementById('editBank');
+            if (editBankSelect) {
+                editBankSelect.appendChild(option.cloneNode(true));
+                editBankSelect.value = data.bank_id;
+            }
+            
+            // Close the modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('addBankModal'));
+            modal.hide();
+        } else {
+            showToast(data.message || 'Failed to add bank', 'error');
+        }
+    })
+    .catch(error => {
+        document.getElementById('loadingOverlay').classList.remove('show');
+        console.error('Error in saveNewBank:', error);
+        showToast('An error occurred while adding the bank: ' + error.message, 'error');
+    });
+}
+</script>
+{% endblock scripts %}

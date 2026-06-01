@@ -1,0 +1,22 @@
+{% extends 'website/index.html' %}
+
+{% block page_title %}Allowances{% endblock %}
+
+{% block content %}
+<div class="container mt-3">
+  <h3>Allowances <a href="{% url 'allowances_add' %}" class="btn btn-sm btn-primary">Add</a></h3>
+  <table class="table table-sm">
+    <thead><tr><th>Name</th><th>Amount</th></tr></thead>
+    <tbody>
+      {% for it in items %}
+      <tr>
+        <td>{{ it.allowance_name }}</td>
+        <td>{{ it.amount }}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="2">No allowances</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %} 

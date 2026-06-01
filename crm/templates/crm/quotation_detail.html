@@ -1,0 +1,195 @@
+{% extends 'website/index.html' %}
+
+{% block title %}{{ quotation.quote_number }} - Lyra CRM{% endblock %}
+{% block page_title %}Quotation: {{ quotation.quote_number }}{% endblock %}
+
+
+
+{% block exstyle %}
+<style>
+  /* Text color for non-button elements */
+  .container.crm-page p,
+  .container.crm-page h1, .container.crm-page h2, .container.crm-page h3, .container.crm-page h4, .container.crm-page h5, .container.crm-page h6,
+  .container.crm-page strong,
+  .container.crm-page span:not(.btn),
+  .container.crm-page a:not(.btn),
+  .container.crm-page div:not(.btn),
+  .container.crm-page li,
+  .container.crm-page label {
+    color: #55588b !important;
+  }
+
+  /* Remove default button colors */
+  .btn {
+    color: #fff !important;
+    border: none !important;
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+
+  /* Specific button colors */
+  a.btn.btn-warning { /* Edit */
+    background-color: #ffc107 !important;
+  }
+  a.btn.btn-warning:hover, a.btn.btn-warning:focus {
+    background-color: #e0a800 !important;
+    color: #fff !important;
+  }
+
+  a.btn.btn-danger { /* Mark as Lost */
+    background-color: #dc3545 !important;
+  }
+  a.btn.btn-danger:hover, a.btn.btn-danger:focus {
+    background-color: #bd2130 !important;
+    color: #fff !important;
+  }
+
+  a.btn.btn-success { /* Create Opportunity */
+    background-color: #198754 !important;
+  }
+  a.btn.btn-success:hover, a.btn.btn-success:focus {
+    background-color: #146c43 !important;
+    color: #fff !important;
+  }
+
+  a.btn.btn-primary { /* Create Quotation */
+    background-color: #0d6efd !important;
+  }
+  a.btn.btn-primary:hover, a.btn.btn-primary:focus {
+    background-color: #0b5ed7 !important;
+    color: #fff !important;
+  }
+</style>
+{% endblock %}
+
+
+
+{% block content %}
+<div class="container crm-page">
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <a href="{% url 'quotation_edit' quotation.pk %}" class="btn btn-warning">Edit</a>
+        <a href="{% url 'quotation_print' quotation.pk %}" class="btn btn-primary" target="_blank">Print</a>
+        <a href="{% url 'quotation_mark_rejected' quotation.pk %}" class="btn btn-danger">Mark as Rejected</a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5>Quotation Information</h5>
+            </div>
+            <div class="card-body">
+                <p><strong>Quotation Number:</strong> {{ quotation.quote_number }}</p>
+                {% if quotation.lead %}
+                <p><strong>Lead:</strong> <a href="{% url 'lead_detail' quotation.lead.pk %}">{{ quotation.lead.customer_name }}</a></p>
+                {% endif %}
+                {% if quotation.opportunity %}
+                <p><strong>Opportunity:</strong> <a href="{% url 'opportunity_detail' quotation.opportunity.pk %}">{{ quotation.opportunity.lead.customer_name }}</a></p>
+                {% endif %}
+                <p><strong>Status:</strong> 
+                    {% if quotation.status == 'Accepted' %}
+                        <span class="badge bg-success">{{ quotation.status }}</span>
+                    {% elif quotation.status == 'Rejected' %}
+                        <span class="badge bg-danger">{{ quotation.status }}</span>
+                    {% elif quotation.status == 'Sent' %}
+                        <span class="badge bg-info">{{ quotation.status }}</span>
+                    {% else %}
+                        <span class="badge bg-secondary">{{ quotation.status }}</span>
+                    {% endif %}
+                </p>
+                <p><strong>Validity Date:</strong> {{ quotation.validity_date }}</p>
+                {% if quotation.lost_reason %}
+                <p><strong>Lost Reason:</strong> {{ quotation.lost_reason }}</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5>Quick Actions</h5>
+            </div>
+            <div class="card-body">
+                <a href="{% url 'update_create' %}?quotation_id={{ quotation.pk }}" class="btn btn-primary btn-block mb-2 w-100">Add Update</a>
+                <a href="{% url 'followup_create' %}?quotation_id={{ quotation.pk }}" class="btn btn-success btn-block mb-2 w-100">Create Follow-up</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Items -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5>Items</h5>
+    </div>
+    <div class="card-body">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Product</th>
+                    <th>Quantity</th>
+                    <th>Price</th>
+                    <th>Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in items %}
+                <tr>
+                    <td>{{ item.product_name }}</td>
+                    <td>{{ item.quantity }}</td>
+                    <td>${{ item.price }}</td>
+                    <td>${{ item.total }}</td>
+                </tr>
+                {% endfor %}
+                <tr>
+                    <td colspan="3" class="text-end"><strong>Subtotal:</strong></td>
+                    <td><strong>${{ quotation.subtotal }}</strong></td>
+                </tr>
+                <tr>
+                    <td colspan="3" class="text-end"><strong>Discount:</strong></td>
+                    <td><strong>-${{ quotation.discount }}</strong></td>
+                </tr>
+                <tr>
+                    <td colspan="3" class="text-end"><strong>Tax:</strong></td>
+                    <td><strong>${{ quotation.tax }}</strong></td>
+                </tr>
+                <tr>
+                    <td colspan="3" class="text-end"><strong>Additional Charges:</strong></td>
+                    <td><strong>${{ quotation.additional_charges }}</strong></td>
+                </tr>
+                <tr>
+                    <td colspan="3" class="text-end"><strong>Total:</strong></td>
+                    <td><strong>${{ quotation.total }}</strong></td>
+                </tr>
+            </tbody>
+        </table>
+        {% if quotation.terms_conditions %}
+        <p><strong>Terms & Conditions:</strong></p>
+        <p>{{ quotation.terms_conditions }}</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Timeline / Updates -->
+<div class="card">
+    <div class="card-header">
+        <h5>Timeline / Updates</h5>
+    </div>
+    <div class="card-body">
+        {% for update in updates %}
+        <div class="border-start border-3 ps-3 mb-3">
+            <strong>{{ update.update_type }}</strong> - {{ update.created_by }} - {{ update.created_at }}
+            <p>{{ update.description }}</p>
+            {% if update.attachment %}
+            <a href="{{ update.attachment.url }}" target="_blank">View Attachment</a>
+            {% endif %}
+        </div>
+        {% empty %}
+        <p>No updates yet.</p>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
+

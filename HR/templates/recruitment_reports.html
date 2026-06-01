@@ -1,0 +1,453 @@
+{% extends 'website/index.html' %}
+{% load static %}
+
+{% block exstyle %}
+<link href="{% static 'style/general.css' %}" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+    :root {
+        --bg: #ffffff;
+        --surface: #ffffff;
+        --border: #e4e8f0;
+        --text-primary: #111827;
+        --text-muted: #6b7280;
+        --accent: #4f46e5;
+        --accent-light: #eef2ff;
+        --radius: 12px;
+        --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.05);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    .rr-shell {
+        padding: 24px 28px;
+        background: var(--bg);
+        min-height: calc(100vh - 60px);
+        font-family: 'DM Sans', sans-serif;
+        color: var(--text-primary);
+    }
+
+    /* ── Header ── */
+    .rr-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+    .rr-header h2 {
+        font-size: 1.5rem;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .rr-header h2 .header-icon {
+        width: 36px; height: 36px;
+        background: var(--accent);
+        border-radius: 9px;
+        display: flex; align-items: center; justify-content: center;
+        color: #fff; font-size: 1rem;
+    }
+    .btn-back {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 16px;
+        border: 1.5px solid var(--border);
+        border-radius: 8px;
+        background: var(--surface);
+        color: var(--text-muted);
+        font-size: 0.875rem;
+        font-weight: 500;
+        text-decoration: none;
+        transition: all 0.18s;
+        font-family: 'DM Sans', sans-serif;
+    }
+    .btn-back:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-light); }
+
+    /* ── Stat cards ── */
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 14px;
+        margin-bottom: 24px;
+    }
+    .stat-card {
+        background: var(--surface);
+        border-radius: var(--radius);
+        padding: 16px 18px;
+        box-shadow: var(--shadow);
+        border: 1px solid var(--border);
+        position: relative;
+        overflow: hidden;
+        transition: transform 0.18s, box-shadow 0.18s;
+    }
+    .stat-card:hover { transform: translateY(-2px); box-shadow: 0 6px 24px rgba(0,0,0,0.09); }
+    .stat-card::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; right: 0;
+        height: 3px;
+        background: var(--card-color, var(--accent));
+        border-radius: var(--radius) var(--radius) 0 0;
+    }
+    .stat-icon {
+        width: 32px; height: 32px;
+        border-radius: 8px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 0.9rem;
+        margin-bottom: 10px;
+        background: color-mix(in srgb, var(--card-color, var(--accent)) 12%, transparent);
+        color: var(--card-color, var(--accent));
+    }
+    .stat-title { font-size: 0.72rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+    .stat-value { font-size: 1.75rem; font-weight: 700; font-family: 'DM Mono', monospace; letter-spacing: -0.03em; line-height: 1; }
+
+    /* ── Section label ── */
+    .section-label {
+        font-size: 0.78rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--text-muted);
+        margin-bottom: 14px;
+    }
+    .section-label.s-head { display: flex; align-items: center; }
+    body:not(.lyra-arrange-mode) .section-label.s-head .lyra-section-handle { display: none; }
+
+    /* ── Chart rows ── */
+    .charts-row {
+        display: grid;
+        grid-template-columns: 1.6fr 1fr 1fr;
+        gap: 16px;
+        margin-bottom: 20px;
+    }
+    .bottom-row {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
+    }
+    .report-card {
+        background: var(--surface);
+        border-radius: var(--radius);
+        padding: 20px 22px;
+        box-shadow: var(--shadow);
+        border: 1px solid var(--border);
+    }
+    .report-card h5 {
+        font-size: 0.875rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: 16px;
+        display: flex;
+        align-items: center;
+        gap: 7px;
+    }
+    .report-card h5 i { color: var(--accent); font-size: 1rem; }
+
+    /* ── Donut legend ── */
+    .legend-list { list-style: none; display: flex; flex-direction: column; gap: 9px; }
+    .legend-item { display: flex; align-items: center; justify-content: space-between; font-size: 0.83rem; }
+    .legend-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; margin-right: 8px; }
+    .legend-label { display: flex; align-items: center; color: var(--text-muted); flex: 1; }
+    .legend-count { font-weight: 700; font-family: 'DM Mono', monospace; font-size: 0.85rem; color: var(--text-primary); }
+
+    /* ── Funnel ── */
+    .funnel-list { display: flex; flex-direction: column; gap: 8px; }
+    .funnel-item { display: flex; flex-direction: column; gap: 3px; }
+    .funnel-label { font-size: 0.78rem; color: var(--text-muted); font-weight: 500; display: flex; justify-content: space-between; }
+    .funnel-bar-bg { height: 7px; background: #f0f2f8; border-radius: 4px; overflow: hidden; }
+    .funnel-bar-fill { height: 100%; border-radius: 4px; transition: width 0.6s cubic-bezier(.4,0,.2,1); }
+
+    /* ── Donut wrap ── */
+    .donut-wrap { display: flex; gap: 20px; align-items: center; }
+    .donut-wrap canvas { flex-shrink: 0; }
+
+    /* ── Responsive ── */
+    @media (max-width: 1200px) { .stats-grid { grid-template-columns: repeat(4, 1fr); } }
+    @media (max-width: 900px) {
+        .stats-grid { grid-template-columns: repeat(2, 1fr); }
+        .charts-row, .bottom-row { grid-template-columns: 1fr; }
+    }
+</style>
+{% endblock exstyle %}
+
+{% block page_title %}Recruitment Reports{% endblock page_title %}
+
+{% block content %}
+<div class="rr-shell">
+
+    <!-- Header -->
+    <div class="rr-header">
+        <a href="{% url 'recruiter_dashboard' %}" class="btn-back">
+            <i class="bi bi-arrow-left"></i> Back to Recruitment
+        </a>
+    </div>
+
+    <div class="rr-layout-sections">
+
+    <div class="lyra-dashboard-section">
+    <!-- Stat Cards -->
+    <div class="stats-grid">
+        <div class="stat-card" style="--card-color: #4f46e5;">
+            <div class="stat-icon"><i class="bi bi-briefcase-fill"></i></div>
+            <div class="stat-title">Jobs</div>
+            <div class="stat-value">{{ job_count }}</div>
+        </div>
+        <div class="stat-card" style="--card-color: #3b82f6;">
+            <div class="stat-icon"><i class="bi bi-people-fill"></i></div>
+            <div class="stat-title">Candidates</div>
+            <div class="stat-value">{{ candidate_count }}</div>
+        </div>
+        <div class="stat-card" style="--card-color: #10b981;">
+            <div class="stat-icon"><i class="bi bi-check-circle-fill"></i></div>
+            <div class="stat-title">Selected</div>
+            <div class="stat-value">{{ selected_count }}</div>
+        </div>
+        <div class="stat-card" style="--card-color: #ef4444;">
+            <div class="stat-icon"><i class="bi bi-x-circle-fill"></i></div>
+            <div class="stat-title">Rejected</div>
+            <div class="stat-value">{{ rejected_count }}</div>
+        </div>
+        <div class="stat-card" style="--card-color: #f59e0b;">
+            <div class="stat-icon"><i class="bi bi-envelope-check-fill"></i></div>
+            <div class="stat-title">Offers Sent</div>
+            <div class="stat-value">{{ offer_sent_count }}</div>
+        </div>
+        <div class="stat-card" style="--card-color: #14b8a6;">
+            <div class="stat-icon"><i class="bi bi-patch-check-fill"></i></div>
+            <div class="stat-title">Offers Accepted</div>
+            <div class="stat-value">{{ offer_accepted_count }}</div>
+        </div>
+        <div class="stat-card" style="--card-color: #8b5cf6;">
+            <div class="stat-icon"><i class="bi bi-person-check-fill"></i></div>
+            <div class="stat-title">Joined</div>
+            <div class="stat-value">{{ joined_count }}</div>
+        </div>
+    </div>
+    </div>
+
+    <div class="lyra-dashboard-section">
+    <!-- Charts Row -->
+    <div class="section-label s-head s-lbl">Analytics Overview</div>
+    <div class="charts-row">
+
+        <div class="report-card">
+            <h5><i class="bi bi-graph-up-arrow"></i> Monthly Candidate Trend</h5>
+            <canvas id="monthlyChart" height="180"></canvas>
+        </div>
+
+        <div class="report-card">
+            <h5><i class="bi bi-pie-chart-fill"></i> Candidates by Source</h5>
+            <div class="donut-wrap">
+                <canvas id="sourceChart" width="110" height="110" style="max-width:110px;max-height:110px;"></canvas>
+                <ul class="legend-list" id="sourceLegend"></ul>
+            </div>
+        </div>
+
+        <div class="report-card">
+            <h5><i class="bi bi-funnel-fill"></i> Hiring Funnel</h5>
+            <div class="funnel-list" id="funnelList"></div>
+        </div>
+
+    </div>
+    </div>
+
+    <div class="lyra-dashboard-section">
+    <!-- Bottom Row -->
+    <div class="bottom-row">
+
+        <div class="report-card">
+            <h5><i class="bi bi-person-lines-fill"></i> Candidates by Status</h5>
+            <div class="donut-wrap">
+                <canvas id="statusChart" width="110" height="110" style="max-width:110px;max-height:110px;"></canvas>
+                <ul class="legend-list" id="statusLegend"></ul>
+            </div>
+        </div>
+
+        <div class="report-card">
+            <h5><i class="bi bi-file-earmark-check-fill"></i> Offers by Status</h5>
+            <div class="donut-wrap">
+                <canvas id="offerChart" width="110" height="110" style="max-width:110px;max-height:110px;"></canvas>
+                <ul class="legend-list" id="offerLegend"></ul>
+            </div>
+        </div>
+
+        <div class="report-card">
+            <h5><i class="bi bi-trophy-fill"></i> Acceptance Rate</h5>
+            <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:calc(100% - 36px);gap:8px;">
+                <canvas id="acceptanceGauge" width="160" height="90" style="max-width:160px;"></canvas>
+                <div style="font-size:2rem;font-weight:700;font-family:'DM Mono',monospace;color:var(--accent);" id="acceptancePct">—</div>
+                <div style="font-size:0.78rem;color:var(--text-muted);font-weight:500;">Offers Accepted / Sent</div>
+            </div>
+        </div>
+
+    </div>
+    </div>
+
+    </div>
+</div>
+
+<script>
+var LYRA_LAYOUT_API = {
+  getUrl: "{% url 'dashboard_layout_get' %}",
+  saveUrl: "{% url 'dashboard_layout_save' %}",
+  csrf: "{{ csrf_token }}"
+};
+
+var LYRA_ARRANGE_CONFIG = {
+  storagePrefix: "recruitment_reports:",
+  sectionContainer: ".rr-layout-sections",
+  enableSections: true,
+  arrangeLabel: "Arrange Layout",
+  doneLabel: "Done Arranging",
+  resetConfirm: "Reset recruitment reports dashboard to default layout?",
+  cardGroups: [
+    { container: ".stats-grid", child: ".stat-card", key: "stats" },
+    { container: ".charts-row", child: ".report-card", key: "charts" },
+    { container: ".bottom-row", child: ".report-card", key: "bottom" }
+  ]
+};
+</script>
+<script src="{% static 'js/dashboard_dragdrop.js' %}"></script>
+
+<script>
+const DATA = {
+    candidate_count:      {{ candidate_count|default:0 }},
+    selected_count:       {{ selected_count|default:0 }},
+    rejected_count:       {{ rejected_count|default:0 }},
+    offer_sent_count:     {{ offer_sent_count|default:0 }},
+    offer_accepted_count: {{ offer_accepted_count|default:0 }},
+    joined_count:         {{ joined_count|default:0 }},
+    source_rows: [{% for row in source_rows %}{ label: "{{ row.label }}", count: {{ row.count }} },{% endfor %}],
+    status_rows: [{% for row in status_rows %}{ label: "{{ row.label }}", count: {{ row.count }} },{% endfor %}],
+    offer_rows:  [{% for row in offer_rows  %}{ label: "{{ row.label }}", count: {{ row.count }} },{% endfor %}],
+    month_rows:  [{% for row in month_rows  %}{ label: "{{ row.label }}", count: {{ row.count }} },{% endfor %}],
+};
+
+const PALETTE = ['#4f46e5','#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6','#14b8a6','#ec4899','#f97316','#6366f1'];
+
+function donutChart(canvasId, legendId, rows) {
+    if (!rows.length) return;
+    const colors = rows.map((_, i) => PALETTE[i % PALETTE.length]);
+    new Chart(document.getElementById(canvasId), {
+        type: 'doughnut',
+        data: {
+            labels: rows.map(r => r.label),
+            datasets: [{ data: rows.map(r => r.count), backgroundColor: colors, borderWidth: 2, borderColor: '#fff', hoverOffset: 4 }]
+        },
+        options: {
+            cutout: '68%',
+            plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${ctx.parsed}` } } },
+            animation: { animateRotate: true, duration: 700 }
+        }
+    });
+    const legend = document.getElementById(legendId);
+    if (legend) {
+        legend.innerHTML = rows.map((r, i) => `
+            <li class="legend-item">
+                <span class="legend-label"><span class="legend-dot" style="background:${colors[i]}"></span>${r.label}</span>
+                <span class="legend-count">${r.count}</span>
+            </li>`).join('');
+    }
+}
+
+function buildFunnel() {
+    const steps = [
+        { label: 'Candidates',  value: DATA.candidate_count,     color: '#4f46e5' },
+        { label: 'Selected',    value: DATA.selected_count,       color: '#10b981' },
+        { label: 'Offers Sent', value: DATA.offer_sent_count,     color: '#f59e0b' },
+        { label: 'Accepted',    value: DATA.offer_accepted_count, color: '#14b8a6' },
+        { label: 'Joined',      value: DATA.joined_count,         color: '#8b5cf6' },
+    ];
+    const max = Math.max(...steps.map(s => s.value), 1);
+    const el = document.getElementById('funnelList');
+    if (!el) return;
+    el.innerHTML = steps.map(s => `
+        <div class="funnel-item">
+            <div class="funnel-label">
+                <span>${s.label}</span>
+                <span style="font-weight:700;font-family:'DM Mono',monospace;color:#111;">${s.value}</span>
+            </div>
+            <div class="funnel-bar-bg">
+                <div class="funnel-bar-fill" style="width:${Math.round(s.value/max*100)}%;background:${s.color};"></div>
+            </div>
+        </div>`).join('');
+}
+
+function buildMonthlyChart() {
+    const canvas = document.getElementById('monthlyChart');
+    if (!canvas) return;
+    let rows = DATA.month_rows;
+    if (!rows.length) {
+        rows = ['Jan','Feb','Mar','Apr','May','Jun'].map(m => ({ label: m, count: 0 }));
+    }
+    new Chart(canvas, {
+        type: 'bar',
+        data: {
+            labels: rows.map(r => r.label),
+            datasets: [{
+                label: 'Candidates',
+                data: rows.map(r => r.count),
+                backgroundColor: 'rgba(79,70,229,0.15)',
+                borderColor: '#4f46e5',
+                borderWidth: 2,
+                borderRadius: 6,
+                borderSkipped: false,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ` ${ctx.parsed.y} candidates` } } },
+            scales: {
+                x: { grid: { display: false }, ticks: { font: { family: 'DM Sans', size: 12 }, color: '#6b7280' } },
+                y: { grid: { color: '#f0f2f8' }, ticks: { font: { family: 'DM Sans', size: 12 }, color: '#6b7280', precision: 0 }, beginAtZero: true }
+            },
+            animation: { duration: 700 }
+        }
+    });
+}
+
+function buildAcceptanceGauge() {
+    const canvas = document.getElementById('acceptanceGauge');
+    const pctEl  = document.getElementById('acceptancePct');
+    if (!canvas) return;
+    const sent     = DATA.offer_sent_count     || 0;
+    const accepted = DATA.offer_accepted_count || 0;
+    const pct      = sent ? Math.round(accepted / sent * 100) : 0;
+    if (pctEl) pctEl.textContent = pct + '%';
+    new Chart(canvas, {
+        type: 'doughnut',
+        data: {
+            datasets: [{
+                data: [pct, 100 - pct],
+                backgroundColor: ['#4f46e5', '#eef2ff'],
+                borderWidth: 0,
+                circumference: 180,
+                rotation: 270,
+            }]
+        },
+        options: {
+            cutout: '72%',
+            plugins: { legend: { display: false }, tooltip: { enabled: false } },
+            animation: { duration: 900 }
+        }
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    donutChart('sourceChart', 'sourceLegend', DATA.source_rows);
+    donutChart('statusChart', 'statusLegend', DATA.status_rows);
+    donutChart('offerChart',  'offerLegend',  DATA.offer_rows);
+    buildFunnel();
+    buildMonthlyChart();
+    buildAcceptanceGauge();
+});
+</script>
+{% endblock content %}

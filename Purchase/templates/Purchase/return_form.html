@@ -1,0 +1,281 @@
+{% extends 'website/index.html' %}
+{% load static %}
+{% block exstyle %}
+<link href="{% static 'style/general.css' %}" rel="stylesheet">
+{% endblock exstyle %}
+{% block page_title %}Process Purchase Return{% endblock page_title %}
+{% block content %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    .form-section{margin-bottom:24px}
+    .form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px}
+    .form-group label{display:block;margin-bottom:6px;font-weight:600;color:#555}
+    .form-group .required::after{content:" *";color:#e74c3c}
+    .form-group input,.form-group select,.form-group textarea{width:100%;padding:12px;border:1px solid #ddd;border-radius:6px}
+    .items-table{width:100%;border-collapse:collapse;margin-top:10px}
+    .items-table thead{background:#34495e;color:#fff}
+    .items-table th,.items-table td{padding:12px;border-bottom:1px solid #ecf0f1}
+    .form-actions{display:flex;gap:12px;justify-content:flex-end;margin-top:18px}
+  </style>
+</head>
+<body>
+  <div class="container mt-4">
+
+    <form id="returnForm" method="post">
+      {% csrf_token %}
+
+      {% if period_locked %}
+      <div class="alert alert-warning" style="background:#fff3cd;border-left:4px solid #ffc107;color:#856404;padding:15px;margin-bottom:20px;border-radius:6px">
+        <strong><i class="bi bi-lock-fill"></i> Period Locked:</strong> Purchase returns are locked for the fiscal year <strong>{{ fiscal_year_name }}</strong>. 
+        Only users with exemption can create or edit purchase returns in this period.
+      </div>
+      {% endif %}
+
+      <div class="form-section">
+        <h5>Bill & Warehouse Information</h5>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Purchase Bill</label>
+            <div class="bill-info" style="background:#f8f9fa;padding:10px;border-radius:6px">{{ bill.bill_number }} &nbsp; — &nbsp; {{ bill.vendor }}</div>
+            <div class="help-text">Return will be created against this bill</div>
+          </div>
+
+          <div class="form-group">
+            <label>Warehouse</label>
+            <input
+              type="text"
+              class="form-control"
+              value="{% if fixed_warehouse %}{{ fixed_warehouse.warehouse_name }}{% else %}No bill warehouse found{% endif %}"
+              readonly
+            />
+            <div class="help-text">Returned items will be adjusted only in this bill warehouse</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <h5>Return Details</h5>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="required">Return Date</label>
+            <input type="date" name="date" value="{{ bill.date|date:'Y-m-d' }}" class="form-control">
+          </div>
+
+          <div class="form-group">
+            <label class="required">Status</label>
+            <select name="status" class="form-select">
+              <option value="pending">Pending</option>
+              <option value="received">Received (stock will be adjusted)</option>
+              <option value="cancelled">Cancelled</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Computed Refund</label>
+            <div class="form-control" id="computedRefund">{{ purchase_return_currency_symbol|default:"₹" }}0.00</div>
+          </div>
+
+          <div class="form-group">
+            <label>Received By</label>
+            <input type="text" name="received_by" class="form-control" placeholder="Name of person who received the return">
+          </div>
+
+          <div class="form-group">
+            <label>Notes (optional)</label>
+            <textarea name="notes" class="form-control" placeholder="Reason for return..."></textarea>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <h5>Items to Return</h5>
+        <div class="alert alert-info">Select quantities to return. Stock will be adjusted when return is processed.</div>
+        <table class="items-table">
+          <thead>
+            <tr>
+              <th style="width:48px"><input type="checkbox" id="selectAll" /></th>
+              <th>Item</th>
+              <th>HSN Code</th>
+              <th>Ordered Qty</th>
+              <th>Return Qty</th>
+              <th style="text-align:right">Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for it in items %}
+            <tr>
+              <td style="vertical-align:middle">
+                <input type="checkbox" class="item-select" data-pk="{{ it.pk }}" />
+              </td>
+              <td>
+                <strong>{{ it.product.name }}</strong>
+              </td>
+              <td>{% if it.hsn_code %}{{ it.hsn_code }}{% else %}&mdash;{% endif %}</td>
+              <td>{{ it.quantity }}</td>
+              <td>
+                <input type="number" name="items[{{ it.pk }}]" min="0" max="{{ it.quantity }}" value="{{ it.quantity }}" class="form-control return-qty" data-pk="{{ it.pk }}" data-price="{{ it.price|default:"0.00" }}" data-tax="{{ it.prd_tax|default:"0.00" }}" readonly disabled />
+              </td>
+              <td style="text-align:right">
+                <span class="item-amount" data-pk="{{ it.pk }}">{{ purchase_return_currency_symbol|default:"₹" }}0.00</span>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Process Return</button>
+        <a href="{% url 'bill_detail' bill.pk %}" class="btn btn-secondary">Cancel</a>
+      </div>
+    </form>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const form = document.getElementById('returnForm');
+      const selectAllCheckbox = document.getElementById('selectAll');
+      const itemCheckboxes = document.querySelectorAll('.item-select');
+      const returnQtyInputs = document.querySelectorAll('.return-qty');
+
+      // Select all checkbox
+      selectAllCheckbox.addEventListener('change', function() {
+        itemCheckboxes.forEach(checkbox => {
+          checkbox.checked = selectAllCheckbox.checked;
+          updateReturnQtyState(checkbox);
+        });
+        updateAmounts();
+      });
+
+      // Individual item checkboxes
+      itemCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+          updateReturnQtyState(this);
+          updateAmounts();
+        });
+      });
+
+      // Return quantity inputs
+      returnQtyInputs.forEach(input => {
+        input.addEventListener('change', updateAmounts);
+      });
+
+      function updateReturnQtyState(checkbox) {
+        const pk = checkbox.dataset.pk;
+        const input = document.querySelector(`input[data-pk="${pk}"].return-qty`);
+        if (input) {
+          input.disabled = !checkbox.checked;
+          if (checkbox.checked) {
+            input.removeAttribute('readonly');
+          } else {
+            input.setAttribute('readonly', 'readonly');
+            input.value = 0;
+          }
+          updateAmounts();
+        }
+      }
+
+      function updateAmounts() {
+        let totalRefund = 0;
+        returnQtyInputs.forEach(input => {
+          const pk = input.dataset.pk;
+          const qty = parseFloat(input.value) || 0;
+          const price = parseFloat(input.dataset.price) || 0;
+          const taxRate = parseFloat(input.dataset.tax) || 0;
+          const checkbox = document.querySelector(`.item-select[data-pk="${pk}"]`);
+          const enabled = checkbox ? checkbox.checked && !input.disabled : !input.disabled;
+          // amount includes tax: price * qty * (1 + taxRate/100)
+          const amount = enabled ? (price * qty * (1 + (taxRate / 100))) : 0;
+          const amountSpan = document.querySelector(`.item-amount[data-pk="${pk}"]`);
+          if (amountSpan) {
+            amountSpan.textContent = '{{ purchase_return_currency_symbol|default:"₹"|escapejs }}' + amount.toFixed(2);
+          }
+          totalRefund += amount;
+        });
+        const refundEl = document.getElementById('computedRefund');
+        if (refundEl) {
+          refundEl.textContent = '{{ purchase_return_currency_symbol|default:"₹"|escapejs }}' + totalRefund.toFixed(2);
+        }
+      }
+
+      // Form submission
+      form.addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const quantities = {};
+        returnQtyInputs.forEach(input => {
+          const pk = input.dataset.pk;
+          const qty = parseInt(input.value) || 0;
+          if (qty > 0) {
+            quantities[pk] = qty;
+          }
+        });
+
+        if (Object.keys(quantities).length === 0) {
+          alert('Please select items to return');
+          return;
+        }
+
+        // Submit form via AJAX
+        const formData = new FormData(form);
+        const fetchUrl = "{% if company_code %}{% url 'purchase_bill_return' company_code bill.pk %}{% else %}{% url 'purchase_bill_return' bill.pk %}{% endif %}";
+        
+        fetch(fetchUrl, {
+          method: 'POST',
+          body: formData,
+          headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        }).then(r => r.json()).then(j => {
+          if (j.success) {
+            const redirectUrl = "{% if company_code %}{% url 'purchase_return_detail' company_code 0 %}{% else %}{% url 'purchase_return_detail' 0 %}{% endif %}".replace('/0/', '/' + j.return_id + '/');
+            window.location.href = redirectUrl;
+          } else {
+            const errorBodyElement = document.getElementById('errorModalBody');
+            if (errorBodyElement) {
+              errorBodyElement.innerHTML = (j.message || 'Error').replace(/\n/g, '<br>');
+              const errorModal = new bootstrap.Modal(document.getElementById('errorModal'));
+              errorModal.show();
+            } else {
+              alert(j.message || 'Error');
+            }
+          }
+        }).catch(err => {
+          const errorBodyElement = document.getElementById('errorModalBody');
+          if (errorBodyElement) {
+            errorBodyElement.innerHTML = ('Error: ' + err).replace(/\n/g, '<br>');
+            const errorModal = new bootstrap.Modal(document.getElementById('errorModal'));
+            errorModal.show();
+          } else {
+            alert('Error: ' + err);
+          }
+        });
+      });
+    });
+  </script>
+</body>
+</html>
+
+<!-- ERROR MODAL FOR PERIOD LOCK AND OTHER ERRORS -->
+<div class="modal fade" id="errorModal" tabindex="-1" aria-labelledby="errorModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="border: 2px solid #d9534f; border-radius: 8px;">
+      <div class="modal-header" style="background-color: #f8d7da; border-bottom: 2px solid #d9534f;">
+        <h5 class="modal-title" id="errorModalLabel" style="color: #721c24;">
+          <i class="bi bi-exclamation-circle" style="color: #d9534f;"></i> Error
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="errorModalBody" style="color: #721c24; padding: 20px; line-height: 1.6;">
+        <!-- Error message will be inserted here -->
+      </div>
+      <div class="modal-footer" style="border-top: 1px solid #dee2e6;">
+        <button type="button" class="btn btn-primary" data-bs-dismiss="modal">OK</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

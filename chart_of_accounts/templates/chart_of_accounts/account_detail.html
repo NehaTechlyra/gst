@@ -1,0 +1,587 @@
+{% extends 'website/index.html' %}
+{% load static %}
+
+{% block exstyle %}
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  .al-wrap {
+    font-family: 'Poppins', sans-serif, cursive !important;
+    background: #ffffff;
+    min-height: 100vh;
+    padding: 0 32px 60px;
+    margin-top: -24px;
+    color: #1a1d23;
+  }
+
+  /* ── Top Bar ── */
+  .al-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+    padding-top: 20px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .al-back-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    background: #fff;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    color: #374151;
+    font-size: 13px;
+    font-weight: 500;
+    text-decoration: none;
+    transition: all .15s;
+    cursor: pointer;
+  }
+  .al-back-btn:hover { background: #f9fafb; border-color: #9ca3af; color: #111; text-decoration: none; }
+
+  /* ── Heading ── */
+  .al-heading { margin-bottom: 20px; }
+  .al-heading h1 {
+    font-size: 22px;
+    font-weight: 700;
+    color: #111827;
+    letter-spacing: -.3px;
+  }
+  .al-heading .al-sub {
+    font-size: 13px;
+    color: #6b7280;
+    margin-top: 4px;
+  }
+  .al-account-name {
+    color: #1c64f2;
+  }
+
+  /* ── Filter Card ── */
+  .al-filter-card {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 18px 22px;
+    margin-bottom: 24px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.04);
+  }
+
+  .al-quick-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 16px;
+    align-items: center;
+  }
+  .al-quick-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    margin-right: 4px;
+  }
+  .al-qf-btn {
+    padding: 4px 10px;
+    font-size: 11px;
+    font-weight: 500;
+    background: #f3f4f6;
+    border: 1px solid #e5e7eb;
+    border-radius: 5px;
+    color: #374151;
+    text-decoration: none;
+    transition: all .12s;
+  }
+  .al-qf-btn:hover  { background: #e0e7ff; border-color: #818cf8; color: #3730a3; text-decoration: none; }
+  .al-qf-reset      { background: #fff; color: #6b7280; }
+
+  .al-date-row {
+    display: flex;
+    gap: 14px;
+    align-items: flex-end;
+    flex-wrap: wrap;
+  }
+  .al-date-group { display: flex; flex-direction: column; gap: 5px; }
+  .al-date-group label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: .4px;
+  }
+  .al-date-group input[type="date"] {
+    padding: 8px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 13px;
+    color: #1f2937;
+    font-family: 'Poppins', sans-serif, cursive !important;
+    outline: none;
+    transition: border-color .15s;
+    min-width: 180px;
+  }
+  .al-date-group input[type="date"]:focus {
+    border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99,102,241,.12);
+  }
+  .al-filter-actions { display: flex; gap: 8px; align-items: flex-end; }
+
+  /* ── Buttons ── */
+  .al-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    text-decoration: none;
+    border: none;
+    cursor: pointer;
+    transition: all .15s;
+    font-family: 'Poppins', sans-serif, cursive !important;
+  }
+  .al-btn-primary { background: #1c64f2; color: #fff; }
+  .al-btn-primary:hover { background: #1a56db; color: #fff; text-decoration: none; }
+  .al-btn-outline { background: #fff; border: 1px solid #d1d5db; color: #374151; }
+  .al-btn-outline:hover { background: #f3f4f6; color: #111; text-decoration: none; }
+
+  /* ── Panel ── */
+  .al-panel {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 1px 4px rgba(0,0,0,.05);
+    margin-bottom: 20px;
+  }
+  .al-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 20px;
+    border-bottom: 1px solid #e5e7eb;
+    background: #f8fafc;
+    border-left: 3px solid #cbd5e1;
+  }
+  .al-panel-header h2 {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .8px;
+    color: #475569;
+  }
+  .al-panel-header .al-row-count {
+    font-size: 12px;
+    color: #6b7280;
+    font-weight: 500;
+  }
+
+  /* ── Table ── */
+  .al-table { width: 100%; border-collapse: collapse; }
+
+  .al-table thead tr {
+    background: #f9fafb;
+    border-bottom: 2px solid #e5e7eb;
+  }
+  .al-table thead th {
+    padding: 10px 16px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .6px;
+    color: #6b7280;
+    text-align: left;
+    white-space: nowrap;
+    border-right: 1px solid #e5e7eb;
+  }
+  .al-table thead th:last-child {
+    border-right: none;
+  }
+  .al-table thead th.num { text-align: right; }
+
+  .al-table tbody tr {
+    border-bottom: 1px solid #f3f4f6;
+    transition: background .1s;
+  }
+  .al-table tbody td {
+    border-right: 1px solid #e5e7eb;
+  }
+  .al-table tbody td:last-child {
+    border-right: none;
+  }
+  .al-table tbody tr:last-child { border-bottom: none; }
+  .al-table tbody tr:hover { background: #fafbff; }
+
+  .al-table tbody td {
+    padding: 11px 16px;
+    font-size: 13.5px;
+    vertical-align: middle;
+    color: #374151;
+  }
+  .al-table tbody td.num {
+    text-align: right;
+    font-family: 'Poppins', sans-serif, cursive !important;
+    font-size: 13px;
+    white-space: nowrap;
+    color: #1f2937;
+  }
+  .al-table a {
+    color: #2563eb;
+    text-decoration: none;
+    font-weight: 500;
+  }
+  .al-table a:hover { color: #1d4ed8; text-decoration: underline; }
+
+  .al-date-cell { white-space: nowrap; color: #6b7280; font-size: 13px; }
+  .al-muted     { color: #d1d5db !important; }
+
+  /* ── Empty ── */
+  .al-empty {
+    padding: 40px 20px;
+    font-size: 13px;
+    color: #9ca3af;
+    text-align: center;
+  }
+
+  /* ── Grand Total Bar ── */
+  .al-grand-bar {
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    border-top: 2px solid #cbd5e1;
+    border-radius: 10px;
+    padding: 13px 22px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+  }
+  .al-grand-label {
+    font-size: 13px;
+    font-weight: 700;
+    color: #1e293b;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+  }
+  .al-grand-values { display: flex; gap: 32px; flex-wrap: wrap; }
+  .al-grand-item   { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+  .al-grand-item-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: .4px;
+  }
+  .al-grand-item-value {
+    font-size: 14px;
+    font-weight: 700;
+    font-family: 'Poppins', sans-serif, cursive !important;
+    color: #1e293b;
+  }
+
+  /* ── Pagination ── */
+  .al-pagination {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: 24px;
+  }
+  .al-page-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 34px;
+    height: 34px;
+    padding: 0 10px;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #374151;
+    background: #fff;
+    text-decoration: none;
+    transition: all .12s;
+    font-family: 'Poppins', sans-serif, cursive !important;
+  }
+  .al-page-btn:hover        { background: #e0e7ff; border-color: #818cf8; color: #3730a3; text-decoration: none; }
+  .al-page-btn.al-active    { background: #1c64f2; border-color: #1c64f2; color: #fff; pointer-events: none; }
+  .al-page-btn.al-disabled  { opacity: .4; pointer-events: none; }
+
+  /* ── Bottom Nav ── */
+  .al-bottom-nav { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
+
+  @media (max-width: 700px) {
+    .al-wrap { padding: 0 14px 40px; }
+    .al-grand-values { gap: 16px; }
+    .al-table thead th,
+    .al-table tbody td { padding: 9px 10px; font-size: 12.5px; }
+  }
+</style>
+{% endblock %}
+
+{% block page_title %}Account Ledger — {{ account.name }}{% endblock %}
+
+{% block content %}
+<div class="al-wrap">
+
+  <!-- Top Bar -->
+  <div class="al-topbar">
+    <button class="al-back-btn" onclick="history.back();">← Back</button>
+    <a href="{{ download_url }}" class="al-btn al-btn-primary" target="_blank" rel="noopener">📄 Download PDF</a>
+  </div>
+
+  <!-- Heading -->
+  <div class="al-heading">
+    <h1>
+      Account Ledger —
+      <span class="al-account-name">{{ account.name }}</span>
+    </h1>
+    <p class="al-sub">
+      {% if date_from or date_to %}
+        {% if date_from %}From {{ date_from }}{% endif %}
+        {% if date_to %} to {{ date_to }}{% endif %}
+      {% else %}
+        All Periods
+      {% endif %}
+    </p>
+  </div>
+
+  <!-- Fiscal Year Selector -->
+  {% include "chart_of_accounts/_fy_selector.html" %}
+
+  <!-- Filter Card -->
+  <div class="al-filter-card">
+    <div class="al-quick-filters">
+      <span class="al-quick-label">Quick:</span>
+      <a href="?filter_preset=today"           class="al-qf-btn">Today</a>
+      <a href="?filter_preset=yesterday"       class="al-qf-btn">Yesterday</a>
+      <a href="?filter_preset=this_week"       class="al-qf-btn">This Week</a>
+      <a href="?filter_preset=previous_week"   class="al-qf-btn">Prev Week</a>
+      <a href="?filter_preset=this_month"      class="al-qf-btn">This Month</a>
+      <a href="?filter_preset=previous_month"  class="al-qf-btn">Prev Month</a>
+      <a href="?filter_preset=this_quarter"    class="al-qf-btn">This Quarter</a>
+      <a href="?filter_preset=previous_quarter" class="al-qf-btn">Prev Quarter</a>
+      <a href="?filter_preset=this_year"       class="al-qf-btn">This Year</a>
+      <a href="?filter_preset=previous_year"   class="al-qf-btn">Prev Year</a>
+      <a href="{% url 'account_detail' account.pk %}" class="al-qf-btn al-qf-reset">Reset</a>
+    </div>
+    <form method="get">
+      <div class="al-date-row">
+        <div class="al-date-group">
+          <label for="date_from">From Date</label>
+          <input type="date" id="date_from" name="date_from" value="{{ date_from }}">
+        </div>
+        <div class="al-date-group">
+          <label for="date_to">To Date</label>
+          <input type="date" id="date_to" name="date_to" value="{{ date_to }}">
+        </div>
+        <div class="al-filter-actions">
+          <button type="submit" class="al-btn al-btn-primary">Apply Filter</button>
+          <a href="{% url 'account_detail' account.pk %}" class="al-btn al-btn-outline">Clear</a>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <!-- Ledger Panel -->
+  <div class="al-panel">
+    <div class="al-panel-header">
+      <h2>Ledger Entries — {{ account.name }}</h2>
+      <span class="al-row-count">
+        {{ journal.paginator.count }} transaction line{{ journal.paginator.count|pluralize }}
+      </span>
+    </div>
+    <table class="al-table">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Party</th>
+          <th>Reference</th>
+          <th>Account</th>
+          <th class="num">Debit (₹)</th>
+          <th class="num">Credit (₹)</th>
+          <th class="num">Running Balance</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in journal %}
+        <tr>
+          <td class="al-date-cell">{{ row.date|date:'d M Y' }}</td>
+
+          <!-- Party -->
+          <td>
+            {% if row.party_name %}
+              {% if row.party_url %}
+                <a href="{{ row.party_url }}">{{ row.party_name }}</a>
+              {% else %}
+                {{ row.party_name }}
+              {% endif %}
+            {% else %}
+              <span class="al-muted">—</span>
+            {% endif %}
+          </td>
+
+          <!-- Reference / Expense -->
+          <td>
+            {% if row.expense_type == 'expense' %}
+              <a href="{% url 'journal_detail' row.journal_pk %}"
+                 onclick="sessionStorage.setItem('journalBackSource','chart_of_accounts');">
+                Expense #{{ row.expense.pk }}
+              </a>
+            {% elif row.expense_type == 'invoice' %}
+              <a href="{% url 'journal_detail' row.journal_pk %}"
+                 onclick="sessionStorage.setItem('journalBackSource','chart_of_accounts');">
+                Invoice #{{ row.expense.inv_number }}
+              </a>
+            {% elif row.expense_type == 'bill' %}
+              <a href="{% url 'journal_detail' row.journal_pk %}"
+                 onclick="sessionStorage.setItem('journalBackSource','chart_of_accounts');">
+                Bill {{ row.expense.bill_number }}
+              </a>
+            {% elif row.expense_type == 'bill_payment' %}
+              <a href="{% url 'journal_detail' row.journal_pk %}"
+                 onclick="sessionStorage.setItem('journalBackSource','chart_of_accounts');">
+                Payment #{{ row.expense.payment_number }}
+              </a>
+            {% elif row.expense_type == 'inv_payment' %}
+              <a href="{% url 'journal_detail' row.journal_pk %}"
+                 onclick="sessionStorage.setItem('journalBackSource','chart_of_accounts');">
+                Payment #{{ row.expense.payment_number }}
+              </a>
+            {% elif row.expense_type == 'journal' %}
+              {% with ref=row.expense.reference|default:"" %}
+                {% with ref_l=ref|lower %}
+                  {% if 'journal cancel' in ref_l and 'sr-' in ref_l %}
+                    <a href="{% url 'journal_detail' row.expense.pk %}"
+                       onclick="sessionStorage.setItem('journalBackSource','chart_of_accounts');">
+                      Sales Return Cancel Journal #{{ row.expense.pk }}
+                    </a>
+                  {% elif 'journal cancel' in ref_l and 'pr-' in ref_l or 'journal cancel' in ref_l and 'purchase' in ref_l or 'journal cancel' in ref_l and 'bill' in ref_l %}
+                    <a href="{% url 'journal_detail' row.expense.pk %}"
+                       onclick="sessionStorage.setItem('journalBackSource','chart_of_accounts');">
+                      Purchase Return Cancel Journal #{{ row.expense.pk }}
+                    </a>
+                  {% elif 'journal cancel' in ref_l and 'payment' in ref_l %}
+                    <a href="{% url 'journal_detail' row.expense.pk %}"
+                       onclick="sessionStorage.setItem('journalBackSource','chart_of_accounts');">
+                      Payment Cancel Journal #{{ row.expense.pk }}
+                    </a>
+                  {% else %}
+                    <a href="{% url 'journal_detail' row.expense.pk %}"
+                       onclick="sessionStorage.setItem('journalBackSource','chart_of_accounts');">
+                      Journal {{ ref }} #{{ row.expense.pk }}
+                    </a>
+                  {% endif %}
+                {% endwith %}
+              {% endwith %}
+            {% else %}
+              <span class="al-muted">—</span>
+            {% endif %}
+          </td>
+
+          <td style="color:#4b5563;">{{ row.account }}</td>
+
+          <td class="num">
+            {% if row.debit > 0 %}
+              {{ row.debit|floatformat:2 }}
+            {% else %}
+              <span class="al-muted">—</span>
+            {% endif %}
+          </td>
+
+          <td class="num">
+            {% if row.credit > 0 %}
+              {{ row.credit|floatformat:2 }}
+            {% else %}
+              <span class="al-muted">—</span>
+            {% endif %}
+          </td>
+
+          <td class="num">
+            <strong>{{ row.running_balance_display }}</strong>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="7" class="al-empty">
+            No transactions found for this account.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Closing Balance Bar -->
+  {% if journal.paginator.count > 0 %}
+  <div class="al-grand-bar">
+    <span class="al-grand-label">Closing Balance</span>
+    <div class="al-grand-values">
+      <div class="al-grand-item">
+        <span class="al-grand-item-label">Page</span>
+        <span class="al-grand-item-value" style="font-family: 'Poppins', sans-serif, cursive !important; font-size:13px; color:#6b7280;">
+          {{ journal.number }} / {{ journal.paginator.num_pages }}
+        </span>
+      </div>
+      <div class="al-grand-item">
+        <span class="al-grand-item-label">Balance</span>
+        <span class="al-grand-item-value">
+          {% with last=journal|last %}
+            {% if last %}{{ last.running_balance_display }}{% else %}—{% endif %}
+          {% endwith %}
+        </span>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Pagination -->
+  {% if journal.paginator.num_pages > 1 %}
+  <div class="al-pagination">
+
+    {% if journal.has_previous %}
+      <a class="al-page-btn" href="?page=1" title="First">«</a>
+      <a class="al-page-btn" href="?page={{ journal.previous_page_number }}" title="Previous">‹</a>
+    {% else %}
+      <span class="al-page-btn al-disabled">«</span>
+      <span class="al-page-btn al-disabled">‹</span>
+    {% endif %}
+
+    {% for num in journal.paginator.page_range %}
+      {% if num == journal.number %}
+        <span class="al-page-btn al-active">{{ num }}</span>
+      {% elif num <= 1 %}
+        <a class="al-page-btn" href="?page={{ num }}">{{ num }}</a>
+      {% elif num >= journal.number|add:"-2" and num <= journal.number|add:"2" %}
+        <a class="al-page-btn" href="?page={{ num }}">{{ num }}</a>
+      {% elif num > journal.paginator.num_pages|add:"-1" %}
+        <a class="al-page-btn" href="?page={{ num }}">{{ num }}</a>
+      {% elif num == 2 and journal.number > 3 %}
+        <span class="al-page-btn al-disabled" style="border:none;background:none;color:#9ca3af;">…</span>
+      {% elif num == journal.paginator.num_pages|add:"-1" and journal.number < journal.paginator.num_pages|add:"-2" %}
+        <span class="al-page-btn al-disabled" style="border:none;background:none;color:#9ca3af;">…</span>
+      {% endif %}
+    {% endfor %}
+
+    {% if journal.has_next %}
+      <a class="al-page-btn" href="?page={{ journal.next_page_number }}" title="Next">›</a>
+      <a class="al-page-btn" href="?page={{ journal.paginator.num_pages }}" title="Last">»</a>
+    {% else %}
+      <span class="al-page-btn al-disabled">›</span>
+      <span class="al-page-btn al-disabled">»</span>
+    {% endif %}
+
+  </div>
+  {% endif %}
+
+  
+
+</div>
+{% endblock %}

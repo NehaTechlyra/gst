@@ -1,0 +1,101 @@
+{% extends 'website/index.html' %}
+{% load static %}
+{% block exstyle %}
+<link href="{% static 'style/general.css' %}" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.9.1/font/bootstrap-icons.css" rel="stylesheet">
+{% endblock exstyle %}
+{% block scripts %}
+<script>
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('.delete-tax-master').forEach(button => {
+        button.addEventListener('click', function (event) {
+            event.preventDefault();
+            if (!confirm('Are you sure you want to delete this tax?')) {
+                return;
+            }
+            this.closest('form').submit();
+        });
+    });
+});
+</script>
+{% endblock scripts %}
+{% block page_title %}Tax Master{% endblock page_title %}
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h1 class="h3">Flexible Tax Configuration</h1>
+            <p class="text-muted mb-0">Company tax type: <strong>{{ company_tax_type|default:'Unknown' }}</strong></p>
+        </div>
+        <a href="{% url 'tax_master_add' %}" class="btn btn-primary">+ Add Tax</a>
+    </div>
+
+    <div class="row mb-3">
+        <div class="col-md-6">
+            <form method="get" class="d-flex" id="taxMasterSearchForm">
+                <input type="text" name="q" class="form-control me-2" placeholder="Search taxes..." value="{{ search_query }}">
+                <button class="btn btn-outline-secondary" type="submit">Search</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-bordered table-hover">
+            <thead class="table-light">
+                <tr>
+                    <th>#</th>
+                    <th>Name</th>
+                    <th>Tax Type</th>
+                    <th>Scope</th>
+                    <th>Rate</th>
+                    <th>Method</th>
+                    <th>Apply On</th>
+                    <th>Order</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for tax in taxes %}
+                <tr>
+                    <td>{{ forloop.counter }}</td>
+                    <td>{{ tax.tax_name }}</td>
+                    <td>{{ tax.tax_type }}</td>
+                    <td>{{ tax.tax_scope }}</td>
+                    <td>{{ tax.tax_rate }}</td>
+                    <td>{{ tax.tax_method }}</td>
+                    <td>{{ tax.applicable_on }}</td>
+                    <td>{{ tax.tax_order }}</td>
+                    <td>
+                        <a href="{% url 'tax_master_edit' tax.tax_id %}" class="btn btn-sm btn-outline-primary me-1">Edit</a>
+                        <form action="{% url 'tax_master_delete' tax.tax_id %}" method="post" class="d-inline">
+                            {% csrf_token %}
+                            <button type="button" class="btn btn-sm btn-outline-danger delete-tax-master">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="9" class="text-center">No taxes found.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% endblock content %}

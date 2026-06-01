@@ -1,0 +1,48 @@
+{% extends 'website/index.html' %}
+
+{% block content %}
+<h1>Add Items to Purchase Order #{{ po.id }}</h1>
+
+<p><strong>Supplier:</strong> {{ po.supplier.name }}</p>
+<p><strong>Date:</strong> {{ po.date }}</p>
+<p><strong>Status:</strong> {{ po.status }}</p>
+
+<hr>
+
+<form method="post">
+    {% csrf_token %}
+    {{ formset.management_form }}
+
+    <table border="1" cellpadding="5" cellspacing="0">
+        <thead>
+            <tr>
+                <th>Product</th>
+                <th>Quantity</th>
+                <th>Price</th>
+                <th>DELETE?</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for form in formset %}
+            <tr>
+                <td>{{ form.product }}</td>
+                <td>{{ form.quantity }}</td>
+                <td>{{ form.price }}</td>
+                <td>
+                    {% if form.instance.pk %}
+                        {{ form.DELETE }}
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <button type="submit">Save Items</button>
+</form>
+
+<p>
+    <a href="{% url 'create_purchase_order' %}">Back to Create PO</a> |
+    <a href="{% url 'create_purchase_order' %}">Back to Purchase Module</a>
+</p>
+{% endblock %}

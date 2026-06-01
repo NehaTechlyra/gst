@@ -1,0 +1,114 @@
+{% extends 'website/index.html' %}
+
+{% block title %}Pre-Sales Details - Lyra CRM{% endblock %}
+{% block page_title %}Pre-Sales Interaction Details{% endblock %}
+
+{% block content %}
+<div class="container crm-page">
+
+    <style>
+        .lyra-brand-color { color: #55588b !important; }
+    </style>
+
+    <div class="mb-3">
+        <div class="d-flex justify-content-start gap-2">
+            {% if request.user.is_superuser or can_edit_crm_presales %}
+            <a href="{% url 'presales_edit' presale.pk %}" class="btn btn-warning">Edit</a>
+            {% endif %}
+            {% if request.user.is_superuser or can_delete_crm_presales %}
+            <form method="post" action="{% url 'presales_delete' presale.pk %}" style="display:inline;">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger" onclick="return confirm('Are you sure you want to delete this record?');">Delete</button>
+            </form>
+            {% endif %}
+            <a href="{% url 'presales_list' %}" class="btn btn-secondary">Back to List</a>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card mb-3">
+                <div class="card-header">
+                    <strong class="lyra-brand-color">Pre-Sales Information</strong>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <h6 class="text-muted lyra-brand-color">Customer Name</h6>
+                            <a href="#" class="d-block lyra-brand-color">{{ presale.customer_name }}</a>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <h6 class="text-muted lyra-brand-color">Interaction Type</h6>
+                            <span class="badge bg-info">{{ presale.get_type_display }}</span>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <h6 class="text-muted lyra-brand-color">Product</h6>
+                            <a href="#" class="d-block lyra-brand-color">{{ presale.product|default:"-" }}</a>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <h6 class="text-muted lyra-brand-color">Contact</h6>
+                            <a href="#" class="d-block lyra-brand-color">{{ presale.contact|default:"-" }}</a>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <h6 class="text-muted lyra-brand-color">Assigned Employee</h6>
+                            <p class="d-block lyra-brand-color mb-0">{% if presale.assigned_employee %}{{ presale.assigned_employee }}{% else %}-{% endif %}</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <h6 class="text-muted lyra-brand-color">Created At</h6>
+                            <div class="d-block lyra-brand-color">{{ presale.created_at|date:"Y-m-d H:i" }}</div>
+                        </div>
+                    </div>
+
+                    {% if presale.lead %}
+                    <div class="mb-3">
+                        <h6 class="text-muted lyra-brand-color">Related Lead</h6>
+                        <a href="{% url 'lead_detail' presale.lead.pk %}" class="lyra-brand-color">{{ presale.lead.lead_number }} - {{ presale.lead.customer_name }}</a>
+                    </div>
+                    {% endif %}
+
+                    {% if presale.opportunity %}
+                    <div class="mb-3">
+                        <h6 class="text-muted lyra-brand-color">Related Opportunity</h6>
+                        <a href="{% url 'opportunity_detail' presale.opportunity.pk %}" class="lyra-brand-color">{{ presale.opportunity.opportunity_number }}</a>
+                    </div>
+                    {% endif %}
+
+                    <div class="mb-3">
+                        <h6 class="text-muted lyra-brand-color">Description</h6>
+                        <p class="lyra-brand-color">{{ presale.description|linebreaks|default:"-" }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card mb-3">
+                <div class="card-header">
+                    <strong class="lyra-brand-color">Quick Actions</strong>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2 mb-2">
+                        <a href="{% url 'update_create' %}" class="btn btn-primary btn-lg">Add Update</a>
+                        <a href="{% url 'followup_create' %}" class="btn btn-success btn-lg">Create Follow-up</a>
+                        <!-- Create Pre-Sales button intentionally removed -->
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header"><strong class="lyra-brand-color">Quotations</strong></div>
+                <div class="card-body">
+                    <p class="mb-0 lyra-brand-color">No quotations yet.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

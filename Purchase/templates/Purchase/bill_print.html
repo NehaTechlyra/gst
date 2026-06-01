@@ -1,0 +1,261 @@
+<!doctype html>
+<html xmlns:pdf="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Bill</title>
+  {% load static %}
+  {% block exstyle %}
+  <link href="{% static 'style/print.css' %}" rel="stylesheet">
+  {% endblock %}
+</head>
+
+<body>
+<div class="page">
+
+  <!-- HEADER + META (full width) -->
+  <div class="header-wrap">
+    <table class="header-top">
+      <tr>
+        <td class="header-left" style="width: 65%;">
+          {% if show_logo_in_print and company and company.logo %}
+          <div style="margin-bottom: 6px;">
+            <img src="{{ company.logo.url }}" alt="Company Logo" style="max-height: 52px; max-width: 220px;">
+          </div>
+          {% else %}
+          <div class="company-name">
+            {% if company and company.legal_name %}
+              {{ company.legal_name }}
+            {% elif company and company.name %}
+              {{ company.name }}
+            {% else %}
+              Company
+            {% endif %}
+          </div>
+          {% endif %}
+          <div class="company-meta">
+            {% if company %}
+              {{ company.address_line1 }}<br>
+              {{ company.address_line2 }}<br>
+              {{ company.city }}, {{ company.state }} - {{ company.postal_code }}
+              {{ company.email }}
+            {% endif %}
+          </div>
+        </td>
+        <td class="header-right" style="width: 35%;">
+          <div class="order-badge">BILL</div>
+        </td>
+      </tr>
+    </table>
+
+    <table class="meta-table">
+      <tr>
+        <td class="meta-label">Bill No</td>
+        <td class="meta-value">: {{ b_no }}</td>
+        <td class="meta-label">Date</td>
+        <td class="meta-value">: {{ bill.date }}</td>
+      </tr>
+      <tr>
+        <td class="meta-label">Place of Supply</td>
+        <td class="meta-value">: {{ bill.place_of_supply|default:"-" }}</td>
+        <td class="meta-label">Payment Terms</td>
+        <td class="meta-value">: {{ payment_term_display|default:"-" }}</td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- ADDRESSES (same width as header) -->
+  <table class="addr-section">
+    <tr>
+      <td style="width: 50%; padding-right: 4px;">
+        <div class="addr-box">
+          <div class="addr-title">Bill To</div>
+          {% if bill.vendor %}
+            {% if bill.vendor.vendor_type == 'company' %}
+              {{ bill.vendor.company_name }}<br>
+            {% else %}
+              {{ bill.vendor.first_name }}{% if bill.vendor.last_name %} {{ bill.vendor.last_name }}{% endif %}<br>
+            {% endif %}
+            {% if bill.vendor.address_line_1 %}{{ bill.vendor.address_line_1 }}<br>{% endif %}
+            {% if bill.shipping_address1 or bill.shipping_city %}
+              {{ bill.shipping_state }}<br>
+            {% else %}
+              {% if bill.vendor.state %}{{ bill.vendor.state }}<br>{% endif %}
+            {% endif %}
+            {% if bill.vendor.country %}{{ bill.vendor.country }}<br>{% endif %}
+            {% if bill.vendor.gst_number %}
+              <span class="muted">GSTIN:</span> {{ bill.vendor.gst_number }}
+            {% endif %}
+          {% else %}
+            -
+          {% endif %}
+        </div>
+      </td>
+      <td style="width: 50%; padding-left: 4px;">
+        <div class="addr-box">
+          <div class="addr-title">Ship To</div>
+          {% if bill.shipping_attention %}{{ bill.shipping_attention }}<br>{% endif %}
+          {% if bill.shipping_address1 %}{{ bill.shipping_address1 }}<br>{% endif %}
+          {% if bill.shipping_address2 %}{{ bill.shipping_address2 }}<br>{% endif %}
+          {% if bill.shipping_city %}{{ bill.shipping_city }}{% if bill.shipping_postal_code %}, {{ bill.shipping_postal_code }}{% endif %}<br>{% endif %}
+          {% if bill.shipping_state %}{{ bill.shipping_state }}<br>{% endif %}
+          {% if bill.shipping_country %}{{ bill.shipping_country }}<br>{% endif %}
+          {% if bill.shipping_email %}{{ bill.shipping_email }}<br>{% endif %}
+        </div>
+      </td>
+    </tr>
+  </table>
+
+  <!-- ITEMS (full width, aligned with above) -->
+  <table class="items">
+    <thead>
+      <tr>
+        <th style="width: 4%;" class="text-center">#</th>
+        <th style="width: 36%;">Item &amp; Description</th>
+        <th style="width: 10%;">HSN / SAC</th>
+        <th style="width: 7%;" class="text-right">Qty</th>
+        <th style="width: 11%;" class="text-right">Rate</th>
+        {% if company_is_india %}
+        <th style="width: 11%;" class="text-right">CGST</th>
+        <th style="width: 11%;" class="text-right">SGST</th>
+        {% else %}
+        <th style="width: 22%;" class="text-right">VAT</th>
+        {% endif %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in items_info %}
+      <tr>
+        <td class="text-center">{{ forloop.counter }}</td>
+        <td>
+          {{ item.product_name }}<br>
+          {% if item.description %}
+            <span class="muted">{{ item.description }}</span>
+          {% endif %}
+        </td>
+        <td class="text-left">
+          {% if item.hsn %}{{ item.hsn }}{% else %}-{% endif %}
+        </td>
+        <td class="text-right nowrap">{{ item.quantity }}</td>
+        <td class="text-right nowrap">{{ item.price|floatformat:2 }}</td>
+        {% if company_is_india %}
+        <td class="text-right">
+          {{ item.cgst_rate|floatformat:2 }}%<br>
+          <span class="muted">{{ item.cgst_amount|floatformat:2 }}</span>
+        </td>
+        <td class="text-right">
+          {{ item.sgst_rate|floatformat:2 }}%<br>
+          <span class="muted">{{ item.sgst_amount|floatformat:2 }}</span>
+        </td>
+        {% else %}
+        <td class="text-right">
+          {{ item.vat_rate|floatformat:2 }}%<br>
+          <span class="muted">{{ item.vat_amount|floatformat:2 }}</span>
+        </td>
+        {% endif %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <!-- TOTALS (aligned to right but within same content width) -->
+  <div class="summary-wrap">
+    <table class="totals-table">
+      <tr>
+        <td class="totals-label">Sub Total</td>
+        <td class="totals-value">{% if document_currency_symbol %}{{ document_currency_symbol }} {{ subtotal_calc|floatformat:2 }}{% else %}{{ company_base_currency_symbol }} {{ subtotal_calc|floatformat:2 }}{% endif %}</td>
+      </tr>
+      {% if company_is_india %}
+      <tr>
+        <td class="totals-label">CGST</td>
+        <td class="totals-value">{% if document_currency_symbol %}{{ document_currency_symbol }} {{ total_cgst|floatformat:2 }}{% else %}{{ company_base_currency_symbol }} {{ total_cgst|floatformat:2 }}{% endif %}</td>
+      </tr>
+      <tr>
+        <td class="totals-label">SGST</td>
+        <td class="totals-value">{% if document_currency_symbol %}{{ document_currency_symbol }} {{ total_sgst|floatformat:2 }}{% else %}{{ company_base_currency_symbol }} {{ total_sgst|floatformat:2 }}{% endif %}</td>
+      </tr>
+      {% else %}
+      <tr>
+        <td class="totals-label">VAT</td>
+        <td class="totals-value">{% if document_currency_symbol %}{{ document_currency_symbol }} {{ total_vat|floatformat:2 }}{% else %}{{ company_base_currency_symbol }} {{ total_vat|floatformat:2 }}{% endif %}</td>
+      </tr>
+      {% endif %}
+      {% if bill.round_off %}
+      <tr>
+        <td class="totals-label">Round Off</td>
+        <td class="totals-value">{% if document_currency_symbol %}{{ document_currency_symbol }} {{ bill.round_off|floatformat:2 }}{% else %}{{ company_base_currency_symbol }} {{ bill.round_off|floatformat:2 }}{% endif %}</td>
+      </tr>
+      {% endif %}
+      <tr class="grand-row">
+        <td class="totals-label">Grand Total</td>
+        <td class="totals-value">{% if document_currency_symbol %}{{ document_currency_symbol }} {{ final_total|floatformat:2 }}{% else %}{{ company_base_currency_symbol }} {{ final_total|floatformat:2 }}{% endif %}</td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- NOTES + SIGNATURE (same width) -->
+  <table class="bottom-row">
+    <tr>
+      <td style="width: 55%; padding-right: 8px;">
+        <div class="notes-box">
+          <div class="notes-header">Notes / Terms &amp; Conditions</div>
+          <div class="notes-body">
+            <strong>Notes</strong><br>
+            {% if bill.notes %}
+              {{ bill.notes|linebreaksbr }}
+            {% else %}
+              -
+            {% endif %}
+            <br><br>
+            <strong>Terms &amp; Conditions</strong><br>
+            {% if company and company.terms_and_conditions %}
+              {{ company.terms_and_conditions|linebreaksbr }}
+            {% else %}
+              -
+            {% endif %}
+          </div>
+        </div>
+      </td>
+      <td style="width: 45%; padding-left: 8px;">
+        <div class="signature-box">
+          <div class="signature-line"></div>
+          <div class="signature-label">Authorized Signatory</div>
+          <div style="margin-top: 4px; font-weight: 600;">
+            For
+            {% if company and company.legal_name %}
+              {{ company.legal_name }}
+            {% elif company and company.name %}
+              {{ company.name }}
+            {% else %}
+              Company
+            {% endif %}
+          </div>
+        </div>
+      </td>
+    </tr>
+  </table>
+
+</div>
+
+<pdf:pageFooter>
+  <div class="footer">
+    <div class="footer-left">POWERED BY LyraERP</div>
+    <div class="footer-right">Page <pdf:pagenumber/> of <pdf:pagecount/></div>
+    <div style="clear: both;"></div>
+  </div>
+</pdf:pageFooter>
+
+<script>
+  (function(){
+    try {
+      var params = new URLSearchParams(window.location.search);
+      if (params.get('print') === '1') {
+        window.print();
+      }
+    } catch (e) {
+      // ignore
+    }
+  })();
+</script>
+</body>
+</html>

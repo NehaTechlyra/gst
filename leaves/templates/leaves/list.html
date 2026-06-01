@@ -1,0 +1,22 @@
+{% extends 'website/index.html' %}
+
+{% block page_title %}Leaves{% endblock %}
+
+{% block content %}
+<div class="container mt-3">
+  <h3>Leaves <a href="{% url 'leaves_add' %}" class="btn btn-sm btn-primary">Add</a></h3>
+  <table class="table table-sm">
+    <thead><tr><th>Name</th><th>Days</th></tr></thead>
+    <tbody>
+      {% for it in items %}
+      <tr>
+        <td>{{ it.leave_name }}</td>
+        <td>{{ it.days_allowed }}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="2">No leaves</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

@@ -1,0 +1,26 @@
+{% load widget_tweaks %}
+{% csrf_token %}
+<div class="mb-3">
+  {% comment %} {{ uom_form.name.label_tag }}
+  {{ uom_form.name }}
+  {{ uom_form.name.errors }} {% endcomment %}
+    {% for field in warehouse_form %}
+            <div class="col-md-12 mb-3">
+                 {% if field.name == "status" %}
+                    {{ field }}
+                    <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}{% if field.field.required %}<span class="text-danger"> *</span>{% endif %}</label>
+                {% else %}
+                {% comment %} <p>Form fields: {{ warehouse_form.visible_fields }}</p> {% endcomment %}
+                    <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}{% if field.field.required %}<span class="text-danger"> *</span>{% endif %}</label>
+                    {{ field|add_class:"form-control" }}
+                {% endif %}
+                {% if field.help_text %}
+                    <div class="form-text">{{ field.help_text }}</div>
+                {% endif %}
+                {% for error in field.errors %}
+                    <div class="mb-3 text-danger small"><span class="text-danger">*</span>{{ error }}</div>
+                {% endfor %}
+            </div>
+        {% endfor %}
+</div>
+<div id="formErrors" class="text-danger"></div>

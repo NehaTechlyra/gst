@@ -1,0 +1,425 @@
+{% extends 'website/index.html' %}
+{% load static %}
+
+{% block page_title %}
+  {% if obj %}Edit Email Configuration{% else %}Add Email Configuration{% endif %}
+{% endblock %}
+
+{% block exstyle %}
+<link href="{% static 'style/general.css' %}" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+<style>
+/* ===== layout & tabs ===== */
+.form-section {
+  display: block;
+  background: #fff;
+  border-radius: 8px;
+  padding: 25px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+.top-actions {
+  display:flex;
+  justify-content:flex-start;
+  align-items:center;
+  margin-bottom:16px;
+}
+.btn-right {
+  display:flex;
+  justify-content:flex-end;
+  gap:10px;
+  margin-top:25px;
+}
+
+/* ===== groups & cards ===== */
+.section-group {
+  background: #f9f9fb;
+  padding: 18px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  border: 1px solid #eee;
+}
+.section-group h6 {
+  font-weight: 600;
+  color: #55588b;
+  margin-bottom: 15px;
+}
+.form-label {
+  font-weight: 500;
+  color: #333;
+}
+.required::after {
+  content: " *";
+  color: red;
+  font-weight: bold;
+}
+
+/* Password toggle */
+.input-group-password {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.input-group-password input {
+  padding-right: 2.5rem;
+}
+.input-group-password .toggle-password {
+  position: absolute;
+  right: 0.75rem;
+  cursor: pointer;
+  color: #6c757d;
+  font-size: 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 5;
+}
+
+/* Keep toggle on right and hide bootstrap validation tick for valid inputs */
+.input-group-password .toggle-password { right: 0.75rem !important; left: auto !important; }
+.form-control.is-valid { background-image: none !important; padding-right: 2.5rem !important; }
+
+/* Invalid fields */
+.is-invalid {
+  border-color: #dc3545 !important;
+  box-shadow: 0 0 0 0.08rem rgba(220,53,69,0.08);
+}
+/* Show red border on required Select2 when empty */
+.select2-container--default .select2-selection--multiple.error,
+.select2-container--default .select2-selection--single.error {
+    border: 1px solid #dc3545 !important; /* Bootstrap danger color */
+    border-radius: 4px;
+}
+.select2-selection.error::after {
+    content: "\F33A"; /* Exclamation-circle, Bootstrap Icons v1.11+ */
+    font-family: "bootstrap-icons";
+    color: #dc3545;
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 1.25rem;
+}
+.select2-container--default .select2-selection--multiple,
+.select2-container--default .select2-selection--single {
+    position: relative;
+}
+/* Invalid fields */
+.is-invalid {
+  border-color: #dc3545 !important;
+  box-shadow: 0 0 0 0.08rem rgba(220,53,69,0.08);
+}
+/* Show red border on required Select2 when empty */
+.select2-container--default .select2-selection--multiple.error,
+.select2-container--default .select2-selection--single.error {
+    border: 1px solid #dc3545 !important; /* Bootstrap danger color */
+    border-radius: 4px;
+}
+.select2-selection.error::after {
+    content: "\F33A"; /* Exclamation-circle, Bootstrap Icons v1.11+ */
+    font-family: "bootstrap-icons";
+    color: #dc3545;
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 1.25rem;
+}
+.select2-container--default .select2-selection--multiple,
+.select2-container--default .select2-selection--single {
+    position: relative;
+}
+
+/* LinkedIn-style tags for multi-select (usage_types) */
+.select2-container--default .select2-selection--multiple .select2-selection__choice {
+  background-color: #55588b !important;
+  border: none !important;
+  color: white !important;
+  font-weight: 500 !important;
+  padding: 4px 32px 4px 10px !important;
+  border-radius: 20px !important;
+  position: relative !important;
+  display: inline-block !important;
+}
+
+.select2-container--default .select2-selection--multiple .select2-selection__choice .select2-selection__choice__remove {
+  position: absolute !important;
+  right: 8px !important;
+  left: auto !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  display: inline-block !important;
+  color: white !important;
+  margin: 0 !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  padding: 0 !important;
+  width: 16px !important;
+  height: 16px !important;
+  font-size: 18px !important;
+  line-height: 16px !important;
+  text-align: center !important;
+  cursor: pointer !important;
+  font-weight: bold !important;
+  border: none !important;
+  border-left: none !important;
+  border-right: none !important;
+  background: transparent !important;
+}
+
+.select2-container--default .select2-selection--multiple .select2-selection__choice .select2-selection__choice__remove:hover {
+  color: #ffcccc !important;
+  background-color: rgba(255, 255, 255, 0.2) !important;
+  border-radius: 50% !important;
+  border: none !important;
+}
+
+</style>
+{% endblock exstyle %}
+
+{% block content %}
+<div class="container mt-4">
+  <div class="top-actions">
+    <a href="{% url 'settings_page' %}" class="btn btn-outline-secondary">← Back</a>
+  </div>
+
+  <!-- Single Email Configuration Form -->
+  <form method="post" novalidate id="email_config_form"
+        action="{% if obj %}{% url 'email_config_edit' obj.id %}{% else %}{% url 'email_config_create' %}{% endif %}">
+    {% csrf_token %}
+
+    <!-- Server Details -->
+    <div class="section-group">
+      <h6>Email Server Details</h6>
+      <div class="row">
+        <div class="col-md-6 mb-3">
+          <label class="form-label required">Host</label>
+          <input type="text" name="host" class="form-control" placeholder="e.g. smtp.gmail.com" required
+                 value="{{ obj.host|default_if_none:'' }}">
+        </div>
+        <div class="col-md-6 mb-3">
+          <label class="form-label required">Port</label>
+          <input type="number" name="port" class="form-control" placeholder="e.g. 587" required
+                 value="{{ obj.port|default:587 }}">
+        </div>
+      </div>
+      <div class="form-check mb-3">
+        <input type="checkbox" name="use_tls" class="form-check-input" id="id_tls"
+               {% if obj and obj.use_tls or not obj %}checked{% endif %}>
+        <label class="form-check-label" for="id_tls">Use TLS</label>
+      </div>
+    </div>
+
+    <!-- Authentication -->
+    <div class="section-group">
+      <h6>Authentication</h6>
+      <div class="row">
+        <div class="col-md-6 mb-3">
+          <label class="form-label required">Email (Host User)</label>
+          <input type="email" name="host_user" class="form-control" placeholder="e.g. example@gmail.com" required
+                 value="{{ obj.host_user|default_if_none:'' }}">
+        </div>
+        <div class="col-md-6 mb-3">
+          <label class="form-label required">Password</label>
+          <div class="input-group-password">
+            <input type="password" name="host_password" id="host_password"
+                   class="form-control" placeholder="Your password"
+                   required value="{{ obj.host_password|default_if_none:'' }}">
+            <i class="bi bi-eye-slash toggle-password"></i>
+          </div>
+        </div>
+      </div>
+
+      <div class="row">
+      <!-- Default From Email -->
+      <div class="col-md-6 mb-3">
+          <label class="form-label required">Default From Email</label>
+          <input type="email" name="default_from_email" class="form-control"
+                placeholder="e.g. noreply@yourdomain.com" required
+                value="{{ obj.default_from_email|default_if_none:'' }}">
+      </div>
+
+     <!-- Email Usage -->
+ <div class="col-md-6 mb-3">
+    <label class="form-label required">This email will be used for:</label>
+
+    <select id="id_usage_types" name="usage_types" class="form-control select2" multiple required>
+        {% for value, label in templates %}
+            <option value="{{ value }}"
+                {% if obj and value in obj.usage_types %}selected{% endif %}>
+                {{ label }}
+            </option>
+        {% endfor %}
+    </select>
+
+</div>
+
+</div>
+
+
+      <div class="form-check mb-3">
+        <input type="checkbox" name="status" class="form-check-input" id="id_status_email"
+               {% if obj and obj.status or not obj %}checked{% endif %}>
+        <label class="form-check-label" for="id_status_email">Active</label>
+      </div>
+
+      <div class="form-check mb-3">
+        <input type="checkbox" name="is_default" class="form-check-input" id="id_is_default_email"
+               {% if obj.is_default %}checked{% endif %}>
+        <label class="form-check-label" for="id_is_default_email">Set as Default</label>
+      </div>
+    </div>
+
+    <!-- Buttons -->
+    <div class="btn-right">
+      <button type="submit" class="btn btn-primary">
+        {% if obj %}<i class="bi bi-arrow-repeat"></i> Update{% else %}<i class="bi bi-plus-circle"></i> Add{% endif %}
+      </button>
+      <a href="{% url 'settings_page' %}" class="btn btn-secondary ms-2">Cancel</a>
+    </div>
+
+  </form>
+</div>
+{% endblock content %}
+
+{% block scripts %}
+<script>
+(function () {
+  // Toast system
+  function createTopCenterToastDOM() {
+    let el = document.getElementById("topcenter-toast");
+    if (!el) {
+      el = document.createElement("div");
+      el.id = "topcenter-toast";
+      Object.assign(el.style, {
+        position: "fixed",
+        top: "20px",
+        left: "50%",
+        transform: "translateX(-50%)",
+        backgroundColor: "#f8d7da",
+        color: "#721c24",
+        border: "1px solid #f5c6cb",
+        borderRadius: "6px",
+        padding: "10px 18px",
+        fontWeight: "500",
+        textAlign: "center",
+        minWidth: "300px",
+        zIndex: "99999",
+        opacity: "0",
+        pointerEvents: "none",
+        transition: "opacity 0.25s ease-in-out",
+      });
+      document.body.appendChild(el);
+    }
+    return el;
+  }
+  window.showToast = function(msg, success=true) {
+    const el = createTopCenterToastDOM();
+    el.textContent = msg;
+    el.style.display = "block";
+    el.style.opacity = "1";
+    setTimeout(() => { el.style.opacity = "0"; setTimeout(()=>el.style.display="none",300); }, 2500);
+  };
+})();
+
+document.addEventListener("DOMContentLoaded", () => {
+  // Password toggle
+  const togglePassword = document.querySelector(".toggle-password");
+  const passwordField = document.getElementById("host_password");
+  if (togglePassword && passwordField) {
+    togglePassword.addEventListener("click", function () {
+      const type = passwordField.type === "password" ? "text" : "password";
+      passwordField.type = type;
+      this.classList.toggle("bi-eye");
+      this.classList.toggle("bi-eye-slash");
+    });
+  }
+
+  // Form validation
+  const form = document.getElementById("email_config_form");
+  if (form) {
+    form.noValidate = true;
+    form.addEventListener("submit", function(ev){
+      const requiredFields = Array.from(form.querySelectorAll("[required]"));
+      let invalids = [];
+      requiredFields.forEach(f=>{
+        f.classList.remove("is-invalid");
+        // Normal fields
+          if (f.tagName !== "SELECT" && !f.value.trim()) {
+              invalids.push(f);
+          }
+
+          // MULTIPLE SELECT2 fields
+          if (f.tagName === "SELECT" && f.multiple) {
+              let values = $(f).val();
+              if (!values || values.length === 0) {
+                  invalids.push(f);
+
+                  // Add red border to Select2
+                  $(f).next(".select2-container")
+                      .find(".select2-selection")
+                      .addClass("error");
+              }
+          }
+
+        if (f.type==="email"){
+          const re=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+          if (!re.test(f.value)) invalids.push(f);
+        }
+      });
+      if (invalids.length) {
+        invalids.forEach(f => {
+        if (f.tagName === "SELECT" && f.multiple) {
+            $(f).next(".select2-container")
+                .find(".select2-selection")
+                .addClass("is-invalid error");
+        } else {
+            f.classList.add("is-invalid");
+        }
+    });
+        ev.preventDefault();
+        window.showToast("⚠️ Please fill all required fields correctly.", false);
+      }
+    });
+
+    // Remove invalid highlight on input/change
+    form.addEventListener("input", e=>{
+      if (e.target.matches("[required]")) e.target.classList.remove("is-invalid");
+    });
+    form.addEventListener("change", e=>{
+      if (e.target.matches("[required]")) e.target.classList.remove("is-invalid");
+    });
+  }
+});
+$(document).ready(function() {
+
+    // Reusable select2 init function
+    function initSelect2(selector, placeholder) {
+        $(selector).select2({
+            placeholder: placeholder,
+            allowClear: true,
+            width: '100%',
+            closeOnSelect: false
+        });
+    }
+
+    initSelect2('#id_usage_types', "Select usage type (searchable)");
+
+    // Auto-focus search
+    $(document).on('select2:open', function() {
+        setTimeout(function() {
+            document.querySelector('.select2-search__field').focus();
+        }, 10);
+    });
+
+});
+$("#id_usage_types").on("change", function () {
+    $(this).next(".select2-container")
+        .find(".select2-selection")
+        .removeClass("is-invalid error");
+});
+
+</script>
+{% endblock scripts %}

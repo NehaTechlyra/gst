@@ -1,0 +1,254 @@
+{% extends 'website/index.html' %}
+{% load static %}
+
+{% block title %}Leads - Lyra CRM{% endblock %}
+{% block page_title %}Leads{% endblock %}
+{% block exstyle %}
+<link href="{% static 'style/general.css' %}" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.9.1/font/bootstrap-icons.css" rel="stylesheet">
+{% endblock exstyle %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+
+        <!-- Left side: Back and Create Lead buttons -->
+        <div class="d-flex gap-2">
+            <button class="btn btn-secondary" onclick="window.history.back()" title="Go back to previous page">
+                <i class="bi bi-arrow-left"></i> Back
+            </button>
+            {% if request.user.is_superuser or can_create_crm_leads %}
+            <a href="{% url 'lead_create' %}" class="btn btn-success">+ Create Lead</a>
+            {% endif %}
+        </div>
+
+        <!-- Search + Filters on right -->
+        <form method="get" class="d-flex gap-2 mb-3" id="leadSearchForm">
+            <input type="text" name="search" id="leadSearchInput" class="form-control me-2"
+                   placeholder="&#x1F50D;&#xFE0E; Search leads..."
+                   value="{{ request.GET.search }}">
+            <select name="priority" class="form-control">
+                <option value="">All Priorities</option>
+                <option value="Hot" {% if request.GET.priority == 'Hot' %}selected{% endif %}>Hot</option>
+                <option value="Warm" {% if request.GET.priority == 'Warm' %}selected{% endif %}>Warm</option>
+                <option value="Cold" {% if request.GET.priority == 'Cold' %}selected{% endif %}>Cold</option>
+            </select>
+            <select name="status" class="form-control">
+                <option value="">All Status</option>
+                <option value="New" {% if request.GET.status == 'New' %}selected{% endif %}>New</option>
+                <option value="Contacted" {% if request.GET.status == 'Contacted' %}selected{% endif %}>Contacted</option>
+                <option value="Interested" {% if request.GET.status == 'Interested' %}selected{% endif %}>Interested</option>
+                <option value="Not Interested" {% if request.GET.status == 'Not Interested' %}selected{% endif %}>Not Interested</option>
+                <option value="Lost" {% if request.GET.status == 'Lost' %}selected{% endif %}>Lost</option>
+            </select>
+            <button type="submit" class="btn btn-secondary">Filter</button>
+            <a href="{% url 'lead_list' %}" class="btn btn-outline-secondary">Clear</a>
+        </form>
+    </div>
+
+    {% if leads %}
+    <table class="items-table" id="leadTableContainer">
+        <thead>
+            <tr>
+                <th class="si-no">No.</th>
+                <th>Customer Name</th>
+                <th>Contact</th>
+                <th>Product</th>
+                <th>Priority</th>
+                <th>Status</th>
+                <th>Assigned To</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for lead in leads %}
+            <tr>
+                <td class="si-no">{{ forloop.counter }}</td>
+                <td>
+                    <a href="{% url 'lead_detail' lead.pk %}" class="primary-link">{{ lead.customer_name }}</a>
+                    {% if lead.lead_number %}
+                        <div><small class="text-muted">{{ lead.lead_number }}</small></div>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if lead.phone %}{{ lead.phone }}<br>{% endif %}
+                    {% if lead.email %}{{ lead.email }}{% endif %}
+                </td>
+                <td>{{ lead.product_interested }}</td>
+                <td>
+                    {% if lead.priority == 'Hot' %}
+                        <span class="badge bg-danger">Hot</span>
+                    {% elif lead.priority == 'Warm' %}
+                        <span class="badge bg-warning">Warm</span>
+                    {% else %}
+                        <span class="badge bg-secondary">Cold</span>
+                    {% endif %}
+                </td>
+                <td><span class="badge bg-info">{{ lead.status }}</span></td>
+                <td>{% if lead.assigned_employee %}{{ lead.assigned_employee }}{% else %}-{% endif %}</td>
+                <td>
+                    <div class="lead-actions" style="margin-top: 5px;">
+                        <a href="{% url 'lead_detail' lead.pk %}" class="btn add-item-btn">View</a>
+                        {% if request.user.is_superuser or can_edit_crm_leads %}
+                        <a href="{% url 'lead_edit' lead.pk %}" class="btn add-item-btn">Edit</a>
+                        {% endif %}
+                        {% if request.user.is_superuser or can_delete_crm_leads %}
+                        <button
+                            type="button"
+                            class="btn btn-sm delete-btn delete-lead-btn"
+                            data-lead-id="{{ lead.pk }}"
+                            data-name="{{ lead.customer_name|escapejs }}">
+                            <span class="bi bi-trash"></span>
+                        </button>
+                        {% endif %}
+                        <a href="{% url 'model_object_activity_log_list' 'Lead' lead.id %}">
+                            <span class="bi bi-clock-history"></span>
+                        </a>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="alert alert-info text-center">
+        No leads found.
+        {% if request.user.is_superuser or can_create_crm_leads %}
+            <a href="{% url 'lead_create' %}" class="alert-link">Add your first Lead</a>.
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div id="deletePromptLead" class="prompt-modal">
+    <div class="prompt-modal-content">
+        <p id="deleteLeadMessage">Are you sure you want to delete this lead?</p>
+        <div class="prompt-buttons">
+            <button id="confirmDeleteLead" class="prompt-btn prompt-ok-btn">OK</button>
+            <button id="cancelDeleteLead" class="prompt-btn prompt-cancel-btn">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const toastContainer = document.getElementById('toastContainer');
+
+    let pendingDelete = { leadId: null, row: null, action: null };
+
+    function showDeleteModal(leadId, action, row, name) {
+        pendingDelete.leadId = leadId;
+        pendingDelete.action = action;
+        pendingDelete.row = row || null;
+        const msg = document.getElementById('deleteLeadMessage');
+        if (msg) msg.textContent = 'Are you sure you want to delete lead: "' + (name || 'this lead') + '"? This will only delete the lead.';
+        const modal = document.getElementById('deletePromptLead');
+        if (modal) modal.style.display = 'flex';
+    }
+
+    function hideDeleteModal() {
+        const modal = document.getElementById('deletePromptLead');
+        if (modal) modal.style.display = 'none';
+        pendingDelete = { leadId: null, row: null, action: null };
+    }
+
+    function showToast(message, type) {
+        try {
+            if (typeof bootstrap !== 'undefined' && bootstrap.Toast && toastContainer) {
+                const toastEl = document.createElement('div');
+                toastEl.className = `toast align-items-center text-bg-${type || 'success'} border-0`;
+                toastEl.setAttribute('role', 'alert');
+                toastEl.setAttribute('aria-live', 'assertive');
+                toastEl.setAttribute('aria-atomic', 'true');
+                toastEl.innerHTML = `
+                    <div class="d-flex">
+                        <div class="toast-body">${message}</div>
+                        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                    </div>`;
+                toastContainer.appendChild(toastEl);
+                const toast = new bootstrap.Toast(toastEl, { delay: 3000 });
+                toast.show();
+                toastEl.addEventListener('hidden.bs.toast', function () {
+                    try { toastEl.remove(); } catch (e) {}
+                });
+                return;
+            }
+        } catch (e) {}
+        const el = document.createElement('div');
+        el.textContent = message;
+        el.style.cssText = `position:fixed;right:20px;bottom:20px;background:${type==='danger'?'#d9534f':'#28a745'};color:#fff;padding:10px 14px;border-radius:6px;z-index:20000;box-shadow:0 4px 10px rgba(0,0,0,0.12)`;
+        document.body.appendChild(el);
+        setTimeout(function () { try { el.remove(); } catch (e) {} }, 3500);
+    }
+
+    document.addEventListener('click', function (e) {
+        const btn = e.target.closest('.delete-lead-btn');
+        if (!btn) return;
+        e.preventDefault();
+        e.stopPropagation();
+        const leadId = btn.getAttribute('data-lead-id');
+        const name = btn.getAttribute('data-name');
+        const action = btn.getAttribute('data-action') || (function() {
+            const pathParts = window.location.pathname.split('/').filter(p => p);
+            const companyCode = pathParts[0];
+            return `/${companyCode}/crm/leads/delete/${leadId}/`;
+        })();
+        if (!leadId) return;
+        const row = btn.closest('tr');
+        showDeleteModal(leadId, action, row, name);
+    });
+
+    const confirmBtn = document.getElementById('confirmDeleteLead');
+    const cancelBtn = document.getElementById('cancelDeleteLead');
+
+    if (confirmBtn) {
+        confirmBtn.addEventListener('click', function () {
+            if (!pendingDelete.action) { hideDeleteModal(); return; }
+            const csrfToken = document.querySelector('input[name="csrfmiddlewaretoken"]')?.value;
+            const formData = new FormData();
+            if (csrfToken) formData.append('csrfmiddlewaretoken', csrfToken);
+
+            fetch(pendingDelete.action, {
+                method: 'POST',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                body: formData
+            })
+            .then(response => {
+                if (!response.ok) throw new Error('Error deleting lead. Status: ' + response.status);
+                if (pendingDelete.row) {
+                    pendingDelete.row.remove();
+                } else {
+                    location.reload();
+                }
+                showToast('Lead deleted successfully.', 'success');
+            })
+            .catch(function (error) {
+                showToast(error.message || 'Error deleting lead.', 'danger');
+            })
+            .finally(function () {
+                hideDeleteModal();
+            });
+        });
+    }
+
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', hideDeleteModal);
+    }
+
+    // Escape key closes modal
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') hideDeleteModal();
+    });
+
+    // Click outside modal closes it
+    document.getElementById('deletePromptLead').addEventListener('click', function (e) {
+        if (e.target === this) hideDeleteModal();
+    });
+});
+</script>
+
+<!-- CSRF token for fetch calls -->
+<form style="display:none;">{% csrf_token %}</form>
+
+{% endblock %}

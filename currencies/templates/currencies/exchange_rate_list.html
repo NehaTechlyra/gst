@@ -1,0 +1,201 @@
+{% extends 'website/index.html' %}
+{% load static %}
+
+{% block page_title %}Exchange Rates — {{ currency_obj.code }}{% endblock %}
+
+{% block exstyle %}
+<link href="{% static 'style/general.css' %}" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+<style>
+.curr-page { padding: 24px; }
+.curr-page-title { font-size: 18px; font-weight: 700; color: #55588b; display: flex; align-items: center; gap: 8px; margin: 4px 0 2px; }
+.curr-page-subtitle { font-size: 12.5px; color: #999; }
+.back-link { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; color: #666; text-decoration: none; background: #fff; border: 1px solid #e0e0e0; border-radius: 6px; padding: 5px 12px; margin-bottom: 8px; transition: all .15s; }
+.back-link:hover { background: #f5f5f5; color: #333; text-decoration: none; }
+
+.curr-card { background: #fff; border-radius: 12px; border: 1px solid #ebebeb; margin-bottom: 20px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,.04); }
+.curr-card-header { padding: 16px 22px; border-bottom: 1px solid #f2f2f2; background: #fafafa; display: flex; justify-content: space-between; align-items: center; }
+.curr-card-title { font-size: 14px; font-weight: 700; color: #444; display: flex; align-items: center; gap: 8px; }
+.curr-card-title i { color: #55588b; }
+.curr-card-body { padding: 22px; }
+
+.curr-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
+.curr-stat { background: #f7f7fc; border: 1px solid #eaebf5; border-radius: 10px; padding: 14px 18px; }
+.curr-stat-label { font-size: 11px; font-weight: 700; color: #aaa; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 4px; }
+.curr-stat-value { font-size: 19px; font-weight: 700; color: #55588b; }
+
+.form-label { font-size: 12.5px; font-weight: 600; color: #555; margin-bottom: 5px; display: block; }
+.form-label .req { color: #e74c3c; margin-left: 2px; }
+.form-control { border: 1px solid #ddd; border-radius: 7px; padding: 8px 12px; font-size: 13.5px; color: #333; width: 100%; transition: border-color .15s, box-shadow .15s; }
+.form-control:focus { border-color: #55588b; box-shadow: 0 0 0 3px rgba(85,88,139,.1); outline: none; }
+.btn-save { background: #55588b; border-color: #55588b; color: #fff; font-weight: 600; border-radius: 7px; white-space: nowrap; }
+.btn-save:hover { background: #44456e; border-color: #44456e; color: #fff; }
+
+.curr-table { width: 100%; border-collapse: collapse; }
+.curr-table thead tr { background: #f8f8fc; }
+.curr-table th { padding: 10px 16px; font-size: 11.5px; font-weight: 700; color: #999; text-transform: uppercase; letter-spacing: .04em; text-align: left; border-bottom: 2px solid #eee; white-space: nowrap; }
+.curr-table td { padding: 12px 16px; font-size: 13.5px; color: #333; border-bottom: 1px solid #f4f4f4; vertical-align: middle; }
+.curr-table tbody tr:last-child td { border-bottom: none; }
+.curr-table tbody tr:hover td { background: #fafbff; }
+
+.rate-chip { display: inline-block; font-family: 'Courier New', monospace; font-size: 13px; font-weight: 700; color: #1a5c38; background: #eaf6ef; border: 1px solid #c3e6cb; padding: 4px 12px; border-radius: 6px; }
+.badge-manual { display: inline-flex; align-items: center; background: #f3f3fb; color: #55588b; border: 1px solid #d0d1ee; border-radius: 20px; padding: 3px 10px; font-size: 11px; font-weight: 700; }
+.badge-auto { display: inline-flex; align-items: center; background: #fff8e6; color: #8a5f00; border: 1px solid #fcd97b; border-radius: 20px; padding: 3px 10px; font-size: 11px; font-weight: 700; }
+
+.curr-empty { text-align: center; padding: 56px 20px; }
+.curr-empty-icon { width: 60px; height: 60px; background: #f0f0fa; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 14px; font-size: 24px; }
+.curr-empty p { color: #aaa; font-size: 13.5px; }
+
+@media (max-width: 768px) {
+    .curr-stats { grid-template-columns: 1fr; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="curr-page">
+
+    <div class="d-flex justify-content-between align-items-flex-end mb-3">
+        <div>
+            <a href="{% url 'currencies:currency_list' %}" class="back-link">
+                <i class="bi bi-arrow-left"></i> Back to Currencies
+            </a>
+            <div class="curr-page-title">
+                <i class="bi bi-graph-up"></i>
+                {{ currency_obj.code }} — Exchange Rates
+            </div>
+            <div class="curr-page-subtitle">
+                1 {{ currency_obj.code }} = rate × base currency &nbsp;·&nbsp;
+                Each rate is effective from its date until a newer one is added
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats row -->
+    <div class="curr-stats">
+        <div class="curr-stat">
+            <div class="curr-stat-label">Currency</div>
+            <div class="curr-stat-value">{{ currency_obj.code }}</div>
+        </div>
+        <div class="curr-stat">
+            <div class="curr-stat-label">Total Rates</div>
+            <div class="curr-stat-value">{{ rates|length }}</div>
+        </div>
+        <div class="curr-stat">
+            <div class="curr-stat-label">Latest Rate</div>
+            <div class="curr-stat-value">
+                {% if rates %}{{ rates.0.rate|floatformat:4 }}{% else %}—{% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Rate -->
+    <div class="curr-card">
+        <div class="curr-card-header">
+            <div class="curr-card-title">
+                <i class="bi bi-plus-circle"></i> Add Rate
+            </div>
+        </div>
+        <div class="curr-card-body">
+            <form method="post" action="{% url 'currencies:exchange_rate_add' currency_obj.pk %}">
+                {% csrf_token %}
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-4">
+                        <label class="form-label">Effective From <span class="req">*</span></label>
+                        <input type="date" class="form-control" name="effective_from" required>
+                    </div>
+                    <div class="col-md-5">
+                        <label class="form-label">
+                            Rate
+                            <span style="font-weight:400; color:#aaa; font-size:11.5px;">
+                                (base currency per 1 {{ currency_obj.code }})
+                            </span>
+                            <span class="req">*</span>
+                        </label>
+                        <input type="text" class="form-control" name="rate"
+                               placeholder="e.g. 83.5" required
+                               style="font-family:monospace; font-size:14px;">
+                    </div>
+                    <div class="col-md-3">
+                        <button type="submit" class="btn btn-save w-100" style="padding:8px 16px;">
+                            <i class="bi bi-check-circle me-1"></i> Save Rate
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Rate History -->
+    <div class="curr-card">
+        <div class="curr-card-header">
+            <div class="curr-card-title">
+                <i class="bi bi-clock-history"></i> Rate History
+            </div>
+            {% if rates %}
+            <span style="font-size:12px; color:#aaa;">{{ rates|length }} record{{ rates|length|pluralize }}</span>
+            {% endif %}
+        </div>
+
+        <div class="table-responsive">
+            <table class="curr-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Effective From</th>
+                        <th>Rate</th>
+                        <th>Source</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in rates %}
+                    <tr>
+                        <td style="color:#bbb; font-size:12px; font-weight:600;">{{ forloop.counter|stringformat:"02d" }}</td>
+                        <td style="font-weight:600; color:#333;">{{ r.effective_from }}</td>
+                        <td><span class="rate-chip">{{ r.rate|floatformat:6 }}</span></td>
+                        <td>
+                            {% if r.source == 'manual' %}
+                                <span class="badge-manual">
+                                    <i class="bi bi-pencil me-1" style="font-size:10px;"></i> Manual
+                                </span>
+                            {% else %}
+                                <span class="badge-auto">
+                                    <i class="bi bi-arrow-repeat me-1" style="font-size:10px;"></i> {{ r.get_source_display }}
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if r.source == 'manual' %}
+                            <form method="post" action="{% url 'currencies:exchange_rate_delete' r.pk %}"
+                                  class="d-inline"
+                                  onsubmit="return confirm('Delete this rate? This cannot be undone.');">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-outline-danger">
+                                    <i class="bi bi-trash"></i> Delete
+                                </button>
+                            </form>
+                            {% else %}
+                            <span style="color:#ccc; font-size:13px;">—</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5">
+                            <div class="curr-empty">
+                                <div class="curr-empty-icon">
+                                    <i class="bi bi-graph-up" style="color:#c0c0d8;"></i>
+                                </div>
+                                <p>No rates yet.<br>Use the form above to add your first exchange rate.</p>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

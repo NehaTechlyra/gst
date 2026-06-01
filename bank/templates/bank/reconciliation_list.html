@@ -1,0 +1,449 @@
+{% extends 'website/index.html' %}
+{% load static %}
+
+{% block title %}Reconciliation — {{ account.account_number }}{% endblock %}
+
+{% block exstyle %}
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+{% endblock %}
+
+{% block content %}
+<style>
+  :root {
+    --bg:           #f5f6fa;
+    --surface:      #ffffff;
+    --border:       #e4e8f0;
+    --text-primary: #111827;
+    --text-muted:   #6b7280;
+    --accent:       #4f46e5;
+    --accent-light: #eef2ff;
+    --green:        #059669;
+    --green-light:  #ecfdf5;
+    --orange:       #d97706;
+    --orange-light: #fffbeb;
+    --red:          #dc2626;
+    --red-light:    #fef2f2;
+    --radius:       12px;
+    --shadow:       0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.05);
+  }
+
+  body { background: var(--bg); font-family: 'DM Sans', sans-serif; color: var(--text-primary); margin: 0; }
+
+  /* ── Topbar ── */
+  .hr-topbar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    display: flex; align-items: stretch; justify-content: space-between;
+    min-height: 52px;
+  }
+  .hr-breadcrumb {
+    display: flex; align-items: center;
+    font-size: 13px; gap: 4px; color: var(--text-muted);
+  }
+  .hr-breadcrumb a {
+    color: var(--accent); text-decoration: none;
+    padding: 16px 8px; display: block;
+  }
+  .hr-breadcrumb a:hover { text-decoration: underline; }
+  .hr-breadcrumb .sep { color: #d1d5db; }
+  .hr-breadcrumb .current {
+    color: var(--text-primary); font-weight: 600;
+    padding: 16px 8px;
+    border-bottom: 2px solid var(--accent);
+  }
+  .hr-topbar-right { display: flex; align-items: center; gap: 10px; }
+
+  /* ── Account bar ── */
+  .hr-account-bar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 24px;
+    display: flex; align-items: center; gap: 14px;
+  }
+  .hr-account-icon {
+    width: 38px; height: 38px; border-radius: 10px;
+    background: var(--accent-light); color: var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; flex-shrink: 0;
+  }
+  .hr-account-name { font-size: 15px; font-weight: 700; color: var(--text-primary); }
+  .hr-account-sub  { font-size: 12px; color: var(--text-muted); margin-top: 1px; }
+
+  /* ── Warn bar ── */
+  .hr-warn-bar {
+    background: var(--orange-light); border-bottom: 1px solid #fde68a;
+    padding: 9px 24px; font-size: 12px; color: #92400e;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .hr-warn-bar i { color: var(--orange); flex-shrink: 0; }
+
+  /* ── Content ── */
+  .hr-content { padding: 20px 24px; }
+
+  /* ── Section card ── */
+  .hr-section {
+    background: var(--surface);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+    overflow: visible;
+    margin-bottom: 16px;
+  }
+  .hr-section > .items-table,
+  .hr-section > div > .items-table {
+    border-radius: 0 0 var(--radius) var(--radius);
+    overflow: hidden;
+  }
+  .hr-section-header {
+    border-radius: var(--radius) var(--radius) 0 0;
+  }
+  .hr-section-header {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .hr-section-title {
+    font-size: 0.875rem; font-weight: 700; color: var(--text-primary);
+    display: flex; align-items: center; gap: 7px; margin: 0;
+  }
+  .hr-section-title i { color: var(--accent); font-size: 1rem; }
+
+  /* ── Table ── */
+  .items-table { width: 100%; border-collapse: collapse; }
+  .items-table thead tr { background: #f9fafb; border-bottom: 1px solid var(--border); }
+  .items-table thead th {
+    padding: 10px 16px;
+    font-size: 11px; font-weight: 600;
+    color: var(--text-muted); text-transform: uppercase;
+    letter-spacing: 0.04em; white-space: nowrap; text-align: left;
+  }
+  .items-table thead th.text-end { text-align: right; }
+  .items-table tbody td {
+    padding: 13px 16px;
+    font-size: 13px; color: var(--text-primary);
+    border-bottom: 1px solid #f3f4f6;
+    vertical-align: middle;
+  }
+  .items-table tbody tr:last-child td { border-bottom: none; }
+  .items-table tbody tr:hover { background: #fafbfc; }
+  .text-end { text-align: right; }
+
+  /* ── Status ── */
+  .status-reconciled { color: var(--green); font-weight: 700; font-size: 13px; display: inline-flex; align-items: center; gap: 5px; }
+  .status-progress   { color: var(--orange); font-weight: 700; font-size: 13px; display: inline-flex; align-items: center; gap: 5px; }
+
+  /* ── Diff ── */
+  .diff-zero    { color: var(--green); font-family: 'DM Mono', monospace; font-weight: 700; }
+  .diff-nonzero { color: var(--red);   font-family: 'DM Mono', monospace; font-weight: 700; }
+  .amt-num      { font-family: 'DM Mono', monospace; }
+
+  /* ── Attachment ── */
+  .attach-icon     { color: #d1d5db; }
+  .attach-icon.has { color: var(--accent); }
+
+  /* ── Dropdown ── */
+  .hr-dropdown { position: relative; display: inline-block; }
+  .hr-dropdown-btn {
+    background: none; border: 1.5px solid var(--border); cursor: pointer;
+    color: var(--text-muted); padding: 5px 10px; border-radius: 7px;
+    font-size: 13px; line-height: 1;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .hr-dropdown-btn:hover { background: var(--bg); border-color: #9ca3af; color: var(--text-primary); }
+  .hr-dropdown-menu {
+    display: none;
+    position: fixed;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.13);
+    min-width: 180px; z-index: 99999; padding: 4px 0;
+  }
+  .hr-dropdown-menu.show { display: block; }
+  .hr-dropdown-menu a, .hr-dropdown-menu button {
+    display: flex; align-items: center; gap: 8px;
+    padding: 9px 14px;
+    font-size: 13px; color: var(--text-primary);
+    text-decoration: none; background: none; border: none;
+    width: 100%; text-align: left; cursor: pointer;
+    transition: background 0.1s; font-family: 'DM Sans', sans-serif;
+  }
+  .hr-dropdown-menu a:hover, .hr-dropdown-menu button:hover { background: var(--bg); }
+  .hr-dropdown-menu .danger { color: var(--red); }
+  .hr-dropdown-menu .warn   { color: var(--orange); }
+  .hr-dropdown-divider { height: 1px; background: var(--border); margin: 4px 0; }
+
+  /* ── Buttons ── */
+  .btn-hr {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 8px 16px; border-radius: 8px;
+    font-size: 13px; font-weight: 600; cursor: pointer;
+    border: none; text-decoration: none;
+    transition: background 0.15s, box-shadow 0.15s; line-height: 1;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .btn-hr-primary { background: var(--accent); color: #fff; }
+  .btn-hr-primary:hover { background: #4338ca; color: #fff; text-decoration: none; box-shadow: 0 4px 12px rgba(79,70,229,0.2); }
+
+  /* ── Empty ── */
+  .hr-empty { text-align: center; padding: 50px 20px; color: var(--text-muted); font-size: 13px; }
+  .hr-empty i { font-size: 36px; color: #d1d5db; display: block; margin-bottom: 10px; }
+
+  /* ── Toast ── */
+  .hr-toast {
+    position: fixed; bottom: 24px; right: 24px;
+    background: #1f2937; color: #fff;
+    border-radius: 10px; padding: 13px 18px;
+    font-size: 13px; font-weight: 600; z-index: 9999;
+    display: none; align-items: center; gap: 8px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.2); max-width: 360px;
+  }
+  .hr-toast.show    { display: flex; }
+  .hr-toast.success { background: var(--green); }
+  .hr-toast.error   { background: var(--red); }
+  .hr-toast.warning { background: var(--orange); }
+</style>
+
+<div>
+  <!-- Topbar -->
+  <div class="hr-topbar">
+    <nav class="hr-breadcrumb">
+      <span class="current">Reconciliation</span>
+    </nav>
+    <div class="hr-topbar-right">
+      {% if can_create_reconciliation %}
+      <a href="{% company_url 'reconciliation_start_form' account.id %}" class="btn-hr btn-hr-primary">
+        <i class="bi bi-plus-lg"></i> Initiate Reconciliation
+      </a>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Account bar -->
+  <div class="hr-account-bar">
+    <div class="hr-account-icon"><i class="bi bi-bank2"></i></div>
+    <div>
+      <div class="hr-account-name">{{ account.bank.bank_name }} — {{ account.account_number }}</div>
+      <div class="hr-account-sub">{{ account.account_holder_name|default:"" }}{% if account.get_account_type_display %} &bull; {{ account.get_account_type_display }}{% endif %}</div>
+    </div>
+  </div>
+
+  <!-- Warning -->
+  <div class="hr-warn-bar">
+    <i class="bi bi-exclamation-triangle-fill"></i>
+    <strong>Warning:</strong>&nbsp;The opening balance cannot be edited once transactions have been reconciled.
+  </div>
+
+  <div class="hr-content">
+
+    <div class="hr-section">
+      <div class="hr-section-header">
+        <div class="hr-section-title">
+          <i class="bi bi-clock-history"></i> Reconciliation History
+        </div>
+        <span style="font-size:12px;color:var(--text-muted);">
+          {{ reconciliations|length }} record{{ reconciliations|length|pluralize }}
+        </span>
+      </div>
+
+      <div style="overflow:hidden;border-radius:0 0 var(--radius) var(--radius);">
+      <table class="items-table">
+        <thead>
+          <tr>
+            <th>Reconciled Date</th>
+            <th>Period</th>
+            <th class="text-end">Closing Balance</th>
+            <th class="text-end">Cleared Amount</th>
+            <th class="text-end">Difference</th>
+            <th>Status</th>
+            <th class="text-center">Attachment</th>
+            <th style="width:60px;"></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if reconciliations %}
+            {% for recon in reconciliations %}
+            <tr>
+              <td style="white-space:nowrap;">
+                {% if recon.reconciled_date %}
+                  {{ recon.reconciled_date|date:"d/m/Y" }}
+                {% else %}
+                  <span style="color:var(--text-muted);">—</span>
+                {% endif %}
+              </td>
+              <td style="white-space:nowrap;font-size:12px;color:var(--text-muted);">
+                {{ recon.start_date|date:"d/m/Y" }} → {{ recon.end_date|date:"d/m/Y" }}
+              </td>
+              <td class="text-end amt-num">{{ base_currency_symbol }}{{ recon.closing_balance|floatformat:2 }}</td>
+              <td class="text-end amt-num">{{ base_currency_symbol }}{{ recon.cleared_amount|floatformat:2 }}</td>
+              <td class="text-end">
+                {% if recon.difference == 0 %}
+                  <span class="diff-zero">{{ base_currency_symbol }}0.00</span>
+                {% else %}
+                  <span class="diff-nonzero">{{ base_currency_symbol }}{{ recon.difference|floatformat:2 }}</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if recon.is_reconciled %}
+                  <span class="status-reconciled"><i class="bi bi-check-circle-fill" style="font-size:12px;"></i> Reconciled</span>
+                {% else %}
+                  <span class="status-progress"><i class="bi bi-hourglass-split" style="font-size:12px;"></i> In Progress</span>
+                {% endif %}
+              </td>
+              <td class="text-center">
+                {% if recon.attachment %}
+                  <a href="{{ recon.attachment.url }}" target="_blank" title="View attachment">
+                    <i class="bi bi-paperclip attach-icon has"></i>
+                  </a>
+                {% else %}
+                  <i class="bi bi-paperclip attach-icon"></i>
+                {% endif %}
+              </td>
+              <td class="text-center">
+                <div class="hr-dropdown">
+                  <button class="hr-dropdown-btn" onclick="toggleDropdown(this, event)">
+                    <i class="bi bi-three-dots"></i>
+                  </button>
+                  <div class="hr-dropdown-menu">
+                <a href="{% company_url 'reconciliation_working_screen' recon.id %}">
+                  <i class="bi bi-{% if recon.is_reconciled %}eye{% else %}pencil{% endif %}"></i>
+                  {% if recon.is_reconciled %}View{% else %}Continue{% endif %}
+                </a>
+                <a href="javascript:;"
+                   onclick="openReconciliationPrint('{% company_url 'reconciliation_pdf' recon.id %}'); return false;">
+                  <i class="bi bi-printer"></i> Print
+                </a>
+                <a href="{% company_url 'reconciliation_pdf' recon.id %}?download=1">
+                  <i class="bi bi-file-earmark-pdf-fill"></i> Download PDF
+                </a>
+                    <div class="hr-dropdown-divider"></div>
+                    {% if recon.is_reconciled and can_edit_reconciliation %}
+                    <button class="warn" onclick="undoReconciliation({{ recon.id }})">
+                      <i class="bi bi-arrow-counterclockwise"></i> Undo Reconciliation
+                    </button>
+                    {% endif %}
+                    {% if can_delete_reconciliation %}
+                    <button class="danger" onclick="deleteReconciliation({{ recon.id }})">
+                      <i class="bi bi-trash"></i> Delete
+                    </button>
+                    {% endif %}
+                  </div>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td colspan="8">
+                <div class="hr-empty">
+                  <i class="bi bi-file-earmark-text"></i>
+                  No reconciliations yet for this account.<br>
+                  {% if can_create_reconciliation %}
+                  <a href="{% company_url 'reconciliation_start_form' account.id %}"
+                     style="color:var(--accent);font-size:13px;margin-top:8px;display:inline-block;font-weight:600;">
+                    Initiate your first reconciliation &rarr;
+                  </a>
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="hr-toast" id="hr_toast"></div>
+
+<script>
+const CSRF = '{{ csrf_token }}';
+const COMPANY_PREFIX = window.location.pathname.split('/bank/reconciliation/')[0];
+const RECONCILE_BASE = `${COMPANY_PREFIX}/bank/reconciliation`;
+
+function showToast(msg, type = 'success') {
+  const t = document.getElementById('hr_toast');
+  t.textContent = msg;
+  t.className = 'hr-toast show ' + type;
+  setTimeout(() => t.className = 'hr-toast', 3500);
+}
+
+// Single shared dropdown menu element
+const _ddMenu = document.createElement('div');
+_ddMenu.className = 'hr-dropdown-menu';
+_ddMenu.id = 'shared-dd-menu';
+document.body.appendChild(_ddMenu);
+
+let _ddSource = null; // which button opened it
+
+function toggleDropdown(btn, event) {
+  event.stopPropagation();
+
+  // If already open for this button, close it
+  if (_ddSource === btn && _ddMenu.classList.contains('show')) {
+    _ddMenu.classList.remove('show');
+    _ddSource = null;
+    return;
+  }
+
+  // Clone this button's sibling menu content into the shared menu
+  const templateMenu = btn.nextElementSibling;
+  _ddMenu.innerHTML = templateMenu.innerHTML;
+
+  // Position using fixed coords from button's bounding rect
+  const rect = btn.getBoundingClientRect();
+  _ddMenu.style.top  = (rect.bottom + 4) + 'px';
+  _ddMenu.style.left = 'auto';
+  _ddMenu.style.right = (window.innerWidth - rect.right) + 'px';
+
+  _ddMenu.classList.add('show');
+  _ddSource = btn;
+}
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('#shared-dd-menu') && !e.target.closest('.hr-dropdown-btn')) {
+    _ddMenu.classList.remove('show');
+    _ddSource = null;
+  }
+});
+
+window.addEventListener('scroll', () => { _ddMenu.classList.remove('show'); _ddSource = null; }, true);
+
+function openReconciliationPrint(url) {
+  const win = window.open(url, '_blank');
+  if (!win) return;
+  if (win.focus) win.focus();
+  if (win.addEventListener) {
+    win.addEventListener('load', () => win.print());
+  }
+  setTimeout(() => { if (!win.closed) win.print(); }, 1100);
+}
+
+function undoReconciliation(reconId) {
+  _ddMenu.classList.remove('show'); _ddSource = null;
+  if (!confirm('Undo this reconciliation?\n\nAll ticked transactions will be reset and the period will be unlocked.')) return;
+  fetch(`${RECONCILE_BASE}/${reconId}/undo/`, {
+    method: 'POST', headers: { 'X-CSRFToken': CSRF, 'Content-Type': 'application/json' }
+  }).then(r => r.json()).then(data => {
+    if (data.success) { showToast('Reconciliation undone.', 'warning'); setTimeout(() => location.reload(), 1000); }
+    else showToast(data.error, 'error');
+  }).catch(() => showToast('Network error. Please try again.', 'error'));
+}
+
+function deleteReconciliation(reconId) {
+  _ddMenu.classList.remove('show'); _ddSource = null;
+  if (!confirm('DELETE this reconciliation?\n\nThis action cannot be undone.')) return;
+  fetch(`${RECONCILE_BASE}/${reconId}/delete/`, {
+    method: 'POST', headers: { 'X-CSRFToken': CSRF, 'Content-Type': 'application/json' }
+  }).then(r => r.json()).then(data => {
+    if (data.success) { showToast('Reconciliation deleted.', 'success'); setTimeout(() => window.location.href = data.redirect_url, 800); }
+    else showToast(data.error, 'error');
+  }).catch(() => showToast('Network error. Please try again.', 'error'));
+}
+</script>
+{% endblock %}

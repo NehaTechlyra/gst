@@ -1,0 +1,1359 @@
+{% extends 'website/index.html' %}
+{% load widget_tweaks %}
+{% load static %}
+{% block exstyle %}
+<link href="{% static 'style/general.css' %}" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.9.1/font/bootstrap-icons.css" rel="stylesheet">
+<!-- Select2 CSS (for searchable select) -->
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<style>
+  /* Remove green valid field styling added by neha on 02-02-26 */
+.was-validated .form-control:valid,
+.was-validated .form-select:valid,
+.form-control.is-valid,
+.form-select.is-valid {
+  border-color: #ced4da !important;
+  padding-right: calc(1.5em + 0.75rem);
+  background-image: none !important;
+}
+
+.was-validated .form-control:valid:focus,
+.was-validated .form-select:valid:focus,
+.form-control.is-valid:focus,
+.form-select.is-valid:focus {
+  border-color: #86b7fe !important;
+  box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25) !important;
+}
+/* Invalid field styling (show red border when invalid) */
+.was-validated .form-control:invalid,
+.was-validated .form-select:invalid,
+.form-control.is-invalid,
+.form-select.is-invalid {
+  border-color: #dc3545 !important;
+  box-shadow: 0 0 0 0.25rem rgba(220,53,69,0.15) !important;
+}
+.was-validated .form-control:invalid:focus,
+.was-validated .form-select:invalid:focus,
+.form-control.is-invalid:focus,
+.form-select.is-invalid:focus {
+  border-color: #dc3545 !important;
+  box-shadow: 0 0 0 0.25rem rgba(220,53,69,0.25) !important;
+}
+
+/* Style Select2 selection to reflect invalid state when underlying <select> is invalid */
+.select2-container--default .select2-selection--single.is-invalid {
+  border-color: #dc3545 !important;
+  box-shadow: 0 0 0 0.25rem rgba(220,53,69,0.15) !important;
+}
+  .nav-link.has-error::after {
+  content: '!';
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  background-color: #dc3545;
+  /* ... red circle with exclamation mark */
+}
+ /* Ensure Select2 matches form-control height */
+ 
+  .select2-container--default .select2-selection--single .select2-selection__rendered { 
+    line-height: calc(1.5em + .75rem + 2px) !important;
+    padding-left: 12px !important;
+  }
+  
+  /* Make sure Select2 takes full width */
+  .select2-container {
+    width: 100% !important;
+    display: block !important;
+  }
+  
+  /* Tab styles */
+  .nav-tabs .nav-link {
+    color: #495057;
+    border: 1px solid transparent;
+    border-bottom: 2px solid transparent;
+  }
+  .nav-tabs .nav-link:hover {
+    border-color: #e9ecef #e9ecef #dee2e6;
+  }
+  .nav-tabs .nav-link.active {
+    color: #495057;
+    background-color: #fff;
+    border-color: #dee2e6 #dee2e6 #fff;
+    border-bottom: 2px solid #0d6efd;
+  }
+  .tab-content {
+    border: 1px solid #dee2e6;
+    border-top: none;
+    padding: 1.5rem;
+    background-color: #fff;
+  }
+  .field-hidden {
+    display: none !important;
+  }
+  
+  
+</style>
+{% endblock exstyle %}
+{% block page_title %} {{ title }} {% endblock page_title %}
+{% block content %}
+<style>
+  .required-asterisk{ margin-left:6px; color:#dc3545; }
+</style>
+<div class="container mt-4">
+  <div
+    data-location-load-states-url="{% url 'load_states' %}"
+    data-location-load-cities-url="{% url 'load_cities' %}"
+    data-location-load-cities-url="{% url 'load_cities' %}"
+
+    hidden>
+  </div>
+    
+    <div class="card p-4 shadow-sm border-0">
+    <form method="POST" novalidate>
+      {% csrf_token %}
+      
+      <!-- Tabs Navigation -->
+      <ul class="nav nav-tabs mb-3" id="customerTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+          <button class="nav-link active" id="basic-tab" data-bs-toggle="tab" data-bs-target="#basic-details" type="button" role="tab">Basic Details</button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="other-tab" data-bs-toggle="tab" data-bs-target="#other-details" type="button" role="tab">Other Details</button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="address-tab" data-bs-toggle="tab" data-bs-target="#address-details" type="button" role="tab">Address</button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="contact-tab" data-bs-toggle="tab" data-bs-target="#contact-persons" type="button" role="tab">Contact Persons</button>
+        </li>
+      </ul>
+
+      <!-- Tab Content -->
+      <div class="tab-content" id="customerTabContent">
+        
+        <!-- Basic Details Tab -->
+        <div class="tab-pane fade show active" id="basic-details" role="tabpanel">
+          <div class="row">
+            {% for field in form %}
+              {% if field.name in 'customer_type,first_name,last_name,company_name,phone,mobile,is_active,is_vendor' %}
+
+              {% comment %} {% if field.name in 'customer_code,customer_type,first_name,last_name,company_name,email,phone,mobile,is_active,is_vendor' %} {% endcomment %}
+                <div class="col-md-4 mb-3 {% if field.name == 'first_name' or field.name == 'last_name' %}individual-field{% elif field.name == 'company_name' %}company-field{% endif %}">
+                  {% if field.name == "is_active" or field.name == "is_vendor" %}
+                    {{ field }}
+                    <label for="{{ field.id_for_label }}" class="form-label ms-2">
+                      {{ field.label }}
+                      {% if field.field.required %}
+                        <span class="required-asterisk">*</span>
+                      {% endif %}
+                    </label>
+                    
+                  {% else %}
+                    <label for="{{ field.id_for_label }}" class="form-label">
+                      {{ field.label }}
+                      {% if field.field.required %}
+                        <span class="required-asterisk">*</span>
+                      {% endif %}
+                    </label>
+                    {% comment %} {% if field.name == 'email' %}
+                      {{ field|add_class:"form-control"|attr:"type:email"|attr:"title:Please enter a valid email address" }} {% endcomment %}
+                    {% if field.name == 'phone' or field.name == 'mobile' %}
+                      {{ field|add_class:"form-control"|attr:"pattern:[0-9]{10}"|attr:"title:Please enter a valid 10-digit phone number"|attr:"maxlength:10" }}
+                    
+                    {% elif field.name == 'first_name' or field.name == 'last_name' or field.name == 'company_name' %}
+                    {{ field|add_class:"form-control name-trigger" }}  
+                    
+                    {% else %}
+                      {{ field|add_class:"form-control" }}
+                    {% endif %}
+                  {% endif %}
+                  {% for error in field.errors %}
+                    <div class="text-danger small">{{ error }}</div>
+                  {% endfor %}
+                </div>
+
+{# ---- Inject customer_code right after company_name ---- #}
+    {% if field.name == 'company_name' %}
+      <div class="col-md-4 mb-3">
+        <label for="{{ form.customer_code.id_for_label }}" class="form-label">
+          {{ form.customer_code.label }}
+        </label>
+        {{ form.customer_code }}
+        {% for error in form.customer_code.errors %}
+          <div class="text-danger small">{{ error }}</div>
+        {% endfor %}
+        {% comment %} <small class="form-text text-muted">Generated automatically from customer name</small> {% endcomment %}
+      </div>
+    {% endif %}
+
+    {# ---- Inject email right after customer_code ---- #}
+    {% if field.name == 'company_name' %}
+      {% for f in form %}
+        {% if f.name == 'email' %}
+          <div class="col-md-4 mb-3">
+            <label for="{{ f.id_for_label }}" class="form-label">
+              {{ f.label }}
+              {% if f.field.required %}<span class="required-asterisk">*</span>{% endif %}
+            </label>
+            {{ f|add_class:"form-control"|attr:"type:email"|attr:"title:Please enter a valid email address" }}
+            {% for error in f.errors %}
+              <div class="text-danger small">{{ error }}</div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endfor %}
+    {% endif %}
+                
+              {% endif %}
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- Other Details Tab -->
+        <div class="tab-pane fade" id="other-details" role="tabpanel">
+  <div class="row">
+    <!-- GST Treatment Field -->
+    {% for field in form %}
+      {% if field.name == 'gst_treatment' %}
+        <div class="col-md-6 mb-3">
+          <label for="{{ field.id_for_label }}" class="form-label">
+            
+            {{ field.label }}
+            {% if field.field.required %}
+              <span class="required-asterisk">*</span>
+            {% endif %}
+          </label>
+          {% comment %} {{ field|add_class:"form-control select2" }} {% endcomment %}
+          {{ field|add_class:"form-control"|attr:"pattern:[0-9A-Z]{15}"|attr:"maxlength:15"|attr:"title:Please enter a valid 15-character GST number"|attr:"style:text-transform:uppercase" }}
+          {% for error in field.errors %}
+            <div class="text-danger small">{{ error }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endfor %}
+
+    <!-- Conditionally shown GST Number based on GST Treatment -->
+    {% for field in form %}
+      {% if field.name == 'gst_number' %}
+        <div class="col-md-6 mb-3 gst-field field-hidden">
+          <label for="{{ field.id_for_label }}" class="form-label">
+            <span class="field-label-text">GST Number</span>
+            <span class="field-required-asterisk" style="display:none; color:#dc3545;">*</span>
+          </label>
+          {% comment %} {{ field|add_class:"form-control" }} {% endcomment %}
+          {{ field|add_class:"form-control"|attr:"pattern:[0-9A-Z]{15}"|attr:"maxlength:15"|attr:"title:Please enter a valid 15-character GST number"|attr:"style:text-transform:uppercase" }}
+          {% for error in field.errors %}
+            <div class="text-danger small">{{ error }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endfor %}
+
+    <!-- PAN Number -->
+    {% for field in form %}
+      {% if field.name == 'pan_number' %}
+        <div class="col-md-6 mb-3">
+          <label for="{{ field.id_for_label }}" class="form-label">
+            {{ field.label }}
+            {% if field.field.required %}
+              <span class="required-asterisk">*</span>
+            {% endif %}
+          </label>
+          {% comment %} {{ field|add_class:"form-control" }} {% endcomment %}
+          {{ field|add_class:"form-control"|attr:"pattern:[0-9A-Z]{10}"|attr:"maxlength:10"|attr:"title:Please enter a valid 10-character GST number"|attr:"style:text-transform:uppercase" }}
+          {% for error in field.errors %}
+            <div class="text-danger small">{{ error }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endfor %}
+
+    <!-- Tax Preference -->
+    {% for field in form %}
+      {% if field.name == 'tax_preference' %}
+        <div class="col-md-6 mb-3">
+          <label for="{{ field.id_for_label }}" class="form-label">
+            {{ field.label }}
+            {% if field.field.required %}
+              <span class="required-asterisk">*</span>
+            {% endif %}
+          </label>
+          {{ field|add_class:"form-control" }}
+          {% for error in field.errors %}
+            <div class="text-danger small">{{ error }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endfor %}
+
+    <!-- Exemption Reason (conditionally shown) -->
+    {% for field in form %}
+      {% if field.name == 'exemption_reason' %}
+        <div class="col-md-6 mb-3 exemption-field field-hidden">
+          <label for="{{ field.id_for_label }}" class="form-label">
+            {{ field.label }}
+            {% if field.field.required %}
+              <span class="required-asterisk">*</span>
+            {% endif %}
+          </label>
+          {{ field|add_class:"form-control" }}
+          {% for error in field.errors %}
+            <div class="text-danger small">{{ error }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endfor %}
+
+    <!-- Currency -->
+    {% for field in form %}
+      {% if field.name == 'currency' %}
+        <div class="col-md-6 mb-3">
+          <label for="{{ field.id_for_label }}" class="form-label">
+            {{ field.label }}
+            {% if field.field.required %}
+              <span class="required-asterisk">*</span>
+            {% endif %}
+          </label>
+          {{ field|add_class:"form-control" }}
+          {% for error in field.errors %}
+            <div class="text-danger small">{{ error }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endfor %}
+
+    <!-- Payment Terms -->
+    {% for field in form %}
+      {% if field.name == 'payment_terms' %}
+        <div class="col-md-6 mb-3">
+          <label for="{{ field.id_for_label }}" class="form-label">
+            {{ field.label }}
+            {% if field.field.required %}
+              <span class="required-asterisk">*</span>
+            {% endif %}
+          </label>
+          {{ field|add_class:"form-control select2" }}
+          {% for error in field.errors %}
+            <div class="text-danger small">{{ error }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endfor %}
+
+    <!-- Opening Balance -->
+    {% for field in form %}
+      {% if field.name == 'opening_balance' %}
+        <div class="col-md-6 mb-3">
+          <label for="{{ field.id_for_label }}" class="form-label">
+            {{ field.label }}
+          </label>
+          {{ field|add_class:"form-control" }}
+          {% for error in field.errors %}
+            <div class="text-danger small">{{ error }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endfor %}
+  </div>
+</div>
+
+        <!-- Address Tab -->
+        <div class="tab-pane fade" id="address-details" role="tabpanel">
+          
+          <!-- Billing Address Section -->
+          <div class="card mb-4">
+            <div class="card-header">
+              <h6 class="mb-0"><i class="bi bi-house-door me-2"></i>Billing Address</h6>
+            </div>
+            <div class="card-body">
+              <div class="row">
+                <div class="col-md-6 mb-3">
+                  <label for="{{ form.address_line_1.id_for_label }}" class="form-label">
+                    {{ form.address_line_1.label }}
+                    {% if form.address_line_1.field.required %}
+                      <span class="required-asterisk text-danger">*</span>
+                    {% endif %}
+                  </label>
+                  {{ form.address_line_1|add_class:"form-control" }}
+                  {% for error in form.address_line_1.errors %}
+                    <div class="text-danger small">{{ error }}</div>
+                  {% endfor %}
+                </div>
+
+                <div class="col-md-6 mb-3">
+                  <label for="{{ form.address_line_2.id_for_label }}" class="form-label">
+                    {{ form.address_line_2.label }}
+                    {% if form.address_line_2.field.required %}
+                      <span class="required-asterisk text-danger">*</span>
+                    {% endif %}
+                  </label>
+                  {{ form.address_line_2|add_class:"form-control" }}
+                  {% for error in form.address_line_2.errors %}
+                    <div class="text-danger small">{{ error }}</div>
+                  {% endfor %}
+                </div>
+
+                <div class="col-md-6 mb-3">
+                  <label for="{{ form.country.id_for_label }}" class="form-label">
+                    {{ form.country.label }}
+                    {% if form.country.field.required %}
+                      <span class="required-asterisk text-danger">*</span>
+                    {% endif %}
+                  </label>
+                  {{ form.country|add_class:"form-control select2" }}
+                  {% for error in form.country.errors %}
+                    <div class="text-danger small">{{ error }}</div>
+                  {% endfor %}
+                </div>
+
+                <div class="col-md-6 mb-3">
+                  <label for="{{ form.state.id_for_label }}" class="form-label">
+                    {{ form.state.label }}
+                    {% if form.state.field.required %}
+                      <span class="required-asterisk text-danger">*</span>
+                    {% endif %}
+                  </label>
+                  {{ form.state|add_class:"form-control select2 location-state-select" }}
+                  {% for error in form.state.errors %}
+                    <div class="text-danger small">{{ error }}</div>
+                  {% endfor %}
+                </div>
+
+                <div class="col-md-6 mb-3">
+                  <label for="{{ form.city.id_for_label }}" class="form-label">
+                    {{ form.city.label }}
+                    {% if form.city.field.required %}
+                      <span class="required-asterisk text-danger">*</span>
+                    {% endif %}
+                  </label>
+                  {{ form.city|add_class:"form-control select2 location-city-select" }}
+                  {% for error in form.city.errors %}
+                    <div class="text-danger small">{{ error }}</div>
+                  {% endfor %}
+                </div>
+
+                <div class="col-md-6 mb-3">
+                  <label for="{{ form.postal_code.id_for_label }}" class="form-label">
+                    {{ form.postal_code.label }}
+                    {% if form.postal_code.field.required %}
+                      <span class="required-asterisk text-danger">*</span>
+                    {% endif %}
+                  </label>
+                  {{ form.postal_code|add_class:"form-control" }}
+                  {% for error in form.postal_code.errors %}
+                    <div class="text-danger small">{{ error }}</div>
+                  {% endfor %}
+                </div>
+
+              </div>
+            </div>
+          </div>
+
+          <!-- Shipping Address Section -->
+          <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+              <h6 class="mb-0"><i class="bi bi-truck me-2"></i>Shipping Address</h6>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="sameAsBilling" style="cursor: pointer;">
+                <label class="form-check-label" for="sameAsBilling" style="cursor: pointer;">
+                  Same as Billing Address
+                </label>
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="row">
+                <div class="col-md-6 mb-3">
+                  <label for="{{ form.shipping_address_line_1.id_for_label }}" class="form-label">
+                    {{ form.shipping_address_line_1.label }}
+                    {% if form.shipping_address_line_1.field.required %}
+                      <span class="required-asterisk text-danger">*</span>
+                    {% endif %}
+                  </label>
+                  {{ form.shipping_address_line_1|add_class:"form-control" }}
+                  {% for error in form.shipping_address_line_1.errors %}
+                    <div class="text-danger small">{{ error }}</div>
+                  {% endfor %}
+                </div>
+
+                <div class="col-md-6 mb-3">
+                  <label for="{{ form.shipping_address_line_2.id_for_label }}" class="form-label">
+                    {{ form.shipping_address_line_2.label }}
+                    {% if form.shipping_address_line_2.field.required %}
+                      <span class="required-asterisk text-danger">*</span>
+                    {% endif %}
+                  </label>
+                  {{ form.shipping_address_line_2|add_class:"form-control" }}
+                  {% for error in form.shipping_address_line_2.errors %}
+                    <div class="text-danger small">{{ error }}</div>
+                  {% endfor %}
+                </div>
+
+                <div class="col-md-6 mb-3">
+                  <label for="{{ form.shipping_country.id_for_label }}" class="form-label">
+                    {{ form.shipping_country.label }}
+                    {% if form.shipping_country.field.required %}
+                      <span class="required-asterisk text-danger">*</span>
+                    {% endif %}
+                  </label>
+                  {{ form.shipping_country|add_class:"form-control select2" }}
+                  {% for error in form.shipping_country.errors %}
+                    <div class="text-danger small">{{ error }}</div>
+                  {% endfor %}
+                </div>
+
+                <div class="col-md-6 mb-3">
+                  <label for="{{ form.shipping_state.id_for_label }}" class="form-label">
+                    {{ form.shipping_state.label }}
+                    {% if form.shipping_state.field.required %}
+                      <span class="required-asterisk text-danger">*</span>
+                    {% endif %}
+                  </label>
+                  {{ form.shipping_state|add_class:"form-control select2 location-state-select" }}
+                  {% for error in form.shipping_state.errors %}
+                    <div class="text-danger small">{{ error }}</div>
+                  {% endfor %}
+                </div>
+
+                <div class="col-md-6 mb-3">
+                  <label for="{{ form.shipping_city.id_for_label }}" class="form-label">
+                    {{ form.shipping_city.label }}
+                    {% if form.shipping_city.field.required %}
+                      <span class="required-asterisk text-danger">*</span>
+                    {% endif %}
+                  </label>
+                  {{ form.shipping_city|add_class:"form-control select2 location-city-select" }}
+                  {% for error in form.shipping_city.errors %}
+                    <div class="text-danger small">{{ error }}</div>
+                  {% endfor %}
+                </div>
+
+                <div class="col-md-6 mb-3">
+                  <label for="{{ form.shipping_postal_code.id_for_label }}" class="form-label">
+                    {{ form.shipping_postal_code.label }}
+                    {% if form.shipping_postal_code.field.required %}
+                      <span class="required-asterisk text-danger">*</span>
+                    {% endif %}
+                  </label>
+                  {{ form.shipping_postal_code|add_class:"form-control" }}
+                  {% for error in form.shipping_postal_code.errors %}
+                    <div class="text-danger small">{{ error }}</div>
+                  {% endfor %}
+                </div>
+
+              </div>
+            </div>
+          </div>
+
+        </div>
+        <!-- Contact Persons Tab -->
+        <div class="tab-pane fade" id="contact-persons" role="tabpanel">
+          <div id="contact-persons-container">
+            {% if contacts %}
+              {% for c in contacts %}
+                <div class="row contact-row mb-2">
+                  <div class="col-md-4">
+                    <input type="text" name="contact_name" class="form-control" placeholder="Name" value="{{ c.name }}">
+                  </div>
+                  <div class="col-md-4">
+                    <input type="email" name="contact_email" class="form-control" placeholder="Email" value="{{ c.email }}">
+                  </div>
+                  <div class="col-md-3">
+                    <input type="text" name="contact_phone" class="form-control" placeholder="Phone" value="{{ c.phone }}">
+                  </div>
+                  <div class="col-md-1">
+                    <button type="button" class="btn btn-danger btn-sm remove-contact">Delete</button>
+                  </div>
+                </div>
+              {% endfor %}
+            {% else %}
+              <div class="row contact-row mb-2">
+                <div class="col-md-4">
+                  <input type="text" name="contact_name" class="form-control" placeholder="Name">
+                </div>
+                <div class="col-md-4">
+                  <input type="email" name="contact_email" class="form-control" placeholder="Email">
+                </div>
+                <div class="col-md-3">
+                  <input type="text" name="contact_phone" class="form-control" placeholder="Phone">
+                </div>
+                <div class="col-md-1">
+                  <button type="button" class="btn btn-danger btn-sm remove-contact">Delete</button>
+                </div>
+              </div>
+            {% endif %}
+          </div>
+          <div class="mt-3">
+            <button type="button" id="add-contact" class="btn btn-primary btn-sm">Add Contact Person</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-4">
+        {% if can_create_customers or can_edit_customers %}
+          <button type="submit" class="btn btn-primary">Save Customer</button>
+        {% else %}
+          <div class="alert alert-warning">You do not have permission to save this customer.</div>
+        {% endif %}
+        <a href="{% url 'customer_list' %}" class="btn btn-outline-secondary ms-2">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% comment %} Payment terms modal used by Select2 "+ New" option {% endcomment %}
+<div class="modal fade" id="paymentTermsModal" tabindex="-1" aria-labelledby="paymentTermsLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="paymentTermsLabel">Configure Payment Terms</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <table class="table table-bordered align-middle mb-3">
+          <thead>
+            <tr>
+              <th style="width:45%;">TERM NAME</th>
+              <th style="width:45%;">NUMBER OF DAYS</th>
+              <th style="width:10%;"></th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+        <button class="btn btn-outline-primary btn-sm" id="addNew" type="button">+ Add New</button>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-primary save-payment-terms" type="button">Save</button>
+        <button class="btn btn-secondary" data-bs-dismiss="modal" type="button">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- jQuery + Select2 JS (Load these FIRST before any other scripts) -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script src="{% static 'js/location_selects.js' %}"></script>
+
+<!-- Contact Person Management Script -->
+<script>
+document.addEventListener('click', function(e) {
+  if (e.target && e.target.id === 'add-contact') {
+    const container = document.getElementById('contact-persons-container');
+    const row = document.createElement('div');
+    row.className = 'row contact-row mb-2';
+    row.innerHTML = `
+      <div class="col-md-4">
+        <input type="text" name="contact_name" class="form-control" placeholder="Name">
+      </div>
+      <div class="col-md-4">
+        <input type="email" name="contact_email" class="form-control" placeholder="Email">
+      </div>
+      <div class="col-md-3">
+        <input type="text" name="contact_phone" class="form-control" placeholder="Phone">
+      </div>
+      <div class="col-md-1">
+        <button type="button" class="btn btn-danger btn-sm remove-contact">Delete</button>
+      </div>
+    `;
+    container.appendChild(row);
+  }
+
+  if (e.target && e.target.classList && e.target.classList.contains('remove-contact')) {
+    const row = e.target.closest('.contact-row');
+    if (row) row.remove();
+  }
+});
+</script>
+
+<!-- GST Treatment Dynamic Field Logic -->
+<script>
+// GST Treatment field visibility mapping using exact names from database
+const gstTreatmentRules = {
+  'Registered Business - Regular': {
+    showFields: ['gst_number'],
+    requiredFields: ['gst_number'],
+    labels: { 'gst_number': 'GSTIN / UIN' }
+  },
+  'Registered Business - Composition': {
+    showFields: ['gst_number'],
+    requiredFields: ['gst_number'],
+    labels: { 'gst_number': 'GSTIN / UIN' }
+  },
+  'Unregistered Business': {
+    showFields: [],
+    requiredFields: [],
+    labels: {}
+  },
+  'Consumer': {
+    showFields: [],
+    requiredFields: [],
+    labels: {}
+  },
+  'Overseas': {
+    showFields: ['gst_number'],
+    requiredFields: ['gst_number'],
+    labels: { 'gst_number': 'GSTIN / UIN' }
+  },
+  'Special Economic Zone': {
+    showFields: ['gst_number'],
+    requiredFields: ['gst_number'],
+    labels: { 'gst_number': 'GSTIN / UIN' }
+  },
+  'Deemed Export': {
+    showFields: ['gst_number'],
+    requiredFields: ['gst_number'],
+    labels: { 'gst_number': 'GSTIN / UIN' }
+  },
+  'Tax Deductor': {
+    showFields: ['gst_number'],
+    requiredFields: ['gst_number'],
+    labels: { 'gst_number': 'GSTIN / UIN' }
+  },
+  'SEZ Developer': {
+    showFields: ['gst_number'],
+    requiredFields: ['gst_number'],
+    labels: { 'gst_number': 'GSTIN / UIN' }
+  },
+  'Input Service Distributor': {
+    showFields: ['gst_number'],
+    requiredFields: ['gst_number'],
+    labels: { 'gst_number': 'GSTIN / UIN' }
+  }
+};
+
+function updateFieldsBasedOnGstTreatment() {
+  const gstTreatmentSelect = document.querySelector('select[name="gst_treatment"]');
+  if (!gstTreatmentSelect) {
+    return;
+  }
+
+  const selectedOption = gstTreatmentSelect.options[gstTreatmentSelect.selectedIndex];
+  const selectedText = selectedOption ? selectedOption.text.trim() : '';
+
+  // Get rules for the selected treatment
+  const rules = gstTreatmentRules[selectedText] || { showFields: [], requiredFields: [], labels: {} };
+
+  // Handle all GST-related fields
+  const gstFields = document.querySelectorAll('.gst-field');
+  
+  gstFields.forEach(field => {
+    const input = field.querySelector('input, select');
+    const fieldName = input?.name;
+    
+    if (fieldName && rules.showFields.includes(fieldName)) {
+      // Show the field
+      field.classList.remove('field-hidden');
+      field.style.display = '';
+      
+      // Update label if specified
+      if (rules.labels[fieldName]) {
+        const labelText = field.querySelector('.field-label-text');
+        if (labelText) {
+          labelText.textContent = rules.labels[fieldName];
+        }
+      }
+      
+      // Handle required asterisk
+      const requiredAsterisk = field.querySelector('.field-required-asterisk');
+      if (rules.requiredFields.includes(fieldName)) {
+        if (requiredAsterisk) requiredAsterisk.style.display = 'inline';
+        if (input) input.setAttribute('required', 'required');
+      } else {
+        if (requiredAsterisk) requiredAsterisk.style.display = 'none';
+        if (input) input.removeAttribute('required');
+      }
+    } else {
+      // Hide the field
+      field.classList.add('field-hidden');
+      field.style.display = 'none';
+      
+      if (input) {
+        input.removeAttribute('required');
+        input.value = '';
+      }
+    }
+  });
+}
+// GST Number validation
+const gstField = document.querySelector('input[name="gst_number"]');
+const panField = document.querySelector('input[name="pan_number"]');
+if (gstField) {
+  gstField.addEventListener('invalid', function(e) {
+    // Custom error messages
+  });
+  
+  gstField.addEventListener('input', function() {
+    // Auto-uppercase and filter invalid characters
+    this.value = this.value.toUpperCase().replace(/[^0-9A-Z]/g, '');
+  });
+  
+  gstField.addEventListener('blur', function() {
+    // Validate on blur
+  });
+}
+if (panField) {
+  panField.addEventListener('invalid', function(e) {
+    // Custom error messages
+  });
+  
+  panField.addEventListener('input', function() {
+    // Auto-uppercase and filter invalid characters
+    this.value = this.value.toUpperCase().replace(/[^0-9A-Z]/g, '');
+  });
+  
+  panField.addEventListener('blur', function() {
+    // Validate on blur
+  });
+}
+// Tax Preference Dynamic Field Logic 
+function updateExemptionReasonField() {
+  const taxPreferenceSelect = document.querySelector('select[name="tax_preference"]');
+  if (!taxPreferenceSelect) {
+    return;
+  }
+
+  const selectedValue = taxPreferenceSelect.value;
+
+  // Get the exemption reason field container
+  const exemptionField = document.querySelector('.exemption-field');
+  
+  if (exemptionField) {
+    if (selectedValue === 'tax_exempt') {
+      // Show the exemption reason field
+      exemptionField.classList.remove('field-hidden');
+      exemptionField.style.display = '';
+    } else {
+      // Hide the exemption reason field
+      exemptionField.classList.add('field-hidden');
+      exemptionField.style.display = 'none';
+      
+      // Clear the value when hidden
+      const exemptionInput = exemptionField.querySelector('input, textarea');
+      if (exemptionInput) {
+        exemptionInput.value = '';
+      }
+    }
+  }
+}
+
+// Customer Type Dynamic Field Logic
+function updateCustomerTypeFields() {
+  const customerTypeSelect = document.querySelector('select[name="customer_type"]');
+  if (!customerTypeSelect) {
+    return;
+  }
+
+  const selectedValue = customerTypeSelect.value;
+  
+  // Get field containers
+  const individualFields = document.querySelectorAll('.individual-field');
+  const companyFields = document.querySelectorAll('.company-field');
+  
+  // Get specific inputs
+  const firstNameInput = document.querySelector('input[name="first_name"]');
+  const companyNameInput = document.querySelector('input[name="company_name"]');
+  
+  if (selectedValue === 'individual') {
+    // Show individual fields (first_name, last_name)
+    individualFields.forEach(field => {
+      field.classList.remove('field-hidden');
+      field.style.display = '';
+      const input = field.querySelector('input');
+      if (input) {
+        input.removeAttribute('disabled');
+      }
+    });
+    
+    // Make first_name required
+    if (firstNameInput) {
+      firstNameInput.setAttribute('required', 'required');
+      const label = document.querySelector('label[for="' + firstNameInput.id + '"]');
+      if (label) {
+        let asterisk = label.querySelector('.required-asterisk');
+        if (!asterisk) {
+          asterisk = document.createElement('span');
+          asterisk.className = 'required-asterisk';
+          asterisk.textContent = '*';
+          label.appendChild(asterisk);
+        }
+        asterisk.style.display = 'inline';
+      }
+    }
+    
+    // Hide company field and remove required
+    companyFields.forEach(field => {
+      field.classList.add('field-hidden');
+      field.style.display = 'none';
+      const input = field.querySelector('input');
+      if (input) {
+        input.value = '';
+        input.removeAttribute('required');
+      }
+    });
+    
+    if (companyNameInput) {
+      companyNameInput.removeAttribute('required');
+      const label = document.querySelector('label[for="' + companyNameInput.id + '"]');
+      if (label) {
+        const asterisk = label.querySelector('.required-asterisk');
+        if (asterisk) {
+          asterisk.style.display = 'none';
+        }
+      }
+    }
+    
+  } else if (selectedValue === 'company') {
+    // Hide individual fields and remove required
+    individualFields.forEach(field => {
+      field.classList.add('field-hidden');
+      field.style.display = 'none';
+      const input = field.querySelector('input');
+      if (input) {
+        input.value = '';
+        input.removeAttribute('required');
+      }
+    });
+    
+    if (firstNameInput) {
+      firstNameInput.removeAttribute('required');
+      const label = document.querySelector('label[for="' + firstNameInput.id + '"]');
+      if (label) {
+        const asterisk = label.querySelector('.required-asterisk');
+        if (asterisk) {
+          asterisk.style.display = 'none';
+        }
+      }
+    }
+    
+    // Show company field and make it required
+    companyFields.forEach(field => {
+      field.classList.remove('field-hidden');
+      field.style.display = '';
+      const input = field.querySelector('input');
+      if (input) {
+        input.removeAttribute('disabled');
+      }
+    });
+    
+    if (companyNameInput) {
+      companyNameInput.setAttribute('required', 'required');
+      const label = document.querySelector('label[for="' + companyNameInput.id + '"]');
+      if (label) {
+        let asterisk = label.querySelector('.required-asterisk');
+        if (!asterisk) {
+          asterisk = document.createElement('span');
+          asterisk.className = 'required-asterisk';
+          asterisk.textContent = '*';
+          label.appendChild(asterisk);
+        }
+        asterisk.style.display = 'inline';
+      }
+    }
+    
+  } else {
+    // Show all fields if no selection, remove all required
+    individualFields.forEach(field => {
+      field.classList.remove('field-hidden');
+      field.style.display = '';
+    });
+    companyFields.forEach(field => {
+      field.classList.remove('field-hidden');
+      field.style.display = '';
+    });
+    
+    // Remove required from both
+    if (firstNameInput) {
+      firstNameInput.removeAttribute('required');
+    }
+    if (companyNameInput) {
+      companyNameInput.removeAttribute('required');
+    }
+  }
+}
+
+// Initialize Select2 and event handlers
+if (window.jQuery) {
+  jQuery(document).ready(function($) {
+    // Initialize Select2
+    $('.select2').select2({
+      placeholder: 'Select an option',
+      allowClear: true,
+      width: 'resolve'
+    });
+    
+    // GST Treatment listeners
+    $('select[name="gst_treatment"]').on('select2:select change', function() {
+      updateFieldsBasedOnGstTreatment();
+    });
+    
+    // Tax Preference listeners
+    $('select[name="tax_preference"]').on('change', function() {
+      updateExemptionReasonField();
+    });
+    
+    // Customer Type listeners
+    $('select[name="customer_type"]').on('change', function() {
+      updateCustomerTypeFields();
+    });
+    
+    // Initialize fields on page load
+    setTimeout(function() {
+      updateFieldsBasedOnGstTreatment();
+      updateExemptionReasonField();
+      updateCustomerTypeFields();
+    }, 100);
+  });
+}
+
+// Same as Billing Address functionality
+// Same as Billing Address functionality
+document.addEventListener('DOMContentLoaded', function() {
+  const sameAsBillingCheckbox = document.getElementById('sameAsBilling');
+  const form = document.querySelector('form');
+  
+  // Field mapping between billing and shipping
+  const fieldMapping = {
+    'id_address_line_1': 'id_shipping_address_line_1',
+    'id_address_line_2': 'id_shipping_address_line_2',
+    'id_city': 'id_shipping_city',
+    'id_state': 'id_shipping_state',
+    'id_postal_code': 'id_shipping_postal_code',
+    'id_country': 'id_shipping_country'
+  };
+  
+  if (sameAsBillingCheckbox) {
+    sameAsBillingCheckbox.addEventListener('change', function() {
+      if (this.checked) {
+        // Copy billing address to shipping address
+        for (const [billingField, shippingField] of Object.entries(fieldMapping)) {
+          const billing = document.getElementById(billingField);
+          const shipping = document.getElementById(shippingField);
+          
+          if (billing && shipping) {
+            shipping.value = billing.value;
+            
+            // Trigger change event for select2 fields
+            if (window.jQuery && jQuery(shipping).hasClass('select2-hidden-accessible')) {
+              jQuery(shipping).trigger('change');
+            }
+            
+            // Make readonly instead of disabled
+            shipping.readOnly = true;
+            shipping.style.backgroundColor = '#e9ecef';
+            
+            // For select fields, disable them but we'll enable before submit
+            if (shipping.tagName === 'SELECT') {
+              shipping.disabled = true;
+              shipping.setAttribute('data-was-disabled', 'true');
+            }
+          }
+        }
+      } else {
+        // Enable shipping fields
+        for (const shippingField of Object.values(fieldMapping)) {
+          const shipping = document.getElementById(shippingField);
+          if (shipping) {
+            shipping.readOnly = false;
+            shipping.disabled = false;
+            shipping.removeAttribute('data-was-disabled');
+            shipping.style.backgroundColor = '';
+          }
+        }
+      }
+    });
+    
+    // Also copy on billing field changes when checkbox is checked
+    for (const billingField of Object.keys(fieldMapping)) {
+      const billing = document.getElementById(billingField);
+      if (billing) {
+        billing.addEventListener('change', function() {
+          if (sameAsBillingCheckbox.checked) {
+            const shippingField = fieldMapping[billingField];
+            const shipping = document.getElementById(shippingField);
+            if (shipping) {
+              shipping.value = this.value;
+              if (window.jQuery && jQuery(shipping).hasClass('select2-hidden-accessible')) {
+                jQuery(shipping).trigger('change');
+              }
+            }
+          }
+        });
+        
+        // For Select2 fields, listen to select2 events too
+        if (window.jQuery && jQuery(billing).hasClass('select2-hidden-accessible')) {
+          jQuery(billing).on('select2:select', function() {
+            if (sameAsBillingCheckbox.checked) {
+              const shippingField = fieldMapping[billingField];
+              const shipping = document.getElementById(shippingField);
+              if (shipping) {
+                jQuery(shipping).val(jQuery(this).val()).trigger('change');
+              }
+            }
+          });
+        }
+      }
+    }
+  }
+  
+  // CRITICAL FIX: Enable all shipping fields before form submission
+  if (form) {
+    form.addEventListener('submit', function(e) {
+      // Re-enable any disabled shipping fields so they get submitted
+      for (const shippingField of Object.values(fieldMapping)) {
+        const shipping = document.getElementById(shippingField);
+        if (shipping && shipping.hasAttribute('data-was-disabled')) {
+          shipping.disabled = false;
+        }
+      }
+    });
+  }
+});
+</script>
+
+<!-- Navigation confirmation modal -->
+<div class="modal fade" id="unsavedChangesModal" tabindex="-1" aria-labelledby="unsavedChangesLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="unsavedChangesLabel">Unsaved Changes</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        You have unsaved changes. Do you want to leave without saving?
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" id="confirmNavigation" class="btn btn-primary">Leave</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+    // Track form changes - Global variable
+    let formChanged = false;
+    const form = document.querySelector('form');
+
+    if (form) {
+        form.addEventListener('change', () => { formChanged = true; });
+        form.addEventListener('input', () => { formChanged = true; });
+        form.addEventListener('submit', function(e) {
+    // For each disabled shipping field, create a hidden input with its value
+        for (const shippingField of Object.values(fieldMapping)) {
+          const shipping = document.getElementById(shippingField);
+          if (shipping && shipping.disabled) {
+            const hiddenInput = document.createElement('input');
+            hiddenInput.type = 'hidden';
+            hiddenInput.name = shipping.name;
+            hiddenInput.value = shipping.value;
+            form.appendChild(hiddenInput);
+          }
+        }
+      });
+    }
+    
+    // Track Select2 changes using jQuery delegation
+    if (window.$ && window.jQuery) {
+        $(document).on('change', 'select.select2, .select2-hidden-accessible', function() {
+            formChanged = true;
+        });
+    }
+    
+    // Direct select element change listeners as fallback
+    document.addEventListener('change', function(e) {
+        if (e.target.tagName === 'SELECT') {
+            formChanged = true;
+        }
+    }, true);
+
+    // Global click interceptor for all links
+    document.addEventListener('click', function(e) {
+        let link = e.target.closest('a');
+        if (link && formChanged) {
+            const href = link.getAttribute('href');
+            if (href && !href.startsWith('#') && !link.getAttribute('data-bs-toggle') && !href.startsWith('javascript:')) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                const modal = new bootstrap.Modal(document.getElementById('unsavedChangesModal'));
+                const confirmBtn = document.getElementById('confirmNavigation');
+                
+                const newConfirmBtn = confirmBtn.cloneNode(true);
+                confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+                
+                newConfirmBtn.addEventListener('click', () => {
+                    formChanged = false;
+                    window.location.href = href;
+                });
+                
+                modal.show();
+            }
+        }
+    }, true);
+
+// Auto-generate customer code when name fields change
+document.addEventListener('DOMContentLoaded', function() {
+    const nameFields = document.querySelectorAll('.name-trigger');
+    const codeField = document.getElementById('{{ form.customer_code.id_for_label }}');
+    
+    function generateCode() {
+        const names = Array.from(nameFields).map(field => field.value.trim()).filter(Boolean);
+        if (names.length === 0) return;
+        
+        const fullName = names.join(' ').substring(0, 20);  // Combine all name fields
+        
+        // Show loading
+        codeField.value = 'Generating...';
+        codeField.disabled = true;
+        
+        // AJAX call
+        fetch("{% url 'generate_customer_code' %}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: `name=${encodeURIComponent(fullName)}`
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                codeField.value = data.code;
+            } else {
+                codeField.value = '';
+            }
+            codeField.disabled = false;
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            codeField.value = '';
+            codeField.disabled = false;
+        });
+    }
+    
+    // Debounce function to avoid too many requests
+    let timeout;
+    nameFields.forEach(field => {
+        field.addEventListener('input', function() {
+            clearTimeout(timeout);
+            timeout = setTimeout(generateCode, 500);  // Wait 500ms after typing stops
+        });
+    });
+});
+
+
+
+// CRITICAL: Handle form validation and navigate to tabs with errors updt by neha on 02-02-26
+document.addEventListener('DOMContentLoaded', function() {
+  const form = document.querySelector('form');
+  
+  if (form) {
+    form.addEventListener('submit', function(e) {
+      // First, let browser validation run
+      if (!form.checkValidity()) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        // Find the first invalid field
+        const firstInvalidField = form.querySelector(':invalid');
+        
+        if (firstInvalidField) {
+          // Find which tab pane contains this field
+          const tabPane = firstInvalidField.closest('.tab-pane');
+          
+          if (tabPane) {
+            // Get the tab ID
+            const tabId = tabPane.getAttribute('id');
+            
+            // Find and activate the corresponding tab
+            const tabButton = document.querySelector(`button[data-bs-target="#${tabId}"]`);
+            
+            if (tabButton) {
+              // Use Bootstrap's Tab to show the tab
+              const tab = new bootstrap.Tab(tabButton);
+              tab.show();
+              
+              // Scroll to the invalid field after tab transition
+              setTimeout(() => {
+                firstInvalidField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                firstInvalidField.focus();
+                
+                // Show which tabs have errors
+                markTabsWithErrors();
+              }, 150);
+            }
+          }
+        }
+        
+        // Add Bootstrap validation classes
+        form.classList.add('was-validated');
+
+        // Mark Select2 controls as invalid if their underlying select is invalid
+        // (Select2 hides the original select; we must apply an invalid class to the visible container)
+        try {
+          document.querySelectorAll('select.select2, select').forEach(function(sel) {
+            // Only consider selects that are required or invalid
+            if (!sel.classList.contains('select2-hidden-accessible') && !sel.classList.contains('select2')) return;
+            var isValid = sel.checkValidity ? sel.checkValidity() : (sel.value && sel.value !== '');
+            var container = null;
+            if (sel.classList.contains('select2-hidden-accessible')) {
+              // Select2 creates a sibling container
+              container = sel.nextElementSibling;
+            } else if (sel.classList.contains('select2')) {
+              container = sel.parentElement.querySelector('.select2-container');
+            }
+            if (container) {
+              var selection = container.querySelector('.select2-selection');
+              if (selection) {
+                if (!isValid) {
+                  selection.classList.add('is-invalid');
+                } else {
+                  selection.classList.remove('is-invalid');
+                }
+              }
+            }
+          });
+        } catch (err) { console.warn('Select2 validation sync failed', err); }
+      }
+    });
+  }
+  
+  // Function to mark tabs that have validation errors
+  function markTabsWithErrors() {
+    // Remove all error indicators first
+    document.querySelectorAll('.nav-link').forEach(tab => {
+      tab.classList.remove('has-error');
+    });
+    
+    // Check each tab pane for invalid fields
+    document.querySelectorAll('.tab-pane').forEach(pane => {
+      const invalidFields = pane.querySelectorAll(':invalid');
+      
+      if (invalidFields.length > 0) {
+        const tabId = pane.getAttribute('id');
+        const tabButton = document.querySelector(`button[data-bs-target="#${tabId}"]`);
+        
+        if (tabButton) {
+          tabButton.classList.add('has-error');
+        }
+      }
+    });
+  }
+  
+  // Also check for errors when fields change
+  form.addEventListener('change', function() {
+    if (form.classList.contains('was-validated')) {
+      markTabsWithErrors();
+    }
+  }, true);
+});
+
+
+form.addEventListener('submit', function() {
+    const codeField = document.getElementById('{{ form.customer_code.id_for_label }}');
+    if (codeField) codeField.disabled = false;
+});
+</script>
+<script src="{% static 'js/payment_terms_select2.js' %}"></script>
+{% endblock %}

@@ -1,0 +1,296 @@
+{% extends 'website/index.html' %}
+{% load static %}
+{% block exstyle %}
+<link href="{% static 'style/general.css' %}" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.9.1/font/bootstrap-icons.css" rel="stylesheet">
+{% endblock exstyle %}
+{% block scripts %}
+<script src="{% static 'js/list.js' %}"></script>
+{% endblock scripts%}
+{% block page_title %}Customer{% endblock page_title %}
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+   <div>
+      <!-- Add New customer Button -->
+        {% if can_create_customers %}
+        <a href="{% url 'add_customers' %}" class="btn btn-success">+ Add New customer</a>
+        {% endif %}
+    </div>
+    <div class="d-flex align-items-center gap-2">
+
+          <!-- Search Box -->
+        <form method="get" class="d-flex mb-0" id="customerSearchForm">
+          <input type="text" name="q" id="customerSearchInput" class="form-control me-2"
+                placeholder="&#x1F50D;&#xFE0E; Search customers..."
+                value="{{ search_query }}">
+          {% comment %} <button class="btn commmombtn" type="submit">Search</button> {% endcomment %}
+        </form>
+
+        <!-- ⋮ Three-dots menu (far right) -->
+                <div class="dots-menu-wrap">
+                  <button class="dots-btn" id="dotsBtn" onclick="toggleDots(event)" title="More options">
+                    &#8942;
+                  </button>
+                  <div class="dots-dropdown" id="dotsDropdown">
+
+                    <!-- Import -->
+                    <a href="{% url 'import_customers_step1' company_code=company_code %}"
+                      class="dots-dropdown-item">
+                      <i class="bi bi-upload"></i>
+                      Import Customers
+                    </a>
+
+                    <!-- Export -->
+                    <a href="{% url 'export_customers_csv' %}" class="dots-dropdown-item">
+                      <i class="bi bi-download"></i>
+                      Export to CSV
+                    </a>
+
+                    {% comment %} <div class="dots-divider"></div>
+
+                    <!-- Settings -->
+                    <a href="#" class="dots-dropdown-item">
+                      <i class="bi bi-gear"></i>
+                      Settings
+                    </a> {% endcomment %}
+
+                  </div>
+              </div>
+            </div>
+  </div>
+
+  {% if customers %}
+  <table class="items-table" id="customerTableContainer">
+    <thead class="table-light">
+      <tr>
+        <th scope="col">No.</th>
+        <th scope="col">Name</th>
+        <th scope="col">Email</th>
+        <th scope="col">Phone</th>
+        {% comment %} <th scope="col">Address</th> {% endcomment %}
+        <th scope="col" style="min-width: 142px;">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for customer in customers %}
+      <tr>
+        <td class="si-no">{{ customers.start_index|add:forloop.counter0 }}</td>
+        <td>{% if customer.customer_type == 'company' %}
+  {{ customer.company_name }}
+{% else %}
+  {{ customer.first_name }}
+  {% if customer.last_name %}
+    {{ customer.last_name }}
+  {% endif %}
+{% endif %}</td>
+        
+       
+
+        <!-- customer Email -->
+        <td>
+          {% if customer.email %}
+            <a href="mailto:{{ customer.email }}">{{ customer.email }}</a>
+          {% else %}
+            <em>—</em>
+          {% endif %}
+        </td>
+
+        <!-- customer Phone -->
+        <td>{{ customer.phone|default:"—" }}</td>
+
+       
+          <td>
+          <!-- Action buttons -->
+          <div class="customer-actions" style="margin-top: 5px;">
+              {% if can_edit_customers %}
+              <a href="{% url 'edit_customer' customer.id %}" class="btn add-item-btn">View/Edit</a>
+              {% endif %}
+              {% if can_delete_customers %}
+              <form action="{% url 'delete_customer' customer.id %}" method="post" style="display:inline;" class="delete-customer-form">
+    {% csrf_token %}
+    <button type="button" class="btn btn-sm delete-btn btn-delete-customer"
+            data-confirm="Are you sure you want to delete this customer?">
+        <span class="bi bi-trash"></span>
+    </button>
+  </form>
+  <a href="{% url 'model_object_activity_log_list' company_code 'customer' customer.id %}">
+                  <span class="bi bi-clock-history"></span>
+              </a>
+  {% endif %}
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="alert alert-info text-center">
+    No customers found.
+    {% if can_create_customers %}
+      <a href="{% url 'add_customer' %}" class="alert-link">Add your first customer</a>.
+    {% endif %}
+  </div>
+  {% endif %}
+   <!-- Pagination -->
+        {% if customers.paginator.num_pages > 1 %}
+<nav aria-label="Page navigation" class="mt-3">
+    <ul class="pagination">
+        {% if customers.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?q={{ search_query }}&page={{ customers.previous_page_number }}">&laquo;</a>
+            </li>
+        {% else %}
+            <li class="page-item disabled"><span class="page-link">&laquo;</span></li>
+        {% endif %}
+
+        {% for num in customers.paginator.page_range %}
+            {% if num == customers.number %}
+                <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+            {% else %}
+                <li class="page-item">
+                    <a class="page-link" href="?q={{ search_query }}&page={{ num }}">{{ num }}</a>
+                </li>
+            {% endif %}
+        {% endfor %}
+
+        {% if customers.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?q={{ search_query }}&page={{ customers.next_page_number }}">&raquo;</a>
+            </li>
+        {% else %}
+            <li class="page-item disabled"><span class="page-link">&raquo;</span></li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+
+</div>
+
+<div id="deleteCustomerModal" class="prompt-modal">
+  <div class="prompt-modal-content">
+    <p id="deleteCustomerMessage">Are you sure?</p>
+    <div class="prompt-buttons">
+      <button type="button" id="confirmDeleteCustomer" class="prompt-btn prompt-ok-btn">OK</button>
+      <button type="button" id="cancelDeleteCustomer" class="prompt-btn prompt-cancel-btn">Cancel</button>
+    </div>
+  </div>
+</div>
+<script>
+
+
+  function toggleDots(e) {
+  e.stopPropagation();
+  var btn = document.getElementById('dotsBtn');
+  var menu = document.getElementById('dotsDropdown');
+  if (!btn || !menu) return;
+  var open = menu.classList.toggle('show');
+  btn.classList.toggle('open', open);
+}
+
+document.addEventListener('click', function(e) {
+  var wrap = document.querySelector('.dots-menu-wrap');
+  var menu = document.getElementById('dotsDropdown');
+  var btn = document.getElementById('dotsBtn');
+  if (!wrap || !menu || !btn) return;
+  if (!wrap.contains(e.target)) {
+    menu.classList.remove('show');
+    btn.classList.remove('open');
+  }
+});
+
+ document.addEventListener('DOMContentLoaded', function () {
+    const toastContainer = document.getElementById('toastContainer');
+    {% if messages %}
+      {% for message in messages %}
+        const toastEl = document.createElement('div');
+        toastEl.className = 'toast align-items-center text-bg-{{ message.tags }} border-0';
+        toastEl.setAttribute('role', 'alert');
+        toastEl.setAttribute('aria-live', 'assertive');
+        toastEl.setAttribute('aria-atomic', 'true');
+        toastEl.innerHTML = `
+          <div class="d-flex">
+            <div class="toast-body">
+              {{ message|escapejs }}
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+          </div>
+        `;
+        toastContainer.appendChild(toastEl);
+
+        const toast = new bootstrap.Toast(toastEl, { delay: 5000 });
+        toast.show();
+      {% endfor %}
+    {% endif %}
+  });
+
+document.addEventListener("DOMContentLoaded", function() {
+    const searchInput = document.getElementById("customerSearchInput");
+    const tableContainer = document.getElementById("customerTableContainer");
+
+    let timeout = null;
+
+    searchInput.addEventListener("keyup", function() {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => {
+            const query = searchInput.value;
+
+            fetch(`?q=${encodeURIComponent(query)}`, {
+                headers: {
+                    "X-Requested-With": "XMLHttpRequest"
+                }
+            })
+            .then(response => response.text())
+            .then(html => {
+                // Create a temporary DOM to extract the table only
+                const tempDiv = document.createElement("div");
+                tempDiv.innerHTML = html;
+                const newTable = tempDiv.querySelector("#customerTableContainer");
+                if (newTable) {
+                    tableContainer.innerHTML = newTable.innerHTML;
+                }
+            });
+        }, 300); // Wait 300ms after typing
+    });
+});
+
+(function() {
+    var modal = document.getElementById('deleteCustomerModal');
+    var msg = document.getElementById('deleteCustomerMessage');
+    var confirmBtn = document.getElementById('confirmDeleteCustomer');
+    var cancelBtn = document.getElementById('cancelDeleteCustomer');
+    var pendingForm = null;
+
+    function showPrompt() {
+        if (modal) modal.style.display = 'flex';
+    }
+
+    function hidePrompt() {
+        if (modal) modal.style.display = 'none';
+        pendingForm = null;
+    }
+
+    document.addEventListener('click', function(e) {
+        var btn = e.target.closest('.btn-delete-customer');
+        if (!btn) return;
+        e.preventDefault();
+        pendingForm = btn.closest('form.delete-customer-form');
+        if (!pendingForm) return;
+        msg.textContent = btn.getAttribute('data-confirm') || 'Are you sure?';
+        showPrompt();
+    });
+
+    confirmBtn.addEventListener('click', function() {
+        if (!pendingForm) return hidePrompt();
+        pendingForm.submit();
+    });
+
+    cancelBtn.addEventListener('click', hidePrompt);
+    modal.addEventListener('click', function(e){ if (e.target === modal) hidePrompt(); });
+    document.addEventListener('keydown', function(e){
+        if (e.key === 'Escape' && modal.style.display === 'flex') hidePrompt();
+    });
+})();
+</script>
+
+{% endblock %}

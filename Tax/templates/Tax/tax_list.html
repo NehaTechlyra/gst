@@ -1,0 +1,329 @@
+{% extends 'website/index.html' %}
+{% load static %}
+{% block exstyle %}
+<link href="{% static 'style/general.css' %}" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.9.1/font/bootstrap-icons.css" rel="stylesheet">
+{% endblock exstyle %}
+{% block scripts %}
+<script src="{% static 'js/list.js' %}"></script>
+{% endblock scripts%}
+{% block page_title %}Tax{% endblock page_title %}
+{% block content %}
+<div class="container mt-4">
+<!-- {% if messages %}
+  <ul class="alert-error alert-center ">
+    {% for message in messages %}
+      <p class="{{ message.tags }}">{{ message }}</p>
+    {% endfor %}
+  </ul>
+{% endif %} -->
+
+
+
+
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <!-- Add New Tax Button -->
+        <!-- <a href="{% url 'add_tax' %}" class="btn btn-success">+ Add New Tax</a> -->
+
+        {% if request.user.is_superuser or can_create_taxes %}
+        <div class="dropdown">
+            <div class="btn-group">
+                <a href="{% url 'add_tax' %}" class="newtax-btn {% if company_tax_type != 'GST' %}newtax-btn--solo{% endif %}">+ New Tax</a>
+                 {% if company_tax_type == 'GST' %}
+                <button class="arrow-btn" id="arrowBtn" type="button">
+                <span class="arrow-icon"></span>
+                </button>
+                {% endif %}
+            </div>
+            {% if company_tax_type == 'GST' %}
+            <div class="dropdown-content" id="dropdown-content">
+                <a href="{% url 'add_taxgrp' %}" class="grp-btn">+ New Tax Group</a>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        <!-- Search Box -->
+        <div class="d-flex align-items-center gap-2">
+            <form method="get" class="d-flex mb-0" id="taxSearchForm">
+                <input type="text" name="q" id="taxSearchInput" class="form-control me-2"
+                       placeholder="&#x1F50D;&#xFE0E; Search taxes..." value="{{ search_query }}">
+                {% comment %} <button class="btn commmombtn" type="submit">Search</button> {% endcomment %}
+            </form>
+
+            <div class="dots-menu-wrap">
+                <button class="dots-btn" id="dotsBtn" onclick="toggleDots(event)" title="More options">
+                    &#8942;
+                </button>
+                <div class="dots-dropdown" id="dotsDropdown">
+                    <a href="{% url 'import_tax_step1' company_code=company_code %}" class="dots-dropdown-item">
+                        <i class="bi bi-upload"></i>
+                        Import Taxes
+                    </a>
+                    <a href="{% url 'import_taxgroup_step1' company_code=company_code %}" class="dots-dropdown-item">
+                        <i class="bi bi-upload"></i>
+                        Import Tax Groups
+                    </a>
+                    <a href="?q={{ search_query }}&export=tax" class="dots-dropdown-item">
+                        <i class="bi bi-download"></i>
+                        Export Taxes (CSV)
+                    </a>
+                    <a href="?q={{ search_query }}&export=taxgroup" class="dots-dropdown-item">
+                        <i class="bi bi-download"></i>
+                        Export Tax Groups (CSV)
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Table + Pagination together -->
+        <div id="taxTableContainer">
+    {% if page_obj %}
+    <table class="items-table">
+        <thead class="table-light">
+            <tr>
+                <th>No.</th>
+                <th>Type</th>
+                <th>Name / Group Name</th>
+                <th>Tax Type / Included Taxes</th>
+                <th>Rate / Actions</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for obj in page_obj %}
+                <tr>
+                    <td>{{ page_obj.start_index|add:forloop.counter0 }}</td>
+                    <td>Tax</td>
+                    <td>{{ obj.taxname }}</td>
+                    <td>{{ obj.tax_type }}</td>
+                    <td>{{ obj.rate }}</td>
+                    <td>
+                        {% if request.user.is_superuser or can_edit_taxes %}
+                        <a href="{% url 'tax_edit' obj.pk %}" class="btn add-item-btn">View/Edit</a>
+                        {% endif %}
+                        {% if request.user.is_superuser or can_delete_taxes %}
+                        <form action="{% url 'tax_delete' obj.pk %}" method="post" style="display:inline;">
+                            {% csrf_token %}
+                            <button type="button" class="btn btn-sm delete-btn btn-delete-tax" data-confirm="Are you sure you want to delete this Tax?">
+                                <span class="bi bi-trash"></span>
+                            </button>
+                        </form>
+                        {% endif %}
+                    </td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="5"><em>No records found</em></td></tr>
+            {% endfor %}
+            {% if company_tax_type == 'GST' %}
+            {% with tax_page_count=page_obj|length %}
+    {% for group in tax_groups %}
+    <tr>
+        <td>{{ page_obj.start_index|add:tax_page_count|add:forloop.counter0 }}</td>
+        <td><span class="badge-taxgroup">Tax Group</span></td>
+        <td>{{ group.group_name }}</td>
+        <td>
+            {% for tax in group.taxes.all %}
+                {{ tax.taxname }}{% if not forloop.last %}, {% endif %}
+            {% endfor %}
+        </td>
+        <td>{{ group.total_rate }}%</td>
+        <td>
+            {% if request.user.is_superuser or can_edit_taxes %}
+            <a href="{% url 'edit_taxgrp' group.pk %}" class="btn add-item-btn">View/Edit</a>
+            {% endif %}
+            {% if request.user.is_superuser or can_delete_taxes %}
+            <form action="{% url 'taxgrp_delete' group.pk %}" method="post" style="display:inline;">
+                {% csrf_token %}
+                <button type="button" class="btn btn-sm delete-btn btn-delete-tax" data-confirm="Are you sure you want to delete this Tax Group?">
+                    <span class="bi bi-trash"></span>
+                </button>
+            </form>
+            {% endif %}
+        </td>
+    </tr>
+    {% endfor %}
+            {% endwith %}
+            {% endif %}
+        </tbody>
+    </table>
+    {% else %}
+        <div class="alert alert-info text-center">
+            No Taxes found. <a href="{% url 'add_tax' %}" class="alert-link">Add your first Tax</a>.
+        </div>
+    {% endif %}
+
+    <!--  Pagination (use page_obj not taxes) -->
+    {% if page_obj.paginator.num_pages > 1 %}
+    <nav aria-label="Page navigation" class="mt-3">
+        <ul class="pagination">
+            {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?q={{ search_query }}&page={{ page_obj.previous_page_number }}">&laquo;</a>
+                </li>
+            {% else %}
+                <li class="page-item disabled"><span class="page-link">&laquo;</span></li>
+            {% endif %}
+
+            {% for num in page_obj.paginator.page_range %}
+                {% if num == page_obj.number %}
+                    <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                {% else %}
+                    <li class="page-item">
+                        <a class="page-link" href="?q={{ search_query }}&page={{ num }}">{{ num }}</a>
+                    </li>
+                {% endif %}
+            {% endfor %}
+
+            {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?q={{ search_query }}&page={{ page_obj.next_page_number }}">&raquo;</a>
+                </li>
+            {% else %}
+                <li class="page-item disabled"><span class="page-link">&raquo;</span></li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+</div>
+
+
+</div>
+
+<div id="deleteTaxModal" class="prompt-modal">
+    <div class="prompt-modal-content">
+        <p id="deleteTaxMessage">Are you sure?</p>
+        <div class="prompt-buttons">
+            <button type="button" id="confirmDeleteTax" class="prompt-btn prompt-ok-btn">OK</button>
+            <button type="button" id="cancelDeleteTax" class="prompt-btn prompt-cancel-btn">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+    const toastContainer = document.getElementById('toastContainer');
+    {% if messages %}
+      {% for message in messages %}
+        const toastEl = document.createElement('div');
+        toastEl.className = 'toast align-items-center text-bg-{{ message.tags }} border-0';
+        toastEl.setAttribute('role', 'alert');
+        toastEl.setAttribute('aria-live', 'assertive');
+        toastEl.setAttribute('aria-atomic', 'true');
+        toastEl.innerHTML = `
+          <div class="d-flex">
+            <div class="toast-body">
+              {{ message|escapejs }}
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+          </div>
+        `;
+        toastContainer.appendChild(toastEl);
+
+        const toast = new bootstrap.Toast(toastEl, { delay: 5000 });
+        toast.show();
+      {% endfor %}
+    {% endif %}
+  });
+  
+document.addEventListener("DOMContentLoaded", function() {
+    const searchInput = document.getElementById("taxSearchInput");
+    const tableContainer = document.getElementById("taxTableContainer");
+    let timeout = null;
+
+    function ajaxSearch(url) {
+        fetch(url, { headers: { "X-Requested-With": "XMLHttpRequest" } })
+        .then(response => response.text())
+        .then(html => {
+            const tempDiv = document.createElement("div");
+            tempDiv.innerHTML = html;
+            const newContent = tempDiv.querySelector("#taxTableContainer");
+            if (newContent) {
+                tableContainer.innerHTML = newContent.innerHTML;
+
+                // Re-bind pagination links inside new content
+                tableContainer.querySelectorAll(".pagination a").forEach(link => {
+                    link.addEventListener("click", function(e) {
+                        e.preventDefault();
+                        ajaxSearch(this.href);
+                    });
+                });
+            }
+        });
+    }
+
+    // Search typing
+    searchInput.addEventListener("keyup", function() {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => {
+            const query = searchInput.value;
+            ajaxSearch(`?q=${encodeURIComponent(query)}`);
+        }, 300);
+    });
+
+    // Bind initial pagination links
+    tableContainer.querySelectorAll(".pagination a").forEach(link => {
+        link.addEventListener("click", function(e) {
+            e.preventDefault();
+            ajaxSearch(this.href);
+        });
+    });
+});
+
+// Unit-style delete prompt for Tax/Tax Group
+(function() {
+    var modal = document.getElementById('deleteTaxModal');
+    var msg = document.getElementById('deleteTaxMessage');
+    var confirmBtn = document.getElementById('confirmDeleteTax');
+    var cancelBtn = document.getElementById('cancelDeleteTax');
+    var pendingForm = null;
+
+    function showPrompt() {
+        if (modal) modal.style.display = 'flex';
+    }
+
+    function hidePrompt() {
+        if (modal) modal.style.display = 'none';
+        pendingForm = null;
+    }
+
+    document.addEventListener('click', function(e) {
+        var btn = e.target.closest('.btn-delete-tax');
+        if (!btn) return;
+        e.preventDefault();
+        pendingForm = btn.closest('form');
+        if (!pendingForm) return;
+        msg.textContent = btn.getAttribute('data-confirm') || 'Are you sure?';
+        showPrompt();
+    });
+
+    confirmBtn.addEventListener('click', function() {
+        if (!pendingForm) return hidePrompt();
+        pendingForm.submit();
+    });
+
+    cancelBtn.addEventListener('click', hidePrompt);
+    modal.addEventListener('click', function(e){ if (e.target === modal) hidePrompt(); });
+    document.addEventListener('keydown', function(e){
+        if (e.key === 'Escape' && modal.style.display === 'flex') hidePrompt();
+    });
+})();
+
+//tax add button
+const arrowBtn = document.getElementById('arrowBtn');
+    const dropdownContent = document.getElementById('dropdown-content');
+    arrowBtn.addEventListener('click', function(event) {
+      event.stopPropagation();
+      dropdownContent.style.display = dropdownContent.style.display === 'block' ? 'none' : 'block';
+    });
+    document.addEventListener('click', function(event) {
+      if (!event.target.closest('.dropdown')) {
+        dropdownContent.style.display = 'none';
+      }
+    });
+
+    
+</script>
+{% endblock %}

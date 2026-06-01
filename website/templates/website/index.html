@@ -1,0 +1,1176 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+
+    {% load static %}
+
+    <!-- HTMX LINK -->
+    <!-- <script src="https://unpkg.com/htmx.org@1.8.0"></script> -->
+    <!-- HTMX LINK -->
+
+    <meta name="author" content="Lyra ERP">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lyra ERP</title>
+   
+    <!-- Load Poppins from Google Fonts (explicit <link> is more reliable than @import) -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href='https://unpkg.com/boxicons@2.0.7/css/boxicons.min.css' rel='stylesheet'>
+ 
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.1/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="{% static 'css/crm.css' %}">
+
+    {% comment %} updated by sree on 27-01-26 for delivery details style {% endcomment %}
+    <link rel="stylesheet" href="{% static 'css/delivery.css' %}">
+    <link rel="stylesheet" href="{% static 'css/delivery-detail.css' %}">
+
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <!-- Chart.js (needed by CRM dashboard) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Select2 initialization is done per-module to avoid conflicts with django-select2 widgets -->
+
+
+
+    {% comment %} {% block style %} {% endcomment %}
+
+    <style>
+         html, body { overflow-x: hidden; }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100%;
+            width: 200px;
+            background: #f2f4fc;
+            background: -webkit-linear-gradient(to right, #f2f4fc, #f2f4fc);
+            background: linear-gradient(to right, #f2f4fc, #f2f4fc);
+            z-index: 100;
+            transition: all 0.5s ease;
+            opacity: 1;
+        }
+        /* Ensure sidebar uses Poppins font (extra-specific selectors for submenu/children) */
+        .sidebar, .sidebar * { font-family: 'Poppins', Arial, sans-serif !important; }
+        .sidebar .logo-details, .sidebar .logo-details *,
+        .sidebar .nav-links li a, .sidebar .nav-links li a *,
+        .sidebar .nav-links li .sub-menu a, .sidebar .nav-links li .sub-menu a *,
+        .sidebar .nav-links li .link_name, .sidebar .nav-links li .sub-menu .link_name,
+        .sidebar .profile-details, .sidebar .profile-details * {
+            font-family: 'Poppins', Arial, sans-serif !important;
+            line-height: 1.2;
+        }
+
+        .sidebar.close {
+            width: 45px;
+            opacity: 1;
+        }
+
+        .sidebar .logo-details {
+            height: 60px;
+            width: 100%;
+            display: flex;
+            align-items: center;
+        } 
+
+        .sidebar .logo-details i {
+            font-size: 25px;
+            color: #fff;
+            height: 50px;
+            min-width: 45px;
+            text-align: center;
+            line-height: 50px;
+        }
+
+        .sidebar .logo-details .logo_name {
+            position: relative;
+            margin-left: -20px;
+            color: #fff;
+            font-weight: 600;
+            transition: 0.3s ease;
+            transition-delay: 0.1s;
+        }
+
+        .sidebar.close .logo-details .logo_name {
+            transition-delay: 0s;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .sidebar .nav-links {
+            height: 100%;
+            padding: 0 0 150px 0;
+            overflow: auto;
+        }
+
+        .sidebar.close .nav-links {
+            overflow: visible;
+        }
+
+        .sidebar .nav-links::-webkit-scrollbar {
+            display: none;
+        }
+
+        .sidebar .nav-links li {
+            position: relative;
+            list-style: none;
+            transition: all 0.4s ease;
+            
+        }
+
+        .sidebar .nav-links li:hover {
+            background: #dce2f9;
+        }
+
+        .sidebar .nav-links li .icon-link {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .sidebar.close .nav-links li .icon-link {
+            display: block;
+        }
+
+        .sidebar .nav-links li i {
+            height: 40px;
+            min-width: 45px;
+            text-align: center;
+            line-height: 40px;
+            color: #55588b;
+            font-size: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        /* Restore icon fonts so boxicons and bootstrap-icons display correctly */
+        .sidebar .bx, .sidebar .bx *,
+        .sidebar .bx:before, .sidebar .bx:after {
+            font-family: 'boxicons' !important;
+            speak: none;
+            font-style: normal;
+            font-weight: normal;
+            font-variant: normal;
+            text-transform: none;
+            line-height: 1;
+        }
+
+        .sidebar .bi, .sidebar .bi *,
+        .sidebar .bi:before, .sidebar .bi:after {
+            font-family: 'bootstrap-icons' !important;
+            speak: none;
+            font-style: normal;
+            font-weight: normal;
+            font-variant: normal;
+            text-transform: none;
+            line-height: 1;
+        }
+
+        .sidebar .nav-links li.showMenu i.arrow {
+            transform: rotate(-180deg);
+        }
+
+        .sidebar.close .nav-links i.arrow {
+            display: none;
+        }
+
+        .sidebar .nav-links li a {
+            display: flex;
+            align-items: center;
+            text-decoration: none;
+        }
+
+        .sidebar .nav-links li a .link_name {
+            font-size: 13px;
+            {% comment %} font-weight: 400; {% endcomment %}
+            color: #55588b;
+            transition: all 0.4s ease;
+        }
+
+        .sidebar.close .nav-links li a .link_name {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .sidebar .nav-links li .sub-menu {
+            padding: 5px 0px 14px 20px;
+            /* margin-top: -10px; */
+            background: #dce2f9;
+            display: none;
+        }
+        .sidebar .nav-links li .sub-menu:hover{
+            /* background: none !important; */
+        }
+        .sidebar .nav-links li.showMenu .sub-menu {
+            display: block;
+            
+        }
+
+        .sidebar .nav-links li .sub-menu a {
+            color: #55588b;
+            font-size: 13px;
+            {% comment %} padding: 0px 5px 5px 20px; {% endcomment %}
+            padding: 3px 5px 3px 20px;  /* just add 3px top padding, keep rest same */
+            white-space: nowrap;
+            opacity: 0.8;
+            transition: all 0.3s ease;
+            border-left:1px solid #55588b;
+        }
+
+        .sidebar .nav-links li .sub-menu a:hover {
+            opacity: 1;
+        }
+
+        .sidebar.close .nav-links li .sub-menu {
+            position: absolute;
+            left: 100%;
+            top: -10px;
+            margin-top: 0;
+            padding: 10px 20px;
+            border-radius: 0 6px 6px 0;
+            opacity: 0;
+            display: block;
+            pointer-events: none;
+            transition: 0s;
+        }
+
+        .sidebar.close .nav-links li:hover .sub-menu {
+            top: 0;
+            opacity: 1;
+            pointer-events: auto;
+            transition: all 0.4s ease;
+        }
+
+        .sidebar .nav-links li .sub-menu .link_name {
+            display: none;
+        }
+
+        .sidebar.close .nav-links li .sub-menu .link_name {
+            font-size: 13px;
+            opacity: 1;
+            display: block;
+        }
+
+        .sidebar .nav-links li .sub-menu.blank {
+            opacity: 1;
+            pointer-events: auto;
+            padding: 8px 20px 7px 16px;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .sidebar .nav-links li:hover .sub-menu.blank {
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        .sidebar .profile-details {
+            position: fixed;
+            bottom: 0;
+            width: 200px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #dce2f9;
+            padding: 12px 0;
+            transition: all 0.5s ease;
+        }
+
+        .sidebar.close .profile-details {
+            background: none;
+        }
+
+        .sidebar.close .profile-details {
+            width: 75px;
+        }
+
+        .sidebar .profile-details .profile-content {
+            display: flex;
+            align-items: center;
+        }
+
+        .sidebar .profile-details img {
+            height: 33px;
+            width: 33px;
+            object-fit: cover;
+            border-radius: 5px;
+            margin: 0 5px 0 5px;
+            background: #55588b;
+            transition: all 0.5s ease;
+        }
+
+        .sidebar.close .profile-details img {
+            padding: 0px;
+        }
+
+        .sidebar .profile-details .profile_name,
+        .sidebar .profile-details .job {
+            color: #55588b;
+            font-size: 13px; /* reduced to fit sidebar */
+            font-weight: 500;
+            white-space: nowrap;
+            max-width: 110px; /* prevent overflow */
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: inline-block;
+            vertical-align: middle;
+        }
+
+        .sidebar.close .profile-details i,
+        .sidebar.close .profile-details .profile_name,
+        .sidebar.close .profile-details .job {
+            display: none;
+        }
+
+        .sidebar .profile-details .job {
+            font-size: 11px;
+        }
+
+        /* Ensure the logout icon stays inside the sidebar and is vertically centered */
+        .sidebar .profile-details a {
+            display: inline-flex;
+            align-items: center;
+            padding: 6px;
+        }
+        .sidebar .profile-details a i {
+            color: #55588b;
+            font-size: 20px;
+            margin-right: 6px;
+            margin-top: 0;
+            line-height: 1;
+        }
+
+        .home-section {
+            position: relative;
+            height: 100vh;
+            overflow-y: auto;
+            scroll-behavior: smooth;
+            left: 200px;
+            width: calc(100% - 200px);
+            transition: all 0.5s ease;
+        }
+
+        .sidebar.close~.home-section {
+            left: 45px;
+            width: calc(100% - 45px);
+        }
+
+        .home-section .home-content {
+            height: 60px;
+            display: flex;
+            align-items: center;
+            
+            
+            
+        }
+
+        .home-section .home-content .bx-menu,
+        .home-section .home-content .text {
+            color: #11101d;
+            font-size: 30px;
+        }
+
+        .home-section .home-content .bx-menu {
+            margin: 0 5px;
+            cursor: pointer;
+        }
+
+        .home-section .home-content .text {
+            font-size: 26px;
+            font-weight: 600;
+        }
+
+        {% comment %} @media (max-width: 420px) {
+            .sidebar.close .nav-links li .sub-menu {
+                display: none;
+            }
+        } {% endcomment %}
+
+
+        @media (max-width: 420px) {
+    .sidebar.close .nav-links li .sub-menu {
+        /* Don't hide — instead ensure it doesn't overflow the screen */
+        max-width: calc(100vw - 45px);
+        white-space: normal;
+    }
+}
+
+        .active-link {
+        opacity: 1 !important;
+        font-weight: 600 !important;
+        }
+        .sidebar.close .logo-details img{
+             opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+        }
+
+        a:focus-visible,
+        button:focus-visible,
+        input:focus-visible,
+        select:focus-visible,
+        textarea:focus-visible,
+        [role="button"]:focus-visible,
+        .icon-link:focus-visible,
+        .bx-menu:focus-visible {
+            outline: none;
+            border-radius: 8px;
+            box-shadow: 0 0 0 2px rgba(85, 88, 139, 0.14);
+        }
+
+        .tab-btn a:focus-visible {
+            color: #55588b;
+            background: rgba(85, 88, 139, 0.08);
+            border-bottom-color: #55588b;
+            box-shadow: 0 0 0 2px rgba(85, 88, 139, 0.14);
+        }
+
+        .side-nav-link:focus-visible {
+            background: rgba(85, 88, 139, 0.08);
+            color: #55588b;
+            border-left-color: #55588b;
+            box-shadow: inset 0 0 0 1px rgba(85, 88, 139, 0.10), 0 0 0 2px rgba(85, 88, 139, 0.08);
+        }
+    </style>
+    {% comment %} {% endblock style %} {% endcomment %}
+
+
+    {% block exstyle %}
+    {% endblock exstyle %}
+</head>
+
+
+<body style="background-color: white; color: #0486d2;">
+        {# Removed top-of-page messages rendering to avoid persistent toast/banner #}
+
+<!-- Toast container -->
+<div aria-live="polite" aria-atomic="true" class="position-fixed bottom-0 end-0 p-3" style="z-index: 1080;">
+  <div id="toastContainer"></div>
+</div>
+
+
+    <div class="sidebar">
+        <div class="logo-details d-flex align-items-center" style="margin-bottom: 20px;">
+            <i class='bx bx-menu' style="color: #55588b;cursor: pointer;"></i>
+            <img src="{% static 'images/fav.png' %}" height="24" width="24" alt="Logo" style="margin-right: 30px; margin-top: -5px;">
+            <span class="logo_name" style="color:#55588b; font-weight: bold; font-size: 18px;">
+                {% if company and company.legal_name %}
+                    {{ company.legal_name }}
+                {% elif company and company.name %}
+                    {{ company.name }}
+                {% else %}
+                    Techlyra
+                {% endif %}
+            </span>
+        </div>
+        <ul class="nav-links">
+            <li >
+                <a href="/" class="{% if request.path == '/' %}active-link{% endif %}">
+                    <i class='bx bx-home'></i>
+                    <span class="link_name">Home</span>
+                </a>
+
+                <ul class="sub-menu blank">
+                    <li><a href="/" class="{% if request.path == '/' %}active-link{% endif %} link_name">Home</a></li>
+                </ul>
+            </li>
+
+
+                    <!--Banking-->
+            {% if request.user.is_superuser or can_view_banking or can_view_reconciliation %}
+            {% with active_urls="banking_dashboard reconciliation_overview reconciliation_list reconciliation_start_form bank_statement_csv_upload reconciliation_working_screen" recon_urls="reconciliation_overview reconciliation_list reconciliation_start_form bank_statement_csv_upload reconciliation_working_screen" %}
+            <li class="{% if request.resolver_match.url_name in active_urls.split %}showMenu{% endif %}">
+                <div class="icon-link">
+                    <a href="{% url 'banking_dashboard' %}" class="{% if request.resolver_match.url_name == 'banking_dashboard' %}active-link{% endif %}">
+                        <i class='bx bx-wallet'></i>
+                        <span class="link_name">Banking</span>
+                    </a>
+                    <i class='bx bxs-chevron-down arrow'></i>
+                </div>
+
+                <ul class="sub-menu">
+                    <li><a class="link_name">Banking</a></li>
+                    {% if request.user.is_superuser or can_view_banking %}
+                    <li><a href="{% url 'banking_dashboard' %}" class="{% if request.resolver_match.url_name == 'banking_dashboard' %}active-link{% endif %}">Dashboard</a></li>
+                    {% endif %}
+                    {% if request.user.is_superuser or can_view_reconciliation %}
+                    <li><a href="{% url 'reconciliation_overview' %}" class="{% if request.resolver_match.url_name in recon_urls.split %}active-link{% endif %}">Reconciliation</a></li>
+                    {% endif %}
+                </ul>
+            </li>
+            {% endwith %}
+            {% endif %}
+
+            <!--Sales-->
+            {% if request.user.is_superuser or can_view_sales_dashboard or can_view_quotations or can_view_orders or can_view_invoices or can_view_performa_invoice or can_view_payments_received or can_view_returns or can_view_delivery or can_view_eway_bill %}
+            {% with active_urls="sales_dashboard quotation_add quotation_create quotation_edit sales_quote_list quotation_list quotation_detail sales_order_list order_add order_edit order_detail order_print order_duplicate duplicate_order sales_inv_list inv_add invoice_edit invoice_detail invoice_print invoice_pdf sales_invoice_return performa_inv_list performa_inv_add performa_invoice_detail performa_invoice_edit payment_recieved_view payment_received_detail payment_received_print add_payment_received edit_payment_received payment_received_list receive_payment payment_received_detail payment_received_print sales_return_list sales_return_detail sales_return_edit sales_delivery_note_list sales_delivery_note_create sales_delivery_note_detail sales_delivery_note_edit eway_bill_list eway_bill_detail eway_bill_generate eway_bill_cancel eway_bill_credentials" %}
+            <li class="{% if request.resolver_match.url_name in active_urls.split %}showMenu{% endif %}">
+                <div class="icon-link">
+                    <a class="{% if request.resolver_match.url_name in active_urls.split %}active-link{% endif %}">
+                        <i class='bx bx-tag'></i>
+                        <span class="link_name">Sales</span>
+                        
+                    </a>
+                    <i class='bx bxs-chevron-down arrow'></i>
+                </div>
+                <ul class="sub-menu">
+                    <li><a class="link_name">Sales</a></li>
+                    {% if request.user.is_superuser or can_view_sales_dashboard %}
+                    {% with active_urls="sales_dashboard" %}
+                        <li><a href="{% url 'sales_dashboard' %}" class="{% if request.resolver_match.url_name == 'sales_dashboard' %}active-link{% endif %}">Dashboard</a></li>
+                    {% endwith %}
+                    {% endif %}
+                
+                    {% if request.user.is_superuser or can_view_quotations %}
+                    {% with active_urls="quotation_add quotation_create quotation_edit sales_quote_list quotation_list quotation_detail" %}
+                        <li><a href="{% url 'sales_quote_list' %}" class="{% if request.resolver_match.url_name in active_urls.split %}active-link{% endif %} ">Quotation</a></li>
+                    {% endwith %}
+                    {% endif %}
+                    {% if request.user.is_superuser or can_view_orders %}
+                    {% with active_urls="sales_order_list order_add order_edit order_detail order_print order_duplicate duplicate_order" %}
+                        <li><a  href="{% url 'sales_order_list' %}" class="{% if request.resolver_match.url_name in active_urls.split %}active-link{% endif %} ">Orders</a></li>
+                    {% endwith %}
+                    {% endif %}
+                    {% if request.user.is_superuser or can_view_invoices %}
+                    {% with active_urls="sales_inv_list inv_add invoice_edit invoice_detail invoice_print invoice_pdf sales_invoice_return" %}
+                        <li><a  href="{% url 'sales_inv_list' %}" class="{% if request.resolver_match.url_name in active_urls.split %}active-link{% endif %} ">Invoice</a></li>
+                    {% endwith %}
+                    {% endif %}
+                    {% if request.user.is_superuser or can_view_performa_invoice %}
+                    {% with active_urls="performa_inv_list performa_inv_add performa_invoice_detail performa_invoice_edit" %}
+                        <li><a  href="{% url 'performa_inv_list' %}" class="{% if request.resolver_match.url_name in active_urls.split %}active-link{% endif %} ">Performa Invoice</a></li>
+                    {% endwith %}
+                    {% endif %}
+                    {% if request.user.is_superuser or can_view_payments_received %}
+                    {% with active_urls="payment_recieved_view payment_received_detail payment_received_print add_payment_received edit_payment_received payment_received_list receive_payment" %}
+                        <li><a href="{% url 'payment_received_list' %}" class="{% if request.resolver_match.url_name in active_urls.split %}active-link{% endif %} ">Payments Received</a></li>
+                    {% endwith %}
+                    {% endif %}
+                    {% if request.user.is_superuser or can_view_returns %}
+                    {% with active_urls="sales_return_list sales_return_detail sales_return_edit" %}
+                        <li><a href="{% url 'sales_return_list' %}" class="{% if request.resolver_match.url_name in active_urls.split %}active-link{% endif %} ">Returns</a></li>
+                    {% endwith %}
+                    {% endif %}
+                    {% if request.user.is_superuser or can_view_delivery %}
+                    {% with active_urls="sales_delivery_note_list sales_delivery_note_create sales_delivery_note_detail sales_delivery_note_edit" %}
+                        <li><a href="{% url 'sales_delivery_note_list' %}" class="{% if request.resolver_match.url_name in active_urls.split %}active-link{% endif %}">Delivery</a></li>
+                    {% endwith %}
+                    {% endif %}
+                    {% if request.user.is_superuser or can_view_eway_bill %}
+                    {% with active_urls="eway_bill_list eway_bill_detail eway_bill_generate eway_bill_cancel eway_bill_credentials" %}
+                        <li><a href="{% url 'eway_bill_list' %}" class="{% if request.resolver_match.url_name in active_urls.split %}active-link{% endif %}">E-Way Bills</a></li>
+                    {% endwith %}
+                    {% endif %}
+
+                </ul>
+            </li>
+            {% endwith %}
+            {% endif %}
+            <!--Purchase-->
+            {% if request.user.is_superuser or 'Purchase' in visible_modules or 'Purchase Dashboard' in visible_modules %}
+            {% with active_urls="purchase_dashboard purchase_order_add purchase_order_list bill_list purchase_order_duplicate purchaseorder_detail purchase_order_edit bill_add record_payment_view record_payment payment_list add_payment edit_payment payment_detail bill_detail bill_duplicate bill_edit delivery_note_list delivery_note_create delivery_note_detail delivery_note_edit delivery_note_print delivery_note_mark_delivered delivery_note_cancel purchase_return_list purchase_bill_return purchase_return_detail purchase_return_edit purchase_return_print purchase_return_cancel purchase_return_mark_received expense_list expense_create expense_detail expense_edit" %}
+            <li class="{% if request.resolver_match.url_name in active_urls.split %}showMenu{% endif %}">
+                <div class="icon-link">
+                    <a  class="{% if request.resolver_match.url_name in active_urls.split %}active-link{% endif %}">
+                        <i class='bx bx-cart'></i>
+                        <span class="link_name">Purchase</span>
+                        
+                    </a>
+                    <i class='bx bxs-chevron-down arrow'></i>
+                </div>
+                <ul class="sub-menu">
+                    <li><a class="link_name">Purchase</a></li>
+                    {% if request.user.is_superuser or 'Purchase Dashboard' in visible_modules or 'Dashboard' in visible_modules %}
+                    {% with active_urls="purchase_dashboard" %}
+                        <li><a href="{% url 'purchase_dashboard' %}" class="{% if request.resolver_match.url_name == 'purchase_dashboard' %}active-link{% endif %}">Dashboard</a></li>
+                    {% endwith %}
+                    {% endif %}
+                    {% if request.user.is_superuser or 'Purchase Order' in visible_modules %}
+                    {% with active_urls="purchase_order_list purchase_order_add purchase_order_edit purchase_order_duplicate purchaseorder_detail" %}
+                        <li><a href="{% if company_code %}{% url 'purchase_order_list' company_code %}{% else %}{% url 'purchase_order_list' %}{% endif %}" class="{% if request.resolver_match.url_name in active_urls.split %}active-link{% endif %}">Purchase Order</a></li>
+                    {% endwith %}
+                    {% endif %}
+                    {% if request.user.is_superuser or 'Purchase Bills' in visible_modules %}
+                    {% with active_urls="bill_list bill_add bill_detail bill_edit bill_duplicate" %}
+                        <li><a href="{% url 'bill_list' %}" class="{% if request.resolver_match.url_name in active_urls.split %}active-link{% endif %}">Bills</a></li>
+                    {% endwith %}
+                    {% endif %}
+                    {% if request.user.is_superuser or 'Purchase Payments Made' in visible_modules %}
+                    {% with active_urls="payment_list record_payment_view record_payment add_payment edit_payment payment_detail" %}
+                        <li><a href="{% url 'payment_list' %}" class="{% if request.resolver_match.url_name in active_urls.split %}active-link{% endif %}">Payments Made</a></li>
+                    {% endwith %}
+                    {% endif %}
+                    {% if request.user.is_superuser or 'Purchase Expenses' in visible_modules %}
+                    {% with active_urls="expense_list expense_create expense_detail" %}
+                        <li><a href="{% url 'expenses:expense_list' %}" class="{% if request.resolver_match.url_name in active_urls.split %}active-link{% endif %}">Expenses</a></li>
+                    {% endwith %}
+                    {% endif %}
+                    {% if request.user.is_superuser or 'Purchase Delivery' in visible_modules %}
+                    {% with active_urls="delivery_note_list delivery_note_create delivery_note_detail delivery_note_edit delivery_note_print delivery_note_mark_delivered delivery_note_cancel" %}
+                        <li><a href="{% url 'delivery_note_list' %}" class="{% if request.resolver_match.url_name in active_urls.split %}active-link{% endif %}">Delivery</a></li>
+                    {% endwith %}
+                    {% endif %}
+                    {% if request.user.is_superuser or 'Purchase Return' in visible_modules %}
+                    {% with active_urls="purchase_return_list purchase_bill_return purchase_return_detail purchase_return_edit purchase_return_print purchase_return_cancel purchase_return_mark_received" %}
+                        <li><a href="{% url 'purchase_return_list' %}" class="{% if request.resolver_match.url_name in active_urls.split %}active-link{% endif %}">Returns</a></li>
+                    {% endwith %}
+                    {% endif %}
+                </ul>
+            </li>
+            {% endwith %}
+            {% endif %}
+
+            {% if request.user.is_superuser or 'HR' in visible_modules %}
+            {% with active_urls="hr_dashboard employees_list employee_register employee_edit admin_dashboard designation_add designation_edit department_add department_edit allowances_add allowances_edit leaves_add leaves_edit bank_add bank_edit recruiter_dashboard job_creation job_list job_detail job_edit candidate_list candidate_create candidate_detail candidate_edit recruitment_reports personal_document_type_list personal_document_type_add personal_document_type_edit personal_document_type_deactivate" %}
+            <li class="{% if request.resolver_match.url_name in active_urls.split %}showMenu{% endif %}">
+                <div class="icon-link">
+                    <a  class="{% if request.resolver_match.url_name in active_urls.split %}active-link{% endif %}">
+                        <i class='bx bx-id-card'></i>
+                        <span class="link_name">HR</span>
+                        
+                    </a>
+                    <i class='bx bxs-chevron-down arrow'></i>
+                </div>
+                <ul class="sub-menu">
+                    <li><a class="link_name">HR</a></li>
+                    {% if can_view_dashboard %}
+                    {% with active_urls="hr_dashboard " %}
+                        <li><a href="{% url 'hr_dashboard' %}" class="{% if request.resolver_match.url_name in active_urls.split %}active-link{% endif %}">Dashboard</a></li>
+                    {% endwith %}
+                    {% endif %}
+                    
+                    {% if can_view_employees %}
+                    {% with active_urls="employees_list employee_register employee_edit" %}
+                        <li><a href="{% url 'employees_list' %}" class="{% if request.resolver_match.url_name in active_urls.split %}active-link{% endif %}">Employee</a></li>
+                    {% endwith %}
+                    {% endif %}
+
+                    {% if can_view_recruitment %}
+                    {% with active_urls="recruiter_dashboard job_creation job_list job_detail job_edit candidate_list candidate_create candidate_detail candidate_edit recruitment_reports" %}
+                        <li><a href="{% url 'recruiter_dashboard' %}" class="{% if request.resolver_match.url_name in active_urls.split %}active-link{% endif %}">Recruitments</a></li>
+                    {% endwith %}
+                    {% endif %}
+
+                    {% if can_view_master %}
+                    {% with active_urls="admin_dashboard designation_add designation_edit department_add department_edit allowances_add allowances_edit leaves_add leaves_edit bank_add bank_edit personal_document_type_list personal_document_type_add personal_document_type_edit personal_document_type_deactivate" %}
+                        <li><a href="{% url 'admin_dashboard' %}" class="{% if request.resolver_match.url_name in active_urls.split %}active-link{% endif %}">Masters</a></li>
+                    {% endwith %}
+                    {% endif %}
+                </ul>
+            </li>
+            {% endwith %}
+            {% endif %}
+
+            <!-- CRM (expandable submenu) -->
+            {% if request.user.is_superuser or 'CRM' in visible_modules or 'CRM Lead' in visible_modules or 'CRM Opportunity' in visible_modules or 'CRM Follow Ups' in visible_modules or 'CRM Presale' in visible_modules or 'CRM Lost reason' in visible_modules %}
+            {% with active_urls="dashboard lead_list lead_create lead_detail lead_edit lead_mark_lost lead_to_opportunity opportunity_list opportunity_detail opportunity_edit opportunity_mark_lost followup_list followup_create followup_complete lost_reason_create lost_reason_list lost_reason_edit lost_reason_delete presales_list presales_create presales_detail presales_edit presales_delete update_create" %}
+            <li class="{% if request.resolver_match.url_name in active_urls.split %}showMenu{% endif %}">
+                <div class="icon-link">
+                    <a class="{% if request.resolver_match.url_name in active_urls.split %}active-link{% endif %}">
+                        <i class='bx bx-network-chart'></i>
+                        <span class="link_name">CRM</span>
+                    </a>
+                    <i class='bx bxs-chevron-down arrow'></i>
+                </div>
+                <ul class="sub-menu">
+                    <li><a class="link_name">CRM</a></li>
+                    {% if request.user.is_superuser or 'CRM Dashboard' in visible_modules %}
+                    <li><a href="{% url 'dashboard' %}" class="{% if request.resolver_match.url_name == 'dashboard' %}active-link{% endif %}">Dashboard</a></li>
+                    {% endif %}
+                    {% if request.user.is_superuser or 'CRM Lead' in visible_modules or 'CRM Leads' in visible_modules %}
+                    <li><a href="{% url 'lead_list' %}" class="{% if request.resolver_match.url_name in 'lead_list lead_create lead_detail lead_edit lead_mark_lost lead_to_opportunity' %}active-link{% endif %}">Leads</a></li>
+                    {% endif %}
+                    {% if request.user.is_superuser or 'CRM Opportunity' in visible_modules or 'CRM Opportunities' in visible_modules %}
+                    <li><a href="{% url 'opportunity_list' %}" class="{% if request.resolver_match.url_name in 'opportunity_list opportunity_detail opportunity_edit opportunity_mark_lost' %}active-link{% endif %}">Opportunities</a></li>
+                    {% endif %}
+                    {% if request.user.is_superuser or 'CRM Presale' in visible_modules or 'CRM Presales' in visible_modules %}
+                    <li><a href="{% url 'presales_list' %}" class="{% if request.resolver_match.url_name in 'presales_list presales_create presales_detail presales_edit presales_delete' %}active-link{% endif %}">Pre-sales</a></li>
+                    {% endif %}
+                    {% comment %} {% if request.user.is_superuser or 'CRM Lead' in visible_modules or 'CRM Leads' in visible_modules or 'CRM Opportunity' in visible_modules or 'CRM Opportunities' in visible_modules or 'CRM Follow Ups' in visible_modules or 'CRM FollowUps' in visible_modules %}
+                    <li><a href="{% url 'quotation_list' %}" class="{% if request.resolver_match.url_name in 'quotation_list quotation_create quotation_detail quotation_print update_quotation_status' %}active-link{% endif %}">Quotations</a></li>
+                    {% endif %} {% endcomment %}
+                    {% if request.user.is_superuser or 'CRM Follow Ups' in visible_modules or 'CRM FollowUps' in visible_modules %}
+                    <li><a href="{% url 'followup_list' %}" class="{% if request.resolver_match.url_name in 'followup_list followup_create followup_complete' %}active-link{% endif %}">Follow-ups</a></li>
+                    {% endif %}
+                    {% if request.user.is_superuser or 'CRM Lost reason' in visible_modules or 'CRM Lost Reason' in visible_modules or 'CRM LostReason' in visible_modules %}
+                    <li><a href="{% url 'lost_reason_create' %}" class="{% if request.resolver_match.url_name in 'lost_reason_create lost_reason_list lost_reason_edit lost_reason_delete' %}active-link{% endif %}">Add Lost Reason</a></li>
+                    {% endif %}
+                </ul>
+            </li>
+            {% endwith %}
+            {% endif %}
+            
+            <!--Accounts-->
+            {% if request.user.is_superuser or 'Accounts' in visible_modules %}
+            {% with active_urls="accounts-list chart_of_accounts_tree create_account edit_account journal_list journal_detail journal_create journal_edit" %}
+            <li class="{% if request.resolver_match.url_name in active_urls.split %}showMenu{% endif %}">
+                <div class="icon-link">
+                    <a class="{% if request.resolver_match.url_name in active_urls.split %}active-link{% endif %}">
+                        <i class='bx bx-file'></i>
+                        <span class="link_name">Accounts</span>
+                        
+                    </a>
+                    <i class='bx bxs-chevron-down arrow'></i>
+                </div>
+                <ul class="sub-menu">
+                    {% with active_urls="accounts-list chart_of_accounts_tree create_account edit_account" %}
+                        <li><a   class="link_name">Accounts</a></li>
+                        {% if request.user.is_superuser or 'Chart of Accounts' in visible_modules %}
+                        <li><a href="{% url 'accounts-list' %}" class="{% if request.resolver_match.url_name in active_urls.split %}active-link{% endif %}">Chart of Accounts</a></li>
+                        {% endif %}
+                        {% if request.user.is_superuser or 'Journal' in visible_modules %}
+                        <li><a href="{% url 'journal_list' %}" class="{% if request.resolver_match.url_name in 'journal_list journal_detail journal_create journal_edit' %}active-link{% endif %}">Journal</a></li>
+                        {% endif %}
+                    {% comment %} <li><a  href="{% url 'chart_of_accounts_tree' %}" class="{% if request.resolver_match.url_name == 'chart_of_accounts_tree' %}active-link{% endif %} ">Tree view</a></li> {% endcomment %}
+
+                    {% comment %} <li><a href="{% url 'create_project' %}">Add Project</a></li>
+                    <li><a href="{% url 'show_project_data' %}">View Projects</a></li> {% endcomment %}
+                    {% endwith %}
+                </ul>
+            </li>
+            {% endwith %}
+            {% endif %}
+
+            
+
+             <!--Reports-->
+            {% if request.user.is_superuser or 'Reports' in visible_modules %}
+            {% with active_urls="trial_balance profit_loss balance_sheet cash_flow" %}
+            <li class="{% if request.resolver_match.url_name in active_urls.split %}showMenu{% endif %}">
+                <div class="icon-link">
+                    <a class="{% if request.resolver_match.url_name in active_urls.split %}active-link{% endif %}">
+                        <i class='bx bx-bar-chart-alt'></i>
+                        <span class="link_name">Reports</span>
+                    </a>
+                    <i class='bx bxs-chevron-down arrow'></i>
+                </div>
+
+                <ul class="sub-menu">
+                    <li><a class="link_name">Reports</a></li>
+                    {% if request.user.is_superuser or 'Reports Trial Balance' in visible_modules %}
+                    <li><a href="{% url 'trial_balance' %}" class="{% if request.resolver_match.url_name == 'trial_balance' %}active-link{% endif %}">Trial Balance</a></li>
+                    {% endif %}
+                    {% if request.user.is_superuser or 'Reports Profit and Loss' in visible_modules %}
+                    <li><a href="{% url 'profit_loss' %}" class="{% if request.resolver_match.url_name == 'profit_loss' %}active-link{% endif %}">Profit & Loss</a></li>
+                    {% endif %}
+                    {% if request.user.is_superuser or 'Reports Balance Sheet' in visible_modules %}
+                    <li><a href="{% url 'balance_sheet' %}" class="{% if request.resolver_match.url_name == 'balance_sheet' %}active-link{% endif %}">Balance Sheet</a></li>
+                    {% endif %}
+                    {% if request.user.is_superuser or 'Reports Cash Flow' in visible_modules %}
+                    <li><a href="{% url 'cash_flow' %}" class="{% if request.resolver_match.url_name == 'cash_flow' %}active-link{% endif %}">Cash Flow</a></li>
+                    {% endif %}
+                </ul>
+            </li>
+            {% endwith %}
+            {% endif %}
+
+            <!--Masters-->
+            {% if request.user.is_superuser or 'Masters Dashboard' in visible_modules or can_view_users or can_view_user_roles or can_view_vendors or can_view_warehouse or can_view_taxes or can_view_stock or can_view_payterms or can_view_items or can_view_brands or can_view_units or can_view_customers or can_view_categories or can_view_types %}
+            {% with active_urls="masters_dashboard tax_list add_tax add_taxgrp tax_edit tax_add_modal edit_taxgrp tax_choices_partial add_user user_list user_edit roles_view roles_list roles_edit items add_item item_edit import_items_step3 import_items_step2 import_items_step1 category_list category_add edit_category import_category_step1 import_category_step2 import_category_step3 type_list type_add edit_type import_type_step1 import_type_step2 import_type_step3 import_unit_step1 import_unit_step2 import_unit_step3 customer_list add_customers add_customer edit_customer vendor_list vendor_create vendor_edit brand_list edit_brand brand_add import_brand_step3 import_brand_step2 import_brand_step1 unit_list add_unit items_add_unit edit_unit warehouse_list warehouse_add edit_warehouse add_multiple_stock edit_stock stock_list payterm_view payterm_add edit_payterm" %}
+            <li class="{% if request.resolver_match.url_name in active_urls.split %}showMenu{% endif %}">
+                 <div class="icon-link">
+                    <a href="{% url 'master_list' %}" class="{% if request.resolver_match.url_name in active_urls.split %}active-link{% endif %}">
+                        <i class='bx bx-cog'></i>
+                        <span class="link_name">Masters</span>
+                        
+                    </a>
+                    <i class='bx bxs-chevron-down arrow'></i>
+                </div>
+                <ul class="sub-menu">
+                    <li><a class="link_name">Masters</a></li>
+                    {% if request.user.is_superuser or 'Masters Dashboard' in visible_modules or 'Dashboard' in visible_modules %}
+                    {% with active_urls="masters_dashboard" %}
+                        <li><a href="{% url 'masters_dashboard' company_code=company_code %}" class="{% if request.resolver_match.url_name == 'masters_dashboard' %}active-link{% endif %}">Dashboard</a></li>
+                    {% endwith %}
+                    {% endif %}
+                    {% if request.user.is_superuser or can_view_taxes %}
+                    {% with active_urls="tax_list add_tax add_taxgrp tax_edit tax_add_modal edit_taxgrp tax_choices_partial " %}
+                        <li><a href="{% url 'tax_list' %}" class="{% if request.resolver_match.url_name in active_urls.split %}active-link{% endif %}">Taxes</a></li>
+                    {% endwith %}
+                    {% endif %}
+                    {% if request.user.is_superuser or can_view_users %}
+                    {% with active_urls=" add_user user_list user_edit " %}
+                        <li><a href="{% url 'user_list' %}" class="{% if request.resolver_match.url_name in active_urls.split %}active-link{% endif %}">Users</a></li>
+                    {% endwith %}
+                    {% endif %}
+                    {% if request.user.is_superuser or can_view_user_roles %}
+                    {% with active_urls="roles_view roles_list roles_edit " %}
+                        <li><a href="{% url 'roles_list' %}" class="{% if request.resolver_match.url_name in active_urls.split %}active-link{% endif %}">User Roles</a></li>
+                    {% endwith %}
+                    {% endif %}
+                    
+                    {% if request.user.is_superuser or can_view_items %}
+                    <li><a href="{% url 'items' %}" class="{% if request.resolver_match.url_name in 'items add_item item_edit import_items_step1 import_items_step2 import_items_step3 ' %}active-link{% endif %}">Items List</a></li>
+                    {% if request.user.is_superuser or can_view_brands %}
+                    <li style="margin-left: 20px;"><a href="{% url 'brand_list' %}" class="{% if request.resolver_match.url_name in 'brand_list edit_brand brand_add import_brand_step1 import_brand_step2 import_brand_step3' %}active-link{% endif %}">Brand</a></li>
+                    {% endif %}
+                    {% if request.user.is_superuser or can_view_categories %}
+                    <li style="margin-left: 20px;"><a href="{% url 'category_list' %}" class="{% if request.resolver_match.url_name in 'category_list category_add edit_category import_category_step1 import_category_step2 import_category_step3' %}active-link{% endif %}">Category</a></li>
+                    {% endif %}
+                    {% if request.user.is_superuser or can_view_types %}
+                    <li style="margin-left: 20px;"><a href="{% url 'type_list' %}" class="{% if request.resolver_match.url_name in 'type_list type_add edit_type import_type_step1 import_type_step2 import_type_step3' %}active-link{% endif %}">Type</a></li>
+                    {% endif %}
+                    {% if request.user.is_superuser or can_view_units %}
+                    <li style="margin-left: 20px;"><a href="{% url 'unit_list' %}" class="{% if request.resolver_match.url_name in 'unit_list add_unit items_add_unit edit_unit import_unit_step1 import_unit_step2 import_unit_step3' %}active-link{% endif %}">Unit</a></li>
+                    {% endif %}
+                    {% endif %}
+                    
+                    {% if request.user.is_superuser or can_view_customers %}
+                    {% with active_urls="customer_list add_customers add_customer edit_customer" %}
+                        <li><a href="{% url 'customer_list' %}" class="{% if request.resolver_match.url_name in active_urls.split %}active-link{% endif %}">Customer</a></li>
+                    {% endwith %}
+                    {% endif %}
+                    {% if request.user.is_superuser or can_view_vendors %}
+                    {% with active_urls="vendor_list vendor_create vendor_edit" %}
+                        <li><a href="{% url 'vendor_list' %}" class="{% if request.resolver_match.url_name in active_urls.split %}active-link{% endif %}">Vendor</a></li>
+                    {% endwith %}
+                    {% endif %}
+                    {% if request.user.is_superuser or can_view_warehouse %}
+                    {% with active_urls="warehouse_list warehouse_add edit_warehouse" %}
+                        <li><a  href="{% url 'warehouse_list' %}" class="{% if request.resolver_match.url_name in active_urls.split %}active-link{% endif %} ">Warehouse</a></li>
+                    {% endwith %}
+                    {% endif %}
+                    {% if request.user.is_superuser or can_view_stock %}
+                    {% with active_urls="add_multiple_stock edit_stock stock_list" %}
+                        <li><a  href="{% url 'stock_list' %}" class="{% if request.resolver_match.url_name in active_urls.split %}active-link{% endif %} ">Stock</a></li>
+                    {% endwith %}
+                    {% endif %}
+                    {% if request.user.is_superuser or can_view_payterms %}
+                    {% with active_urls="payterm_view payterm_add edit_payterm" %}
+                        <li><a  href="{% url 'payterm_view' %}" class="{% if request.resolver_match.url_name in active_urls.split %}active-link{% endif %} ">Payment Terms</a></li>
+                    {% endwith %}
+                    {% endif %}
+                    <!-- Show Brand under Masters only if no Items permission but has Brand permission -->
+                    {% if not can_view_items %}
+                        {% if request.user.is_superuser or can_view_brands %}
+                        {% with active_urls="brand_list edit_brand brand_add" %}
+                            <li><a href="{% url 'brand_list' %}" class="{% if request.resolver_match.url_name in active_urls.split %}active-link{% endif %}">Brand</a></li>
+                        {% endwith %}
+                        {% endif %}
+                    {% endif %}
+                    <!-- Show Unit under Masters only if no Items permission but has Unit permission -->
+                    {% if not can_view_items %}
+                        {% if request.user.is_superuser or can_view_units %}
+                        {% with active_urls="unit_list add_unit edit_unit" %}
+                            <li><a href="{% url 'unit_list' %}" class="{% if request.resolver_match.url_name in active_urls.split %}active-link{% endif %}">Unit</a></li>
+                        {% endwith %}
+                        {% endif %}
+                    {% endif %}
+                    <!-- Show Category under Masters if Category permission exists without Items permission -->
+                    {% if not can_view_items %}
+                        {% if request.user.is_superuser or can_view_categories %}
+                        {% with active_urls="category_list category_add edit_category" %}
+                            <li><a href="{% url 'category_list' %}" class="{% if request.resolver_match.url_name in active_urls.split %}active-link{% endif %}">Category</a></li>
+                        {% endwith %}
+                        {% endif %}
+                    {% endif %}
+                    <!-- Show Type under Masters if Type permission exists without Items permission -->
+                    {% if not can_view_items %}
+                        {% if request.user.is_superuser or can_view_types %}
+                        {% with active_urls="type_list type_add edit_type" %}
+                            <li><a href="{% url 'type_list' %}" class="{% if request.resolver_match.url_name in active_urls.split %}active-link{% endif %}">Type</a></li>
+                        {% endwith %}
+                        {% endif %}
+                    {% endif %}
+                </ul>
+            </li>
+            {% endwith %}
+            {% endif %}
+
+
+            <!--System settings-->
+            {% if request.user.is_superuser or 'System settings' in visible_modules %}
+            <li>
+                <a href="{% url 'settings_page' %}">
+                    <i class='bx bx-wrench'></i>
+                    <span class="link_name">System settings</span>
+                </a>
+
+                <ul class="sub-menu blank">
+                    <li><a class="link_name" href="{% url 'settings_page' %}">System settings</a></li>
+                </ul>
+            </li>
+            {% endif %}
+            
+                <div class="profile-details">
+                    {% with request.resolver_match.kwargs.company_code as profile_company_code %}
+                    {% if profile_company_code %}
+                    <a href="/{{ profile_company_code }}/user/profile/" class="d-flex gap-2 align-items-center" style="flex:1; text-decoration:none;">
+                    {% else %}
+                    <a href="{% url 'user_profile' %}" class="d-flex gap-2 align-items-center" style="flex:1; text-decoration:none;">
+                    {% endif %}
+                        <div class="profile-content">
+                            <img src="{% static 'images/user_profile.png' %}"
+                                 alt="profileImg">
+                        </div>
+                        <div class="name-job">
+                            {% if user.is_authenticated %}
+                                <div class="profile_name">
+                                    {% if request.session.login_username %}
+                                        {{ request.session.login_username }}
+                                    {% elif user.first_name %}
+                                        {{ user.first_name }}
+                                    {% else %}
+                                        {{ user.username }}
+                                    {% endif %}
+                                </div>
+                            {% else %}
+                                <a href="{% url 'login' %}" class="profile_name">Login</a>
+                            {% endif %}
+                        </div>
+                    </a>
+                    {% endwith %}
+                    <a href="{% url 'logout' %}" style="text-decoration: none;"><i class='bx bx-log-out' style="color: #55588b;font-size:25px;margin-right:5px;margin-top:5px;"></i></a>
+                </div>
+            </li>
+        </ul>
+    </div>
+
+    {% block dashboard %}
+
+    <section class="home-section">
+        {% comment %} <div class="home-content" style="background-color: #dce2f9;"> {% endcomment %}
+        <div class="home-content d-flex justify-content-between align-items-center mb-4"style="background-color: #dce2f9;padding: 0px 20px;">
+
+            {% block head-title %}
+            
+            <span class="text " style="color: #55588b; ">{% block page_title %}Dashboard {% endblock %}</span>
+            {% endblock head-title %}
+            <span  style="color: #55588b;margin-bottom:10px;font-weight:600;">LyraERP</span>
+        </div>
+
+        {% endblock dashboard %}
+
+        {% block content %}
+        <h1 color="white"></h1>
+        {% endblock content %}
+
+
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.1/dist/js/bootstrap.bundle.min.js"></script>
+        <script>
+            
+            
+
+            document.body.addEventListener('htmx:configRequest', (event) => {
+                event.detail.headers['X-CSRFToken'] = '{{ csrf_token }}'; //insert csrf token when performing AJAX request 
+            })
+
+
+            // let arrow = document.querySelectorAll(".arrow");
+            // for (var i = 0; i < arrow.length; i++) {
+            //     arrow[i].addEventListener("click", (e) => {
+            //         let arrowParent = e.target.parentElement.parentElement;//selecting main parent of arrow
+            //         arrowParent.classList.toggle("showMenu");
+            //     });
+            // }
+            {% comment %} let iconLinks = document.querySelectorAll(".icon-link");
+iconLinks.forEach(iconLink => {
+    iconLink.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const iconLinkParent = iconLink.parentElement; // adjust if needed
+        iconLinkParent.classList.toggle("showMenu");
+    });
+}); {% endcomment %}
+
+            //for toggling menu on the full menu name and icons also change in dashboard
+            document.querySelectorAll(".icon-link").forEach(iconLink => {
+                iconLink.setAttribute("tabindex", "0");
+                iconLink.setAttribute("role", "button");
+
+                iconLink.addEventListener("click", function(e) {
+                    e.preventDefault();
+
+                    // Close all other open menus
+                    document.querySelectorAll(".nav-links li.showMenu").forEach(openItem => {
+                        if (openItem !== this.parentElement) {
+                            openItem.classList.remove("showMenu");
+                        }
+                    });
+
+                    // Toggle the menu of the clicked icon-link
+                    this.parentElement.classList.toggle("showMenu");
+                });
+
+                iconLink.addEventListener("keydown", function(e) {
+                    if (e.key !== "Enter" && e.key !== " ") {
+                        return;
+                    }
+
+                    e.preventDefault();
+                    this.click();
+                });
+            });
+
+
+
+            let sidebar = document.querySelector(".sidebar");
+            let sidebarBtn = document.querySelector(".bx-menu");
+            sidebarBtn.setAttribute("tabindex", "0");
+            sidebarBtn.setAttribute("role", "button");
+            sidebarBtn.setAttribute("aria-label", "Toggle sidebar");
+            console.log(sidebarBtn);
+            sidebarBtn.addEventListener("click", () => {
+                sidebar.classList.toggle("close");
+                localStorage.setItem("sidebarClosed", sidebar.classList.contains("close"));
+
+            });
+            sidebarBtn.addEventListener("keydown", (event) => {
+                if (event.key !== "Enter" && event.key !== " ") {
+                    return;
+                }
+
+                event.preventDefault();
+                sidebarBtn.click();
+            });
+            if (localStorage.getItem("sidebarClosed") === "true") {
+                sidebar.classList.add("close");
+            } else {
+                sidebar.classList.remove("close");
+            }
+
+            function isEditableTarget(element) {
+                if (!element) {
+                    return false;
+                }
+
+                return Boolean(
+                    element.closest("input, textarea, select, [contenteditable='true'], [contenteditable=''], .select2-search__field")
+                );
+            }
+
+            function getDefaultScrollTarget() {
+                const homeSection = document.querySelector(".home-section");
+
+                if (homeSection && homeSection.scrollHeight > homeSection.clientHeight) {
+                    return homeSection;
+                }
+
+                return null;
+            }
+
+            function getKeyboardScrollTarget(startElement) {
+                let current = startElement;
+
+                while (current && current !== document.body) {
+                    if (current instanceof HTMLElement) {
+                        const styles = window.getComputedStyle(current);
+                        const canScrollY = /(auto|scroll|overlay)/.test(styles.overflowY);
+
+                        if (canScrollY && current.scrollHeight > current.clientHeight) {
+                            return current;
+                        }
+                    }
+
+                    current = current.parentElement;
+                }
+
+                return null;
+            }
+
+            function scrollPageBy(top) {
+                window.scrollBy({ top: top, behavior: "smooth" });
+            }
+
+            function scrollPageTo(top) {
+                window.scrollTo({ top: top, behavior: "smooth" });
+            }
+
+            document.addEventListener("keydown", function(event) {
+                if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) {
+                    return;
+                }
+
+                if (isEditableTarget(event.target)) {
+                    return;
+                }
+
+                const scrollTarget = getKeyboardScrollTarget(document.activeElement || event.target) || getDefaultScrollTarget();
+                const lineStep = 80;
+                const pageStep = Math.max(window.innerHeight * 0.85, 240);
+                const usesInnerContainer = Boolean(scrollTarget);
+
+                switch (event.key) {
+                    case "ArrowDown":
+                        event.preventDefault();
+                        if (usesInnerContainer) {
+                            scrollTarget.scrollBy({ top: lineStep, behavior: "smooth" });
+                        } else {
+                            scrollPageBy(lineStep);
+                        }
+                        break;
+                    case "ArrowUp":
+                        event.preventDefault();
+                        if (usesInnerContainer) {
+                            scrollTarget.scrollBy({ top: -lineStep, behavior: "smooth" });
+                        } else {
+                            scrollPageBy(-lineStep);
+                        }
+                        break;
+                    case "PageDown":
+                        event.preventDefault();
+                        if (usesInnerContainer) {
+                            scrollTarget.scrollBy({ top: pageStep, behavior: "smooth" });
+                        } else {
+                            scrollPageBy(pageStep);
+                        }
+                        break;
+                    case "PageUp":
+                        event.preventDefault();
+                        if (usesInnerContainer) {
+                            scrollTarget.scrollBy({ top: -pageStep, behavior: "smooth" });
+                        } else {
+                            scrollPageBy(-pageStep);
+                        }
+                        break;
+                    case "Home":
+                        event.preventDefault();
+                        if (usesInnerContainer) {
+                            scrollTarget.scrollTo({ top: 0, behavior: "smooth" });
+                        } else {
+                            scrollPageTo(0);
+                        }
+                        break;
+                    case "End":
+                        event.preventDefault();
+                        if (usesInnerContainer) {
+                            scrollTarget.scrollTo({ top: scrollTarget.scrollHeight, behavior: "smooth" });
+                        } else {
+                            scrollPageTo(document.documentElement.scrollHeight);
+                        }
+                        break;
+                    case " ":
+                        event.preventDefault();
+                        if (usesInnerContainer) {
+                            scrollTarget.scrollBy({ top: event.shiftKey ? -pageStep : pageStep, behavior: "smooth" });
+                        } else {
+                            scrollPageBy(event.shiftKey ? -pageStep : pageStep);
+                        }
+                        break;
+                    default:
+                        break;
+                }
+            });
+
+        </script>
+        <script src="{% static 'js/currency_create_option.js' %}"></script>
+        <script src="{% static 'js/location_selects.js' %}"></script>
+
+        {% block scripts  %}
+        
+        {% endblock scripts  %}
+</body>
+
+</html>

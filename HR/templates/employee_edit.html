@@ -1,0 +1,27 @@
+{% extends "employee_register.html" %}
+
+{% block page_title %}Edit Employee{% endblock %}
+
+{# Some parent templates use a separate heading block; override that too so the page shows 'Edit Employee' #}
+{% block page_heading %}Edit Employee{% endblock %}
+
+{# Provide a small DOM fallback in case the parent template renders a static "Register" heading element #}
+{% block scripts %}
+{{ block.super }}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+	try {
+		const candidates = document.querySelectorAll('h1,h2,.page-title,.title,.heading');
+		candidates.forEach(el => {
+			if (!el || !el.textContent) return;
+			if (/register/i.test(el.textContent)) {
+				el.textContent = el.textContent.replace(/register/i, 'Edit');
+				if (!/edit/i.test(el.textContent)) el.textContent = 'Edit Employee';
+			}
+		});
+	} catch (e) {
+		/* defensive - do nothing */
+	}
+});
+</script>
+{% endblock scripts %}

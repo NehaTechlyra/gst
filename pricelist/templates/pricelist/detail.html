@@ -1,0 +1,244 @@
+{% extends 'website/index.html' %}
+{% load static %}
+{% block exstyle %}
+<link href="{% static 'style/general.css' %}" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.9.1/font/bootstrap-icons.css" rel="stylesheet">
+{% endblock exstyle %}
+{% block page_title %}{{ price_list.name }}{% endblock page_title %}
+{% block content %}
+<div class="container mt-4">
+  <!-- Header -->
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h2>{{ price_list.name }}</h2>
+      <p class="text-muted mb-0">{{ price_list.description|default:"No description" }}</p>
+    </div>
+    <div>
+      <a href="{% url 'pricelist:price_list_edit' pk=price_list.pk %}" class="btn btn-primary">
+        <i class="bi bi-pencil"></i> Edit
+      </a>
+      <a href="{% url 'pricelist:price_list_index' %}" class="btn btn-outline-secondary ms-2">
+        <i class="bi bi-arrow-left"></i> Back to List
+      </a>
+    </div>
+  </div>
+
+  <!-- Price List Info -->
+  <div class="row mb-4">
+    <div class="col-md-8">
+      <div class="card">
+        <div class="card-header">
+          <h5 class="mb-0">Price List Details</h5>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-6">
+              <p><strong>Type:</strong>
+                <span class="badge bg-{% if price_list.type == 'sales' %}primary{% else %}success{% endif %} ms-2">
+                  {{ price_list.get_type_display }}
+                </span>
+              </p>
+              <p><strong>Currency:</strong> {{ price_list.currency|default:'USD' }}</p>
+              <p><strong>Rounding:</strong> {{ price_list.get_rounding_display }}</p>
+            </div>
+            <div class="col-md-6">
+              <p><strong>Status:</strong>
+                <span class="badge bg-{% if price_list.is_active %}success{% else %}secondary{% endif %} ms-2">
+                  {% if price_list.is_active %}Active{% else %}Inactive{% endif %}
+                </span>
+              </p>
+              <p><strong>Valid From:</strong> {{ price_list.valid_from|date:'M d, Y'|default:'-' }}</p>
+              <p><strong>Valid To:</strong> {{ price_list.valid_to|date:'M d, Y'|default:'-' }}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card">
+        <div class="card-header">
+          <h5 class="mb-0">Quick Actions</h5>
+        </div>
+        <div class="card-body">
+          <a href="{% url 'pricelist:price_list_item_create' price_list_pk=price_list.pk %}" class="btn btn-success w-100 mb-2">
+            <i class="bi bi-plus-circle"></i> Add Price Item
+          </a>
+          <a href="{% url 'pricelist:contact_assignment_create' price_list_pk=price_list.pk %}" class="btn btn-info w-100 mb-2">
+            <i class="bi bi-person-plus"></i> Assign to Customer
+          </a>
+          <button class="btn btn-outline-danger w-100" onclick="confirmDelete()">
+            <i class="bi bi-trash"></i> Delete Price List
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Price List Items -->
+  <div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <h5 class="mb-0">Price Items ({{ items|length }})</h5>
+      <a href="{% url 'pricelist:price_list_item_create' price_list_pk=price_list.pk %}" class="btn btn-sm btn-success">
+        <i class="bi bi-plus"></i> Add Item
+      </a>
+    </div>
+    <div class="card-body">
+      {% if items %}
+        <div class="table-responsive">
+          <table class="table table-striped">
+            <thead>
+              <tr>
+                <th>Item</th>
+                <th>Pricing Method</th>
+                <th>Adjustment</th>
+                <th>Custom Rate</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in items %}
+              <tr>
+                <td>
+                  <strong>{{ item.item.name }}</strong><br>
+                  <small class="text-muted">{{ item.item.code }}</small>
+                </td>
+                <td>{{ item.get_pricing_method_display }}</td>
+                <td>
+                  {% if item.pricing_method == 'percentage' %}
+                    {{ item.percentage }}% {{ item.get_adjustment_type_display|lower }}
+                  {% else %}
+                    -
+                  {% endif %}
+                </td>
+                <td>
+                  {% if item.custom_rate %}
+                    {{ item.custom_rate }}
+                  {% else %}
+                    -
+                  {% endif %}
+                </td>
+                <td>
+                  <a href="{% url 'pricelist:price_list_item_edit' pk=item.pk %}" class="btn btn-sm btn-outline-primary">
+                    <i class="bi bi-pencil"></i>
+                  </a>
+                  <button class="btn btn-sm btn-outline-danger" onclick="confirmDeleteItem({{ item.pk }}, '{{ item.item.name }}')">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="text-center text-muted py-4">
+          <i class="bi bi-inbox fs-1"></i>
+          <p class="mt-2">No price items configured yet.</p>
+          <a href="{% url 'pricelist:price_list_item_create' price_list_pk=price_list.pk %}" class="btn btn-primary">
+            Add First Item
+          </a>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Customer Assignments -->
+  <div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <h5 class="mb-0">Customer Assignments ({{ assignments|length }})</h5>
+      <a href="{% url 'pricelist:contact_assignment_create' price_list_pk=price_list.pk %}" class="btn btn-sm btn-info">
+        <i class="bi bi-person-plus"></i> Assign Customer
+      </a>
+    </div>
+    <div class="card-body">
+      {% if assignments %}
+        <div class="table-responsive">
+          <table class="table table-striped">
+            <thead>
+              <tr>
+                <th>Customer</th>
+                <th>Assigned Date</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for assignment in assignments %}
+              <tr>
+                <td>
+                  <strong>{{ assignment.contact.customer_code }}</strong><br>
+                  <small class="text-muted">
+                    {% if assignment.contact.company_name %}
+                      {{ assignment.contact.company_name }}
+                    {% else %}
+                      {{ assignment.contact.first_name }} {{ assignment.contact.last_name }}
+                    {% endif %}
+                  </small>
+                </td>
+                <td>{{ assignment.assigned_at|date:'M d, Y H:i' }}</td>
+                <td>
+                  <button class="btn btn-sm btn-outline-danger" onclick="confirmRemoveAssignment({{ assignment.pk }}, '{{ assignment.contact.customer_code }}')">
+                    <i class="bi bi-person-dash"></i> Remove
+                  </button>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="text-center text-muted py-4">
+          <i class="bi bi-people fs-1"></i>
+          <p class="mt-2">No customers assigned to this price list yet.</p>
+          <a href="{% url 'pricelist:contact_assignment_create' price_list_pk=price_list.pk %}" class="btn btn-primary">
+            Assign First Customer
+          </a>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Delete Price List</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        Are you sure you want to delete the price list "{{ price_list.name }}"?
+        This action cannot be undone.
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <form method="post" action="{% url 'pricelist:price_list_delete' pk=price_list.pk %}" style="display: inline;">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-danger">Delete</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function confirmDelete() {
+  const modal = new bootstrap.Modal(document.getElementById('deleteModal'));
+  modal.show();
+}
+
+function confirmDeleteItem(itemId, itemName) {
+  if (confirm(`Are you sure you want to remove "${itemName}" from this price list?`)) {
+    // Implement delete functionality
+    console.log('Delete item', itemId);
+  }
+}
+
+function confirmRemoveAssignment(assignmentId, customerCode) {
+  if (confirm(`Are you sure you want to remove the assignment for customer "${customerCode}"?`)) {
+    // Implement remove assignment functionality
+    console.log('Remove assignment', assignmentId);
+  }
+}
+</script>
+{% endblock %}

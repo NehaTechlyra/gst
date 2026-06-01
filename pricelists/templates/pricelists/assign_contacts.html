@@ -1,0 +1,165 @@
+{% extends "website/index.html" %}
+{% load static %}
+{% block page_title %}Assign Contacts — {{ price_list.name }}{% endblock %}
+
+{% block exstyle %}
+<link href="{% static 'style/general.css' %}" rel="stylesheet">
+<style>
+  .breadcrumb-bar { font-size: 12px; color: #9898b0; margin-bottom: 3px; }
+  .breadcrumb-bar a { color: #9898b0; text-decoration: none; }
+  .breadcrumb-bar a:hover { color: #55588b; }
+  .page-main-title { font-size: 19px; font-weight: 700; color: #55588b !important; margin: 0 0 16px; }
+  .contact-card {
+    background: #f7f7fa; border: 1px solid #dde0f2; border-radius: 7px;
+    padding: 10px 14px; display: flex; align-items: center; gap: 12px;
+    cursor: pointer; transition: border-color 0.15s, background 0.15s;
+    margin-bottom: 8px;
+  }
+  .contact-card:hover { border-color: #55588b; background: #f0f1f8; }
+  .contact-card.selected { border-color: #55588b; background: #eef0f8; }
+  .contact-card input[type="checkbox"] { accent-color: #55588b; width: 15px; height: 15px; flex-shrink: 0; }
+  .contact-name { font-weight: 600; font-size: 13px; color: #55588b; }
+  .contact-meta { font-size: 11px; color: #9898b0; margin-top: 2px; }
+  .section-col-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding-bottom: 8px; border-bottom: 1px solid #dde0f2; margin-bottom: 12px;
+  }
+  .section-col-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: #9898b0; }
+  .select-all-btn { font-size: 11px; color: #55588b; background: none; border: none; cursor: pointer; font-weight: 500; padding: 0; }
+  .select-all-btn:hover { text-decoration: underline; }
+  .sticky-save {
+    position: sticky; bottom: 0; background: #fff;
+    border-top: 1px solid #dde0f2; padding: 14px 0; margin-top: 20px;
+    display: flex; justify-content: flex-end; gap: 10px; z-index: 10;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-3 px-4">
+
+  <div class="breadcrumb-bar mb-1">
+    <a href="{% url 'pricelists:index' company_code=request.resolver_match.kwargs.company_code %}">Price Lists</a> /
+    <a href="{% url 'pricelists:detail' company_code=request.resolver_match.kwargs.company_code pk=price_list.pk %}">{{ price_list.name }}</a> /
+    <span>Assign Contacts</span>
+  </div>
+  <h1 class="page-main-title">Assign Contacts <small style="font-size:13px; font-weight:400; color:#9898b0;">Map this price list to customers and vendors</small></h1>
+
+  <form method="post" id="assignment-form">
+    {% csrf_token %}
+
+    <div class="card" style="border:1px solid #dde0f2; border-radius:8px;">
+      <div class="card-body">
+
+        <!-- Search + badge -->
+        <div class="d-flex align-items-center gap-3 mb-4 flex-wrap">
+          <div class="input-group input-group-sm" style="max-width:320px;">
+            <span class="input-group-text" style="background:#f7f7fa; border-color:#dde0f2;">
+              <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="#9898b0"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0"/></svg>
+            </span>
+            <input type="text" id="contact-search" class="form-control form-control-sm" placeholder="Search by name or company..." style="border-color:#dde0f2;">
+          </div>
+          <div class="ms-auto">
+            {% if price_list.price_type == 'sales' %}
+              <span style="background:rgba(85,88,139,0.12); color:#55588b; padding:3px 12px; border-radius:20px; font-size:12px; font-weight:500;">Sales Price List</span>
+            {% else %}
+              <span style="background:rgba(192,132,252,0.12); color:#a855f7; padding:3px 12px; border-radius:20px; font-size:12px; font-weight:500;">Purchase Price List</span>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Two-column grid -->
+        <div class="row g-4">
+
+          <!-- Customers -->
+          <div class="col-12 col-md-6">
+            <div class="section-col-header">
+              <div class="section-col-title">Customers ({{ customers|length }})</div>
+              <button type="button" class="select-all-btn" onclick="toggleSelectAll('customers')">Select All</button>
+            </div>
+            <div id="customers-list">
+              {% for c in customers %}
+                <label class="contact-card {% if c.id in assigned_customer_ids %}selected{% endif %}"
+                       data-search="{{ c.first_name }} {{ c.last_name }} {{ c.company_name }}">
+                  <input type="checkbox" name="customers" value="{{ c.id }}"
+                         {% if c.id in assigned_customer_ids %}checked{% endif %}
+                         onchange="handleCardChange(this)">
+                  <div>
+                    <div class="contact-name">
+                      {% if c.customer_type == 'company' %}{{ c.company_name }}
+                      {% else %}{{ c.first_name }} {{ c.last_name|default:"" }}{% endif %}
+                    </div>
+                    <div class="contact-meta">{{ c.customer_code }} • {{ c.city }}, {{ c.state }}</div>
+                  </div>
+                </label>
+              {% empty %}
+                <p style="text-align:center; color:#9898b0; padding:20px 0; font-size:13px;">No customers found.</p>
+              {% endfor %}
+            </div>
+          </div>
+
+          <!-- Vendors -->
+          <div class="col-12 col-md-6">
+            <div class="section-col-header">
+              <div class="section-col-title">Vendors ({{ vendors|length }})</div>
+              <button type="button" class="select-all-btn" onclick="toggleSelectAll('vendors')">Select All</button>
+            </div>
+            <div id="vendors-list">
+              {% for v in vendors %}
+                <label class="contact-card {% if v.id in assigned_vendor_ids %}selected{% endif %}"
+                       data-search="{{ v.first_name }} {{ v.last_name }} {{ v.company_name }}">
+                  <input type="checkbox" name="vendors" value="{{ v.id }}"
+                         {% if v.id in assigned_vendor_ids %}checked{% endif %}
+                         onchange="handleCardChange(this)">
+                  <div>
+                    <div class="contact-name">
+                      {% if v.vendor_type == 'company' %}{{ v.company_name }}
+                      {% else %}{{ v.first_name }} {{ v.last_name|default:"" }}{% endif %}
+                    </div>
+                    <div class="contact-meta">{{ v.vendor_code }} • {{ v.city }}, {{ v.state }}</div>
+                  </div>
+                </label>
+              {% empty %}
+                <p style="text-align:center; color:#9898b0; padding:20px 0; font-size:13px;">No vendors found.</p>
+              {% endfor %}
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- Sticky Save Bar -->
+    <div class="sticky-save">
+      <a href="{% url 'pricelists:detail' company_code=request.resolver_match.kwargs.company_code pk=price_list.pk %}" class="commmombtn px-4 py-2" style="text-decoration:none;">Cancel</a>
+      <button type="submit" class="add-item-btn px-4 py-2">✓ Save Assignments</button>
+    </div>
+
+  </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function handleCardChange(input) {
+  const card = input.closest('.contact-card');
+  card.classList.toggle('selected', input.checked);
+}
+
+function toggleSelectAll(name) {
+  const container = document.getElementById(`${name}-list`);
+  const inputs = container.querySelectorAll(`input[name="${name}"]`);
+  const visible = Array.from(inputs).filter(i => i.closest('.contact-card').style.display !== 'none');
+  const allChecked = visible.every(i => i.checked);
+  visible.forEach(i => { i.checked = !allChecked; handleCardChange(i); });
+}
+
+document.getElementById('contact-search').addEventListener('input', function() {
+  const q = this.value.toLowerCase();
+  document.querySelectorAll('.contact-card').forEach(card => {
+    const text = card.getAttribute('data-search').toLowerCase();
+    card.style.display = text.includes(q) ? 'flex' : 'none';
+  });
+});
+</script>
+{% endblock %}

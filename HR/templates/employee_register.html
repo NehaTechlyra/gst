@@ -1,0 +1,3073 @@
+{% extends 'website/index.html' %}
+{% load static %}
+
+{% block exstyle %}
+<link href="{% static 'style/general.css' %}" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/17.0.19/css/intlTelInput.min.css"/>
+
+
+{% endblock exstyle %}
+
+{% block page_title %}Employee Register{% endblock %}
+
+{% block content %}
+{% block style %}
+<style>
+  /* Small styles for country select + phone field spacing and flag images */
+    #country_select { width: 32%; margin-right: 10px; padding-left:8px; padding-right:8px; }
+    #phone_local { width: calc(68% - 10px); padding-left:8px; padding-right:8px; }
+    .input-group .form-control { box-sizing: border-box; }
+    
+    /* Border radius for phone input group - both fields fully rounded */
+    #country_select.select2-hidden-accessible + .select2-container .select2-selection {
+      border-radius: .375rem !important;
+    }
+    #phone_local { 
+      border-radius: .375rem !important;
+    }
+    /* flag image styles used by Select2 templates */
+    .select2-container--default .select2-selection--single img.country-flag { width:20px; height:14px; margin-right:8px; vertical-align:middle; }
+    .select2-results__option img.country-flag { width:20px; height:14px; margin-right:8px; vertical-align:middle; }
+
+
+  /* passbook preview handled in scripts block (delegated jQuery handler) */
+   /* Ensure select2 dropdown appears above other elements by default,
+     but keep them below Bootstrap modals so modals/backdrops work correctly. */
+   .select2-container { z-index: 1030 !important; }
+   .select2-container--open .select2-dropdown { z-index: 1040 !important; pointer-events: auto; }
+   /* Force modals and backdrops above Select2; using high values avoids cross-component z-index conflicts */
+   .modal { z-index: 11000 !important; }
+   .modal-backdrop { z-index: 10990 !important; }
+
+    /* phone input group layout - keep select and input on same row */
+    .phone-input-group { display:flex; gap:10px; align-items:center; }
+    .phone-input-group .form-control { flex: 1 1 auto; min-width:0; }
+    /* make the select narrower by default */
+    #country_select.select2-hidden-accessible + .select2-container, #country_select { width: 32% !important; max-width: 32% !important; }
+    #phone_local { width: calc(68% - 10px) !important; }
+
+
+.select2-container.is-invalid .select2-selection {
+  border-color: #e74c3c !important;
+  background-color: #ffe6e6 !important;
+}
+
+.category.is-invalid {
+    border: 1px solid #e74c3c; /* red border */
+    border-radius: 5px;
+    padding: 5px;
+    background-color: #ffe6e6;
+}
+
+.is-invalid:focus{
+  outline: 1.5px solid #e74c3c !important
+}
+  .container {
+    margin-top: 25px;
+    overflow: visible; /* remove overflow to prevent double scroll */
+    max-width: 1920px !important;
+    height: auto;
+    min-height: calc(100vh - 150px); /* set height to enable single scroll */
+  }
+
+  
+  /* === Main form container === */
+  .container-first {
+    overflow: visible;   /* allow it to expand naturally */
+    height: auto;        /* auto height so it grows with content */
+    padding: 0;
+    background: none;
+    border: none;
+    margin-bottom: 10px; /* reduced space before buttons */
+  }
+
+  /* === Button container (fixed at bottom) === */
+  .button {
+    position: fixed;
+    bottom: 0;
+    left: 200px; /* offset by sidebar width */
+    right: 0;
+    width: calc(100% - 200px);
+    padding: 8px 20px; /* reduced padding to match logout section */
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    background: #fff;
+    border-top: 1px solid #ddd;
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+    z-index: 1001;
+  }
+
+  /* Ensure Select2 dropdowns don't overlap with fixed button */
+  .select2-container {
+    z-index: 1000 !important;
+  }
+
+  .select2-dropdown {
+    z-index: 1000 !important;
+  }
+.toast {
+  visibility: hidden;
+  min-width: 250px;
+  max-width: 600px;
+  width: auto;
+  background-color: #4BB543; /* green for success */
+  color: white;
+  text-align: center;
+  border-radius: 5px;
+  padding: 16px 24px;
+  position: fixed;
+  z-index: 20000;
+  left: 50%;
+  top: 30px;
+  transform: translateX(-50%);
+  font-size: 16px;
+  box-shadow: 0px 4px 6px rgba(0,0,0,0.2);
+  transition: opacity 0.5s linear;
+  opacity: 0;
+  white-space: nowrap;
+}
+
+.toast.show {
+  visibility: visible;
+  opacity: 1;
+}
+
+
+  /* === Individual buttons === */
+  .commmombtn,
+  .submit-btn {
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    margin: 5px;
+    border-radius: 6px;
+    cursor: pointer;
+    background-color: rgb(54, 115, 230);
+    transition: background-color 0.3s ease;
+    position: relative;  /* makes sure it follows document flow */
+  }
+
+  .title {
+    margin-top: 15px;
+    margin-bottom: 10px;
+    font-weight: 500;
+  }
+
+  .tab-btn {
+    display: flex;
+    justify-content: center;
+    gap: 25px;
+    padding-bottom: 5px;
+    margin-bottom: 15px;
+  }
+
+  .tab-btn a {
+    color: #333;
+    text-decoration: none;
+    padding: 8px 10px;
+    border: none;
+    border-bottom: 3px solid transparent;
+    transition: all 0.3s ease;
+    font-weight: 500;
+    font-size: 18px;
+    cursor: default;
+  }
+
+  .tab-btn a.active {
+    color: #55588b;
+    border-bottom: 3px solid #55588b;
+  }
+
+  {% comment %} .commmombtn {
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    margin: 5px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+  }
+
+  .submit-btn {
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  margin: 5px;
+  border-radius: 6px;
+  cursor: pointer;
+  background-color: rgb(54, 115, 230);
+  transition: background-color 0.3s ease;
+  position: relative;   /* make sure it moves normally */
+  bottom: auto;
+}  {% endcomment %}
+
+  /* === Form Section === */
+  .form-section {
+    display: none;
+    min-height: 500px;
+    height: auto;
+    overflow-y: auto; /* single scroll for entire form */
+    background: #fff;
+    border-radius: 10px;
+    padding: 25px;
+    padding-bottom: 100px !important; /* space for fixed buttons */
+  }
+
+  .form-section.active {
+    display: block;
+  }
+
+  form {
+    width: 100%;
+    display: block;
+    height: auto;
+    min-height: auto;
+  }
+
+  form.form-section {
+    display: block;
+    background: #fff;
+    border-radius: 8px;
+    padding: 15px;
+  }
+  .back-btn {
+    display: block;      /* makes it behave like a block element */
+    margin-left: 0;      /* aligns it to the left */
+    margin-right: auto;  /* optional, ensures it doesn’t float right */
+}
+
+
+  {% comment %} .container-first {
+    overflow: hidden;
+    height: 100%;
+    padding: 0;
+    background: none;
+    border: none;
+  } {% endcomment %}
+
+
+  [data-tab] {
+    color: #55588b;
+    padding: 8px 15px;
+    margin: 3px;
+    cursor: pointer;
+    transition: 0.3s;
+  }
+
+  [data-tab]:hover {
+    color: #55588b;
+    background: none;
+  }
+
+  [data-tab].active {
+    color: #55588b;
+    font-weight: 600;
+    background: none;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateX(5px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+   /* Optional: make tags look more like LinkedIn skills */
+  .select2-container--default .select2-selection--multiple .select2-selection__choice {
+    background-color: #55588b !important; /* LinkedIn blue */
+    border: none !important;
+    color: white !important;
+    font-weight: 500 !important;
+    padding: 4px 32px 4px 10px !important; /* Extra right padding for X button */
+    border-radius: 20px !important;
+    position: relative !important; /* Needed for absolute positioning of X */
+    display: inline-block !important;
+  }
+
+  .select2-container--default .select2-selection--multiple .select2-selection__choice .select2-selection__choice__remove {
+    position: absolute !important; /* Take out of flow */
+    right: 8px !important; /* Position from RIGHT edge */
+    left: auto !important; /* Override any left positioning */
+    top: 50% !important;
+    transform: translateY(-50%) !important; /* Center vertically */
+    display: inline-block !important;
+    color: white !important;
+    margin: 0 !important; /* Remove all margins */
+    margin-left: 0 !important; /* Specifically override margin-left */
+    margin-right: 0 !important;
+    padding: 0 !important;
+    width: 16px !important;
+    height: 16px !important;
+    font-size: 18px !important;
+    line-height: 16px !important;
+    text-align: center !important;
+    cursor: pointer !important;
+    font-weight: bold !important;
+    border: none !important; /* Remove any border */
+    border-left: none !important; /* Specifically remove left border */
+    border-right: none !important; /* Remove right border */
+    background: transparent !important; /* No background */
+  }
+  
+  .select2-container--default .select2-selection--multiple .select2-selection__choice .select2-selection__choice__remove:hover {
+    color: #ffcccc !important;
+    background-color: rgba(255, 255, 255, 0.2) !important;
+    border-radius: 50% !important;
+    border: none !important;
+  }
+  /* 🔴 Adds red star to all required labels */
+  .required::after {
+    content: " *";
+    color: red;
+    font-weight: bold;
+  }
+
+      /* ===== intl-tel-input tweaks to keep country code compact ===== */
+    /* Make the overall widget fit the column and not overflow */
+    .iti {
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    /* Ensure the intl-tel-input dropdown is absolutely positioned and hidden until open */
+    .iti {
+      position: relative !important;
+    }
+
+    .iti__country-list {
+      position: absolute !important;
+      top: 100% !important;
+      left: 0 !important;
+      z-index: 3000 !important;
+      display: none !important;
+      margin: 4px 0 0 0 !important;
+      padding: 0 !important;
+      list-style: none !important;
+      background: #fff !important;
+      border: 1px solid rgba(0,0,0,0.12) !important;
+      box-shadow: 0 6px 12px rgba(0,0,0,0.08) !important;
+      max-height: 320px !important;
+      overflow: auto !important;
+      width: max-content !important;
+      min-width: 220px !important;
+    }
+
+    /* If any global CSS forced .iti__country-list to display, ensure we reset it
+      Only the plugin should toggle visibility; plugin uses aria-hidden or inline styles,
+      but we add this extra guard. */
+    .iti__country-list[aria-hidden="true"] { display: none !important; }
+    .iti__country-list.iti__hide { display: none !important; }
+
+    /* Hide any country-list that is not appended directly to the document body.
+      The plugin appends its dropdown to body (we set dropdownContainer: document.body).
+      This prevents lists being left inside other containers and showing as page flow. */
+    :not(body) > .iti__country-list { display: none !important; }
+
+    .iti__country { padding: 6px 10px !important; }
+    .iti__country:hover { background: #f5f5f5 !important; cursor: pointer; }
+    .iti__country .iti__dial-code { margin-left: 6px; color: #666; }
+    .iti__flag { width: 20px !important; height: 14px !important; }
+
+    /* Keep flag and dial code compact */
+    .iti__flag { width: 20px; height: 14px; }
+    .iti--separate-dial-code .iti__flag-box { width: auto; margin-right: 6px; }
+    .iti--separate-dial-code .iti__selected-dial-code {
+      font-size: 0.95rem;
+      padding-right: 6px;
+    }
+
+    /* Ensure bootstrap input-group + intl-tel-input cooperate */
+    .input-group .iti { display: flex; align-items: center; }
+    .input-group .form-control { min-width: 0; }
+
+    /* Make the country prefix visually part of the same input */
+    #country_prefix {
+      border-right: 0 !important;
+      background: #fff;
+      border-radius: .375rem 0 0 .375rem;
+    }
+
+    /* Select2 dropdown styling when attached inside input-group */
+    .input-group .select2-container--default .select2-dropdown {
+      position: absolute !important;
+      top: calc(100% + 4px) !important;
+      left: 0 !important;
+      width: 100% !important;
+      z-index: 4000 !important;
+      box-shadow: 0 6px 12px rgba(0,0,0,0.08) !important;
+    }
+    .input-group .select2-container { display: block !important; }
+    .input-group .select2-container .select2-search__field { width: 100% !important; }
+    .select2-container--default .select2-selection--single { height: auto !important; }
+
+  /* Adjust button position when sidebar is closed */
+  .sidebar.close ~ .home-section .button {
+    left: 45px;
+    width: calc(100% - 45px);
+  }
+
+</style>
+
+
+{% endblock style %}
+
+<style>
+  /* Apply requested color to Back, Previous and Next buttons */
+  .back-btn, button.commmombtn[data-prev], button.commmombtn[data-next] {
+    background-color: #55588b !important;
+    color: #e9edfdff !important;
+    border: none !important;
+  }
+  .back-btn:hover, button.commmombtn[data-prev]:hover, button.commmombtn[data-next]:hover,
+  .back-btn:focus, button.commmombtn[data-prev]:focus, button.commmombtn[data-next]:focus {
+    background-color: #44456e !important;
+    color: #e9edfdff !important;
+  }
+
+  /* Keep modal toast styles for confirmation modal */
+  .custom-back-toast {
+    background-color: #55588b !important;
+    color: #e9edfdff !important; /* increased contrast for readability */
+    font-weight: 600;
+  }
+  .custom-back-ok {
+    background-color: #55588b !important;
+    color: #e9edfdff !important;
+    border: none !important;
+  }
+  .custom-back-ok:hover, .custom-back-ok:focus {
+    background-color: #44456e !important;
+    color: #e9edfdff !important;
+  }
+</style>
+
+<div class="container">
+  <!-- === Tabs === -->
+  <div class="tab-btn">
+    <a href="#" data-tab="personal">Personal Details</a>
+    <a href="#" data-tab="document">Document Details</a>
+    <a href="#" data-tab="department">Department Details</a>
+    <a href="#" data-tab="others">Others</a>
+  </div>
+
+  <!-- ✅ Single Form for All Sections -->
+  <form id="employeeForm" method="POST" enctype="multipart/form-data">
+    {% csrf_token %}
+    <input type="hidden" name="source_candidate_id" value="{{ source_candidate_id|default:'' }}">
+    <input type="hidden" name="source_offer_id" value="{{ source_offer_id|default:'' }}">
+
+    <!-- === Personal Details === -->
+    <div id="personal" class="form-section active">
+      
+      <div class="container-first">
+        <div class="first form">
+          <div class="row mb-2">
+            <div class="col-md-2">
+              <label class="form-label required">Salutation</label>
+              <select class="form-control" name="salutation" required>
+                <option value="">Select</option>
+                <option value="Mr" {% if employee and employee.salutation == 'Mr' %}selected{% endif %}>Mr.</option>
+                <option value="Mrs" {% if employee and employee.salutation == 'Mrs' %}selected{% endif %}>Mrs.</option>
+                <option value="Ms" {% if employee and employee.salutation == 'Ms' %}selected{% endif %}>Ms.</option>
+                <option value="Dr" {% if employee and employee.salutation == 'Dr' %}selected{% endif %}>Dr.</option>
+                <option value="Prof" {% if employee and employee.salutation == 'Prof' %}selected{% endif %}>Prof.</option>
+              </select>
+            </div>
+            <div class="col-md-5">
+              <label class="form-label required">First Name</label>
+              <input type="text" class="form-control" name="first_name" value="{% if employee %}{{ employee.first_name }}{% else %}{{ prefill.first_name }}{% endif %}" placeholder="Enter your first name" required>
+            </div>
+            <div class="col-md-5">
+              <label class="form-label required">Last Name</label>
+              <input type="text" class="form-control" name="last_name" value="{% if employee %}{{ employee.last_name }}{% else %}{{ prefill.last_name }}{% endif %}" placeholder="Enter your last name" required>
+            </div>
+          </div>
+
+          <div class="row mb-2">
+            <div class="col-md-4">
+              <label class="form-label required" for="dob">Date of Birth</label>
+              <input type="date" id="dob" class="form-control" name="date_of_birth" value="{% if employee and employee.dob %}{{ employee.dob|date:'Y-m-d' }}{% endif %}" required>
+            </div> 
+            <div class="col-md-4">
+              <label class="form-label required">Email</label>
+              <input id="email" type="email" class="form-control" name="email_id" value="{% if employee %}{{ employee.email }}{% else %}{{ prefill.email }}{% endif %}" placeholder="@gmail.com" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label required">Phone Number</label>
+                <div class="phone-input-group">
+                    <!-- Visible searchable country select + local phone input -->
+                    <select id="country_select" class="form-control" data-initial-phone="{% if employee and employee.phone %}{{ employee.phone }}{% else %}{{ prefill.phone }}{% endif %}"></select>
+                    <!-- Leave local input empty; JS will split the stored E.164 phone into country + local parts and populate this field to avoid duplicated country codes -->
+                    <input type="text" class="form-control" id="phone_local" name="phone_local" value="" placeholder="Enter phone number" aria-describedby="phoneHelp" required>
+                    <!-- Hidden input to submit E.164 phone value to server -->
+                    <input type="hidden" id="phone_full" name="phone" value="{% if employee %}{{ employee.phone }}{% else %}{{ prefill.phone }}{% endif %}">
+                  </div>
+                <small id="phoneHelp" class="form-text text-muted">Select country and enter the local number.</small>
+                </div>
+          </div>
+
+          <div class="row mb-2">
+            <!-- Current Address -->
+            <div class="col-md-6">
+              <label class="form-label required">Current Address</label>
+              <textarea class="form-control" id="currentAddress" name="address" placeholder="Enter current address" required>{% if employee %}{{ employee.address }}{% endif %}</textarea>
+            </div>
+
+            <!-- Permanent Address -->
+            <div class="col-md-6">
+              <div class="form-check mb-2">
+                <input type="checkbox" id="sameAsCurrent" class="form-check-input">
+                <label class="form-check-label required" for="sameAsCurrent">Same as Current Address</label>
+              </div>
+              <textarea class="form-control" id="permanentAddress" name="permanent_address" placeholder="Enter permanent address" required>{% if employee %}{{ employee.permanent_address }}{% endif %}</textarea>
+            </div>
+          </div>
+
+          <div class="row mb-2">
+            <div class="col-md-4">
+              <label class="form-label required">Marital Status</label>
+              <select class="form-control" name="marital_status" required>
+                <option value="">Select</option>
+                <option value="Single" {% if employee and employee.marital_status == 'Single' %}selected{% endif %}>Single</option>
+                <option value="Married" {% if employee and employee.marital_status == 'Married' %}selected{% endif %}>Married</option>
+                <option value="Divorced" {% if employee and employee.marital_status == 'Divorced' %}selected{% endif %}>Divorced</option>
+                <option value="Widowed" {% if employee and employee.marital_status == 'Widowed' %}selected{% endif %}>Widowed</option>
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label required">Upload Photo (maximum 1 MB)</label>
+              <input type="file" class="form-control" id="photo-input" name="photo" accept="image/*" {% if not employee %}required{% endif %}>
+              <div style="margin-top:8px; display:flex; align-items:center; gap:12px;">
+                <div style="min-width:120px;">
+                  <img id="photo-preview" src="{% if employee and employee.photo_base64 %}{{ employee.photo_base64 }}{% else %}{% static 'images/placeholder-user.png' %}{% endif %}" alt="photo" style="width:100px; height:50px; object-fit:cover; border-radius:6px; {% if not employee or not employee.photo_base64 %}opacity:0.6;{% endif %}" />
+                </div>
+                <div style="flex:1;">
+                  <small id="photo-filename" class="text-muted">No file chosen</small>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label required">Gender</label>
+              <select id="gender" name="gender" class="form-control" required>
+                <option value="">Select Gender</option>
+                <option value="male" {% if employee and employee.gender == 'male' %}selected{% endif %}>Male</option>
+                <option value="female" {% if employee and employee.gender == 'female' %}selected{% endif %}>Female</option>
+                <option value="other" {% if employee and employee.gender == 'other' %}selected{% endif %}>Prefer not to say</option>
+              </select>
+              </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="button">
+        {% comment %} <button type="button" class="commmombtn" id="backBtn" data-tab="back">Back</button> {% endcomment %}
+        <button type="button" class="back-btn commmombtn alert-warning">Back</button>
+        <button type="button" class="commmombtn" data-next="document">Next</button>
+      </div>
+    </div>
+
+    <!-- === Document Details === -->
+    <div id="document" class="form-section">
+      
+      <div class="container-first ">
+        <div class="title required">Bank Details</div>
+        <table class="items-table ">
+          <thead>
+            <tr>
+              <th class="required">Bank Name</th>
+              <th class="required">Account Number</th>
+              <th class="required">IFSC Code</th>
+              <th class="required">Upload Passbook (maximum 1 MB)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>
+                    <div style="display:flex; gap:8px; align-items:center;">
+                    <select id="id_bank" name="bankname" class="form-control select2" required>
+                        <option value="">Select Bank</option>
+                        {% for bank in banks %}
+                          <option value="{{ bank.id }}" {% if employee and employee.bank_name and employee.bank_name.id == bank.id %} selected{% endif %}>
+                            {{ bank.bank_name }}
+                          </option>
+                        {% endfor %}
+                      </select>
+                      <button type="button" id="btn-add-bank" class="btn btn-outline-secondary" title="Add Bank">+</button>
+                      </div>
+              </td>
+              <td><input type="number" name="account_number" class="form-control" value="{% if employee and employee.account_number %}{{ employee.account_number }}{% endif %}" required></td>
+              <td><input type="text" name="ifsc_code" id="ifsc_code" class="form-control" pattern="^[A-Z]{4}0[A-Z0-9]{6}$" title="Enter valid IFSC code, e.g., SBIN0001234" value="{% if employee and employee.ifsc_code %}{{ employee.ifsc_code }}{% endif %}" required></td>
+              {% comment %} <td><input type="text" name="ifsc_code" class="form-control"></td> {% endcomment %}
+              <td>
+                <input type="file" id="passbook-input" name="passbook_photo" class="form-control" accept="image/*,application/pdf" {% if not employee %}required{% endif %}>
+                <div style="margin-top:8px; display:flex; align-items:center; gap:12px;">
+                  <div style="min-width:120px;">
+                        {% if employee and employee.bank_upload_base64 and 'data:image' in employee.bank_upload_base64 %}
+                      <img id="passbook-preview" src="{{ employee.bank_upload_base64 }}" alt="passbook" style="width:100px; height:50px; object-fit:cover; border-radius:6px;" />
+                    {% else %}
+                      <img id="passbook-preview" src="{% static 'images/file-placeholder.png' %}" alt="passbook" style="width:100px; height:50px; object-fit:cover; border-radius:6px; opacity:0.6;" />
+                    {% endif %}
+                  </div>
+                  <div style="flex:1;">
+                    <small id="passbook-filename" class="text-muted">No file chosen</small>
+                  </div>
+                </div>
+                {% if employee and employee.bank_upload_base64 and 'data:image' not in employee.bank_upload_base64 %}
+                  <div style="margin-top:8px">
+                    <a href="{{ employee.bank_upload_base64 }}" target="_blank">View existing passbook</a>
+                  </div>
+                {% endif %}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="title required">Personal Documents</div>
+
+<table class="items-table" id="personal-docs-table">
+  <thead>
+    <tr>
+      <th class="required">Document Name</th>
+      <th class="required">Document Number</th>
+      <th>Expiry Date (optional)</th>
+      <th class="required">Upload File</th>
+      <th>Action</th>
+    </tr>
+  </thead>
+
+  <tbody>
+    {% if employee_docs %}
+      {% for doc in employee_docs %}
+      <tr>
+        <!-- Hidden ID for edit mode -->
+        <input type="hidden" name="personal_document_id[]" value="{{ doc.id }}">
+
+        <td>
+          <div style="display:flex; gap:8px; align-items:center;">
+            <select name="personal_document_type[]" class="form-control select2 doc-name-select" required>
+              <option value="">Select Document</option>
+              {% for doc_type in personal_doc_types %}
+              <option value="{{ doc_type.id }}"
+                      data-format="{{ doc_type.example_format }}"
+                      {% if doc.document_type.id == doc_type.id %}selected{% endif %}>
+                {{ doc_type.name }}
+              </option>
+              {% endfor %}
+            </select>
+            <button type="button" class="btn btn-outline-secondary btn-add-personal-doc" title="Add New Type">+</button>
+          </div>
+        </td>
+
+        <td>
+          <input type="text"
+                 name="personal_document_number[]"
+                 class="form-control doc-number"
+                 placeholder="{{ doc.document_type.example_format|default:'Enter document number' }}"
+                 value="{{ doc.document_number|default:'' }}"
+                 required>
+          <small class="text-danger doc-error-message"></small>
+        </td>
+
+        <td>
+          <input type="date"
+                 name="personal_document_expiry[]"
+                 class="form-control"
+                 {% if doc.expiry_date %}value="{{ doc.expiry_date|date:'Y-m-d' }}"{% endif %}>
+        </td>
+
+        <td>
+          <!-- ✅ File field only required if no file exists -->
+          <input type="file"
+                 name="personal_document_file_{{ doc.id }}"
+                 class="form-control personal-doc-file"
+                 accept="image/*,application/pdf"
+                 {% if not doc.document_file_base64 %}required{% endif %}>
+
+          <div style="margin-top:8px; display:flex; align-items:center; gap:12px;">
+            <div style="min-width:120px;">
+              {% if doc.document_file_base64 %}
+                {% if 'data:image' in doc.document_file_base64 %}
+                  <img class="personal-doc-preview"
+                       src="{{ doc.document_file_base64 }}"
+                       alt="document"
+                       style="max-height:80px; max-width:120px; border-radius:6px;">
+                {% elif 'data:application/pdf' in doc.document_file_base64 %}
+                  <img class="personal-doc-preview"
+                       src="{% static 'images/pdf-icon.png' %}"
+                       alt="pdf-document"
+                       style="max-height:80px; max-width:120px;">
+                {% else %}
+                  <img class="personal-doc-preview"
+                       src="{% static 'images/file-placeholder.png' %}"
+                       alt="document"
+                       style="max-height:80px; max-width:120px;">
+                {% endif %}
+              {% else %}
+                <img class="personal-doc-preview"
+                     src="{% static 'images/file-placeholder.png' %}"
+                     alt="document"
+                     style="max-height:80px; max-width:120px;">
+              {% endif %}
+            </div>
+            <div style="flex:1;">
+              <small class="personal-doc-filename text-muted">
+                {% if doc.document_file_name %}Existing file{% else %}No file chosen{% endif %}
+              </small>
+            </div>
+          </div>
+        </td>
+
+        <td>
+          <button type="button" class="btn btn-danger btn-sm cancel-row">&times;</button>
+        </td>
+      </tr>
+      {% endfor %}
+    {% else %}
+      <!-- Default empty row for Add Employee -->
+      <tr>
+        <td>
+          <div style="display:flex; gap:8px; align-items:center;">
+            <select name="personal_document_type[]" class="form-control select2 doc-name-select" required>
+              <option value="">Select Document</option>
+              {% for doc_type in personal_doc_types %}
+              <option value="{{ doc_type.id }}" data-format="{{ doc_type.example_format }}">
+                {{ doc_type.name }}
+              </option>
+              {% endfor %}
+            </select>
+            <button type="button" class="btn btn-outline-secondary btn-add-personal-doc" title="Add New Type">+</button>
+          </div>
+        </td>
+
+        <td>
+          <input type="text" name="personal_document_number[]" class="form-control doc-number" placeholder="Enter document number" required>
+          <small class="text-danger doc-error-message"></small>
+        </td>
+
+        <td><input type="date" name="personal_document_expiry[]" class="form-control"></td>
+
+        <td>
+          <input type="file" name="personal_document_file[]" class="form-control personal-doc-file" accept="image/*,application/pdf" required>
+          <div style="margin-top:8px; display:flex; align-items:center; gap:12px;">
+            <div style="min-width:120px;">
+              <img class="personal-doc-preview"
+                   src="{% static 'images/file-placeholder.png' %}"
+                   alt="document"
+                   style="max-height:80px; max-width:120px; border-radius:6px;">
+            </div>
+            <div style="flex:1;">
+              <small class="personal-doc-filename text-muted">No file chosen</small>
+            </div>
+          </div>
+        </td>
+
+        <td>
+          <button type="button" class="btn btn-danger btn-sm cancel-row">&times;</button>
+        </td>
+      </tr>
+    {% endif %}
+  </tbody>
+</table>
+      </div>
+
+<br>
+<button type="button" class="add-item-btn btn btn-primary" data-target="personal-docs-table">+ Add Document</button>
+
+<!-- Hidden select for template options -->
+<select id="document-types-template" style="display:none;">
+  <option value="">Select Document</option>
+  {% for doc_type in personal_doc_types %}
+    <option value="{{ doc_type.id }}" data-format="{{ doc_type.example_format }}">{{ doc_type.name }}</option>
+  {% endfor %}
+</select>
+
+
+      <div class="button">
+        <button type="button" class="back-btn commmombtn alert-warning">Back</button>
+
+        <button type="button" class="commmombtn" data-prev="personal">Previous</button>
+        <button type="button" class="commmombtn" data-next="department">Next</button>
+      </div>
+    </div>
+
+    <!-- === Department Details === -->
+    <div id="department" class="form-section">
+      
+      <div class="container-first">
+        <div class="row mb-2">
+          <div class="col-md-4">
+            <label class="form-label required">Department Name</label>
+           <div style="display:flex; gap:8px; align-items:center;">
+             <select id="id_department" name="department" class="form-control select2" required>
+              <option value="">Select Department</option>
+              {% for dept in departments %}
+                <option value="{{ dept.id }}" {% if employee and employee.department and employee.department.id == dept.id %}selected{% elif not employee and prefill.department_id == dept.id|stringformat:'s' %}selected{% endif %}>{{ dept.department_name }}</option>
+              {% endfor %}
+            </select>
+            <button type="button" id="btn-add-dept" class="btn btn-outline-secondary" title="Add Department">+</button>
+           </div>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label required">Designation</label>
+            <div style="display:flex; gap:8px; align-items:center;">
+            <select id="id_designation" name="designation" class="form-select select2" required>
+              <option value="">Select Designation</option>
+              {% if employee and employee.designation %}
+                <option value="{{ employee.designation.id }}" selected>{{ employee.designation.designation_name }}</option>
+              {% elif prefill.designation_id %}
+                <option value="{{ prefill.designation_id }}" selected>Selected designation</option>
+              {% endif %}
+            </select>
+            <button type="button" id="btn-add-designation" class="btn btn-outline-secondary" title="Add Designation">+</button>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label required">Job Category</label>
+            <select class="form-control" name="job_category" required>
+              <option value="Internship" {% if employee and employee.job_category == 'Internship' %}selected{% elif not employee and prefill.job_category == 'Internship' %}selected{% endif %}>Internship</option>
+              <option value="Trainee" {% if employee and employee.job_category == 'Trainee' %}selected{% elif not employee and prefill.job_category == 'Trainee' %}selected{% endif %}>Trainee</option>
+              <option value="Temporary" {% if employee and employee.job_category == 'Temporary' %}selected{% elif not employee and prefill.job_category == 'Temporary' %}selected{% endif %}>Temporary</option>
+              <option value="Contract" {% if employee and employee.job_category == 'Contract' %}selected{% elif not employee and prefill.job_category == 'Contract' %}selected{% endif %}>Contract</option>
+              <option value="Permanent" {% if employee and employee.job_category == 'Permanent' %}selected{% elif not employee and prefill.job_category == 'Permanent' %}selected{% endif %}>Permanent</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="row mb-2">
+          <div class="col-md-4">
+            <label class="form-label required">Joining Date</label>
+            <input type="date" name="joining_date" id="joining_date" class="form-control" value="{% if employee and employee.joining_date %}{{ employee.joining_date|date:'Y-m-d' }}{% else %}{{ prefill.joining_date }}{% endif %}" required>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label required">Confirm Date</label>
+            <input type="date" name="confirm_date" id="confirm_date" class="form-control" value="{% if employee and employee.confirm_date %}{{ employee.confirm_date|date:'Y-m-d' }}{% endif %}" required>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label required">Notice Period (in days)</label>
+            <input type="number" name="notice_period" class="form-control" value="{% if employee and employee.notice_period %}{{ employee.notice_period }}{% else %}{{ prefill.notice_period }}{% endif %}" required>
+          </div>
+        </div>
+
+        <div class="title">Salary Details</div>
+        <div class="row mb-2">
+          <div class="col-md-4">
+            <label class="form-label required">Current Salary (CTC)</label>
+            <input type="text" name="ctc" class="form-control" value="{% if employee and employee.current_salary %}{{ employee.current_salary }}{% elif employee and employee.ctc %}{{ employee.ctc }}{% else %}{{ prefill.ctc }}{% endif %}" required>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label required">Salary Mode</label>
+            <select class="form-control" name="salary_mode" required>
+              <option value="Bank" {% if employee and employee.salary_mode == 'Bank' %}selected{% endif %}>Bank</option>
+              <option value="Cash" {% if employee and employee.salary_mode == 'Cash' %}selected{% endif %}>Cash</option>
+              <option value="Cheque" {% if employee and employee.salary_mode == 'Cheque' %}selected{% endif %}>Cheque</option>
+            </select>
+          </div>
+            <div class="col-md-4">
+            <label class="form-label required">Allowances</label>
+            <div style="display:flex; gap:8px; align-items:center;">
+            <select id="id_allowances" name="allowances" class="form-control" multiple required>
+              {% for allow in allowances %}
+                <option value="{{ allow.id }}" {% if employee and allow in employee.allowances.all %}selected{% endif %}>{{ allow.allowances_name }}</option>
+              {% endfor %}
+            </select>
+            <button type="button" id="btn-add-allowance" class="btn btn-outline-secondary" title="Add Allowance">+</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="title">Leave Details</div>
+        <div class="row mb-2">
+          <div class="col-md-4">
+              <label for="id_leaves" class="form-label required">Leaves</label>
+              <div style="display:flex; gap:8px; align-items:center;">
+          <select id="id_leaves" name="leaves" class="form-control select2" multiple required>
+            {% for leave in leaves %}
+              <option value="{{ leave.id }}" {% if employee and leave in employee.leaves.all %}selected{% endif %}>{{ leave.leaves_name }}</option>
+            {% endfor %}
+          </select>
+          <button type="button" id="btn-add-leave" class="btn btn-outline-secondary" title="Add Leave">+</button>
+          </div>
+            </div>
+
+        </div>
+      </div>
+    
+      <div class="button">
+        <button type="button" class="back-btn commmombtn alert-warning">Back</button>
+
+        <button type="button" class="commmombtn" data-prev="document">Previous</button>
+        <button type="button" class="commmombtn" data-next="others">Next</button>
+      </div>
+    </div>
+
+    <!-- === Others === -->
+    <div id="others" class="form-section">
+      <div class="container-first">
+        <div class="title required">Education Details</div>
+        <table class="items-table" id="education-table">
+          <thead>
+            <tr>
+              <th class="required">Qualification</th>
+              <th class="required">Board/University</th>
+              <th class="required">Stream</th>
+              <th class="required">Year of Joining</th>
+              <th class="required">Year of Passing</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% if educations and educations.exists %}
+              {% for edu in educations %}
+                <tr>
+                  <td>
+                    <select class="form-control" name="qualification[]" required>
+                      <option value="">Select</option>
+                      <option value="Masters" {% if edu.qualification == 'Masters' %}selected{% endif %}>Masters</option>
+                      <option value="Bachelors" {% if edu.qualification == 'Bachelors' %}selected{% endif %}>Bachelors</option>
+                      <option value="Higher Secondary" {% if edu.qualification == 'Higher Secondary' %}selected{% endif %}>Higher Secondary</option>
+                      <option value="PhD" {% if edu.qualification == 'PhD' %}selected{% endif %}>PhD</option>
+                    </select>
+                  </td>
+                  <td><input type="text" name="board_university[]" class="form-control" value="{{ edu.board_university }}" required></td>
+                  <td><input type="text" name="stream[]" class="form-control" value="{{ edu.stream }}" required></td>
+                  <td><input type="date" name="year_of_joining[]" class="form-control" value="{% if edu.year_of_joining %}{{ edu.year_of_joining|date:'Y-m-d' }}{% endif %}" required></td>
+                  <td><input type="date" name="year_of_passing[]" class="form-control" value="{% if edu.year_of_passing %}{{ edu.year_of_passing|date:'Y-m-d' }}{% endif %}" required></td>
+                  <td><button type="button" class="btn btn-danger btn-sm cancel-row">&times;</button></td>
+                </tr>
+              {% endfor %}
+            {% else %}
+              <tr>
+                <td>
+                  <select class="form-control" name="qualification[]" required >
+                    <option value="">Select</option>
+                    <option value="Masters">Masters</option>
+                    <option value="Bachelors">Bachelors</option>
+                    <option value="Higher Secondary">Higher Secondary</option>
+                    <option value="PhD">PhD</option>
+                  </select>
+                </td>
+                <td><input type="text" name="board_university[]" class="form-control" required></td>
+                <td><input type="text" name="stream[]" class="form-control" required></td>
+                <td><input type="date" name="year_of_joining[]" class="form-control" required></td>
+                <td><input type="date" name="year_of_passing[]" class="form-control" required></td>
+                <td><button type="button" class="btn btn-danger btn-sm cancel-row">&times;</button></td>
+              </tr>
+            {% endif %}
+          </tbody>
+        </table><br>
+        <button type="button" class="add-item-btn" data-target="education-table">+ Add Education</button>
+
+        <div class="title">Work Experience</div>
+        <table class="items-table" id="experience-table">
+          <thead>
+            <tr>
+              <th>Role</th>
+              <th>Company Name</th>
+              <th>CTC</th>
+              <th>Duration (in Months)</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% if experiences and experiences.exists %}
+              {% for exp in experiences %}
+                <tr>
+                  <td><input type="text" name="role[]" class="form-control" value="{{ exp.role }}"></td>
+                  <td><input type="text" name="company_name[]" class="form-control" value="{{ exp.company_name }}"></td>
+                  <td><input type="number" name="ctc_exp[]" class="form-control" value="{% if exp.ctc %}{{ exp.ctc }}{% endif %}"></td>
+                  <td><input type="text" name="duration_months[]" class="form-control" value="{% if exp.duration_months %}{{ exp.duration_months }}{% endif %}"></td>
+                  <td><button type="button" class="btn btn-danger btn-sm cancel-row">&times;</button></td>
+                </tr>
+              {% endfor %}
+            {% else %}
+              <tr>
+                <td><input type="text" name="role[]" class="form-control"></td>
+                <td><input type="text" name="company_name[]" class="form-control"></td>
+                <td><input type="number" name="ctc_exp[]" class="form-control"></td>
+                <td><input type="text" name="duration_months[]" class="form-control"></td>
+                <td><button type="button" class="btn btn-danger btn-sm cancel-row">&times;</button></td>
+              </tr>
+            {% endif %}
+          </tbody>
+        </table><br>
+        <button type="button" class="add-item-btn" data-target="experience-table">+ Add Work Experience</button><br><br>
+
+        <div class="row mb-2">
+            <div class="col-md-4">
+            <label class="form-label required">Upload Resume (maximum 1 MB)</label>
+            <input id="resume-input" type="file" name="resume" class="form-control" accept="application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/jpeg,image/jpg" {% if not employee %}required{% endif %}>
+            <div style="margin-top:8px; display:flex; align-items:center; gap:12px;">
+              <div style="min-width:120px;">
+                {% if employee and employee.upload_resume_base64 and 'data:image' in employee.upload_resume_base64 %}
+                  <img id="resume-preview" src="{{ employee.upload_resume_base64 }}" alt="resume" style="width:100px; height:50px; object-fit:cover; border-radius:6px;" />
+                {% else %}
+                  <img id="resume-preview" src="{% static 'images/file-placeholder.png' %}" alt="resume" style="width:100px; height:50px; object-fit:cover; border-radius:6px; opacity:0.6;" />
+                {% endif %}
+              </div>
+              <div style="flex:1;">
+                <small id="resume-filename" class="text-muted">No file chosen</small>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="button">
+        <button type="button" class="back-btn commmombtn alert-warning">Back</button>
+
+        <button type="button" class="commmombtn" data-prev="department">Previous</button>
+        <button type="button" class="submit-btn">{% if employee %}Save{% else %}Submit{% endif %}</button>
+        <div id="toast" class="toast" style="position: fixed !important; left: 50% !important; top: 30px !important; transform: translateX(-50%) !important; z-index: 20000 !important; margin: 0 !important;"></div>
+        <!-- debug button removed -->
+      </div>
+    </div>
+
+  </form>
+</div>
+
+
+
+{% endblock content %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/17.0.19/js/intlTelInput.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/17.0.19/js/utils.js"></script>
+
+
+<script>
+
+// Global toast function for immediate use (before document.ready)
+function showInfoToast(msg, bgColor = '#dc3545') {
+  // Use jQuery if available, otherwise vanilla JS
+  if (typeof $ !== 'undefined') {
+    let t = $('#toast');
+    if (!t.length) {
+      t = $('<div id="toast"></div>').appendTo('body');
+    }
+    t.text(msg).css({
+      'background-color': bgColor,
+      'color': 'white',
+      'padding': '12px 24px',
+      'position': 'fixed',
+      'left': '50%',
+      'top': '30px',
+      'transform': 'translateX(-50%)',
+      'z-index': '20000',
+      'border-radius': '4px',
+      'opacity': '1',
+      'transition': 'opacity 0.5s linear'
+    }).addClass('show');
+    setTimeout(function() {
+      t.removeClass('show').css('opacity', '0');
+    }, 3000);
+  } else {
+    // Fallback if jQuery not available
+    let toastEl = document.getElementById('toast');
+    if (!toastEl) {
+      toastEl = document.createElement('div');
+      toastEl.id = 'toast';
+      document.body.appendChild(toastEl);
+    }
+    toastEl.textContent = msg;
+    toastEl.style.cssText = 'position:fixed;left:50%;top:30px;transform:translateX(-50%);z-index:20000;background-color:' + bgColor + ';color:white;padding:12px 24px;border-radius:4px;opacity:1;transition:opacity 0.5s linear;';
+    setTimeout(function() {
+      toastEl.style.opacity = '0';
+    }, 3000);
+  }
+}
+
+$(document).ready(function () {
+  // ===== INITIALIZE TOAST POSITIONING FIRST (before any validation) =====
+  try {
+    const toastEl = document.getElementById('toast');
+    if (toastEl) {
+      // Move to body immediately to ensure correct positioning from the start
+      if (toastEl.parentElement !== document.body) {
+        document.body.appendChild(toastEl);
+      }
+      // Apply positioning styles immediately to prevent layout jump
+      toastEl.style.position = 'fixed';
+      toastEl.style.left = '50%';
+      toastEl.style.top = '30px';
+      toastEl.style.transform = 'translateX(-50%)';
+      toastEl.style.zIndex = '20000';
+      toastEl.style.transition = 'opacity 0.5s linear';
+    }
+  } catch (e) { console.warn('toast init failed', e); }
+  
+  const hrDashboardUrl = "{% url 'hr_dashboard' %}";
+  const employeesListUrl = "{% url 'employees_list' %}";
+  // ====================== International Phone Input ======================
+  const phoneEl = document.querySelector('#phone');
+  let iti = null;
+  const countrySelect = $('#country_select');
+  const phoneLocal = $('#phone_local');
+  const phoneFull = document.getElementById('phone_full');
+
+  // Server-side flags: whether an existing file is stored for these fields
+  const hasExistingPhoto = {% if employee and employee.photo_base64 %}true{% else %}false{% endif %};
+  const hasExistingPassbook = {% if employee and employee.bank_upload_base64 %}true{% else %}false{% endif %};
+  const hasExistingResume = {% if employee and employee.upload_resume_base64 %}true{% else %}false{% endif %};
+  const isEdit = {% if employee %}true{% else %}false{% endif %};
+
+  function phoneDebug(msg) {
+    try {
+      const el = document.getElementById('phone-debug');
+      if (el) el.innerText = msg;
+    } catch (e) { }
+  }
+
+  function populateCountries() {
+    // Format for dropdown list - show flag + country name + dial code
+    function formatCountryDropdown(state) {
+      if (!state.id) return state.text;
+      const el = state.element;
+      const cca2 = el ? el.getAttribute('data-cca2') : '';
+      const dial = state.id || '';
+      const name = state.text || '';
+      const flagUrl = cca2 ? `https://flagcdn.com/w20/${cca2.toLowerCase()}.png` : '';
+      
+      // Dropdown shows: Flag + Country Name + (+code)
+      if (flagUrl && cca2) {
+        return $(`<span style="display:inline-flex;align-items:center;gap:8px;"><img class="country-flag" src="${flagUrl}" style="width:20px;height:14px;display:inline-block;" onerror="this.style.display='none'"/><span>${name}</span></span>`);
+      } else {
+        return $(`<span>${name}</span>`);
+      }
+    }
+    
+    // Format for selected value - show ONLY flag + dial code
+    function formatCountrySelection(state) {
+      if (!state.id) return state.text;
+      const el = state.element;
+      const cca2 = el ? el.getAttribute('data-cca2') : '';
+      const dial = state.id || '';
+      const flagUrl = cca2 ? `https://flagcdn.com/w20/${cca2.toLowerCase()}.png` : '';
+      
+      // Selected shows: Flag + +code (NO country name)
+      if (flagUrl && cca2) {
+        return $(`<span style="display:inline-flex;align-items:center;gap:6px;"><img class="country-flag" src="${flagUrl}" style="width:20px;height:14px;display:inline-block;" onerror="this.style.display='none'"/><span>+${dial}</span></span>`);
+      } else {
+        return $(`<span>+${dial}</span>`);
+      }
+    }
+
+    function initSelect2AfterPopulate() {
+      if (typeof $.fn.select2 !== 'function') {
+        console.warn('Select2 not available - country select will be native');
+        phoneDebug('Select2 missing; country select is native');
+        return;
+      }
+      countrySelect.select2({
+        placeholder: 'Select country',
+        width: '100%',
+        templateResult: formatCountryDropdown,    // Dropdown: Flag + Name
+        templateSelection: formatCountrySelection, // Selected: Flag + Code only
+        escapeMarkup: function(m) { return m; },
+        dropdownParent: $(document.body),
+        closeOnSelect: true
+      });
+      // If an initial phone exists (from server), try to auto-select the matching country code
+        try {
+        const initialPhone = countrySelect.data('initial-phone') || (phoneFull ? phoneFull.value : null) || '';
+        if (initialPhone && initialPhone.toString().trim() !== '') {
+          const digits = initialPhone.toString().replace(/\D/g, '');
+          if (digits) {
+            // choose the longest option value that matches the phone prefix (handles multi-digit country codes)
+            let best = '';
+            countrySelect.find('option').each(function () {
+              const v = $(this).val() ? $(this).val().toString() : '';
+              if (v && digits.indexOf(v) === 0 && v.length > best.length) best = v;
+            });
+            if (best) {
+              countrySelect.val(best).trigger('change.select2');
+              // populate local part (remaining digits) into phone_local if empty or looks like placeholder
+              let localPart = digits.slice(best.length);
+              // sanitize: remove any leading occurrences of the country code (defensive) and non-digits
+              if (localPart.indexOf(best) === 0) localPart = localPart.slice(best.length);
+              localPart = localPart.replace(/\D/g, '');
+              if (localPart && phoneLocal && phoneLocal.val().toString().trim() === '') {
+                phoneLocal.val(localPart);
+              }
+            }
+          }
+        } else {
+          // No initial phone - default to India (+91)
+          countrySelect.val('91').trigger('change.select2');
+        }
+      } catch (err) {
+        console.debug('phone prefill warning', err);
+        // Fallback to India in case of error
+        try { countrySelect.val('91').trigger('change.select2'); } catch(e) {}
+      }
+      phoneDebug('phone widget status: country selector ready (' + countrySelect.find('option').length + ' entries)');
+    }
+
+    fetch('https://restcountries.com/v3.1/all').then(r => r.json()).then(data => {
+      const countries = data.map(c => {
+        let dial = '';
+        try {
+          if (c.idd && c.idd.root) {
+            const root = c.idd.root || '';
+            const suffix = (c.idd.suffixes && c.idd.suffixes[0]) ? c.idd.suffixes[0] : '';
+            dial = (root + suffix).replace(/\+/g, '');
+          }
+        } catch(e) { dial = ''; }
+        return { name: c.name && c.name.common ? c.name.common : (c.cca2||''), cca2: c.cca2 || '', dial: dial || '' };
+      }).filter(x => x.dial).sort((a,b) => a.name.localeCompare(b.name));
+
+      if (countries.length) {
+        countries.forEach(c => { 
+          const opt = new Option(`${c.name} (+${c.dial})`, c.dial, false, false); 
+          $(opt).attr('data-cca2', c.cca2); 
+          countrySelect.append(opt); 
+        });
+        console.log('populateCountries: loaded', countries.length, 'countries (v3)');
+        initSelect2AfterPopulate();
+        phoneDebug('phone widget status: loaded ' + countries.length + ' countries (v3 API)');
+        return;
+      }
+      throw new Error('v3 returned no countries');
+    }).catch(() => {
+      fetch('https://restcountries.com/v2/all?fields=name,callingCodes,alpha2Code').then(r => r.json()).then(data => {
+        const countries = data.map(c => ({ name: c.name || '', cca2: c.alpha2Code || '', dial: (c.callingCodes && c.callingCodes[0]) ? c.callingCodes[0] : '' }))
+          .filter(x => x.dial).sort((a,b) => a.name.localeCompare(b.name));
+        if (countries.length) {
+          countries.forEach(c => { 
+            const opt = new Option(`${c.name} (+${c.dial})`, c.dial, false, false);
+            $(opt).attr('data-cca2', c.cca2); 
+            countrySelect.append(opt); 
+          });
+          initSelect2AfterPopulate();
+          phoneDebug('phone widget status: loaded ' + countries.length + ' countries (v2 API)');
+          return;
+        }
+        throw new Error('v2 returned no countries');
+      }).catch(() => {
+         const fallback = [
+          {name:'Afghanistan', cca2:'AF', dial:'93'}, {name:'Albania', cca2:'AL', dial:'355'}, 
+          {name:'Algeria', cca2:'DZ', dial:'213'}, {name:'Argentina', cca2:'AR', dial:'54'}, 
+          {name:'Australia', cca2:'AU', dial:'61'}, {name:'Austria', cca2:'AT', dial:'43'}, 
+          {name:'Bangladesh', cca2:'BD', dial:'880'}, {name:'Belgium', cca2:'BE', dial:'32'}, 
+          {name:'Brazil', cca2:'BR', dial:'55'}, {name:'Canada', cca2:'CA', dial:'1'}, 
+          {name:'China', cca2:'CN', dial:'86'}, {name:'Egypt', cca2:'EG', dial:'20'}, 
+          {name:'France', cca2:'FR', dial:'33'}, {name:'Germany', cca2:'DE', dial:'49'}, 
+          {name:'India', cca2:'IN', dial:'91'}, {name:'Indonesia', cca2:'ID', dial:'62'}, 
+          {name:'Italy', cca2:'IT', dial:'39'}, {name:'Japan', cca2:'JP', dial:'81'}, 
+          {name:'Malaysia', cca2:'MY', dial:'60'}, {name:'Mexico', cca2:'MX', dial:'52'}, 
+          {name:'Netherlands', cca2:'NL', dial:'31'}, {name:'Pakistan', cca2:'PK', dial:'92'}, 
+          {name:'Russia', cca2:'RU', dial:'7'}, {name:'Saudi Arabia', cca2:'SA', dial:'966'}, 
+          {name:'Singapore', cca2:'SG', dial:'65'}, {name:'South Africa', cca2:'ZA', dial:'27'}, 
+          {name:'South Korea', cca2:'KR', dial:'82'}, {name:'Spain', cca2:'ES', dial:'34'}, 
+          {name:'Sweden', cca2:'SE', dial:'46'}, {name:'Switzerland', cca2:'CH', dial:'41'}, 
+          {name:'Thailand', cca2:'TH', dial:'66'}, {name:'Turkey', cca2:'TR', dial:'90'}, 
+          {name:'UAE', cca2:'AE', dial:'971'}, {name:'UK', cca2:'GB', dial:'44'}, 
+          {name:'USA', cca2:'US', dial:'1'}, {name:'Vietnam', cca2:'VN', dial:'84'}
+        ];
+        fallback.forEach(c => { 
+          const opt = new Option(`${c.name} (+${c.dial})`, c.dial, false, false);
+          $(opt).attr('data-cca2', c.cca2); 
+          countrySelect.append(opt); 
+        });
+        initSelect2AfterPopulate();
+        phoneDebug('phone widget status: loaded ' + fallback.length + ' countries (embedded fallback)');
+      });
+    });
+  }
+
+  populateCountries();
+
+  // Defensive sanitization: ensure the local phone input does not contain the country code
+  function sanitizeLocalPhone() {
+    try {
+      const sel = (countrySelect && countrySelect.val) ? countrySelect.val() : (countrySelect.val ? countrySelect.val() : '');
+      const selRaw = sel || '';
+      const selDigits = selRaw.toString().replace(/\D/g, '');
+      if (!selDigits) return;
+      let local = (phoneLocal && phoneLocal.val()) ? phoneLocal.val().toString() : '';
+      if (!local) return;
+      // normalize to digits only for comparison
+      let localDigits = local.replace(/\D/g, '');
+      // Remove common prefixes like +, 0 and repeated occurrences of the country code
+      // e.g. +91 91 918590..., 0918590..., 9191xxxx
+      // Remove any leading zeros
+      while (localDigits.startsWith('0')) localDigits = localDigits.slice(1);
+      // Remove repeated country code prefixes
+      while (selDigits && localDigits.startsWith(selDigits)) {
+        localDigits = localDigits.slice(selDigits.length);
+      }
+      // Also handle cases where there's a leading '+' before the digits
+      if (localDigits.startsWith('+')) {
+        localDigits = localDigits.replace(/^\+/, '');
+        while (selDigits && localDigits.startsWith(selDigits)) {
+          localDigits = localDigits.slice(selDigits.length);
+        }
+      }
+      // Final cleanup: keep only digits
+      localDigits = localDigits.replace(/\D/g, '');
+      if (phoneLocal) phoneLocal.val(localDigits);
+    } catch (e) {
+      console.debug('sanitizeLocalPhone failed', e);
+    }
+  }
+
+  // Run sanitizer right after populate and whenever the country changes
+  sanitizeLocalPhone();
+  countrySelect.on('change', function () { sanitizeLocalPhone(); });
+
+  window.addEventListener('load', function () {
+    if (!phoneEl || !window.intlTelInput) return;
+
+    function ensureCssAndInit() {
+      phoneDebug('phone widget status: starting init...');
+      const css = document.createElement('style');
+      css.id = 'iti-defensive-css';
+      css.innerHTML = '\n.iti__country-list { position: absolute !important; top: 100% !important; left: 0 !important; z-index: 3000 !important; display: none !important; list-style: none !important; max-height: 320px !important; overflow: auto !important; }\n.iti__country { padding: 6px 10px !important; }\n.iti__selected-dial-code { margin-left:6px; }\n';
+      if (!document.getElementById('iti-defensive-css')) document.head.appendChild(css);
+
+      function doInit() {
+        try {
+          document.querySelectorAll('.iti__country-list').forEach(el => { try { el.remove(); } catch(e) {} });
+          if (!window.intlTelInput) {
+            phoneDebug('phone widget status: intlTelInput not found after script load');
+            console.warn('intlTelInput missing');
+            return;
+          }
+          iti = window.intlTelInput(phoneEl, {
+            initialCountry: 'auto',
+            separateDialCode: false,
+            utilsScript: 'https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/17.0.19/js/utils.js',
+            dropdownContainer: document.body,
+            geoIpLookup: function(success) {
+              fetch('https://ipinfo.io/json?token=')
+                .then(resp => resp.json())
+                .then(data => success(data && data.country ? data.country : 'us'))
+                .catch(() => success('us'));
+            }
+          });
+          phoneDebug('phone widget status: initialized');
+          setTimeout(function () {
+            document.querySelectorAll('.iti__country-list').forEach(list => {
+              if (list.parentElement && list.parentElement !== document.body) {
+                try { document.body.appendChild(list); } catch(e) {}
+              }
+              if (list.getAttribute('aria-hidden') === 'true' || !list.hasAttribute('aria-hidden')) {
+                list.setAttribute('aria-hidden', 'true');
+                list.style.display = 'none';
+              }
+            });
+          }, 30);
+        } catch (err) {
+          console.error('intlTelInput init error', err);
+          phoneDebug('phone widget status: init error (see console)');
+        }
+      }
+
+      if (!window.intlTelInput) {
+        const scriptHref = 'https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/17.0.19/js/intlTelInput.min.js';
+        const existingScript = Array.from(document.getElementsByTagName('script')).find(s => s.src && s.src.indexOf('intlTelInput') !== -1);
+        if (existingScript) {
+          setTimeout(doInit, 50);
+          return;
+        }
+        const s = document.createElement('script');
+        s.src = scriptHref;
+        s.onload = function () { phoneDebug('phone widget status: script loaded, initializing...'); setTimeout(doInit, 20); };
+        s.onerror = function () { phoneDebug('phone widget status: failed to load script'); };
+        document.head.appendChild(s);
+      } else {
+        doInit();
+      }
+    }
+
+    const cssHref = 'https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/17.0.19/css/intlTelInput.min.css';
+    const existingLink = Array.from(document.getElementsByTagName('link')).find(l => l.href && l.href.indexOf('intlTelInput') !== -1);
+    if (existingLink) {
+      phoneDebug('phone widget status: CSS present, initializing...');
+      ensureCssAndInit();
+    } else {
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = cssHref;
+      link.onload = function () { phoneDebug('phone widget status: CSS loaded, initializing...'); ensureCssAndInit(); };
+      link.onerror = function () { phoneDebug('phone widget status: CSS failed to load, attempting init'); setTimeout(ensureCssAndInit, 50); };
+      document.head.appendChild(link);
+      setTimeout(function () { if (!iti) { phoneDebug('phone widget status: CSS load timeout, initializing...'); ensureCssAndInit(); } }, 800);
+    }
+  });
+
+  // Phone validation fallback & full number population on form submit
+  $('form').on('submit', function(e) {
+    if (typeof iti !== 'undefined' && iti && typeof iti.getNumber === 'function' && phoneEl) {
+      if (phoneEl.value.trim() === '') return true;
+      if (!iti.isValidNumber()) {
+        e.preventDefault();
+        showToast('Please enter a valid phone number.');
+        phoneEl.focus();
+        return false;
+      }
+      let raw = iti.getNumber();
+      const match = raw.match(/^(\+\d{1,3})(\d+)$/);
+      if (match) raw = match[1] + ' ' + match[2];
+      phoneFull.value = raw;
+      return true;
+    }
+
+    const selectedDial = countrySelect.val();
+    const local = phoneLocal.val() || '';
+    if (!selectedDial) {
+      e.preventDefault();
+      showToast('Please select a country code.');
+      countrySelect.focus();
+      return false;
+    }
+    if (!local.trim()) {
+      e.preventDefault();
+      showToast('Please enter a phone number.');
+      phoneLocal.focus();
+      return false;
+    }
+    const localDigits = local.replace(/\D/g, '');
+    if (!localDigits) {
+      e.preventDefault();
+      showToast('Please enter a valid phone number (digits only).');
+      phoneLocal.focus();
+      return false;
+    }
+    const e164 = '+' + selectedDial.replace(/\D/g,'') + ' ' + localDigits;
+    phoneFull.value = e164;
+    return true;
+  });
+
+  // Multi-step Navigation
+  const formIds = ["personal", "document", "department", "others"];
+  function showFormById(id) {
+    console.log('showFormById called with:', id);
+    console.log('Before: active class on', $('.form-section.active').attr('id'));
+    $('.form-section').removeClass('active');
+    $('.tab-btn a').removeClass('active');
+    $('#' + id).addClass('active');
+    $('.tab-btn a[data-tab="'+id+'"]').addClass('active');
+    console.log('After: active class on', $('#' + id).attr('id'), 'has class active:', $('#' + id).hasClass('active'));
+  }
+
+  // Initialize the first tab as active on page load
+  showFormById('personal');
+
+
+
+ $('[data-next]').click(function () {
+  const target = $(this).attr('data-next');
+  const currentSection = $(this).closest('.form-section');
+  const toast = $('#toast');
+  const requiredFields = currentSection.find('[required]');
+  let allValid = true;
+
+  requiredFields.each(function () {
+    if (!validateField($(this))) allValid = false;
+  });
+
+  if (!allValid) {
+    toast.text('Please fill all required fields');  // Set error message here
+    toast.css('background-color', '#e74c3c');
+    toast.addClass('show');
+    return;
+  } else {
+    // Hide the toast if all fields are valid
+    toast.removeClass('show');
+    toast.text('');
+  }
+
+  if (target) showFormById(target);
+});
+
+// Move this outside the above click handler!
+$('[data-prev]').click(function () {
+  const target = $(this).attr('data-prev');
+  if (target) {
+    showFormById(target);
+  }
+});
+
+// Also outside the click handlers!
+// Validate on input or change to show errors live
+$(document).on('input change', '[required]', function() {
+  validateField($(this));
+});
+
+
+  // Select2 initialization
+  function initSelect2(selector, placeholder) {
+    $(selector).select2({
+      placeholder: placeholder,
+      allowClear: true,
+      width: '100%',
+      closeOnSelect: true,
+      tags: false
+    });
+  }
+  initSelect2('#id_allowances', "Select or search allowances");
+  initSelect2('#id_leaves', "Select or search leaves");
+  initSelect2('#id_bank', "Select or search bank");
+  initSelect2('#id_department', "Select or search department");
+  initSelect2('#id_designation', "Select or search designation");
+
+  $(document).on('select2:open', function() {
+    // Use setTimeout to ensure the search field is fully rendered
+    setTimeout(function() {
+      document.querySelector('.select2-container--open .select2-search__field').focus();
+    }, 10);
+  });
+
+  // Handler: add new Department via AJAX
+  // Open modal to create Department: close any open Select2 dropdowns first
+  $('#btn-add-dept').on('click', function(e) {
+    e.preventDefault();
+    // Close any open Select2 dropdowns so they don't bleed into the modal.
+    // Also remove any stray dropdown containers that can appear outside body (select2 edge cases).
+    try { $('.select2').each(function(){ if ($(this).hasClass('select2-hidden-accessible')) { $(this).select2('close'); } }); } catch(err) { console.debug('select2 close failed', err); }
+    try { $('.select2-container--open .select2-dropdown').hide(); } catch(e) { }
+    // Remove orphaned dropdown containers if any exist
+    try { $('body').find('.select2-container--open').removeClass('select2-container--open'); $('body').find('.select2-dropdown').remove(); } catch(e) { }
+    $('#modal-title').text('Add Department');
+    $('#modal-name').val('');
+    $('#modal-error').text('');
+    // store context on modal element so submit handler knows which endpoint to call
+    $('#entity-modal').data('type', 'department');
+    // Use Bootstrap 5 Modal API and center the modal
+    var modalEl = document.getElementById('entity-modal');
+    var bsModal = new bootstrap.Modal(modalEl, { backdrop: true });
+    bsModal.show();
+    // focus input after shown
+    modalEl.addEventListener('shown.bs.modal', function () { $('#modal-name').focus(); }, { once: true });
+  });
+
+  // Handler: add new Designation via AJAX. Requires department to be selected.
+  $('#btn-add-designation').on('click', function(e) {
+    e.preventDefault();
+    // Close any open Select2 dropdowns
+    try { $('.select2').select2 && $('.select2').select2('close'); } catch(err) {}
+    $('.select2-container--open .select2-dropdown').hide();
+    const deptId = $('#id_department').val();
+    if (!deptId) { showToast('Please select a department first'); return; }
+    $('#modal-title').text('Add Designation');
+    $('#modal-name').val('');
+    $('#modal-error').text('');
+    $('#entity-modal').data('type', 'designation');
+    $('#entity-modal').data('dept-id', deptId);
+    var modalEl2 = document.getElementById('entity-modal');
+    var bsModal2 = new bootstrap.Modal(modalEl2, { backdrop: true });
+    bsModal2.show();
+    modalEl2.addEventListener('shown.bs.modal', function () { $('#modal-name').focus(); }, { once: true });
+  });
+
+  // Handler: add new Bank/Allowance/Leave via same modal
+  $('#btn-add-bank').on('click', function(e) {
+    e.preventDefault();
+    try { $('.select2').each(function(){ if ($(this).hasClass('select2-hidden-accessible')) { $(this).select2('close'); } }); } catch(err) {}
+    $('#modal-title').text('Add Bank');
+    $('#modal-name').val('');
+    $('#modal-error').text('');
+    $('#entity-modal').data('type', 'bank');
+    var modalEl3 = document.getElementById('entity-modal');
+    var bsModal3 = new bootstrap.Modal(modalEl3, { backdrop: true });
+    bsModal3.show();
+    modalEl3.addEventListener('shown.bs.modal', function () { $('#modal-name').focus(); }, { once: true });
+  });
+
+  $('#btn-add-allowance').on('click', function(e) {
+    e.preventDefault();
+    try { $('.select2').each(function(){ if ($(this).hasClass('select2-hidden-accessible')) { $(this).select2('close'); } }); } catch(err) {}
+    $('#modal-title').text('Add Allowance');
+    $('#modal-name').val('');
+    $('#modal-error').text('');
+    $('#entity-modal').data('type', 'allowance');
+    var modalEl4 = document.getElementById('entity-modal');
+    var bsModal4 = new bootstrap.Modal(modalEl4, { backdrop: true });
+    bsModal4.show();
+    modalEl4.addEventListener('shown.bs.modal', function () { $('#modal-name').focus(); }, { once: true });
+  });
+
+  $('#btn-add-leave').on('click', function(e) {
+    e.preventDefault();
+    try { $('.select2').each(function(){ if ($(this).hasClass('select2-hidden-accessible')) { $(this).select2('close'); } }); } catch(err) {}
+    $('#modal-title').text('Add Leave');
+    $('#modal-name').val('');
+    $('#modal-error').text('');
+    $('#entity-modal').data('type', 'leave');
+    var modalEl5 = document.getElementById('entity-modal');
+    var bsModal5 = new bootstrap.Modal(modalEl5, { backdrop: true });
+    bsModal5.show();
+    modalEl5.addEventListener('shown.bs.modal', function () { $('#modal-name').focus(); }, { once: true });
+  });
+
+  // Inject a Bootstrap modal HTML at the end of the form (reusable for dept/designation)
+  const modalHtml = `
+  <div class="modal fade" id="entity-modal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-md modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="modal-title">Add Item</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-2">
+            <label class="form-label">Name</label>
+            <input id="modal-name" class="form-control" type="text" />
+            <small id="modal-error" class="text-danger"></small>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" id="modal-save" class="btn btn-primary">Save</button>
+        </div>
+      </div>
+    </div>
+  </div>`;
+
+  $('body').append(modalHtml);
+
+  /* Slightly larger modal size for better UX when adding items */
+  var style = document.createElement('style');
+  style.innerHTML = '\n    .modal-md.modal-dialog { max-width: 520px; }\n    @media (min-width: 768px) { .modal-md.modal-dialog { max-width: 640px; } }\n  ';
+  document.head.appendChild(style);
+
+  // Modal save handler: decide endpoint by data-type
+  $(document).on('click', '#modal-save', function() {
+    const type = $('#entity-modal').data('type');
+    const name = $('#modal-name').val().trim();
+    const errorEl = $('#modal-error');
+    errorEl.text('');
+    if (!name) { errorEl.text('Please enter a name'); return; }
+    const token = $('input[name=csrfmiddlewaretoken]').val();
+    if (type === 'department') {
+      $.post('{% url "ajax_create_department" %}', { name: name, csrfmiddlewaretoken: token })
+        .done(function(resp) {
+          if (resp && resp.status === 'success') {
+            const opt = new Option(resp.name, resp.id, true, true);
+            $('#id_department').append(opt).trigger('change');
+            var mEl = document.getElementById('entity-modal');
+            var mApi = bootstrap.Modal.getInstance(mEl) || new bootstrap.Modal(mEl);
+            mApi.hide();
+            showToast('Department added', '#28a745');
+          } else {
+            errorEl.text(resp.message || 'Could not add department');
+          }
+        }).fail(function(xhr) {
+          errorEl.text('Server error creating department');
+        });
+    } else if (type === 'designation') {
+      const deptId = $('#entity-modal').data('dept-id');
+      $.post('{% url "ajax_create_designation" %}', { name: name, department_id: deptId, csrfmiddlewaretoken: token })
+        .done(function(resp) {
+          if (resp && resp.status === 'success') {
+            const opt = new Option(resp.name, resp.id, true, true);
+            $('#id_designation').append(opt).trigger('change');
+            var mEl = document.getElementById('entity-modal');
+            var mApi = bootstrap.Modal.getInstance(mEl) || new bootstrap.Modal(mEl);
+            mApi.hide();
+            showToast('Designation added', '#28a745');
+          } else {
+            errorEl.text(resp.message || 'Could not add designation');
+          }
+        }).fail(function(xhr) {
+          errorEl.text('Server error creating designation');
+        });
+    } else if (type === 'bank' || type === 'allowance' || type === 'leave') {
+      // Choose endpoint and target select depending on type
+      let url = '';
+      let selectId = '';
+      if (type === 'bank') { url = '{% url "ajax_create_bank" %}'; selectId = '#id_bank'; }
+      if (type === 'allowance') { url = '{% url "ajax_create_allowance" %}'; selectId = '#id_allowances'; }
+      if (type === 'leave') { url = '{% url "ajax_create_leave" %}'; selectId = '#id_leaves'; }
+
+      $.post(url, { name: name, csrfmiddlewaretoken: token })
+        .done(function(resp) {
+          if (resp && resp.status === 'success') {
+            // For multi-selects (allowances/leaves) append the option and keep it selected
+            const opt = new Option(resp.name, resp.id, true, true);
+            // If select uses Select2, append and trigger change; otherwise just append
+            try {
+              $(selectId).append(opt).trigger('change');
+            } catch (e) {
+              $(selectId).append(opt);
+            }
+            var mEl = document.getElementById('entity-modal');
+            var mApi = bootstrap.Modal.getInstance(mEl) || new bootstrap.Modal(mEl);
+            mApi.hide();
+            showToast((type.charAt(0).toUpperCase() + type.slice(1)) + ' added', '#28a745');
+          } else {
+            errorEl.text(resp.message || 'Could not add item');
+          }
+        }).fail(function(xhr) {
+          errorEl.text('Server error creating item');
+        });
+    }
+  });
+
+  // Dates and DOB defaults
+  const todayDate = new Date();
+  const today = todayDate.toISOString().split('T')[0];
+  // Only set generic defaults for empty date inputs so existing values (e.g., when editing)
+  // are not overwritten. Joining/confirm date defaults are still set to today for new entries.
+  $('input[type="date"]').each(function () {
+    if (!$(this).val()) {
+      // set joining/confirm date to today when empty; leave other date inputs untouched
+      const name = $(this).attr('name') || '';
+      if (name === 'joining_date' || name === 'confirm_date') {
+        $(this).val(today);
+      }
+    }
+  });
+
+  // Also default education date inputs to today when empty (preserve existing values when editing)
+  $('input[name="year_of_joining[]"], input[name="year_of_passing[]"]').each(function () {
+    if (!$(this).val()) $(this).val(today);
+  });
+
+  const dobInput = $('#dob');
+  if (dobInput.length) {
+    // Max DOB allowed is 18 years before today to prevent under-18 selection
+    const dob18 = new Date(todayDate.getFullYear() - 18, todayDate.getMonth(), todayDate.getDate()).toISOString().split('T')[0];
+    dobInput.attr('max', dob18);
+    // Only default the DOB field to dob18 when the field is empty (so editing preserves stored DOB)
+    if (!dobInput.val()) {
+      dobInput.val(dob18);
+    }
+  }
+  // Ensure joining/confirm date inputs have today if they were empty (handled above), and keep existing values intact.
+  $('#joining_date, #confirm_date').each(function () { if (!$(this).val()) $(this).val(today); });
+
+  // Same as Current Address checkbox logic
+  $('#sameAsCurrent').change(function () {
+    if ($(this).is(':checked')) {
+      $('#permanentAddress').val($('#currentAddress').val()).prop('readonly', true);
+    } else {
+      $('#permanentAddress').prop('readonly', false).val('');
+    }
+  });
+
+  $('#currentAddress').on('input', function () {
+    if ($('#sameAsCurrent').is(':checked')) {
+      $('#permanentAddress').val($(this).val());
+    }
+  });
+
+  // Back Button confirmation (custom Bootstrap modal to avoid browser native confirm)
+  (function() {
+    const modalId = 'confirm-back-modal';
+    const modalHtml = `
+      <div class="modal fade" id="${modalId}" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-top">
+          <div class="modal-content">
+            <div class="modal-body custom-back-toast" style="border-radius:6px;">
+              <p class="mb-0" style="font-weight:600;">Are you sure you want to go back? Unsaved data will be lost.</p>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+              <button type="button" id="confirm-back-ok" class="btn custom-back-ok">OK</button>
+            </div>
+          </div>
+        </div>
+      </div>`;
+
+    // append modal once
+    if (!document.getElementById(modalId)) {
+      document.body.insertAdjacentHTML('beforeend', modalHtml);
+      // Add top-positioning CSS for modal-dialog-top if not already present
+      if (!document.getElementById('modal-top-style')) {
+        const css = document.createElement('style');
+        css.id = 'modal-top-style';
+        css.innerHTML = `
+          .modal-dialog-top { display: flex; align-items: flex-start; min-height: calc(100% - 1rem); }
+          .modal-dialog-top .modal-content { margin-top: 6vh; }
+          @media (max-width: 575.98px) { .modal-dialog-top .modal-content { margin-top: 10vh; } }
+        `;
+        document.head.appendChild(css);
+      }
+    }
+
+    // event handler to show modal and redirect on confirm
+    $(document).on('click', '.back-btn', function(e) {
+      e.preventDefault();
+      const redirectTo = "{% url 'hr_dashboard' %}";
+      const modalEl = document.getElementById(modalId);
+      const bsModal = bootstrap.Modal.getOrCreateInstance(modalEl);
+      // Show modal
+      bsModal.show();
+      // wire confirm button (use one-time handler)
+      $('#confirm-back-ok').off('click').on('click', function() {
+        bsModal.hide();
+        window.location.href = redirectTo;
+      });
+    });
+  })();
+
+  // Department -> Designation loader (used on change and on page-load when editing)
+  function loadDesignationsForDepartment(departmentId, selectedDesignationId) {
+    const designationDropdown = $('#id_designation');
+    designationDropdown.empty().append('<option value="">Loading...</option>');
+    if (!departmentId) {
+      designationDropdown.empty().append('<option value="">Select Designation</option>');
+      return;
+    }
+    $.ajax({
+      url: '{% url "ajax_load_designations" %}',
+      data: { 'department_id': departmentId },
+      dataType: 'json',
+      success: function (data) {
+        designationDropdown.empty().append('<option value="">Select Designation</option>');
+        data.forEach(item => {
+          const isSelected = selectedDesignationId && String(selectedDesignationId) === String(item.id);
+          const opt = `<option value="${item.id}" ${isSelected ? 'selected' : ''}>${item.designation_name}</option>`;
+          designationDropdown.append(opt);
+        });
+        designationDropdown.trigger('change.select2');
+      },
+      error: function () {
+        designationDropdown.empty().append('<option value="">Error fetching designations</option>');
+      }
+    });
+  }
+
+  $('#id_department').on('change', function () {
+    const departmentId = $(this).val();
+    // On user-driven change, don't preselect; load available designations
+    loadDesignationsForDepartment(departmentId, null);
+  });
+
+  // On initial page load (edit form), if a department is already selected but the
+  // designation select contains only the single pre-selected option, load the
+  // full designation list and preselect the stored designation. This fixes the
+  // issue where the edit page shows only the selected option with no other choices.
+  try {
+    const initialDept = $('#id_department').val();
+    const initialDesig = $('#id_designation').val();
+    if (initialDept) {
+      // Retry loop: the designation loader may need to run after other async
+      // initialization (Select2, etc.). Try a few times with small delays.
+      let tries = 0;
+      const maxTries = 12;
+      const t = setInterval(function() {
+        tries++;
+        try {
+          // Always attempt to load and preselect (covers placeholder + selected option case)
+          loadDesignationsForDepartment(initialDept, initialDesig);
+          // Re-init Select2 so appended options show up in the dropdown
+          try {
+            if ($('#id_designation').hasClass('select2-hidden-accessible')) {
+              $('#id_designation').select2('destroy');
+              initSelect2('#id_designation', "Select or search designation");
+            }
+          } catch (se) { /* ignore */ }
+          // Stop retrying once more than the placeholder+selected option exists
+          if ($('#id_designation option').length > 2) { clearInterval(t); return; }
+        } catch (err) {
+          console.debug('ensureDesigPopulation attempt failed', err);
+        }
+        if (tries >= maxTries) clearInterval(t);
+      }, 250);
+    }
+  } catch (e) {
+    // defensive: ignore if DOM not ready yet
+  }
+
+  // Defensive fallback: sometimes country list / phone prefill happens
+  // asynchronously and may miss populating the visible local input. If
+  // the hidden `#phone_full` contains a value from the server but the
+  // `#phone_local` is still empty after other initialization, populate
+  // the visible fields from the hidden value (tries to select the
+  // matching country dial code when possible).
+  setTimeout(function () {
+    try {
+      const pf = document.getElementById('phone_full');
+      if (!pf) return;
+      const raw = (pf.value || '').toString().trim();
+      const localEl = $('#phone_local');
+      const countryEl = $('#country_select');
+      if (!raw) return;
+      if (localEl && localEl.val() && localEl.val().toString().trim() !== '') return; // already populated
+      // match forms like +91 9633624411 or 91 9633624411 or +919633624411
+      const m = raw.match(/^\+?(\d{1,4})\s*(\d+)$/);
+      if (m) {
+        const country = m[1];
+        const local = m[2];
+        // try to select matching country dial (option values are plain digits without +)
+        if (countryEl && countryEl.find('option[value="' + country + '"]').length) {
+          countryEl.val(country).trigger('change.select2');
+        }
+        localEl.val(local);
+      }
+    } catch (e) {
+      console.debug('post-load phone prefill failed', e);
+    }
+  }, 600);
+
+  // Add / Remove Rows handler function
+  function handleTable(tableId, addBtnSelector) {
+    const table = $(tableId);
+    const addBtn = $(addBtnSelector);
+
+    addBtn.click(function () {
+      const today = new Date().toISOString().split('T')[0];
+
+      // Special-case ID proof table: append a fresh "new" row that uses
+      // the name pattern id_type_new[], id_number_new[], id_photo_new[] so
+      // existing rows (which have id-specific names) are preserved.
+      if (tableId === '#experience-table') {
+        // experience rows: clone first row (works as before)
+        const firstRow = table.find('tbody tr:first').clone();
+        firstRow.find('input, select').each(function () {
+          const type = $(this).attr('type');
+          if (type === 'date') {
+            $(this).val(today);
+          } else {
+            $(this).val('');
+          }
+        });
+        firstRow.find('select').each(function () {
+          if ($(this).hasClass('select2-hidden-accessible')) {
+            $(this).select2('destroy');
+            $(this).select2({ width: '100%' });
+          }
+        });
+        table.find('tbody').append(firstRow);
+        return;
+      }
+
+      // Generic fallback: clone first row (keeps previous behavior for other tables)
+      const firstRow = table.find('tbody tr:first').clone();
+      firstRow.find('input, select').each(function () {
+        const type = $(this).attr('type');
+        if (type === 'date') {
+          // Only set date inputs to today when they are empty so editing preserves stored dates
+          if (!$(this).val()) $(this).val(today);
+        } else {
+          $(this).val('');
+        }
+      });
+      firstRow.find('select').each(function () {
+        if ($(this).hasClass('select2-hidden-accessible')) {
+          $(this).select2('destroy');
+          $(this).select2({ width: '100%' });
+        }
+      });
+      // Reset any preview or filename in the cloned row so new rows start blank
+      const placeholderImg = "{% static 'images/file-placeholder.png' %}";
+  firstRow.find('.id-photo-preview').attr('src', placeholderImg).css('opacity', 0.6);
+      firstRow.find('.id-photo-filename').text('No file chosen');
+      table.find('tbody').append(firstRow);
+    });
+
+    table.on('click', '.cancel-row', function () {
+      const tbody = $(this).closest('tbody');
+      if (tbody.find('tr').length > 1) {
+        $(this).closest('tr').remove();
+      }
+    });
+  }
+
+  handleTable('#idproof-table', '[data-target="idproof-table"]');
+  handleTable('#education-table', '[data-target="education-table"]');
+  handleTable('#experience-table', '[data-target="experience-table"]');
+
+ $(document).on('change', 'input[type="file"]', function () {
+  const file = this.files[0];
+  console.debug('[file-change] input[type=file] change for', this.name, file && file.name);
+  if (!file) return;
+
+  // Allowed extensions
+  const allowedExt = ['jpg', 'jpeg', 'pdf', 'docx'];
+  const fileExt = file.name.split('.').pop().toLowerCase();
+
+  if (!allowedExt.includes(fileExt)) {
+    console.debug('[file-change] invalid type', fileExt, 'allowed=', allowedExt);
+    showInfoToast(`File "${file.name}" has invalid type. Only ${allowedExt.join(', ')} are allowed.`, '#dc3545');
+    try { $(this).val(''); } catch(e) { this.value = ''; }
+    return;
+  }
+
+  // File size check 1MB
+  const MAX_SIZE = 1 * 1024 * 1024;
+  if (file.size > MAX_SIZE) {
+    console.debug('[file-change] oversize', file.size, 'max=', MAX_SIZE);
+    showInfoToast(`File "${file.name}" exceeds 1MB limit.`, '#dc3545');
+    try { $(this).val(''); } catch(e) { this.value = ''; }
+    return;
+  }
+});
+
+  // Passbook specific preview + filename handler with validation
+  $(document).on('change', '#passbook-input', function () {
+    console.log('[PASSBOOK] Handler triggered');
+    try {
+    const file = this.files && this.files[0];
+    console.log('[PASSBOOK] File selected:', file ? file.name : 'none');
+    const preview = $('#passbook-preview');
+    const filenameEl = $('#passbook-filename');
+    const placeholderImg = '{% static "images/file-placeholder.png" %}';
+    
+    if (!file) {
+      if (filenameEl.length) filenameEl.text('No file chosen');
+      if (preview.length) preview.attr('src', placeholderImg).css('opacity', 0.6);
+      return;
+    }
+
+    // Update filename FIRST (show what user selected)
+    if (filenameEl.length) {
+      filenameEl.text(file.name);
+      console.log('[PASSBOOK] Filename updated:', file.name);
+    }
+    
+    // ALWAYS try to show preview for ALL files (even non-images)
+    if (preview.length) {
+      console.log('[PASSBOOK] File type:', file.type);
+      
+      // Try to create object URL for ANY file type
+      try {
+        const url = URL.createObjectURL(file);
+        
+        // For image files, show actual preview
+        if (file.type && file.type.indexOf('image') !== -1) {
+          preview.attr('src', url).css('opacity', 1);
+          console.log('[PASSBOOK] Image preview shown');
+          preview.off('load').on('load', function () { 
+            try { URL.revokeObjectURL(url); } catch(e){} 
+          });
+        } else {
+          // For non-image files (PDF, TXT, DOCX, etc.), try to show as image anyway
+          // This will show broken image icon or placeholder
+          preview.attr('src', url).css('opacity', 0.8);
+          console.log('[PASSBOOK] Non-image file, attempting preview');
+          
+          // On error, show placeholder but keep filename
+          preview.off('error').on('error', function() {
+            console.log('[PASSBOOK] Preview failed (expected for non-images), showing placeholder');
+            $(this).attr('src', placeholderImg).css('opacity', 0.6);
+            URL.revokeObjectURL(url);
+          });
+          
+          // Also revoke on load
+          preview.off('load').on('load', function () { 
+            try { URL.revokeObjectURL(url); } catch(e){} 
+          });
+        }
+      } catch (e) {
+        console.error('[PASSBOOK] Preview error:', e);
+        preview.attr('src', placeholderImg).css('opacity', 0.6);
+      }
+    }
+
+    // NOW validate file type (after showing preview)
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'application/pdf'];
+    const fileName = file.name.toLowerCase();
+    const fileExt = fileName.split('.').pop();
+    const allowedExt = ['jpg', 'jpeg', 'png', 'gif', 'pdf'];
+    
+    console.log('[PASSBOOK] Extension:', fileExt, 'Type:', file.type);
+    
+    if (!allowedTypes.includes(file.type) && !allowedExt.includes(fileExt)) {
+      console.log('[PASSBOOK] INVALID TYPE - showing toast');
+      const errorMsg = `Invalid file type "${fileExt.toUpperCase()}". Please upload JPG, PNG, GIF, or PDF only.`;
+      console.log('[PASSBOOK] Error message:', errorMsg);
+      
+      showInfoToast(errorMsg, '#dc3545');
+      
+      // Clear input after a delay so user sees the error with preview/filename
+      const inputElement = this;
+      setTimeout(() => {
+        inputElement.value = '';
+        if (filenameEl.length) filenameEl.text('No file chosen');
+        if (preview.length) preview.attr('src', placeholderImg).css('opacity', 0.6);
+        console.log('[PASSBOOK] Input cleared after delay');
+      }, 3000);
+      return;
+    }
+
+    // Validate size (1MB max)
+    const MAX = 1 * 1024 * 1024;
+    if (file.size > MAX) {
+      console.log('[PASSBOOK] FILE TOO LARGE');
+      const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+      const errorMsg = `File size (${sizeMB} MB) exceeds 1 MB limit. Please choose a smaller file.`;
+      
+      showInfoToast(errorMsg, '#dc3545');
+      
+      // Clear input after a delay so user sees the error with preview/filename
+      const inputElement = this;
+      setTimeout(() => {
+        inputElement.value = '';
+        if (filenameEl.length) filenameEl.text('No file chosen');
+        if (preview.length) preview.attr('src', placeholderImg).css('opacity', 0.6);
+      }, 3000);
+      return;
+    }
+    
+    console.log('[PASSBOOK] File is VALID');
+    } catch (errp) { 
+      console.error('[PASSBOOK] Handler error:', errp); 
+    }
+  });
+
+  // Resume preview + filename
+  $('#resume-input').on('change', function () {
+    var file = this.files[0];
+    if (!file) return;
+    var allowed = ['pdf','doc','docx','jpg','jpeg'];
+    var ext = file.name.split('.').pop().toLowerCase();
+    if (!allowed.includes(ext)) {
+      showInfoToast('Resume must be PDF, DOC/DOCX, or JPG/JPEG', '#dc3545');
+      $(this).val('');
+      return;
+    }
+    $('#resume-filename').text(file.name);
+    if (file.type && file.type.indexOf('image') !== -1) {
+      $('#resume-preview').attr('src', URL.createObjectURL(file)).css('opacity',1);
+    } else {
+      $('#resume-preview').attr('src','{% static "images/file-placeholder.png" %}').css('opacity',0.6);
+    }
+  });
+
+
+  // Aadhaar formatting and validation integrated INTO existing event handler for ID proof inputs
+  function getPatternForType(type) {
+    switch (type) {
+      case "Aadhar": return { regex: /^\d{12}$/, msg: "Aadhaar must be exactly 12 digits." };
+      case "Pan": return { regex: /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/, msg: "PAN format: ABCDE1234F" };
+      case "DL": return { regex: /^[A-Z]{2}[0-9]{2}\s?[0-9]{11}$/, msg: "Driving License format: KA01 12345678901" };
+      case "Passport": return { regex: /^[A-Z][0-9]{7}$/, msg: "Passport format: A1234567" };
+      default: return null;
+    }
+  }
+
+  // Helper to set maxlength & placeholder for id-number inputs based on selected id type
+  function applyIdTypeConstraints(row) {
+    const select = row.find('select[name^="id_type"]');
+    const idInput = row.find('input[name^="id_number"]').last();
+    const type = select.val();
+    if (!idInput || !idInput.length) return;
+    switch (type) {
+      case 'Aadhar':
+        idInput.attr('maxlength', 14); // 12 digits + 2 spaces
+        idInput.attr('placeholder', '1234 5678 9012');
+        idInput.attr('inputmode', 'numeric');
+        break;
+      case 'Pan':
+        idInput.attr('maxlength', 10);
+        idInput.attr('placeholder', 'ABCDE1234F');
+        idInput.removeAttr('inputmode');
+        break;
+      case 'DL':
+        // Driving license varies; allow larger input so rows don't truncate
+        idInput.attr('maxlength', 32);
+        idInput.attr('placeholder', 'KA01 12345678901');
+        idInput.removeAttr('inputmode');
+        break;
+      case 'Passport':
+        idInput.attr('maxlength', 9);
+        idInput.attr('placeholder', 'A1234567');
+        idInput.removeAttr('inputmode');
+        break;
+      default:
+        idInput.removeAttr('maxlength');
+        idInput.attr('placeholder', 'ID Number');
+    }
+  }
+
+  // Initialize constraints for all existing ID rows on load
+  $('#idproof-table tbody tr').each(function () { applyIdTypeConstraints($(this)); });
+
+  // When ID type changes, reapply constraints for that row
+  $('#idproof-table').on('change', 'select[name^="id_type"]', function () {
+    const row = $(this).closest('tr');
+    applyIdTypeConstraints(row);
+  });
+
+  // Handle both existing per-id inputs (id_number_<id>) and new[] inputs
+  $('#idproof-table').on('input change', 'input[name^="id_number"], select[name^="id_type"]', function () {
+    const row = $(this).closest('tr');
+    // detect type value either from named select or the generic new[]
+    const idType = row.find('select[name^="id_type"]').val();
+    let idNumber = row.find('input[name^="id_number"]').val() ? row.find('input[name^="id_number"]').val().trim() : '';
+    let errorEl = row.find('.id-error');
+
+    if (!errorEl.length) {
+      errorEl = $('<small class="id-error" style="color:red; display:block;"></small>');
+      // attach error after whichever id_number input exists in this row
+      const idInput = row.find('input[name^="id_number"]').last();
+      idInput.after(errorEl);
+    }
+
+    if (idType === "Aadhar") {
+      // Remove non-digits and limit to 12 digits
+      idNumber = idNumber.replace(/\D/g, '').slice(0,12);
+      // Format as 4-digit groups with spaces: '1234 5678 9012'
+      const parts = idNumber.match(/.{1,4}/g) || [];
+      const formatted = parts.join(' ');
+      // set the formatted value back into whichever id_number input exists in this row
+      const idInput = row.find('input[name^="id_number"]').last();
+      idInput.val(formatted);
+      // use the formatted representation for subsequent validation
+      idNumber = formatted;
+    }
+
+    const rawNumber = idType === "Aadhar" ? idNumber.replace(/\s/g, '') : idNumber;
+    const patternData = getPatternForType(idType);
+
+    if (!idType) {
+      errorEl.text("Please select an ID type.");
+    } else if (patternData && rawNumber !== '') {
+      errorEl.text(patternData.regex.test(rawNumber) ? '' : patternData.msg);
+    } else {
+      errorEl.text('');
+    }
+  });
+
+  // Delegated file input change handler to show preview + filename for ID photos
+  $('#idproof-table').on('change', 'input[type="file"][name^="id_photo"]', function (e) {
+    const file = this.files[0];
+    const row = $(this).closest('tr');
+    const previewImg = row.find('.id-photo-preview');
+    const filenameEl = row.find('.id-photo-filename');
+    if (!file) {
+      // if no file chosen, don't change preview
+      return;
+    }
+    // Validation already handled globally: only allow certain types and size
+    if (file.type && file.type.indexOf('image') !== -1) {
+      const url = URL.createObjectURL(file);
+      previewImg.attr('src', url).css('opacity', 1);
+      filenameEl.text(file.name);
+    } else {
+      previewImg.attr('src', '{% static "images/file-placeholder.png" %}').css('opacity', 0.6);
+      filenameEl.text(file.name);
+    }
+  });
+
+  // Bank input validation for Account Number and IFSC with inline error messages
+  $('.items-table tbody').on('input', 'input[name="account_number"], input[name="ifsc_code"]', function () {
+    const row = $(this).closest('tr');
+    const accountInput = row.find('input[name="account_number"]');
+    const ifscInput = row.find('input[name="ifsc_code"]');
+    const input = $(this);
+
+    if (input.is(accountInput)) {
+      let accError = accountInput.next('.account-error');
+      if (!accError.length) accError = $('<small class="account-error" style="color:red;"></small>').insertAfter(accountInput);
+      const accVal = accountInput.val().trim();
+      accError.text(/^[0-9]{9,18}$/.test(accVal) ? '' : 'Account number must be 9-18 digits.');
+    }
+
+    if (input.is(ifscInput)) {
+      let ifscError = ifscInput.next('.ifsc-error');
+      if (!ifscError.length) ifscError = $('<small class="ifsc-error" style="color:red;"></small>').insertAfter(ifscInput);
+      const ifscVal = ifscInput.val().trim().toUpperCase();
+      ifscError.text(/^[A-Z]{4}0[A-Z0-9]{6}$/.test(ifscVal) ? '' : 'Enter valid IFSC code, e.g., SBIN0001234');
+    }
+  });
+
+  // Unified submit button handler plus form validation
+  function validateField(field) {
+    if (field.hasClass('select2-hidden-accessible')) {
+      const val = field.val();
+      if (val && val.length > 0) {
+        field.next('.select2-container').addClass('valid').removeClass('is-invalid');
+        return true;
+      } else {
+        field.next('.select2-container').addClass('is-invalid').removeClass('valid');
+        return false;
+      }
+    } else if (field.attr('type') === 'radio') {
+      const name = field.attr('name');
+      if ($(`input[name="${name}"]:checked`).length > 0) {
+        $(`input[name="${name}"]`).closest('.category').addClass('valid').removeClass('is-invalid');
+        return true;
+      } else {
+        $(`input[name="${name}"]`).closest('.category').addClass('is-invalid').removeClass('valid');
+        return false;
+      }
+    } else {
+      if (field.val().trim() !== '') {
+        field.addClass('valid').removeClass('is-invalid');
+        return true;
+      } else {
+        field.addClass('is-invalid').removeClass('valid');
+        return false;
+      }
+    }
+  }
+
+  $('.submit-btn').click(function (e) {
+  e.preventDefault();
+  const form = $(this).closest('form')[0];
+  if (!form) {
+    showToast('Form not found!');
+    return;
+  }
+
+  let allValid = true;
+
+  // Validate all required fields in form
+  $(form).find('[required]').each(function () {
+    if (!validateField($(this))) {
+      allValid = false;
+    }
+  });
+
+  
+  // NOTE: showInfoToast moved to global scope (defined later) so other handlers
+  // (file change, preview) can call it before the submit handler is bound.
+
+  // Additional education-row validation: if Qualification chosen but Board or Stream empty => block
+  $('#education-table tbody tr').each(function () {
+    if (!allValid) return; // already invalid, skip extra checks
+    const qual = $(this).find('select[name^="qualification"]').val();
+    if (qual && String(qual).trim() !== '') {
+      const board = $(this).find('input[name^="board_university"]').val() || '';
+      const stream = $(this).find('input[name^="stream"]').val() || '';
+      if (String(board).trim() === '' || String(stream).trim() === '') {
+        allValid = false;
+        showToast('Please fill Board/University and Stream for all qualifications before saving.');
+        // focus the first missing input for convenience
+        if (String(board).trim() === '') {
+          $(this).find('input[name^="board_university"]').focus();
+        } else {
+          $(this).find('input[name^="stream"]').focus();
+        }
+        return false; // break out of each
+      }
+    }
+  });
+
+  // Custom country code validation
+  const countryVal = $('#country_select').val();
+    if (!countryVal) {
+    allValid = false;
+    showToast('Please select a country code.');
+    $('#country_select').focus();
+  }
+
+  // Permanent address validation if "same as current" not checked
+  if (!$('#sameAsCurrent').is(':checked')) {
+    const permAddr = $('#permanentAddress').val().trim();
+    if (!permAddr) {
+      allValid = false;
+      showToast('Please enter a permanent address or select "Same as Current Address".');
+      $('#permanentAddress').focus();
+    }
+  }
+
+ // Phone validation when intlTelInput active
+if (typeof iti !== 'undefined' && iti && typeof iti.getNumber === 'function' && phoneEl) {
+  const phoneValue = phoneEl.value.trim();
+
+  if (phoneValue !== '') {
+    if (!iti.isValidNumber()) {
+      allValid = false;
+      showToast('Please enter a valid phone number.');
+      phoneEl.focus();
+    } else {
+      // Get E.164 formatted number
+      let raw = iti.getNumber(); 
+      // Optional: split country code and local number with a space
+      const match = raw.match(/^(\+\d{1,3})(\d+)$/);
+      if (match) raw = match[1] + ' ' + match[2];
+
+      // Populate hidden input for Django
+      if (phoneFull) {
+        phoneFull.value = raw; // hidden input must have name="phone"
+      }
+    }
+  } else {
+    // If empty, reset hidden field
+    if (phoneFull) phoneFull.value = '';
+  }
+} else {
+  // Fallback if iti not initialized
+  const selectedDial = $('#country_select').val() || '';
+  const local = $('#phone_local').val().trim() || '';
+  if (phoneFull) {
+    phoneFull.value = local ? ('+' + selectedDial + ' ' + local.replace(/\D/g, '')) : '';
+  }
+}
+
+
+  // Prepare form data for AJAX
+  // === Client-side validation for "other" fields (education, details, resume)
+  // 1) Education: require at least one filled qualification row and ensure
+  //    that filled rows include a year_of_passing.
+  let educationHasEntry = false;
+  let educationValid = true;
+  $('#education-table tbody tr').each(function () {
+    // qualification is a <select>, not an input - read by name selector
+    const qual = ($(this).find('select[name="qualification[]"]').val() || '').toString();
+    const yop = ($(this).find('input[name="year_of_passing[]"]').val() || '').toString();
+    // treat default empty/placeholder as empty
+    if (qual.trim() !== '') {
+      educationHasEntry = true;
+      if (yop.trim() === '') educationValid = false;
+    }
+  });
+  if (!educationHasEntry) {
+    showToast('⚠️ Please add at least one education entry.');
+    return;
+  }
+  if (!educationValid) {
+    showToast('⚠️ Please complete education rows (include year of passing).');
+    return;
+  }
+
+  // 2) File checks for uploads: allow submission if an existing file is present
+  // Photo (main)
+  const photoInput = $(form).find('input[name="photo"]')[0];
+  if (photoInput) {
+    const hasNewPhoto = photoInput.files && photoInput.files.length > 0;
+    if (!hasNewPhoto && !hasExistingPhoto) {
+      showToast('⚠️ Please upload a photo (or keep the existing one).');
+      return;
+    }
+    if (hasNewPhoto && photoInput.files[0].size > 1 * 1024 * 1024) {
+      showToast('⚠️ Photo exceeds 1 MB limit. Please upload a smaller image.');
+      return;
+    }
+  }
+
+  // Passbook / bank upload
+  const passbookInput = $(form).find('input[name="passbook_photo"]')[0];
+  if (passbookInput) {
+    const hasNewPassbook = passbookInput.files && passbookInput.files.length > 0;
+    if (!hasNewPassbook && !hasExistingPassbook) {
+      showToast('⚠️ Please upload a passbook file (or keep the existing one).');
+      return;
+    }
+    if (hasNewPassbook && passbookInput.files[0].size > 1 * 1024 * 1024) {
+      showToast('⚠️ Passbook file exceeds 1 MB limit. Please upload a smaller file.');
+      return;
+    }
+  }
+
+  // ID proof new rows: ensure any required new id_photo_new[] inputs are satisfied
+  let idNewMissing = false;
+  $(form).find('input[name="id_photo_new[]"]').each(function () {
+    if ($(this).prop('required')) {
+      if (!this.files || this.files.length === 0) {
+        idNewMissing = true;
+      }
+    }
+  });
+  if (idNewMissing) {
+    showToast('⚠️ Please upload the required ID proof files or remove the empty rows.');
+    return;
+  }
+
+  // Resume: allow existing resume to satisfy the requirement
+  const resumeInput = $(form).find('input[name="resume"]')[0];
+  const hasNewResume = resumeInput && resumeInput.files && resumeInput.files.length > 0;
+  if (!hasNewResume && !hasExistingResume) {
+    showToast('⚠️ Please upload a resume .');
+    return;
+  }
+  if (hasNewResume) {
+    const resumeFile = resumeInput.files[0];
+    const maxBytes = 1 * 1024 * 1024; // 1MB
+    if (resumeFile.size > maxBytes) {
+      showToast('⚠️ Resume exceeds 1 MB limit. Please upload a smaller file.');
+      return;
+    }
+  }
+
+  // All client-side checks passed, build FormData
+  const formData = new FormData(form);
+
+  $.ajax({
+    url: form.action,
+    type: 'POST',
+    data: formData,
+    processData: false,
+    contentType: false,
+    dataType: 'json', // ensure response parsed as JSON
+    success: function (response) {
+      console.log('employee_register response', response);
+      // accept either {'status':'success', 'message':...} or {'success': True}
+      const ok = (response && (response.status === 'success' || response.success === true || response.status === 'ok'));
+      if (ok) {
+        // choose a helpful message depending on create vs update
+        const msg = (response && (response.message || response.msg)) || (isEdit ? 'Employee updated successfully!' : 'Employee registered successfully!');
+        // Store a short-lived fallback message so the target page can show a toast
+        try { localStorage.setItem('hr_success_msg', msg); } catch (e) { /* ignore */ }
+        // Redirect to employees list when editing, otherwise go to dashboard
+        const targetUrl = isEdit ? employeesListUrl : hrDashboardUrl;
+        window.location.href = targetUrl + '?success=' + encodeURIComponent(msg);
+        return;
+      }
+
+      // If response contains an error message, show it
+      const errMsg = (response && (response.message || response.error || response.msg)) || 'Server reported an error.';
+      showToast('⚠️ ' + errMsg);
+    },
+    error: function (jqXHR, textStatus, errorThrown) {
+      console.error('AJAX submit error', textStatus, errorThrown, jqXHR.responseText);
+      showToast('⚠️ Server error. Please try again later.');
+    }
+  });
+});
+
+$('[data-next]').click(function() {
+    const target = $(this).attr('data-next');
+    const currentSection = $(this).closest('.form-section');
+    const requiredFields = currentSection.find('[required]');
+    let allValid = true;
+
+    requiredFields.each(function() {
+        if (!validateField($(this))) allValid = false;
+    });
+
+    if (!allValid) {
+        showToast(' Please fill all required fields.');
+        return;
+    }
+
+    // Email existence check (before moving next)
+    const email = $('#email').val().trim();
+    if (email) {
+        $.ajax({
+            url: '/check-email/',
+            method: 'POST',
+            data: { 
+                email: email,
+                csrfmiddlewaretoken: $('input[name=csrfmiddlewaretoken]').val()
+            },
+            success: function(response) {
+                if (response.exists) {
+                    showToast('⚠️ This email already exists.');
+                } else {
+                    if (target) showFormById(target);
+                }
+            },
+            error: function() {
+                
+            }
+        });
+    } else {
+        if (target) showFormById(target);
+    }
+});
+
+
+// NOTE: removed duplicate #submit-button handler which conflicted with the
+// main `.submit-btn` AJAX handler above. The `.submit-btn` buildFormData
+// flow is used for submission and redirect handling.
+
+});
+
+// Photo input: show filename and preview when user selects a file
+$(document).on('change', '#photo-input', function () {
+  try {
+  const input = this;
+  const file = input.files && input.files[0];
+  console.debug('[photo-change] file=', file && file.name);
+  const preview = document.getElementById('photo-preview');
+  const filenameEl = document.getElementById('photo-filename');
+  if (!file) {
+    if (filenameEl) filenameEl.textContent = 'No file chosen';
+    if (preview) preview.src = '{% static "images/placeholder-user.png" %}';
+    return;
+  }
+
+  // Validate type
+  const allowed = ['image/jpeg', 'image/png', 'image/jpg', 'image/gif'];
+  if (allowed.indexOf(file.type) === -1) {
+    showInfoToast('Only JPG, PNG, GIF images are allowed.');
+    input.value = '';
+    return;
+  }
+
+  // Validate size (1MB)
+  const MAX = 1 * 1024 * 1024;
+  if (file.size > MAX) {
+    showInfoToast('Selected file exceeds 1 MB. Please choose a smaller image.');
+    input.value = '';
+    return;
+  }
+
+  if (filenameEl) filenameEl.textContent = file.name;
+  if (preview) {
+    try {
+      const url = URL.createObjectURL(file);
+      preview.src = url;
+      preview.style.opacity = '1';
+      // release URL after image loads
+      preview.onload = function () { URL.revokeObjectURL(url); };
+    } catch (e) {
+      console.warn('Preview failed', e);
+    }
+  }
+  } catch (errph) { console.error('photo handler error', errph); }
+});
+
+// debug click handler removed
+
+
+
+
+//add  new row for document,modal and validation
+
+$(document).ready(function () {
+
+  // ==== Initialize Select2 ====
+  function initSelect2(selector, placeholder = 'Select Document') {
+    $(selector).select2({
+      placeholder: placeholder,
+      allowClear: true,
+      width: '100%',
+      dropdownAutoWidth: true,
+      closeOnSelect: true
+    });
+  }
+
+  // ==== Load options from hidden template ====
+  function getDocumentTypesOptions() {
+    return $('#document-types-template').html();
+  }
+
+  // ==== Create new row ====
+  function createDocRow() {
+    const options = getDocumentTypesOptions();
+    return `
+      <tr>
+        <td>
+          <div style="display:flex; gap:8px; align-items:center;">
+            <select name="personal_document_type[]" class="form-control select2 doc-name-select" required>
+              ${options}
+            </select>
+            <button type="button" class="btn btn-outline-secondary btn-add-personal-doc" title="Add Document">+</button>
+          </div>
+        </td>
+        <td><input type="text" name="personal_document_number[]" class="form-control doc-number" placeholder="Enter document number" required></td>
+        <td><input type="date" name="personal_document_expiry[]" class="form-control"></td>
+        <td>
+          <input type="file" name="personal_document_file[]" class="form-control personal-doc-file" accept="image/*,application/pdf" required>
+          <div style="margin-top:8px; display:flex; align-items:center; gap:12px;">
+            <div style="min-width:120px;">
+              <img class="personal-doc-preview" src="/static/images/file-placeholder.png" alt="document"
+                   style="max-height:80px; max-width:120px; border-radius:6px; opacity:0.6;" />
+            </div>
+            <div style="flex:1;">
+              <small class="personal-doc-filename text-muted">No file chosen</small>
+            </div>
+          </div>
+        </td>
+        <td><button type="button" class="btn btn-danger btn-sm cancel-row">&times;</button></td>
+      </tr>`;
+  }
+
+
+
+// ==== Add new row (universal handler) ====
+$('.add-item-btn').click(function () {
+  const target = $(this).data('target');
+  const tableBody = $('#' + target + ' tbody');
+  let newRow = '';
+
+  if (target === 'personal-docs-table') {
+    newRow = createDocRow();
+  } else if (target === 'idproof-table') {
+    newRow = createIdProofRow();
+  } else if (target === 'education-table') {
+    newRow = createEducationRow();
+  } else if (target === 'experience-table') {
+    newRow = createExperienceRow();
+  }
+
+  tableBody.append(newRow);
+  initSelect2(tableBody.find('.select2').last());
+});
+
+  // ==== Remove row ====
+  $(document).on('click', '.cancel-row', function () {
+    $(this).closest('tr').remove();
+  });
+
+  // ==== Update doc number placeholder ====
+  $(document).on('change', '.doc-name-select', function () {
+    const selected = $(this).find('option:selected');
+    const format = selected.data('format') || 'Enter document number';
+    $(this).closest('tr').find('.doc-number').attr('placeholder', format).trigger('input');
+  });
+
+  // ==== File preview ====
+  $('#personal-docs-table').on('change', 'input.personal-doc-file', function () {
+    const file = this.files[0];
+    const row = $(this).closest('tr');
+    const previewImg = row.find('.personal-doc-preview');
+    const filenameEl = row.find('.personal-doc-filename');
+
+    if (!file) {
+      previewImg.attr('src', '/static/images/file-placeholder.png').css('opacity', 0.6);
+      filenameEl.text('No file chosen');
+      return;
+    }
+
+    filenameEl.text(file.name);
+    if (file.type.startsWith('image/')) {
+      const url = URL.createObjectURL(file);
+      previewImg.attr('src', url).css('opacity', 1);
+    } else {
+      previewImg.attr('src', '/static/images/file-placeholder.png').css('opacity', 0.6);
+    }
+  });
+
+  // ==== Append modal ====
+  if (!$('#personal-doc-modal').length) {
+    $('body').append(`
+      <div class="modal fade" id="personal-doc-modal" tabindex="-1">
+        <div class="modal-dialog modal-md modal-dialog-centered">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title">Add Personal Document Type</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+              <div class="mb-2">
+                <label class="form-label">Document Name</label>
+                <input id="personal-doc-name" class="form-control" type="text"/>
+              </div>
+              <div class="mb-2">
+                <label class="form-label">Example Format</label>
+                <input id="personal-doc-format" class="form-control" type="text" placeholder="e.g., 8888 8888 8888"/>
+              </div>
+              <small id="personal-doc-error" class="text-danger"></small>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+              <button type="button" id="personal-doc-save" class="btn btn-primary">Save</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `);
+  }
+
+  // ==== Open modal ====
+  $(document).on('click', '.btn-add-personal-doc', function () {
+    $('#personal-doc-name, #personal-doc-format').val('');
+    $('#personal-doc-error').text('');
+    const modalEl = document.getElementById('personal-doc-modal');
+    const bsModal = new bootstrap.Modal(modalEl);
+    bsModal.show();
+  });
+
+
+  const ajax_create_personal_doc_type_url = "{% url 'ajax_create_personal_document_type_url' %}";
+
+
+$('#personal-doc-save').click(function() {
+    const name = $('#personal-doc-name').val().trim();
+    const format = $('#personal-doc-format').val().trim();
+    const errorEl = $('#personal-doc-error');
+
+    $.ajax({
+        url: ajax_create_personal_doc_type_url,  // now defined
+        type: 'POST',
+        data: {
+            name,
+            format,
+            csrfmiddlewaretoken: $('[name=csrfmiddlewaretoken]').val()
+        },
+        success: function(resp) {
+            if (resp.status === 'success') {
+                const newOption = `<option value="${resp.id}" data-format="${format}" selected>${resp.name}</option>`;
+                $('#document-types-template').append(newOption);
+                $('.doc-name-select').append(newOption).val(resp.id).trigger('change.select2');
+                const modalEl = document.getElementById('personal-doc-modal');
+                bootstrap.Modal.getInstance(modalEl)?.hide();
+                showToast('Personal document type added', '#28a745');
+            } else {
+                errorEl.text(resp.message || 'Could not add document type');
+            }
+        },
+        error: function() {
+            errorEl.text('Server error');
+        }
+    });
+});
+
+  // Helper to generate regex from example format
+  function getRegexFromFormat(format) {
+    let regexStr = '^';
+    for (const char of format) {
+      if (char.match(/[0-9]/)) regexStr += '\\d';
+      else if (char.match(/[A-Za-z]/)) regexStr += '[A-Za-z]';
+      else regexStr += char.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+    }
+    regexStr += '$';
+    return new RegExp(regexStr);
+  }
+
+  // Helper: Get expected length (count of alphanumeric placeholders in format)
+  function getExpectedLength(format) {
+    if (!format || String(format).trim() === '') return 0;
+    return (String(format) || '').replace(/[^A-Za-z0-9]/g, '').length;
+  }
+
+  // Helper: Check if format has any separators
+  function hasSeparators(format) {
+    if (!format || String(format).trim() === '') return false;
+    return /[^A-Za-z0-9]/.test(String(format) || '');
+  }
+
+  // Helper: Apply format to raw input string
+  function applyFormatToRaw(rawStr, format) {
+    if (!format || String(format).trim() === '' || !rawStr) return rawStr || '';
+    let formatted = '';
+    let rawIndex = 0;
+    for (let i = 0; i < String(format).length && rawIndex < (rawStr || '').length; i++) {
+      const fch = String(format)[i];
+      if (/[A-Za-z0-9]/.test(fch)) {
+        formatted += (rawStr || '')[rawIndex++];
+      } else {
+        formatted += fch;
+      }
+    }
+    if (rawIndex < (rawStr || '').length) {
+      formatted += (rawStr || '').slice(rawIndex);
+    }
+    return formatted;
+  }
+
+  // Helper: Build regex that matches raw input (without separators)
+  function buildRawOnlyRegex(format) {
+    if (!format || String(format).trim() === '') return /^$/;
+    let regexStr = '^';
+    for (const char of String(format)) {
+      if (char.match(/[0-9]/)) regexStr += '\\d';
+      else if (char.match(/[A-Za-z]/)) regexStr += '[A-Za-z]';
+      // Skip separators in raw-only regex
+    }
+    regexStr += '$';
+    return new RegExp(regexStr);
+  }
+
+  // Show toast
+  function showToast(msg, bg = '#4BB543') {
+    let t = $('#toast');
+    if (!t.length) {
+      t = $('<div id="toast"></div>').appendTo('body');
+    }
+    t.text(msg).css('background-color', bg).addClass('show');
+    setTimeout(function() {
+      t.removeClass('show');
+    }, 3000);
+  }
+
+  // Update placeholder on type selection
+  $('#personal-docs-table').on('change', '.doc-name-select', function () {
+    const row = $(this).closest('tr');
+    const selectedOption = $(this).find('option:selected');
+    const format = selectedOption.data('format') || '';
+    const input = row.find('.doc-number');
+    if (format) {
+      input.attr('placeholder', format);
+      // Re-validate in case there was a previous invalid value
+      validateDocRow(row);
+    }
+  });
+
+  // // === Function to validate and auto-format input ===
+function validateDocRow(row) {
+  const input = row.find('.doc-number');
+  const $select = row.find('.doc-name-select');
+  const selectedOption = $select.find('option:selected');
+  
+  // Try to get format from multiple sources: option data -> template -> cache
+  let format = selectedOption.data('format');
+  
+  if (!format || String(format).trim() === '') {
+    const docId = $select.val();
+    if (docId) {
+      // Try to find in hidden template
+      const templateOpt = $('#document-types-template').find(`option[value="${docId}"]`);
+      if (templateOpt && templateOpt.length) {
+        format = templateOpt.data('format');
+      }
+      // Try client cache if still not found
+      if ((!format || String(format).trim() === '') && window.personalDocFormats && window.personalDocFormats[docId]) {
+        format = window.personalDocFormats[docId].format;
+      }
+    }
+  }
+
+  const currentVal = (input.val() || '').toString();
+
+  // Prefer the template's .doc-error-message element
+  let errorEl = row.find('.doc-error-message');
+  if (!errorEl.length) errorEl = row.find('.doc-error');
+  if (!errorEl.length) {
+    errorEl = $('<small class="doc-error" style="color:red; display:block;"></small>');
+    input.after(errorEl);
+  }
+
+  // No validation if no format resolved — allow any input
+  if (!format || String(format).trim() === '') {
+    errorEl.text('');
+    return true;
+  }
+
+  // No validation if input is empty
+  if (currentVal === '') {
+    errorEl.text('');
+    return true;
+  }
+
+  // Extract raw characters (alphanumeric only)
+  const rawOnly = currentVal.replace(/[^A-Za-z0-9]/g, '');
+  const expectedLen = getExpectedLength(format);
+  const hasSeps = hasSeparators(format);
+
+  // Safety check: if expectedLen is 0, format has no alphanumeric chars
+  if (expectedLen === 0) {
+    errorEl.text('Format not properly configured. Please select a valid document type.');
+    return false;
+  }
+
+  // === STEP 1: Enforce maximum length ===
+  if (rawOnly.length > expectedLen) {
+    const trimmed = rawOnly.slice(0, expectedLen);
+    const newVal = hasSeps ? applyFormatToRaw(trimmed, format) : trimmed;
+    input.val(newVal);
+    errorEl.text(`Maximum ${expectedLen} characters allowed for this document type.`);
+    return false;
+  }
+
+  // === STEP 2: Auto-format (insert separators if format has them) ===
+  if (hasSeps) {
+    const formatted = applyFormatToRaw(rawOnly, format);
+    if (formatted !== currentVal) {
+      input.val(formatted);
+    }
+  }
+
+  // === STEP 3: Check if still incomplete ===
+  if (rawOnly.length < expectedLen) {
+    const remaining = expectedLen - rawOnly.length;
+    errorEl.text(`Please enter ${expectedLen} characters (${remaining} more).`);
+    return false;
+  }
+
+  // === STEP 4: Validate format ===
+  const regexWithSep = getRegexFromFormat(format);
+  const regexRawOnly = buildRawOnlyRegex(format);
+  const visibleVal = (input.val() || '').toString();
+
+  // Accept if matches either the full formatted pattern or the raw-only pattern
+  if (regexWithSep.test(visibleVal) || regexRawOnly.test(rawOnly)) {
+    errorEl.text('');
+    return true;
+  }
+
+  // Fallback: format error
+  errorEl.text(`Invalid format. Example: ${format}`);
+  return false;
+}
+
+// === Trigger on input/change ===
+$('#personal-docs-table').on('input change', '.doc-number', function () {
+  const row = $(this).closest('tr');
+  validateDocRow(row);
+});
+
+// === Initial validation ===
+$('#personal-docs-table tbody tr').each(function () {
+  validateDocRow($(this));
+});
+
+  // ==== Expiry date validation ====
+$('#personal-docs-table').on('change', 'input[name="personal_document_expiry[]"]', function () {
+    const input = $(this);
+    const selectedDate = new Date(input.val());
+    const today = new Date();
+    
+    // Reset time for comparison
+    today.setHours(0, 0, 0, 0);
+
+    if (selectedDate < today) {
+        alert('⚠️ Expiry date cannot be in the past!');
+        input.val(''); // clear the invalid date
+    }
+});
+
+  // ================= Handle Next button click =================
+  $('[data-next]').click(function () {
+    const target = $(this).attr('data-next');
+    const currentSection = $(this).closest('.form-section');
+    const toast = $('#toast');
+    let allValid = true;
+    
+    // Validate required fields in current section
+    currentSection.find('[required]').each(function () {
+      if (!validateField($(this))) allValid = false;
+    });
+
+    // Validate personal documents format
+    $('#personal-docs-table tbody tr').each(function () {
+      const rowValid = validateDocRow($(this));
+      if (!rowValid) allValid = false;
+    });
+
+    if (!allValid) {
+      showToast('⚠️ Please correct all fields before proceeding.');
+      return;
+    }
+
+    // Move to next section
+    if (target) {
+      currentSection.hide();
+      $('#' + target).show();
+    }
+  });
+
+  // ==== Auto-focus select2 ====
+  $(document).on('select2:open', function () {
+    setTimeout(() => $('.select2-container--open .select2-search__field').focus(), 10);
+  });
+
+  // ==== Initialize existing selects ====
+  // Remove legacy behavior: no automatic insertion of hyphens on space.
+  // Formatting is handled centrally by `validateDocRow` which will insert
+  // separators exactly as provided by the example format (spaces, dashes, etc.).
+
+  initSelect2('.doc-name-select');
+});
+
+document.addEventListener('change', function(e) {
+  if (e.target.classList.contains('personal-doc-file')) {
+    const input = e.target;
+    const preview = input.closest('td').querySelector('.personal-doc-preview');
+    const file = input.files[0];
+
+    if (!file || !preview) return;
+
+    // If PDF
+    if (file.type === 'application/pdf') {
+      preview.src = '/static/images/pdf-icon.png'; // Adjust if your path differs
+      return;
+    }
+
+    // For image preview
+    const reader = new FileReader();
+    reader.onload = function(ev) {
+      preview.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+});
+</script>
+{% endblock scripts %}

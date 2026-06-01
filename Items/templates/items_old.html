@@ -1,0 +1,82 @@
+{% extends 'website/index.html' %}
+{% load static %}
+{% block exstyle %}
+<link href="{% static 'style/general.css' %}" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.9.1/font/bootstrap-icons.css" rel="stylesheet">
+
+{% endblock exstyle %}
+{% block page_title %}Items{% endblock page_title %}
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+   
+  <!-- Add New Item Button -->
+    <a href="{% url 'add_item' %}" class="btn btn-success">+ Add New Item</a>
+    <!-- Search Box -->
+  <form method="get" class="d-flex mb-3" id="itemSearchForm">
+    <input type="text" name="q" id="itemSearchInput" class="form-control me-2"
+           placeholder="Search items..."
+           value="{{ search_query }}">
+    {% comment %} <button class="btn commmombtn" type="submit">Search</button> {% endcomment %}
+</form>
+
+  </div>
+
+  {% if items %}
+  <table class="items-table" id="itemTableContainer">
+    <thead class="table-light">
+      <tr>
+        <!-- <th scope="col">Code</th> -->
+        <th scope="col">Name</th>
+        <th scope="col">Purchase Rate</th>
+        <th scope="col">Rate</th>
+        <th scope="col">Stock in Hand</th>
+        <th scope="col">HSN</th>
+
+        <th scope="col">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for Item in items %}
+      <tr>
+        <td>{{ Item.name }}</td>
+
+        <td>{{ Item.cost_price }}</td>
+        <td>
+          {% if Item.selling_price %}
+            {{ Item.selling_price }}
+          {% else %}
+            <em>—</em>
+          {% endif %}
+        </td>
+        <td>-</td>
+
+
+        <!-- Vendor Hsn -->
+        <td>{{ Item.hsn_code|default:"—" }}</td>
+
+        
+          <td>
+          <!-- Action buttons -->
+          <div class="vendor-actions" style="margin-top: 5px;">
+              <a href="{% url 'item_edit' Item.id %}" class="btn add-item-btn">View/ Edit</a>
+              <button type="submit" class="btn btn-sm delete-btn"
+                      onclick="return confirm('Are you sure you want to delete this Item?');">
+                  <span class="bi bi-trash"></span>
+              </button>
+            </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="alert alert-info text-center">
+    No Items found. <a href="{% url 'add_item' %}" class="alert-link">Add your first Item</a>.
+  </div>
+  {% endif %}
+</div>
+
+<script src="js/items.js"></script>
+
+{% endblock %}

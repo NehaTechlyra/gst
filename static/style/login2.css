@@ -1,0 +1,207 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins&display=swap');
+
+/* Overall wrapper */
+.login-wrapper {
+  display: flex;
+  height: 100vh;
+  font-family: 'Poppins', sans-serif !important;
+  background: #f0f2f5;
+  box-sizing: border-box;
+  overflow: hidden;
+  color: #333;
+  padding:10px;
+}
+
+/* Left side: Illustration */
+.illustration-section {
+  flex: 1 1 50%;
+  max-width: 50%;
+  /* background: linear-gradient(135deg, #9da4bd, #9099b9); */
+  background: url('/static/images/background.jpg') no-repeat center center;
+  background-size: cover;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  padding: 3rem;
+  box-sizing: border-box;
+  box-shadow: inset 0 0 60px rgba(0, 0, 0, 0.2);
+  position: relative;
+  overflow: hidden;
+  border-top-left-radius: 5px;
+  border-bottom-left-radius: 5px;
+}
+
+/* Carousel image styling */
+.illustration-section img {
+  max-width: 80%;
+  border-radius: 12px;
+  /* box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3); */
+  margin-bottom: 1.5rem;
+  transition: transform 0.3s ease;
+}
+.illustration-section img:hover {
+  transform: scale(1.05);
+}
+
+/* Optional tagline below carousel */
+.illustration-section .tagline {
+  font-size: 1.6rem;
+  font-weight: 600;
+  margin-top: 1rem;
+  letter-spacing: 0.05em;
+  text-shadow: 0 2px 6px rgba(0,0,0,0.3);
+}
+
+/* Form section */
+.form-section {
+  flex: 1 1 50%;
+  max-width: 50%;
+  background: #fff;
+  padding: 4rem 3rem;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  box-shadow: 0 0 30px rgba(0,0,0,0.05);
+  border-top-right-radius: 5px;
+  border-bottom-right-radius: 5px;
+}
+
+/* Logo placeholder */
+.form-section .logo {
+  width: 80px;
+  height: 80px;
+  background: url("logo.png") no-repeat center/contain;
+  margin-bottom: 2rem;
+  align-self: center;
+}
+
+/* Form heading */
+.form-section h2 {
+  margin-bottom: 2.5rem;
+  font-weight: 700;
+  font-size: 28px;
+  color: #55588b;
+  text-align: center;
+  letter-spacing: 0.06em;
+}
+
+/* Labels */
+form label {
+  display: block;
+  font-size: 14px;
+  margin-bottom: 0.3rem;
+  color: #55588b;
+  font-weight: 600;
+}
+
+/* Inputs */
+form input[type="text"],
+form input[type="password"] {
+  width: 100%;
+  padding: 0.85rem 1rem;
+  margin-bottom: 1.5rem;
+  border-radius: 8px;
+  border: 1.8px solid #ccc;
+  font-size: 13px;
+  
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+  box-shadow: inset 0 3px 6px rgba(0,0,0,0.05);
+}
+form input[type="text"]:focus,
+form input[type="password"]:focus {
+  border-color: #55588b;
+  box-shadow: 0 0 8px rgba(85, 88, 139, 0.5);
+  outline: none;
+  font-weight: 600;
+}
+
+/* Form options */
+.form-options {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.9rem;
+  margin-bottom: 2rem;
+  color: #55588b;
+}
+.form-options label {
+  cursor: pointer;
+}
+.form-options a {
+  color: #55588b;
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.3s;
+}
+.form-options a:hover {
+  color: #333;
+  text-decoration: underline;
+}
+
+/* Submit button with shiny gradient */
+button[type="submit"] {
+  width: 100%;
+  padding: 1rem 0;
+  border: none;
+  border-radius: 8px;
+  background: linear-gradient(270deg, #4389c4, #4358a7, #714e9a);
+  background-size: 600% 600%;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.4s ease;
+  box-shadow: 0 5px 15px rgba(85, 88, 139, 0.6);
+  animation: shinyGradient 8s ease infinite;
+}
+button[type="submit"]:hover {
+  box-shadow: 0 0 25px 6px rgba(85, 88, 139, 0.329);
+  transform: translateY(-3px);
+  animation-play-state: paused;
+}
+
+/* Shiny gradient animation */
+@keyframes shinyGradient {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* Footer */
+footer {
+  margin-top: 3rem;
+  font-size: 10px;
+  color: #aaa;
+  text-align: center;
+  user-select: none;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .login-wrapper {
+    flex-direction: column;
+  }
+  .illustration-section,
+  .form-section {
+    max-width: 100%;
+    padding: 2rem 1.5rem;
+    border-radius: 0;
+    height: auto;
+  }
+  .illustration-section img {
+    max-width: 90%;
+  }
+  .form-section {
+    padding-top: 1rem;
+  }
+}

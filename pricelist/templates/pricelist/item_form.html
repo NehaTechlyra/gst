@@ -1,0 +1,113 @@
+{% extends "website/index.html" %}
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="form-wrapper">
+  <div class="breadcrumb">
+    <a href="{% url 'pricelist:index' %}">Price Lists</a> /
+    <a href="{% url 'pricelist:detail' price_list.pk %}">{{ price_list.name }}</a> /
+    {{ title }}
+  </div>
+
+  <div class="form-card">
+    <h1 class="form-title">{{ title }}</h1>
+    <p class="form-sub">Adding item to: <strong>{{ price_list.name }}</strong></p>
+
+    <form method="post" novalidate>
+      {% csrf_token %}
+
+      <div class="form-group">
+        <label>Item / Product <span class="required">*</span></label>
+        {{ form.item }}
+        {% if form.item.errors %}<div class="field-error">{{ form.item.errors }}</div>{% endif %}
+      </div>
+
+      <div class="form-group">
+        <label>Pricing Method <span class="required">*</span></label>
+        {{ form.pricing_method }}
+        {% if form.pricing_method.errors %}<div class="field-error">{{ form.pricing_method.errors }}</div>{% endif %}
+      </div>
+
+      <!-- Percentage fields -->
+      <div id="pct-fields" class="method-section">
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Adjustment Type <span class="required">*</span></label>
+            {{ form.adjustment_type }}
+            {% if form.adjustment_type.errors %}<div class="field-error">{{ form.adjustment_type.errors }}</div>{% endif %}
+          </div>
+          <div class="form-group">
+            <label>Percentage (%) <span class="required">*</span></label>
+            {{ form.percentage }}
+            {% if form.percentage.errors %}<div class="field-error">{{ form.percentage.errors }}</div>{% endif %}
+          </div>
+        </div>
+        <div class="hint">
+          💡 <strong>Markup</strong> increases the base price. <strong>Markdown</strong> decreases it.
+        </div>
+      </div>
+
+      <!-- Fixed price field -->
+      <div id="fixed-fields" class="method-section" style="display:none;">
+        <div class="form-group">
+          <label>Custom Rate <span class="required">*</span></label>
+          {{ form.custom_rate }}
+          {% if form.custom_rate.errors %}<div class="field-error">{{ form.custom_rate.errors }}</div>{% endif %}
+        </div>
+        <div class="hint">
+          💡 This fixed rate will be applied instead of the item's base rate.
+        </div>
+      </div>
+
+      <div class="form-footer">
+        <button type="submit" class="btn-primary">Save Item</button>
+        <a href="{% url 'pricelist:detail' price_list.pk %}" class="btn-cancel">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  const methodSelect = document.getElementById('id_pricing_method');
+  const pctFields = document.getElementById('pct-fields');
+  const fixedFields = document.getElementById('fixed-fields');
+
+  function toggleFields() {
+    if (methodSelect.value === 'percentage') {
+      pctFields.style.display = 'block';
+      fixedFields.style.display = 'none';
+    } else if (methodSelect.value === 'fixed') {
+      pctFields.style.display = 'none';
+      fixedFields.style.display = 'block';
+    } else {
+      pctFields.style.display = 'none';
+      fixedFields.style.display = 'none';
+    }
+  }
+
+  methodSelect.addEventListener('change', toggleFields);
+  toggleFields(); // on page load
+</script>
+
+<style>
+.form-wrapper { max-width: 620px; margin: 2rem auto; padding: 0 1rem; font-family: 'Segoe UI', sans-serif; }
+.breadcrumb { font-size: 0.85rem; color: #9ca3af; margin-bottom: 1rem; }
+.breadcrumb a { color: #4f46e5; text-decoration: none; }
+.form-card { background: #fff; border-radius: 14px; padding: 2rem; box-shadow: 0 1px 10px rgba(0,0,0,0.08); }
+.form-title { font-size: 1.4rem; font-weight: 700; color: #1a1a2e; margin: 0 0 0.25rem; }
+.form-sub { color: #6b7280; font-size: 0.88rem; margin: 0 0 1.5rem; }
+.form-group { display: flex; flex-direction: column; gap: 0.35rem; margin-bottom: 1.1rem; }
+.form-group label { font-size: 0.85rem; font-weight: 600; color: #374151; }
+.required { color: #ef4444; }
+.form-group input, .form-group select { padding: 0.55rem 0.75rem; border: 1px solid #d1d5db; border-radius: 7px; font-size: 0.9rem; }
+.form-group input:focus, .form-group select:focus { outline: none; border-color: #4f46e5; box-shadow: 0 0 0 3px rgba(79,70,229,0.08); }
+.method-section { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 10px; padding: 1.1rem; margin-bottom: 1rem; }
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.hint { font-size: 0.82rem; color: #6b7280; margin-top: 0.5rem; }
+.field-error { color: #ef4444; font-size: 0.8rem; }
+.form-footer { display: flex; gap: 0.75rem; margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px solid #f3f4f6; }
+.btn-primary { background: #4f46e5; color: #fff; border: none; padding: 0.65rem 1.4rem; border-radius: 8px; font-size: 0.9rem; font-weight: 600; cursor: pointer; }
+.btn-cancel { background: #f3f4f6; color: #6b7280; padding: 0.65rem 1.2rem; border-radius: 8px; text-decoration: none; font-size: 0.9rem; }
+@media (max-width: 480px) { .form-grid { grid-template-columns: 1fr; } }
+</style>
+{% endblock %}

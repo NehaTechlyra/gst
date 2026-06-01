@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Create Chart of Account</title>
+</head>
+<body>
+    <h1>Create a New Account</h1>
+    <form method="post">
+        {% csrf_token %}
+        <table>
+            {{ form.as_table }}
+        </table>
+        <button type="submit">Save Account</button>
+    </form>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+$(document).ready(function() {
+    $('#id_type').change(function() {
+        var typeCode = $(this).val();
+        if (typeCode) {
+            $.ajax({
+                url: "{% url 'get_parents_for_type' %}",
+                data: {
+                    'type_code': typeCode
+                },
+                dataType: 'json',
+                success: function(data) {
+                    var options = '<option value="" selected>---------</option>';
+                    $.each(data.parents, function(index, parent) {
+                        options += `<option value="${parent.id}">${parent.name}</option>`;
+                    });
+                    $('#id_parent').html(options);
+                }
+            });
+        } else {
+            $('#id_parent').html('<option value="" selected>---------</option>');
+        }
+    });
+});
+</script>
+
+</body>
+</html>

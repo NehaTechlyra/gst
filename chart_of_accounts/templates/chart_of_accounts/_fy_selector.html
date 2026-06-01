@@ -1,0 +1,97 @@
+{% if fiscal_years %}
+<div class="fy-selector-bar">
+
+  <label for="fy-select"><strong>Fiscal Year:</strong></label>
+
+  <select id="fy-select" onchange="switchFY(this.value)">
+    {% for fy in fiscal_years %}
+      <option value="{{ fy.pk }}"
+        {% if selected_fy and selected_fy.pk == fy.pk %}selected{% endif %}>
+
+        {{ fy.name }}
+        ({{ fy.start_date|date:"d M Y" }} — {{ fy.end_date|date:"d M Y" }})
+
+        {% if fy.status == 'closed' %}
+          [Closed]
+        {% elif fy.is_locked %}
+          [Locked]
+        {% elif fy.locked_categories %}
+          [Partial Lock]
+        {% endif %}
+
+      </option>
+    {% endfor %}
+  </select>
+
+  {% if selected_fy %}
+    {% if selected_fy.status == 'closed' %}
+      <span class="fy-badge fy-closed">&#x1F512; Closed FY</span>
+    {% elif selected_fy.is_locked %}
+      <span class="fy-badge fy-locked">&#x1F512; Locked FY</span>
+    {% elif selected_fy.locked_categories %}
+      <span class="fy-badge fy-partial">&#x26A0; Partial Lock</span>
+    {% elif selected_fy.is_current %}
+      <span class="fy-badge fy-active">&#x1F7E2; Active FY</span>
+    {% else %}
+      <span class="fy-badge fy-open">&#x1F513; Open FY</span>
+    {% endif %}
+  {% endif %}
+
+</div>
+
+<script>
+function switchFY(fyId) {
+  const url = new URL(window.location.href);
+  url.searchParams.set('fy_id', fyId);
+  // Clear date filters so the full FY range is shown on switch
+  url.searchParams.delete('from_date');
+  url.searchParams.delete('to_date');
+  url.searchParams.delete('filter_preset');
+  window.location.href = url.toString();
+}
+</script>
+
+<style>
+.fy-selector-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  background: #f0f4ff;
+  border: 1px solid #c7d2fe;
+  border-radius: 6px;
+  margin-bottom: 12px;
+  font-size: 14px;
+  flex-wrap: wrap;
+}
+.fy-selector-bar label {
+  margin: 0;
+  white-space: nowrap;
+}
+.fy-selector-bar select {
+  padding: 5px 10px;
+  border-radius: 4px;
+  border: 1px solid #a5b4fc;
+  font-size: 14px;
+  cursor: pointer;
+  min-width: 220px;
+}
+.fy-badge {
+  padding: 3px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+/* status == 'closed' */
+.fy-closed  { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+/* is_locked == True, status != 'closed' */
+.fy-locked  { background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; }
+/* locked_categories not empty, not fully locked */
+.fy-partial { background: #fff7ed; color: #c2410c; border: 1px solid #fdba74; }
+/* is_current == True, fully open */
+.fy-active  { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
+/* open but not current */
+.fy-open    { background: #eff6ff; color: #1e40af; border: 1px solid #93c5fd; }
+</style>
+{% endif %}

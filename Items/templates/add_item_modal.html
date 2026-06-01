@@ -1,0 +1,301 @@
+<!-- Add Item Modal -->
+<div class="modal fade" id="addItemModal" tabindex="-1" aria-labelledby="addItemModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="addItemModalLabel">New Item</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
+        <form id="addItemForm" method="post" novalidate>
+          {% csrf_token %}
+
+          <!-- Type Selection -->
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <label class="form-label">Type<span class="text-danger">*</span></label>
+              <div class="text-primary">
+                <input type="radio" name="type" value="goods" checked> Goods
+                <input type="radio" name="type" value="service" class="ms-3"> Service
+              </div>
+            </div>
+          </div>
+
+          <!-- Basic Info -->
+          <div class="row mb-2">
+            <div class="col-md-4">
+              <label for="name_modal" class="form-label">Name<span class="text-danger">*</span></label>
+              <input type="text" class="form-control" name="name" id="name_modal" required>
+            </div>
+            <div class="col-md-4">
+              <label for="item_unit_select" class="form-label">Default Unit<span class="text-danger">*</span></label>
+              <select class="form-select" name="unit" id="item_unit_select" style="width: 100%;" required>
+                <option value="">Choose...</option>
+              </select>
+            </div>
+            <div class="col-md-4" id="hsn-wrapper-modal">
+              <label for="hsn_code_modal" class="form-label">HSN Code</label>
+              <select class="form-select" name="hsn_code" id="hsn_code_select_modal" style="width: 100%;">
+                <option value="">Choose...</option>
+              </select>
+            </div>
+            <div class="col-md-4" id="sac-wrapper-modal" style="display:none;">
+              <label for="sac_code_modal" class="form-label">SAC Code</label>
+              <select class="form-select" name="sac_code" id="sac_code_select_modal" style="width: 100%;">
+                <option value="">Choose...</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Tax & Brand & Barcode -->
+          <div class="row mb-2">
+            <div class="col-md-4">
+              <label for="tax_pref_modal" class="form-label">Tax Preference<span class="text-danger">*</span></label>
+              <select class="form-select" name="tax_pref" id="tax_pref_modal">
+                <option value="taxable" selected>Taxable</option>
+                <option value="non_taxable">Non-Taxable</option>
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label for="brand_modal" class="form-label">Brand</label>
+              <select class="form-select" name="brand" id="brand_select_modal" style="width: 100%;">
+                <option value="">Choose...</option>
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label for="brcd_modal" class="form-label">Barcode<span class="text-danger">*</span></label>
+              <input type="text" class="form-control" name="brcd" id="brcd_modal" required>
+            </div>
+          </div>
+
+          <hr>
+
+          <!-- Units of Measure Section (Collapsible) -->
+          <div class="d-flex align-items-center" id="toggleUOM_modal" style="cursor: pointer;">
+            <h5 class="mb-0 d-inline">Units of Measure</h5>
+            <img src="/static/icons/up-arrow.svg" id="uom_arrow_modal" class="ms-2" alt="arrow" style="width:16px; height:16px;">
+          </div>
+
+          <div id="uomSection_modal" style="display:none;">
+            <table class="table table-bordered items-table uom-table mt-2">
+              <thead>
+                <tr>
+                  <th style="width: 5%;">No.</th>
+                  <th>UOM</th>
+                  <th>Conversion factor</th>
+                  <th>Barcode</th>
+                  <th style="width: 5%;">&nbsp;</th>
+                </tr>
+              </thead>
+              <tbody id="uomTableBody_modal"></tbody>
+            </table>
+            <button type="button" class="btn btn-secondary btn-sm add-row-btn mb-2 add-item-btn" onclick="addRow_modal()">Add Row</button>
+          </div>
+
+          <hr>
+
+          <!-- Alternative Barcodes Section (Collapsible) -->
+          <div class="d-flex align-items-center" id="toggleBCD_modal" style="cursor: pointer;">
+            <h5 class="mb-0 d-inline">Alternative Barcodes</h5>
+            <img src="/static/icons/up-arrow.svg" id="bcd-arrow_modal" class="ms-2" alt="arrow" style="width:16px; height:16px;">
+          </div>
+
+          <div id="bcdSection_modal" style="display:none;">
+            <table class="table table-bordered uom-table items-table mt-2">
+              <thead>
+                <tr>
+                  <th style="width: 5%;">No.</th>
+                  <th>Barcode</th>
+                  <th style="width: 5%;">&nbsp;</th>
+                </tr>
+              </thead>
+              <tbody id="bcdTableBody_modal"></tbody>
+            </table>
+            <button type="button" class="btn btn-secondary btn-sm add-row-btn mt-2 add-item-btn" onclick="addBcdRow_modal()">Add Row</button>
+          </div>
+
+          <hr>
+
+          <!-- Sales & Purchase Information -->
+          <div class="row mb-3">
+            <!-- Sales Information -->
+            <div class="col-md-6">
+              <div class="card p-3">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" id="sales_info_modal" name="sales_info" checked>
+                  <label class="form-check-label" for="sales_info_modal">Sales Information</label>
+                </div>
+                <div id="sales_fields_modal">
+                  <div class="mt-2">
+                    <label for="selling_price_modal" class="form-label">Selling Price<span class="text-danger">*</span></label>
+                    <div class="input-group">
+                      <span class="input-group-text">{{ base_currency|default:"INR" }}</span>
+                      <input type="number" class="form-control" name="selling_price" id="selling_price_modal" min="0.01" step="0.01" required>
+                    </div>
+                  </div>
+                  <div class="mt-2">
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" id="taxincld_slprice_modal" name="taxincld_slprice">
+                      <label class="form-check-label" for="taxincld_slprice_modal">Price is inclusive of Tax</label>
+                    </div>
+                  </div>
+                  <div class="mt-2">
+                    <label for="id_sales_account_modal" class="form-label required">Account</label>
+                    <select class="form-select select2" id="id_sales_account_modal" name="sales_account" data-placeholder="Search Sales Account..." required></select>
+                  </div>
+                  <div class="mt-2">
+                    <label for="sales_desc_modal" class="form-label">Description</label>
+                    <textarea class="form-control" name="sales_desc" id="sales_desc_modal"></textarea>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Purchase Information -->
+            <div class="col-md-6">
+              <div class="card p-3">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" id="purchase_info_modal" name="purchase_info" checked>
+                  <label class="form-check-label" for="purchase_info_modal">Purchase Information</label>
+                </div>
+                <div id="purchase_fields_modal">
+                  <div class="mt-2">
+                    <label class="form-label">Cost Price<span class="text-danger">*</span></label>
+                    <div class="input-group">
+                      <span class="input-group-text">{{ base_currency|default:"INR" }}</span>
+                      <input type="number" class="form-control" name="cost_price" id="cost_price_modal" min="0.01" step="0.01" required>
+                    </div>
+                  </div>
+                  <div class="mt-2">
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" id="taxincld_costprice_modal" name="taxincld_costprice">
+                      <label class="form-check-label" for="taxincld_costprice_modal">Price is inclusive of Tax</label>
+                    </div>
+                  </div>
+                  <div class="mt-2">
+                    <label for="id_purchase_account_modal" class="form-label required">Account</label>
+                    <select class="form-select select2" id="id_purchase_account_modal" name="purchase_account" data-placeholder="Search Expense Account..." required></select>
+                  </div>
+                  <div class="mt-2">
+                    <label for="purchase_desc_modal" class="form-label">Description</label>
+                    <textarea class="form-control" name="purchase_desc" id="purchase_desc_modal"></textarea>
+                  </div>
+                  <div class="mt-2">
+                    <label for="vendor_modal" class="form-label">Preferred Vendor</label>
+                    <select class="form-select" name="preferred_vendor" id="vendor_select_modal" style="width: 100%;"></select>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <hr>
+
+          <!-- Tax Rates (for Taxable items) -->
+          <div id="taxFields_modal" class="row mt-4" style="display:none;">
+            <h5 class="mb-0">Tax Rates</h5>
+            <div class="row mb-2">
+              <div class="col-md-3">
+                <label for="intra_tax_modal" class="form-label">Intra State Tax Rate</label>
+                <select class="form-select" name="intra_tax" id="intra_tax_select_modal" style="width: 100%;">
+                  <option value="">Choose...</option>
+                </select>
+              </div>
+              <div class="col-md-3">
+                <label for="inter_tax_modal" class="form-label">Inter State Tax Rate</label>
+                <select class="form-select" name="inter_tax_group" id="inter_tax_group_select_modal" style="width: 100%;">
+                  <option value="">Choose...</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <hr>
+
+          <!-- Inventory Tracking -->
+          <div class="col-md-6">
+            <div class="form-check mt-3">
+              <input class="form-check-input" type="checkbox" id="track_inventory_modal" name="track_inventory" checked>
+              <label class="form-check-label" for="track_inventory_modal">Track Inventory for this item</label>
+              <div class="text-muted" style="font-size:10px;">
+                You cannot enable/disable inventory tracking once you've created transactions for this item
+              </div>
+            </div>
+          </div>
+
+          <div id="inventoryFields_modal" class="row mb-2">
+            <div class="row mb-2">
+              <div class="col-md-4">
+                <label for="inv_acc_modal" class="form-label">Inventory Account</label>
+                <select class="form-select" name="inv_acc" id="inv_acc_select_modal" style="width: 100%;">
+                  <option value="inv_asset" selected>Inventory Asset</option>
+                </select>
+              </div>
+              <div class="col-md-4">
+                <label for="inv_method_modal" class="form-label">Inventory Valuation Method</label>
+                <select class="form-select" name="inv_method" id="inv_method_modal">
+                  <option value="FIFO" selected>FIFO (First In First Out)</option>
+                  <option value="WAC">WAC (Weighted Average Costing)</option>
+                </select>
+              </div>
+              <div class="col-md-4">
+                <label for="warehouse_modal" class="form-label">Select Warehouse <span class="text-danger">*</span></label>
+                <select class="form-select" name="warehouse" id="warehouse_select_modal" style="width: 100%;">
+                  <option value="">Choose...</option>
+                </select>
+              </div>
+            </div>
+            <div class="row mb-2">
+              <div class="col-md-4">
+                <label class="form-label">Opening Stock (Quantity)<span class="text-danger">*</span></label>
+                <input type="number" class="form-control" name="op_stock" id="op_stock_modal" required step="0.01">
+              </div>
+              <div class="col-md-4">
+                <label for="op_rate_modal" class="form-label">Opening Stock Rate per Unit<span class="text-danger">*</span></label>
+                <input type="number" class="form-control" name="op_rate" id="op_rate_modal" required step="0.01">
+              </div>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="saveItemBtn_modal">Save Item</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  /* Modal styling for better appearance */
+  .modal-content {
+    border-radius: 8px;
+    border: 1px solid #e0e0e0;
+  }
+  
+  .modal-header {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #e0e0e0;
+  }
+
+  #toggleUOM_modal, #toggleBCD_modal {
+    user-select: none;
+    padding: 10px 0;
+  }
+
+  #toggleUOM_modal:hover, #toggleBCD_modal:hover {
+    background-color: #f5f5f5;
+    padding-left: 10px;
+    margin-left: -10px;
+  }
+
+  .items-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .items-table th, .items-table td {
+    border: 1px solid #dee2e6;
+    padding: 0.75rem;
+  }
+</style>

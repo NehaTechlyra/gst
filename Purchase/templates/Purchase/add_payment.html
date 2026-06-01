@@ -1,0 +1,1422 @@
+{% extends "website/index.html" %}
+{% load static %}
+{% load widget_tweaks %}
+{% block exstyle %}
+<link href="{% static 'style/general.css' %}" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Ubuntu&display=swap" rel="stylesheet">
+<link href="{% static 'style/record_payments.css' %}" rel="stylesheet">
+{% endblock exstyle %}
+
+{% block page_title %}
+    {% if payment_id %}
+        Edit Payment #{{ payment.payment_number }}
+    {% elif is_new_payment %}
+        Record New Payment
+    {% else %}
+        Record Payment - Bill #{{ bill.bill_number }}
+    {% endif %}
+{% endblock page_title %}
+
+{% block content %}
+<div class="container">
+    {% if payment_id %}
+        {% if company_code %}
+            {% url 'edit_payment' company_code=company_code payment_id=payment_id as action_url %}
+        {% else %}
+            {% url 'edit_payment' payment_id=payment_id as action_url %}
+        {% endif %}
+    {% elif bill %}
+        {% if company_code %}
+            {% url 'record_payment' company_code=company_code pk=bill.id as action_url %}
+        {% else %}
+            {% url 'record_payment' bill.id as action_url %}
+        {% endif %}
+    {% else %}
+        {% if company_code %}
+            {% url 'add_payment' company_code=company_code as action_url %}
+        {% else %}
+            {% url 'add_payment' as action_url %}
+        {% endif %}
+    {% endif %}
+
+    <form method="POST" action="{{ action_url }}" enctype="multipart/form-data">
+        {% csrf_token %}
+        
+        <!-- Vendor Selection (only for new payments) -->
+        {% if is_new_payment %}
+        <div class="form-row" id="vendor-section">
+            <div class="form-group">
+                <label for="vendor_id" class="required">Vendor</label>
+                <select id="vendor_id" name="vendor_id" class="select2-search" required {% if payment_id %}disabled{% endif %}>
+                    <option value="">Select Vendor</option>
+                    {% for vendor in vendors %}
+                        <option value="{{ vendor.id }}" {% if payment and payment.vendor.id == vendor.id %}selected{% endif %}>
+                            {% if vendor.vendor_type == 'company' %}
+                                {% if vendor.company_name %}
+                                    {{ vendor.company_name }}
+                                {% else %}
+                                    {{ vendor.first_name }} {{ vendor.last_name }}
+                                {% endif %}
+                            {% else %}
+                                {{ vendor.first_name }}{% if vendor.last_name %} {{ vendor.last_name }}{% endif %}
+                            {% endif %}
+                        </option>
+                    {% endfor %}
+                </select>
+                {% if payment_id %}
+                <input type="hidden" name="vendor_id" value="{{ payment.vendor.id }}">
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Advance Balance Info (shown after vendor selection) -->
+        <div id="advance-balance-info" style="display: none;"></div>
+        
+        <!-- Unpaid Bills List (hidden initially) -->
+        <div id="bills-section" style="display: none;">
+            <div class="form-group">
+                {% if is_edit_mode %}
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <label style="margin: 0;">Bills Allocated in This Payment</label>
+                    <button type="button" class="btn-secondary" onclick="loadMoreBills({{ payment.vendor.id }})" style="padding: 6px 12px; font-size: 13px;">
+                        <i class="bi bi-plus-circle"></i> Add More Bills
+                    </button>
+                </div>
+                <div class="info-message" style="margin-bottom: 10px;">
+                    <i class="bi bi-info-circle"></i>
+                    <div>Showing bills that were allocated in this payment. You can modify amounts, uncheck to remove bills, or add more unpaid bills.</div>
+                </div>
+                {% else %}
+                <label>Bills to Pay (Optional)</label>
+                {% endif %}
+                <div class="bills-container" id="bills-container" style="display: none;">
+                    <!-- Table Header -->
+                    <div class="bills-table-header">
+                        <div style="text-align: center;">Select</div>
+                        <div>Bill Details</div>
+                        <div style="text-align: right;">Amounts</div>
+                        <div style="text-align: right;">Payment Amount</div>
+                        <div style="text-align: center;">Payment Made On</div>
+                    </div>
+                    
+                    <!-- Bills List -->
+                    <div id="bills-list">
+                        <!-- Bills will be loaded here via AJAX -->
+                    </div>
+                </div>
+                
+                <div id="bills-loading" style="display: none;">
+                    <i class="bi bi-hourglass-split"></i>
+                    <div>Loading bills...</div>
+                </div>
+                
+                <div id="no-bills-message" style="display: none;" class="info-message">
+                    <i class="bi bi-info-circle"></i>
+                    <div>No unpaid bills found for this vendor. You can still record an advance payment below.</div>
+                </div>
+                
+                <div id="bills-error" style="display: none;"></div>
+            </div>
+        </div>
+        {% else %}
+        <!-- Hidden field for specific bill payment -->
+        <input type="hidden" name="vendor_id" value="{{ bill.vendor.id }}">
+        <input type="hidden" name="bill_ids" value="{{ bill.id }}">
+        
+        <!-- Show advance balance for specific bill payment -->
+        {% if has_advance %}
+        <div class="advance-balance-info">
+            <div class="advance-header">
+                <i class="bi bi-wallet2"></i>
+                <strong>Vendor Advance Balance Available</strong>
+            </div>
+            <div class="advance-details">
+                <div class="advance-row highlight">
+                    <span>Current Advance Balance:</span>
+                    <span class="advance-value">{{ payment_currency_symbol|default:'₹' }}{{ advance_balance|floatformat:2 }}</span>
+                </div>
+                <div class="advance-row">
+                    <span>Bill Amount Due:</span>
+                    <span>{{ payment_currency_symbol|default:'₹' }}{{ final_total|floatformat:2 }}</span>
+                </div>
+                <div class="advance-row">
+                    <span>Advance to be Used:</span>
+                    <span class="advance-used">-{{ payment_currency_symbol|default:'₹' }}{{ advance_to_use|floatformat:2 }}</span>
+                </div>
+                <div class="advance-row total-row">
+                    <span><strong>Cash to Pay Now:</strong></span>
+                    <span class="net-amount"><strong>{{ payment_currency_symbol|default:'₹' }}{{ net_amount_to_pay|floatformat:2 }}</strong></span>
+                </div>
+                {% if remaining_advance > 0 %}
+                <div class="advance-row">
+                    <span>Remaining Advance After Payment:</span>
+                    <span class="remaining-advance">{{ payment_currency_symbol|default:'₹' }}{{ remaining_advance|floatformat:2 }}</span>
+                </div>
+                {% endif %}
+                {% if net_amount_to_pay == 0 %}
+                <div class="advance-note success">
+                    <i class="bi bi-check-circle"></i>
+                    Bill will be fully paid using advance balance. No cash payment needed!
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+        {% endif %}
+
+        <!-- Payment Form -->
+        <div id="payment-form" {% if is_new_payment and not payment_id %}style="display: none;"{% endif %}>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="amount" class="required">Amount</label>
+                    <input type="number" id="amount" name="amount" step="0.01" class="form-control"
+                        value="{% if payment %}{{ payment.amount }}{% elif final_total %}{{ final_total }}{% endif %}" required>
+                    <small class="form-text text-muted" id="amount-help" style="display: none;">
+                        You can enter any amount. Excess amount will be saved as advance payment.
+                    </small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="payment_number" class="required">Payment #</label>
+                    <div class="payment-number-wrapper">
+                        <input type="text" id="payment_number" name="payment_number" class="form-control"
+                               value="{% if payment %}{{ payment.payment_number }}{% else %}{{ next_payment_number }}{% endif %}" 
+                               {% if payment_id %}readonly{% else %}required{% endif %}>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="payment_date" class="required">Payment Date</label>
+                    <input type="date" id="payment_date" name="payment_date" class="form-control" 
+                           value="{% if payment %}{{ payment.payment_date|date:'Y-m-d' }}{% endif %}" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="paid_through" class="required">Paid Through</label>
+                    <select id="paid_through" name="paid_through" class="select2-search" required>
+                        <option value="">Select Payment Account</option>
+                        {% comment %} changed on 18-2-26 by neha {% endcomment %}
+                    {% for group in payment_accounts_grouped %}
+                    
+                        {# Only 'Bank Accounts' header is non-selectable #}
+                        <option value="{{ group.header.id }}" data-is-header="true" {% if group.header.name == "Bank Accounts" %}disabled{% endif %}>
+                            {{ group.header.name }}
+                        </option>
+                        {% for child in group.children %}
+                            <option value="{{ child.id }}">{{ child.name }}</option>
+                        {% endfor %}
+                    
+                    {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="reference">Reference#</label>
+                    <input type="text" id="reference" name="reference" class="form-control"
+                           placeholder="Enter reference number" value="{% if payment %}{{ payment.reference }}{% endif %}">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="notes">Notes</label>
+                <textarea id="notes" name="notes" placeholder="Add any additional notes...">{% if payment %}{{ payment.notes }}{% endif %}</textarea>
+            </div>
+
+            <div class="upload-section">
+                <label>Attachments</label>
+                
+                {% if payment and payment.attachments.exists %}
+                <div class="existing-attachments" style="margin-bottom: 15px;">
+                    <h4 style="font-size: 14px; margin-bottom: 10px;">Current Attachments:</h4>
+                    {% for attachment in payment.attachments.all %}
+                    <div class="file-item" style="display: flex; justify-content: space-between; align-items: center; padding: 8px; background: #f8f9fa; margin-bottom: 5px; border-radius: 4px;">
+                        <div class="file-info">
+                            <a href="{{ attachment.file.url }}" target="_blank">{{ attachment.file_name }}</a>
+                            <span style="color: #6c757d; font-size: 12px; margin-left: 10px;">
+                                ({{ attachment.file_size|filesizeformat }})
+                            </span>
+                        </div>
+                        <button type="button" class="delete-btn" onclick="deleteExistingAttachment({{ attachment.id }})">
+                            <i class="bi bi-trash" title="Remove file"></i>
+                        </button>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                
+                <label class="upload-button">
+                    <span><i class="bi bi-upload"></i></span>
+                    <span>Upload New File</span>
+                    <input type="file" id="file-input" name="attachments" multiple hidden class="form-control"
+                        accept=".pdf,.jpg,.jpeg,.png,.doc,.docx">
+                </label>
+                <div class="upload-info">You can upload a maximum of 5 files, 10MB each</div>
+                <div id="error-message" class="error-message"></div>
+                <div id="file-list"></div>
+                
+                <!-- Hidden field to track deleted attachments -->
+                <input type="hidden" id="deleted-attachments" name="deleted_attachments" value="">
+            </div>
+
+            <div class="form-check">
+                <input type="checkbox" id="send_email" name="send_email" value="1" class="form-check-input" 
+                       {% if payment and payment.send_email %}checked{% endif %}>
+                <label for="send_email" class="form-check-label">Send a Payment Made email notification.</label>
+            </div>
+
+            <div class="button-group">
+                <button type="submit" name="action" value="save_paid" class="btn-primary">
+                    {% if payment_id %}Update Payment{% else %}Save as Paid{% endif %}
+                </button>
+                <button type="button" class="btn-cancel" onclick="window.history.back()">Cancel</button>
+            </div>
+        </div>
+    </form>
+
+    <!-- Add Account Modal  added on 18-2-26 by neha-->
+    <div class="modal fade" id="addAccountModal" tabindex="-1" aria-labelledby="addAccountLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addAccountLabel">Add New Account</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form id="addAccountForm">
+                    <div class="modal-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <label class="form-label required">Name</label>
+                                <input type="text" name="name" id="modal-account-name" class="form-control" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label required">Account Type</label>
+                                <select id="modal-account-type" name="type" class="form-select">
+                                    <option value="">Select Account Type</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row mt-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Parent</label>
+                                <select id="modal-parent" name="parent" class="form-select">
+                                    <option value="">Select or search parent</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Account Code (optional)</label>
+                                <input type="text" name="search_code" id="modal-search-code" class="form-control">
+                            </div>
+                        </div>
+                        <div class="row mt-3">
+                            <div class="col-12">
+                                <label class="form-label">Description</label>
+                                <textarea name="description" id="modal-description" class="form-control" rows="3"></textarea>
+                            </div>
+                        </div>
+                        <div class="row mt-3">
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="modal-is-header" name="is_header">
+                                    <label class="form-check-label" for="modal-is-header">Is header</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="modal-active" name="active" checked>
+                                    <label class="form-check-label" for="modal-active">Active</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary" id="modal-save-account">Save Account</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+
+
+
+<script>
+// Track deleted attachments
+let deletedAttachments = [];
+let activePaymentCurrencySymbol = '{{ payment_currency_symbol|default:"₹"|escapejs }}';
+
+function getPaymentCurrencySymbol() {
+    return activePaymentCurrencySymbol || '₹';
+}
+
+function setPaymentCurrencySymbol(symbol) {
+    activePaymentCurrencySymbol = symbol || '₹';
+}
+
+function moneyWithSymbol(amount) {
+    return `${getPaymentCurrencySymbol()}${(parseFloat(amount) || 0).toFixed(2)}`;
+}
+
+function deleteExistingAttachment(attachmentId) {
+    if (confirm('Are you sure you want to delete this attachment?')) {
+        deletedAttachments.push(attachmentId);
+        document.getElementById('deleted-attachments').value = deletedAttachments.join(',');
+        
+        // Hide the attachment element
+        event.target.closest('.file-item').style.display = 'none';
+    }
+}
+
+// File upload handling
+let uploadedFiles = [];
+const maxFiles = 5;
+const maxFileSize = 10 * 1024 * 1024;
+
+const fileInput = document.getElementById('file-input');
+const fileList = document.getElementById('file-list');
+const errorMessage = document.getElementById('error-message');
+
+fileInput.addEventListener('change', function(e) {
+    const newFiles = Array.from(e.target.files);
+    errorMessage.textContent = '';
+
+    if (uploadedFiles.length + newFiles.length > maxFiles) {
+        errorMessage.textContent = `You can only upload a maximum of ${maxFiles} files.`;
+        fileInput.value = '';
+        return;
+    }
+
+    for (let file of newFiles) {
+        if (file.size > maxFileSize) {
+            errorMessage.textContent = `File "${file.name}" exceeds 10MB limit.`;
+            fileInput.value = '';
+            return;
+        }
+    }
+
+    uploadedFiles = uploadedFiles.concat(newFiles);
+    displayFileList();
+    updateFileInput();
+});
+
+function updateFileInput() {
+    const dataTransfer = new DataTransfer();
+    uploadedFiles.forEach(file => {
+        dataTransfer.items.add(file);
+    });
+    fileInput.files = dataTransfer.files;
+}
+
+function displayFileList() {
+    fileList.innerHTML = '';
+    if (uploadedFiles.length === 0) return;
+
+    uploadedFiles.forEach((file, index) => {
+        const fileSize = (file.size / 1024 / 1024).toFixed(2);
+        const fileItem = document.createElement('div');
+        fileItem.className = 'file-item';
+        fileItem.innerHTML = `
+            <div class="file-info">
+                ${index + 1}. ${file.name} (${fileSize} MB)
+            </div>
+            <button type="button" class="delete-btn" onclick="deleteFile(${index})">
+                <i class="bi bi-trash" title="Remove file"></i>
+            </button>
+        `;
+        fileList.appendChild(fileItem);
+    });
+}
+
+function deleteFile(index) {
+    uploadedFiles.splice(index, 1);
+    errorMessage.textContent = '';
+    displayFileList();
+    updateFileInput();
+}
+
+// Store state for validation
+let initialAmount = 0;
+let vendorExcessAmount = 0;
+let totalBillsDue = 0;
+
+// Vendor selection handler (for new payments)
+{% if is_new_payment and not is_edit_mode %}
+const vendorSelect = document.getElementById('vendor_id');
+
+if (vendorSelect) {
+    $(vendorSelect).on('select2:select', function(e) {
+        const vendorId = e.params.data.id;
+        console.log('Vendor selected:', vendorId);
+        
+        if (!vendorId) {
+            resetPaymentForm();
+            return;
+        }
+        
+        loadVendorBills(vendorId);
+    });
+    
+    $(vendorSelect).on('select2:clear', function() {
+        resetPaymentForm();
+    });
+}
+{% endif %}
+
+function displayBills(bills) {
+    const billsList = document.getElementById('bills-list');
+    billsList.innerHTML = '';
+    
+    console.log('Displaying bills:', bills);
+    
+    bills.forEach(bill => {
+        const advanceUsed = parseFloat(bill.advance_used_float) || 0;
+        const remainingAmount = parseFloat(bill.remaining_amount_float) || 0;
+        
+        let netAmount;
+        if (bill.net_amount_float !== undefined && bill.net_amount_float !== null && !isNaN(bill.net_amount_float)) {
+            netAmount = parseFloat(bill.net_amount_float);
+        } else {
+            netAmount = remainingAmount;
+        }
+        
+        const hasAdvance = advanceUsed > 0;
+        
+        const billItem = document.createElement('div');
+        billItem.className = 'bill-item';
+        
+        billItem.innerHTML = `
+            <input type="checkbox" class="bill-checkbox" data-bill-id="${bill.id}" 
+                data-remaining="${remainingAmount}" 
+                data-advance-used="${advanceUsed}"
+                data-net-amount="${netAmount}"
+                onchange="handleBillSelection()">
+            <div class="bill-details">
+                <div class="bill-number">Bill #${bill.bill_number}</div>
+                <div class="bill-date">Date: ${bill.date_formatted}</div>
+            </div>
+            <div class="bill-amounts">
+                <div class="bill-total">Total: ${moneyWithSymbol(bill.total_amount)}</div>
+                <div class="bill-remaining">Due: ${moneyWithSymbol(remainingAmount)}</div>
+                ${hasAdvance ? `
+                    <div class="bill-advance-used" style="color: #f57c00; font-size: 12px;">
+                        Advance: -${moneyWithSymbol(advanceUsed)}
+                    </div>
+                    <div class="bill-net" style="color: #1565c0; font-weight: 600; font-size: 13px;">
+                        Net: ${moneyWithSymbol(netAmount)}
+                    </div>
+                ` : ''}
+            </div>
+            <input type="number" class="bill-amount-input" placeholder="Amount" 
+                step="0.01" max="${remainingAmount}" 
+                id="amount-${bill.id}" name="bill_amount_${bill.id}" disabled>
+            <input type="date" class="bill-payment-made-on" placeholder="Payment Made On" 
+                id="payment_made_on-${bill.id}" name="bill_payment_made_on_${bill.id}" disabled>
+        `;
+        
+        billsList.appendChild(billItem);
+        
+        const amountInput = document.getElementById(`amount-${bill.id}`);
+        if (amountInput) {
+            amountInput.value = netAmount.toFixed(2);
+            
+            if (netAmount === 0) {
+                amountInput.style.backgroundColor = '#e8f5e9';
+            }
+        }
+    });
+}
+
+function displayAllocatedBills(bills) {
+    const billsList = document.getElementById('bills-list');
+    billsList.innerHTML = '';
+    
+    console.log('Displaying allocated bills:', bills);
+    
+    bills.forEach(bill => {
+        const billItem = document.createElement('div');
+        billItem.className = 'bill-item';
+        
+        // Use remaining_amount for the checkbox data
+        const remainingAmount = parseFloat(bill.remaining_amount) || 0;
+        // Use allocated_amount for the actual input value
+        const allocatedAmount = parseFloat(bill.allocated_amount) || 0;
+        const paymentAmount = parseFloat(bill.payment_amount) || 0;
+        
+        billItem.innerHTML = `
+            <input type="checkbox" class="bill-checkbox" data-bill-id="${bill.id}" 
+                data-remaining="${remainingAmount}" 
+                data-advance-used="0"
+                data-net-amount="${remainingAmount}"
+                checked
+                onchange="handleBillSelection()">
+            <div class="bill-details">
+                <div class="bill-number">Bill #${bill.bill_number}</div>
+                <div class="bill-date">Date: ${bill.date_formatted}</div>
+            </div>
+            <div class="bill-amounts">
+                <div class="bill-total">Total: ${moneyWithSymbol(bill.total_amount)}</div>
+                <div class="bill-remaining">Due: ${moneyWithSymbol(remainingAmount)}</div>
+            </div>
+            <input type="number" class="bill-amount-input" placeholder="Amount" 
+                step="0.01" max="${remainingAmount}" 
+                id="amount-${bill.id}" name="bill_amount_${bill.id}" 
+                value="${paymentAmount.toFixed(2)}">
+            <input type="date" class="bill-payment-made-on" placeholder="Payment Made On" 
+                id="payment_made_on-${bill.id}" name="bill_payment_made_on_${bill.id}"
+                value="${bill.payment_made_on || ''}">
+        `;
+        
+        billsList.appendChild(billItem);
+    });
+    
+    // In edit mode, preserve allocated amounts; otherwise calculate normally
+    {% if is_edit_mode %}
+    updateTotalFromAllocations();
+    {% else %}
+    setTimeout(() => {
+        handleBillSelection();
+    }, 100);
+    {% endif %}
+}
+
+// Add this new function to update total without recalculating individual bills
+function updateTotalFromAllocations() {
+    let totalAmount = 0;
+    let billIds = [];
+    
+    document.querySelectorAll('.bill-checkbox:checked').forEach(checkbox => {
+        const billId = checkbox.dataset.billId;
+        const amountInput = document.getElementById(`amount-${billId}`);
+        if (amountInput && amountInput.value) {
+            totalAmount += parseFloat(amountInput.value) || 0;
+            billIds.push(billId);
+        }
+    });
+    
+    const paymentAmountInput = document.getElementById('amount');
+    if (paymentAmountInput) {
+        paymentAmountInput.value = totalAmount.toFixed(2);
+    }
+    
+    updateBillIdsInput(billIds);
+}
+
+// Form validation
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('form');
+    
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            const paymentAmount = parseFloat(document.getElementById('amount').value) || 0;
+            const checkboxes = document.querySelectorAll('.bill-checkbox:checked');
+            
+            if (checkboxes.length === 0) {
+                if (paymentAmount <= 0) {
+                    e.preventDefault();
+                    alert('Please enter a payment amount greater than 0 for advance payment.');
+                    return false;
+                }
+                return true;
+            }
+            
+            let totalDue = 0;
+            let totalAdvanceUsed = 0;
+            let totalCashNeeded = 0;
+            
+            checkboxes.forEach(checkbox => {
+                const billId = checkbox.dataset.billId;
+                const amountInput = document.getElementById(`amount-${billId}`);
+                
+                const netAmount = parseFloat(amountInput.value) || 0;
+                const advanceForBill = parseFloat(checkbox.dataset.advanceUsed || 0);
+                const remaining = parseFloat(checkbox.dataset.remaining) || 0;
+                
+                totalDue += remaining;
+                totalAdvanceUsed += advanceForBill;
+                totalCashNeeded += netAmount;
+            });
+            
+            if (paymentAmount === 0 && totalCashNeeded > 0) {
+                e.preventDefault();
+                    alert(`Payment amount cannot be 0. You need at least ${moneyWithSymbol(totalCashNeeded)} to pay the selected bills.`);
+                return false;
+            }
+            
+            if (paymentAmount < totalCashNeeded && paymentAmount > 0) {
+                const shortfall = totalCashNeeded - paymentAmount;
+                
+                let confirmMsg = `You're paying ${moneyWithSymbol(paymentAmount)} but ${moneyWithSymbol(totalCashNeeded)} is needed.\n\nShortfall: ${moneyWithSymbol(shortfall)}\n\nContinue with partial payment?`;
+                
+                if (!confirm(confirmMsg)) {
+                    e.preventDefault();
+                    return false;
+                }
+            }
+            
+            return true;
+        });
+    }
+});
+
+function handleBillSelection() {
+    const checkboxes = document.querySelectorAll('.bill-checkbox:checked');
+    let totalDue = 0;
+    let totalAdvanceUsed = 0;
+    let totalNetAmount = 0;
+    let billIds = [];
+    
+    // Check if we're in edit mode
+    const isEditMode = {% if is_edit_mode %}true{% else %}false{% endif %};
+    
+    document.querySelectorAll('.bill-checkbox').forEach(checkbox => {
+        const billId = checkbox.dataset.billId;
+        const amountInput = document.getElementById(`amount-${billId}`);
+        const dateInput = document.getElementById(`payment_made_on-${billId}`);
+        
+        if (checkbox.checked) {
+            amountInput.disabled = false;
+            dateInput.disabled = false;
+            
+            const remaining = parseFloat(checkbox.dataset.remaining) || 0;
+            const advanceUsed = parseFloat(checkbox.dataset.advanceUsed) || 0;
+            const netAmountStr = checkbox.dataset.netAmount;
+            const netAmount = (netAmountStr !== undefined && netAmountStr !== null && netAmountStr !== '') 
+                ? parseFloat(netAmountStr) 
+                : remaining;
+            
+            // In edit mode, preserve existing values; otherwise set defaults
+            if (!isEditMode || !amountInput.value) {
+                amountInput.value = netAmount.toFixed(2);
+                
+                if (netAmount === 0) {
+                    amountInput.style.backgroundColor = '#e8f5e9';
+                } else {
+                    amountInput.style.backgroundColor = '';
+                }
+            }
+            
+            if (!dateInput.value) {
+                dateInput.value = new Date().toISOString().split('T')[0];
+            }
+            
+            // Use actual input value for calculations (important for edit mode)
+            const actualAmount = parseFloat(amountInput.value) || 0;
+            
+            totalDue += remaining;
+            totalAdvanceUsed += advanceUsed;
+            totalNetAmount += actualAmount;
+            billIds.push(billId);
+        } else {
+            amountInput.disabled = true;
+            if (!isEditMode) {
+                amountInput.value = '';
+            }
+            amountInput.style.backgroundColor = '';
+            dateInput.disabled = true;
+            if (!isEditMode) {
+                dateInput.value = '';
+            }
+        }
+    });
+    
+    const amountInput = document.getElementById('amount');
+    amountInput.value = totalNetAmount.toFixed(2);
+    amountInput.min = 0;
+    
+    updateAdvanceBreakdown(totalDue, totalAdvanceUsed, totalNetAmount);
+    updateBillIdsInput(billIds);
+    
+    const amountHelp = document.getElementById('amount-help');
+    if (checkboxes.length > 0) {
+        amountHelp.style.display = 'block';
+        if (totalAdvanceUsed > 0) {
+            if (totalNetAmount === 0) {
+                amountHelp.textContent = `Bills fully covered by advance (${moneyWithSymbol(totalAdvanceUsed)}). No cash payment needed!`;
+                amountHelp.style.color = '#28a745';
+            } else {
+                amountHelp.textContent = `Suggested payment: ${moneyWithSymbol(totalNetAmount)} (after ${moneyWithSymbol(totalAdvanceUsed)} advance).`;
+                amountHelp.style.color = '#6c757d';
+            }
+        } else {
+            amountHelp.textContent = 'You can enter any amount. Partial payments will be distributed proportionally.';
+            amountHelp.style.color = '#6c757d';
+        }
+    } else {
+        amountHelp.style.display = 'none';
+        hideVendorExcessInfo();
+    }
+}
+
+function hideVendorExcessInfo() {
+    const excessInfoDiv = document.getElementById('vendor-excess-info');
+    if (excessInfoDiv) {
+        excessInfoDiv.style.display = 'none';
+    }
+}
+
+function updateAdvanceBreakdown(totalDue, advanceUsed, netAmount) {
+    if (advanceUsed > 0 && totalDue > 0) {
+        showVendorExcessInfo(vendorExcessAmount, netAmount, advanceUsed, totalDue);
+    } else if (vendorExcessAmount > 0 && totalDue > 0) {
+        showVendorExcessInfo(vendorExcessAmount, netAmount, 0, totalDue);
+    } else {
+        hideVendorExcessInfo();
+    }
+}
+
+function showVendorExcessInfo(excessAmount, netAmount, excessUsed, totalSelected) {
+    let excessInfoDiv = document.getElementById('vendor-excess-info');
+    
+    if (!excessInfoDiv) {
+        excessInfoDiv = document.createElement('div');
+        excessInfoDiv.id = 'vendor-excess-info';
+        excessInfoDiv.className = 'advance-balance-info';
+        
+        const billsSection = document.getElementById('bills-section');
+        const paymentForm = document.getElementById('payment-form');
+        billsSection.parentNode.insertBefore(excessInfoDiv, paymentForm);
+    }
+    
+    const excess = parseFloat(excessUsed) || 0;
+    const net = parseFloat(netAmount);
+    const used = parseFloat(excessUsed) || 0;
+    const originalAdvance = parseFloat(excessAmount) || 0;
+    
+    excessInfoDiv.innerHTML = `
+        <div class="advance-header">
+            <i class="bi bi-wallet2"></i>
+            <strong>Vendor Advance Balance Available</strong>
+        </div>
+        <div class="advance-details">
+            <div class="advance-row highlight">
+                <span>Current Advance Balance:</span>
+                <span class="advance-value">${moneyWithSymbol(originalAdvance)}</span>
+            </div>
+            ${totalSelected ? `
+                <div class="advance-row">
+                    <span>Selected Bills Total Due:</span>
+                    <span>${moneyWithSymbol(totalSelected)}</span>
+                </div>
+                <div class="advance-row">
+                    <span>Advance to be Used:</span>
+                    <span class="advance-used">-${moneyWithSymbol(used)}</span>
+                </div>
+                <div class="advance-row total-row">
+                    <span><strong>Cash to Pay Now:</strong></span>
+                    <span class="net-amount"><strong>${moneyWithSymbol(net)}</strong></span>
+                </div>
+                ${(originalAdvance - used) > 0 ? `
+                    <div class="advance-row">
+                        <span>Remaining Advance After Payment:</span>
+                        <span class="remaining-advance">${moneyWithSymbol(originalAdvance - used)}</span>
+                    </div>
+                ` : ''}
+                ${net === 0 ? `
+                    <div class="advance-note success">
+                        <i class="bi bi-check-circle"></i>
+                        Bills will be fully paid using advance balance!
+                    </div>
+                ` : ''}
+            ` : `
+                <div class="advance-note">
+                    <i class="bi bi-info-circle"></i>
+                    This advance will be automatically deducted from the bills you select.
+                </div>
+            `}
+        </div>
+    `;
+    
+    excessInfoDiv.style.display = 'block';
+}
+
+document.addEventListener('input', function(e) {
+    if (e.target.classList.contains('bill-amount-input')) {
+        const billId = e.target.id.replace('amount-', '');
+        const checkbox = document.querySelector(`.bill-checkbox[data-bill-id="${billId}"]`);
+        const maxAmount = parseFloat(checkbox.getAttribute('data-remaining'));
+        const netAmount = parseFloat(checkbox.getAttribute('data-net-amount'));
+        const enteredAmount = parseFloat(e.target.value) || 0;
+        
+        if (enteredAmount > maxAmount) {
+            alert(`Amount cannot exceed ${moneyWithSymbol(maxAmount)}`);
+            e.target.value = netAmount.toFixed(2);
+        }
+        
+        recalculateTotal();
+    }
+});
+
+function recalculateTotal() {
+    let totalCashNeeded = 0;
+    let totalAdvanceUsed = 0;
+    let totalBillAmount = 0;
+    
+    document.querySelectorAll('.bill-checkbox:checked').forEach(checkbox => {
+        const billId = checkbox.dataset.billId;
+        const amountInput = document.getElementById(`amount-${billId}`);
+        const billAmount = parseFloat(amountInput.value) || 0;
+        const advanceForBill = parseFloat(checkbox.dataset.advanceUsed || 0);
+        
+        totalBillAmount += billAmount;
+        
+        const advanceToUse = Math.min(advanceForBill, billAmount);
+        const cashNeeded = billAmount - advanceToUse;
+        
+        totalAdvanceUsed += advanceToUse;
+        totalCashNeeded += cashNeeded;
+    });
+    
+    const amountInput = document.getElementById('amount');
+    amountInput.value = totalCashNeeded.toFixed(2);
+    amountInput.min = 0;
+    
+    updateAdvanceBreakdown(totalBillAmount, totalAdvanceUsed, totalCashNeeded);
+}
+
+function updateBillIdsInput(billIds) {
+    let billIdsInput = document.querySelector('input[name="bill_ids"]');
+    if (!billIdsInput) {
+        billIdsInput = document.createElement('input');
+        billIdsInput.type = 'hidden';
+        billIdsInput.name = 'bill_ids';
+        document.querySelector('form').appendChild(billIdsInput);
+    }
+    billIdsInput.value = billIds.join(',');
+}
+
+function showBillsSection() {
+    document.getElementById('bills-section').style.display = 'block';
+    document.getElementById('bills-error').style.display = 'none';
+    document.getElementById('no-bills-message').style.display = 'none';
+}
+
+function showError(message) {
+    const errorDiv = document.getElementById('bills-error');
+    errorDiv.textContent = message;
+    errorDiv.style.display = 'block';
+}
+
+function showNoBillsMessage() {
+    document.getElementById('no-bills-message').style.display = 'block';
+}
+
+function resetPaymentForm() {
+    document.getElementById('bills-section').style.display = 'none';
+    document.getElementById('payment-form').style.display = 'none';
+    initialAmount = 0;
+    vendorExcessAmount = 0;
+    totalBillsDue = 0;
+    hideVendorExcessInfo();
+}
+
+function loadMoreBills(vendorId) {
+    if (confirm('This will load all unpaid bills for this vendor. Currently allocated bills will remain checked. Continue?')) {
+        const checkedBills = {};
+        document.querySelectorAll('.bill-checkbox:checked').forEach(cb => {
+            const billId = cb.dataset.billId;
+            const amountInput = document.getElementById(`amount-${billId}`);
+            const dateInput = document.getElementById(`payment_made_on-${billId}`);
+            checkedBills[billId] = {
+                amount: amountInput ? amountInput.value : '',
+                date: dateInput ? dateInput.value : ''
+            };
+        });
+        
+        loadVendorBills(vendorId);
+        
+        setTimeout(function() {
+            Object.keys(checkedBills).forEach(billId => {
+                const checkbox = document.querySelector(`.bill-checkbox[data-bill-id="${billId}"]`);
+                if (checkbox) {
+                    checkbox.checked = true;
+                    const amountInput = document.getElementById(`amount-${billId}`);
+                    const dateInput = document.getElementById(`payment_made_on-${billId}`);
+                    
+                    if (amountInput) {
+                        amountInput.disabled = false;
+                        amountInput.value = checkedBills[billId].amount;
+                    }
+                    if (dateInput) {
+                        dateInput.disabled = false;
+                        dateInput.value = checkedBills[billId].date;
+                    }
+                }
+            });
+            handleBillSelection();
+        }, 500);
+    }
+}
+
+function loadVendorBills(vendorId) {
+    showBillsSection();
+    document.getElementById('bills-loading').style.display = 'block';
+    document.getElementById('bills-container').style.display = 'none';
+    
+    const url = `/purchase/get-vendor-unpaid-bills/?vendor_id=${vendorId}`;
+    
+    fetch(url)
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('bills-loading').style.display = 'none';
+            
+            if (data.error) {
+                showError(data.error);
+                document.getElementById('payment-form').style.display = 'block';
+                return;
+            }
+            
+            vendorExcessAmount = parseFloat(data.advance_balance_float) || 0;
+            totalBillsDue = parseFloat(data.total_due) || 0;
+            setPaymentCurrencySymbol(data.currency_symbol || '{{ payment_currency_symbol|default:"₹"|escapejs }}');
+            
+            if (data.has_advance && data.bills.length > 0) {
+                showVendorExcessInfo(
+                    data.advance_balance_float,
+                    data.net_amount_to_pay_float
+                );
+            } else {
+                hideVendorExcessInfo();
+            }
+            
+            if (data.bills.length === 0) {
+                showNoBillsMessage();
+                document.getElementById('payment-form').style.display = 'block';
+                document.getElementById('amount').value = '';
+                return;
+            }
+            
+            displayBills(data.bills);
+            document.getElementById('bills-container').style.display = 'block';
+            document.getElementById('payment-form').style.display = 'block';
+            document.getElementById('amount-help').style.display = 'block';
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            document.getElementById('bills-loading').style.display = 'none';
+            showError('Error loading bills. Please try again.');
+            document.getElementById('payment-form').style.display = 'block';
+        });
+}
+// Initialize Select2 for parent account dropdown in modal added on 18-2-26 by neha
+    function initParentSelect2() {
+        if ($('#modal-parent').hasClass('select2-hidden-accessible')) {
+            $('#modal-parent').select2('destroy');
+        }
+        $('#modal-parent').select2({
+            width: '100%',
+            minimumResultsForSearch: 0,
+            placeholder: "Select or search parent",
+            allowClear: true,
+            dropdownParent: $('#addAccountModal')  // important — keeps it inside the modal
+        });
+    }
+// Initialize Select2
+$(document).ready(function() {
+    //add focus to search field when dropdown opens by neha on 18-2-26
+    $(document).on('select2:open', function() {
+        document.querySelector('.select2-container--open .select2-search__field')?.focus();
+    });
+    $('.select2-search').select2({
+        placeholder: "Search...",
+        allowClear: true,
+        width: '100%'
+    });
+    // Custom rendering for payment account select added on 18-2-26 by neha
+    $('#paid_through').select2({
+        width: '100%',
+        minimumResultsForSearch: 0,
+        placeholder: "Search Payment Account...",
+        allowClear: true,
+        templateResult: function(data) {
+        if (!data.element) return data.text;
+
+        // Bold + styled for header options
+        if ($(data.element).data('is-header')) {
+            return $('<span style="font-weight:600; color:#111827;">' + data.text + '</span>');
+        }
+
+        // Indent children
+        return $('<span style="padding-left:10px;">' + data.text + '</span>');
+        },
+        templateSelection: function(data) {
+            return data.text;
+        }
+        }).on('select2:open', function() {
+            window.activeAccountSelect = $('#paid_through');
+
+            setTimeout(function() {
+                var $dropdown = $('.select2-dropdown');
+                var $results = $dropdown.find('.select2-results__options');
+                if ($results.length && $('.select2-add-item').length === 0) {
+                    var $addItem = $("<li class='select2-results__option select2-add-item' role='treeitem' aria-selected='false'>+ New Account</li>");
+                    $results.prepend($addItem);
+                }
+            }, 0);
+        });
+
+       
+
+        $('#payment_mode').select2({
+            placeholder: "Search and select payment mode",
+            allowClear: true,
+            width: '100%'
+        });
+});
+
+// Initialize form for edit mode
+document.addEventListener('DOMContentLoaded', function() {
+    const today = new Date().toISOString().split('T')[0];
+    const paymentDateInput = document.getElementById('payment_date');
+    if (paymentDateInput && !paymentDateInput.value) {
+        paymentDateInput.value = today;
+    }
+    
+    const amountInput = document.getElementById('amount');
+    if (amountInput && amountInput.value) {
+        initialAmount = parseFloat(amountInput.value) || 0;
+    }
+    
+    // Initialize Select2
+    $('.select2-search').select2({
+        placeholder: "Search...",
+        allowClear: true,
+        width: '100%'
+    });
+    
+    // If editing payment, show allocated bills directly
+    {% if payment_id and is_edit_mode %}
+    const vendorId = {{ payment.vendor.id }};
+    
+    $('#vendor_id').select2({
+        placeholder: "Search...",
+        allowClear: false,
+        width: '100%'
+    });
+    
+    if (vendorId) {
+        $('#vendor_id').val(vendorId).trigger('change');
+        
+        document.getElementById('bills-section').style.display = 'block';
+        document.getElementById('bills-container').style.display = 'block';
+        document.getElementById('payment-form').style.display = 'block';
+        
+        const allocatedBills = [
+            {% for bill in allocated_bills %}
+            {
+                id: {{ bill.id }},
+                bill_number: "{{ bill.bill_number }}",
+                date_formatted: "{{ bill.date_formatted }}",
+                total_amount: {{ bill.total_amount }},
+                remaining_amount: {{ bill.remaining_amount }},
+                allocated_amount: {{ bill.allocated_amount }},
+                payment_amount: {{ bill.payment_amount }},  
+                payment_made_on: "{{ bill.payment_made_on }}"
+            }{% if not forloop.last %},{% endif %}
+            {% endfor %}
+        ];
+        
+        console.log("Length of allocatedBills:", allocatedBills.length);
+        console.log("allocatedBills:", allocatedBills);
+        
+        if (allocatedBills.length > 0) {
+            displayAllocatedBills(allocatedBills);
+            // The function now handles edit mode internally
+        } else {
+            document.getElementById('bills-section').style.display = 'none';
+        }
+    }
+    {% endif %}
+});
+// Open modal when "+ New Account" is clicked inside the dropdown added on 18-2-26 by neha
+$(document).on('click', '.select2-add-item', function(e) {
+    e.preventDefault();
+    try { $('#paid_through').select2('close'); } catch(err) {}
+
+    $('#addAccountForm')[0].reset();
+    $('#modal-parent').html('<option value="">Select or search parent</option>');
+    initParentSelect2();
+    loadAccountTypes();
+    var modal = new bootstrap.Modal(document.getElementById('addAccountModal'));
+    modal.show();
+});
+//added on 18-2-26 by neha
+function loadAccountTypes() {
+    console.log("Loading account types for modal...");
+    $.get("{% url 'get_account_types' %}", function(resp) {
+        console.log("Received account types:", resp);
+        var types = resp.types || [];
+        var $type = $('#modal-account-type');
+        $type.empty().append($('<option>').val('').text('Select Account Type'));
+        types.forEach(function(t) {
+            $type.append($('<option>').val(t.code).text(t.name));
+        });
+    });
+}
+
+// Submit the modal form and inject the new account into paid_through added on 18-2-26 by neha
+$('#addAccountForm').on('submit', function(e) {
+    e.preventDefault();
+    var data = {
+        name: $('#modal-account-name').val(),
+        type: $('#modal-account-type').val(),
+        parent: $('#modal-parent').val(),
+        description: $('#modal-description').val(),
+        search_code: $('#modal-search-code').val(),
+        is_header: $('#modal-is-header').is(':checked') ? 1 : 0,
+        active: $('#modal-active').is(':checked') ? 1 : 0,
+    };
+
+    $.ajax({
+        url: "{% url 'ajax-create-account' %}",
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCookie('csrftoken') },
+        data: data,
+        success: function(resp) {
+            if (resp.success) {
+                // Inject new account into the paid_through dropdown and select it
+                var newOption = new Option(resp.name, resp.id, true, true);
+                $('#paid_through').append(newOption).val(resp.id).trigger('change');
+
+                var modal = bootstrap.Modal.getInstance(document.getElementById('addAccountModal'));
+                if (modal) modal.hide();
+                showToast('Account created successfully', 'success');
+            } else {
+                showToast(resp.error || 'Failed to create account', 'error');
+            }
+        },
+        error: function(xhr) {
+            var err = xhr.responseJSON?.error || 'Error creating account';
+            showToast(err, 'error');
+        }
+    });
+});
+// Open modal from +New button; ensure we have an active select added on 18-2-26 by neha
+$('#open-add-account-modal').on('click', function() {
+    if (!window.activeAccountSelect || !window.activeAccountSelect.length) {
+        window.activeAccountSelect = $('select[name*="-account"]').first();
+    }
+    // Clear modal fields
+    $('#addAccountForm')[0].reset();
+    $('#modal-parent').html('<option value="">Select or search parent</option>');
+    initParentSelect2();
+    // Load account types
+    loadAccountTypes();
+    var modal = new bootstrap.Modal(document.getElementById('addAccountModal'));
+    modal.show();
+});
+//added on 18-2-26 by neha
+$('#modal-account-type').on('change', function() {
+    var code = $(this).val();
+    var $parent = $('#modal-parent');
+
+    // Destroy existing Select2 before modifying options
+    if ($parent.hasClass('select2-hidden-accessible')) {
+        $parent.select2('destroy');
+    }
+
+    $parent.html('<option value="">Loading...</option>');
+    if (!code) {
+        $parent.html('<option value="">Select or search parent</option>');
+        initParentSelect2();
+        return;
+    }
+    $.get("{% url 'get_parents_for_type' %}", {type_code: code}, function(resp) {
+        var parents = resp.parents || [];
+        $parent.empty();
+        $parent.append($('<option>').val('').text('Select or search parent'));
+        parents.forEach(function(p) {
+            $parent.append($('<option>').val(p.id).text(p.name));
+        });
+        // Initialize Select2 AFTER options are loaded
+        initParentSelect2();
+    });
+});
+// Utility: get CSRF token from cookie added on 18-2-26 by neha
+function getCookie(name) {
+    var cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        var cookies = document.cookie.split(';');
+        for (var i = 0; i < cookies.length; i++) {
+            var cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// Show error modal if there's an error message
+document.addEventListener('DOMContentLoaded', function() {
+  const showErrorModal = {{ show_error_modal|lower|default:"false" }};
+  const errorMessage = `{{ error_message|escapejs }}`;
+  
+  if (showErrorModal && errorMessage) {
+    const errorModal = document.getElementById('errorModal');
+    if (errorModal) {
+      const errorBodyElement = document.getElementById('errorModalBody');
+      errorBodyElement.innerHTML = errorMessage.replace(/\n/g, '<br>');
+      const modal = new bootstrap.Modal(errorModal);
+      modal.show();
+    }
+  }
+});
+
+</script>
+<script>
+function showInlinePaymentStatus(message, type) {
+    const form = document.querySelector('.container form');
+    if (!form) return;
+
+    let host = document.getElementById('payment-submit-status');
+    if (!host) {
+        host = document.createElement('div');
+        host.id = 'payment-submit-status';
+        host.style.marginBottom = '12px';
+        form.parentNode.insertBefore(host, form);
+    }
+
+    const alertClass = type === 'success' ? 'alert alert-success' : 'alert alert-danger';
+    host.innerHTML = `<div class="${alertClass}" role="alert">${message}</div>`;
+}
+
+function showEmailToast(message, type) {
+    let host = document.getElementById('payment-email-toast-host');
+    if (!host) {
+        host = document.createElement('div');
+        host.id = 'payment-email-toast-host';
+        host.style.position = 'fixed';
+        host.style.right = '18px';
+        host.style.bottom = '18px';
+        host.style.zIndex = '9999';
+        host.style.display = 'flex';
+        host.style.flexDirection = 'column';
+        host.style.gap = '8px';
+        document.body.appendChild(host);
+    }
+
+    const toast = document.createElement('div');
+    toast.textContent = message;
+    toast.style.padding = '10px 14px';
+    toast.style.borderRadius = '6px';
+    toast.style.color = '#fff';
+    toast.style.fontSize = '14px';
+    toast.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.2)';
+    toast.style.background = type === 'success' ? '#198754' : (type === 'error' ? '#dc3545' : '#0d6efd');
+    toast.style.maxWidth = '340px';
+    host.appendChild(toast);
+    setTimeout(() => toast.remove(), 2200);
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('.container form');
+    if (!form) return;
+
+    let asyncSubmitInProgress = false;
+
+    form.addEventListener('submit', function(e) {
+        const sendEmailCheckbox = document.getElementById('send_email');
+        if (!sendEmailCheckbox || !sendEmailCheckbox.checked) return;
+        if (e.defaultPrevented || asyncSubmitInProgress) return;
+
+        e.preventDefault();
+        asyncSubmitInProgress = true;
+
+        const submitBtn = form.querySelector('button[type="submit"]');
+        const oldBtnText = submitBtn ? submitBtn.innerHTML : '';
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = 'Saving...';
+        }
+
+        showEmailToast('Sending payment email...', 'info');
+        const submitUrl = form.getAttribute('action') || window.location.pathname;
+
+        fetch(submitUrl, {
+            method: 'POST',
+            body: new FormData(form),
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(async (response) => {
+            let data = {};
+            try {
+                const contentType = (response.headers.get('content-type') || '').toLowerCase();
+                if (contentType.includes('application/json')) {
+                    data = await response.json();
+                } else if (response.redirected && response.url) {
+                    data = { success: true, redirect_url: response.url, message: 'Payment saved successfully.' };
+                } else {
+                    const text = await response.text();
+                    const cleaned = (text || '').replace(/\s+/g, ' ').trim();
+                    throw new Error(cleaned ? cleaned.slice(0, 220) : 'Unable to save payment.');
+                }
+            } catch (err) {
+                if (err instanceof Error) throw err;
+                data = {};
+            }
+            if (!response.ok || !data.success) {
+                throw new Error(data.message || 'Unable to save payment.');
+            }
+            return data;
+        })
+        .then((data) => {
+            const successMsg = data.message || 'Payment recorded successfully.';
+            const emailMsg = data.email_message || 'Email sent successfully.';
+
+            showEmailToast(emailMsg, 'success');
+            showInlinePaymentStatus(successMsg, 'success');
+
+            if (data.redirect_url) {
+                try {
+                    if ((data.redirect_url || '').includes('payment_list')) {
+                        sessionStorage.setItem('payment_made_success_toast', successMsg);
+                    } else {
+                        sessionStorage.setItem('bill_payment_success_toast', successMsg);
+                    }
+                } catch (err) {}
+                setTimeout(() => {
+                    window.location.href = data.redirect_url;
+                }, 1200);
+            }
+        })
+        .catch((error) => {
+            showEmailToast(error.message, 'error');
+            showInlinePaymentStatus(error.message, 'error');
+            asyncSubmitInProgress = false;
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = oldBtnText;
+            }
+        });
+    });
+});
+</script>
+
+<!-- Error Modal for Period Lock and Other Errors -->
+<div class="modal fade" id="errorModal" tabindex="-1" aria-labelledby="errorModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="border: 2px solid #d9534f; border-radius: 8px;">
+      <div class="modal-header" style="background-color: #f8d7da; border-bottom: 2px solid #d9534f;">
+        <h5 class="modal-title" id="errorModalLabel" style="color: #721c24;">
+          <i class="bi bi-exclamation-circle" style="color: #d9534f;"></i> Cannot Proceed with Payment
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="errorModalBody" style="color: #721c24; padding: 20px; line-height: 1.6;">
+        <!-- Error message will be inserted here -->
+      </div>
+      <div class="modal-footer" style="border-top: 1px solid #dee2e6;">
+        <button type="button" class="btn btn-primary" data-bs-dismiss="modal">OK</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

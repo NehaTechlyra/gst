@@ -1,0 +1,136 @@
+{% load widget_tweaks %}
+
+
+<form id="vendorCreateForm" method="post" action="/Items/add_vendor/" novalidate>
+  {% csrf_token %}
+  <div class="modal-body">
+    <div class="row">
+      {% for field in form %}
+        {% if field.name not in "created_by|updated_by" %}
+        <div class="col-md-4 mb-3">
+          {% if field.name in "is_active|is_customer" %}
+            {{ field }}
+            <label for="{{ field.id_for_label }}" class="form-label ms-2">{{ field.label }}</label>
+          {% else %}
+            <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+            {{ field|add_class:"form-control" }}
+          {% endif %}
+          {% for error in field.errors %}
+            <div class="text-danger small">{{ error }}</div>
+          {% endfor %}
+        </div>
+        {% endif %}
+      {% endfor %}
+    </div>
+
+    <h5 class="mt-3">Contact Persons</h5>
+    <div class="card p-2 mb-3">
+      {{ formset.management_form }}
+
+      <div id="contact-persons-container">
+        {% for contact_form in formset %}
+          <div class="row contact-row mb-2 align-items-end">
+            {% for field in contact_form.hidden_fields %}
+              {{ field }}
+            {% endfor %}
+            {% for field in contact_form.visible_fields %}
+              {% if 'DELETE' not in field.name %}
+                <div class="col-md-3">
+                  {{ field|add_class:"form-control" }}
+                  {% for error in field.errors %}
+                    <div class="text-danger small">{{ error }}</div>
+                  {% endfor %}
+                </div>
+              {% endif %}
+            {% endfor %}
+            <div class="col-md-3 text-end">
+              <button type="button" class="btn btn-danger btn-sm remove-contact">Delete</button>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+
+      <div class="mt-2">
+        <button type="button" id="add-contact-person-btn" class="btn btn-primary">Add Contact Person</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-footer">
+    <button type="button" class="btn btn-primary btn-save-vendor">Save Vendor</button>
+    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+  </div>
+</form>
+
+<!-- Empty form template for JS cloning -->
+<div id="empty-form-template" style="display:none;">
+  <div class="row contact-row mb-2 align-items-end">
+    <input type="hidden" name="contactperson-__prefix__-id" id="id_contactperson-__prefix__-id">
+    <input type="hidden" name="contactperson-__prefix__-vendor" id="id_contactperson-__prefix__-vendor">
+    <input type="hidden" name="contactperson-__prefix__-DELETE" id="id_contactperson-__prefix__-DELETE">
+
+    <div class="col-md-4">
+      <input type="text" name="contactperson-__prefix__-name" id="id_contactperson-__prefix__-name" class="form-control" placeholder="Name">
+    </div>
+    <div class="col-md-4">
+      <input type="email" name="contactperson-__prefix__-email" id="id_contactperson-__prefix__-email" class="form-control" placeholder="Email">
+    </div>
+    <div class="col-md-3">
+      <input type="text" name="contactperson-__prefix__-phone" id="id_contactperson-__prefix__-phone" class="form-control" placeholder="Phone">
+    </div>
+    <div class="col-md-1 text-end">
+      <button type="button" class="btn btn-danger btn-sm remove-contact">Delete</button>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const container = document.getElementById('contact-persons-container');
+  const addBtn = document.getElementById('add-contact-person-btn');
+
+  function updateTotalForms(delta) {
+    const totalFormsInput = document.querySelector('#id_contactperson-TOTAL_FORMS');
+    if (totalFormsInput) totalFormsInput.value = parseInt(totalFormsInput.value) + delta;
+  }
+
+  function addEmptyRow() {
+    const totalForms = parseInt(document.querySelector('#id_contactperson-TOTAL_FORMS').value || 0);
+    const emptyFormTemplate = document.getElementById('empty-form-template').innerHTML;
+    const newFormHtml = emptyFormTemplate.replace(/__prefix__/g, totalForms);
+
+    const newDiv = document.createElement('div');
+    newDiv.innerHTML = newFormHtml;
+    container.appendChild(newDiv.firstElementChild);
+    updateTotalForms(1);
+  }
+
+  // If no contact rows, add one
+  const totalForms = parseInt(document.querySelector('#id_contactperson-TOTAL_FORMS').value || 0);
+  if (totalForms === 0 && container.querySelectorAll('.contact-row').length === 0) {
+    addEmptyRow();
+  }
+
+  // Delete handler
+  document.addEventListener('click', function(e) {
+    if (e.target && e.target.classList.contains('remove-contact')) {
+      e.preventDefault();
+      const row = e.target.closest('.contact-row');
+      if (row) {
+        const deleteInput = row.querySelector('input[type="hidden"][name*="DELETE"]');
+        if (deleteInput) {
+          deleteInput.value = 'on';
+          row.style.display = 'none';
+        } else {
+          row.remove();
+          updateTotalForms(-1);
+        }
+      }
+    }
+  });
+
+  addBtn.addEventListener('click', function(e) {
+    e.preventDefault();
+    addEmptyRow();
+  });
+});
+</script>

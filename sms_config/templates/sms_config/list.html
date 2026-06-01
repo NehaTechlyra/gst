@@ -1,0 +1,242 @@
+{% extends 'website/index.html' %}
+{% load static %}
+
+{% block page_title %}SMS Configurations{% endblock %}
+
+{% block exstyle %}
+<link href="{% static 'style/general.css' %}" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+
+<style>
+.items-table td a {
+    text-decoration: none !important;
+}
+
+</style>
+
+{% endblock exstyle %}
+
+
+{% block content %}
+
+<div class="container mt-4">
+
+  <!-- HEADER (Back + Add) -->
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+    <div>
+      <a href="{% url 'settings_page' %}" class="btn btn-outline-secondary">← Back</a>
+    </div>
+    <div>
+      <a href="{% url 'sms_config_add' %}" class="btn btn-success"><i class="bi bi-plus-circle"></i>  Add SMS</a>
+    </div>
+  </div>
+
+  <!-- TABLE -->
+  <table class="items-table" style="width:100%;border-collapse:collapse;">
+    <thead>
+      <tr style="background:#f7f7f7;text-align:left;">
+        <th>SL</th>
+        <th>Mode</th>
+        <th>Used For</th>
+        <!-- <th>Updated</th>
+        <th>Status</th> -->
+        <th class="text-center">Default</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+
+    <tbody>
+      {% for item in items %}
+      <tr>
+        <td>{{ forloop.counter }}</td>
+
+        <td>{{ item.get_mode_display }}</td>
+
+      <!-- USED FOR -->
+       <td>
+  {% if item.usage_types %}
+    {{ item.get_usage_types_display_list|join:", " }}
+  {% else %}
+    <span class="text-muted">—</span>
+  {% endif %}
+</td>
+
+
+
+        <!-- <td>{{ item.updated_at|date:"Y-m-d H:i" }}</td> -->
+
+        <!-- STATUS -->
+        <!-- <td>
+          {% if item.status %}
+            <span class="badge bg-success">Active</span>
+          {% else %}
+            <span class="badge bg-secondary">Inactive</span>
+          {% endif %}
+        </td> -->
+
+        <!-- DEFAULT -->
+        <td class="text-center">
+        {% if item.is_default %}
+          <input type="checkbox" checked class="form-check-input" style="pointer-events:none;">
+        {% else %}
+          <div onclick="window.location.href='{% url 'sms_set_default' item.id %}'"
+              style="cursor:pointer; display:inline-block;">
+            <input type="checkbox" class="form-check-input " style="pointer-events:none;">
+          </div>
+        {% endif %}
+        </td>
+
+        <!-- ACTIONS (Same pencil + trash style as employee list) -->
+        <td>
+          <!-- Edit -->
+          <a class="delete-btn" href="{% url 'sms_config_edit' item.id %}">
+            <i class="bi bi-pencil"></i>
+          </a>
+
+          <!-- Deactivate -->
+          {% if item.status %}
+          <a class="delete-btn"
+             href="{% url 'sms_config_deactivate' item.id %}">
+            <i class="bi bi-trash"></i>
+          </a>
+          {% endif %}
+        </td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="6" style="text-align:center;">No SMS configurations found.</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+
+  </table>
+
+</div>
+{% endblock %}
+
+
+{% block scripts %}
+<script>
+(function () {
+    // Toast creator (same as email)
+    function createBottomRightContainer() {
+        let c = document.getElementById("bottomright-toasts");
+        if (!c) {
+            c = document.createElement("div");
+            c.id = "bottomright-toasts";
+            Object.assign(c.style, {
+                position: "fixed",
+                bottom: "20px",
+                right: "20px",
+                zIndex: "99999",
+                display: "flex",
+                flexDirection: "column-reverse",
+                gap: "10px",
+                alignItems: "flex-end",
+                pointerEvents: "none",
+            });
+            document.body.appendChild(c);
+        }
+        return c;
+    }
+
+    window.showToast = function(msg, isSuccess = true) {
+        const container = createBottomRightContainer();
+        const toast = document.createElement("div");
+        toast.textContent = msg || "Success";
+        Object.assign(toast.style, {
+            pointerEvents: "auto",
+            minWidth: "220px",
+            padding: "10px 14px",
+            borderRadius: "8px",
+            boxShadow: "0 2px 10px rgba(0,0,0,0.12)",
+            color: "#fff",
+            fontSize: "14px",
+            opacity: "0",
+            transform: "translateY(5px)",
+            transition: "opacity 0.25s ease, transform 0.25s ease",
+            backgroundColor: isSuccess ? "#1cc88a" : "#e74c3c",
+        });
+        container.appendChild(toast);
+        requestAnimationFrame(() => {
+            toast.style.opacity = "1";
+            toast.style.transform = "translateY(0)";
+        });
+        setTimeout(() => {
+            toast.style.opacity = "0";
+            toast.style.transform = "translateY(5px)";
+            setTimeout(() => toast.remove(), 300);
+        }, 2500);
+    };
+
+    // Show Django messages
+    {% if messages %}
+    {% for message in messages %}
+      window.showToast("{{ message|escapejs }}", true);
+    {% endfor %}
+    {% endif %}
+})();
+
+
+/* --------------------------------------------------
+   DELETE CONFIRMATION BOX (EXACT SAME AS EMAIL)
+-------------------------------------------------- */
+document.addEventListener("DOMContentLoaded", function () {
+
+    function showDeleteConfirm(onConfirm) {
+        document.querySelectorAll(".confirm-toast").forEach(t => t.remove());
+
+        const box = document.createElement("div");
+        box.classList.add("confirm-toast");
+
+        box.innerHTML = `
+            <div style="
+                position:fixed;
+                top:20px;
+                left:50%;
+                transform:translateX(-50%);
+                z-index:20000;
+                min-width:420px;
+                background:#f8d7da;
+                color:#721c24;
+                border:1px solid #f5c6cb;
+                padding:15px;
+                border-radius:6px;
+                box-shadow:0 4px 10px rgba(0,0,0,0.12);
+            ">
+                <div style="margin-bottom:10px;text-align:center;">
+                    Are you sure you want to deactivate this SMS configuration?<br>This action cannot be undone.
+                </div>
+                <div style="text-align:center;margin-top:10px;">
+                    <button class="btn btn-sm btn-light cancel-btn" style="margin-right:8px;min-width:80px;">Cancel</button>
+                    <button class="btn btn-sm btn-danger ok-btn" style="min-width:80px;">Deactivate</button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(box);
+
+        box.querySelector(".cancel-btn").onclick = () => box.remove();
+        box.querySelector(".ok-btn").onclick = () => {
+            box.remove();
+            onConfirm();
+        };
+    }
+
+    // Activate delete confirmation
+    document.querySelectorAll(".delete-btn").forEach(btn => {
+        if (!btn.href.includes("deactivate")) return; // do not affect pencil button
+
+        btn.addEventListener("click", function (e) {
+            e.preventDefault();
+            const href = this.getAttribute("href");
+
+            showDeleteConfirm(() => {
+                window.location.href = href;
+            });
+        });
+    });
+
+});
+</script>
+{% endblock scripts %}

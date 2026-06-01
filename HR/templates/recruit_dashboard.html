@@ -1,0 +1,465 @@
+{% extends 'website/index.html' %}
+{% load static %}
+
+{% block exstyle %}
+<link href="{% static 'style/general.css' %}" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+    :root {
+        --bg: #ffffff;
+        --surface: #ffffff;
+        --border: #e2e2ec;
+        --text-primary: #2e2e4a;
+        --text-muted: #7c7ca0;
+        --accent: #55588b;
+        --accent-light: #eeeef6;
+        --accent-shadow: rgba(85,88,139,0.18);
+        --radius: 12px;
+        --shadow: 0 1px 3px rgba(85,88,139,0.07), 0 4px 16px rgba(85,88,139,0.06);
+    }
+
+    * { box-sizing: border-box; }
+
+    .rd-shell {
+        padding: 24px 28px;
+        background: var(--bg);
+        min-height: calc(100vh - 60px);
+        font-family: 'DM Sans', sans-serif;
+        color: var(--text-primary);
+    }
+
+    /* Header */
+    .rd-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+    .rd-header-left { display: flex; align-items: center; gap: 14px; }
+    .rd-header-left .header-icon {
+        width: 42px; height: 42px;
+        background: var(--accent);
+        border-radius: 11px;
+        display: flex; align-items: center; justify-content: center;
+        color: #fff; font-size: 1.2rem;
+        box-shadow: 0 4px 12px var(--accent-shadow);
+    }
+    .rd-header-left h2 {
+        font-size: 1.4rem; font-weight: 700;
+        letter-spacing: -0.02em;
+        color: var(--text-primary) !important; margin: 0;
+    }
+    .rd-header-left p { font-size: 0.8rem !important; color: var(--text-muted) !important; margin: 0; }
+
+    .btn-back {
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 8px 16px;
+        border: 1.5px solid var(--border); border-radius: 8px;
+        background: var(--surface); color: var(--text-muted);
+        font-size: 13px !important; font-weight: 500;
+        text-decoration: none; transition: all 0.18s;
+        font-family: 'DM Sans', sans-serif;
+    }
+    .btn-back:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-light); text-decoration: none; }
+
+    /* Section label */
+    .section-label {
+        font-size: 0.7rem; font-weight: 700;
+        text-transform: uppercase; letter-spacing: 0.09em;
+        color: var(--text-muted); margin-bottom: 13px; margin-top: 4px;
+    }
+    .section-label.s-head { display: flex; align-items: center; }
+    body:not(.lyra-arrange-mode) .section-label.s-head .lyra-section-handle { display: none; }
+
+    /* Stat cards */
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(6, 1fr);
+        gap: 14px; margin-bottom: 22px;
+    }
+    .stat-card {
+        background: var(--surface); border-radius: var(--radius);
+        padding: 18px 20px; box-shadow: var(--shadow);
+        border: 1px solid var(--border);
+        position: relative; overflow: hidden;
+        transition: transform 0.18s, box-shadow 0.18s;
+        cursor: pointer; text-decoration: none; display: block;
+    }
+    .stat-card:hover { transform: translateY(-3px); box-shadow: 0 8px 28px var(--accent-shadow); text-decoration: none; }
+    .stat-card::before {
+        content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+        background: var(--card-color, var(--accent));
+        border-radius: var(--radius) var(--radius) 0 0;
+    }
+    .stat-icon {
+        width: 34px; height: 34px; border-radius: 9px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 0.95rem; margin-bottom: 12px;
+        background: color-mix(in srgb, var(--card-color, var(--accent)) 13%, transparent);
+        color: var(--card-color, var(--accent));
+    }
+    .stat-title { font-size: 0.68rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 5px; line-height: 1.4; }
+    .stat-value { font-size: 1.8rem; font-weight: 700; font-family: 'DM Mono', monospace; letter-spacing: -0.03em; line-height: 1; color: var(--text-primary); }
+    .stat-sub { font-size: 0.7rem !important; color: var(--text-muted); margin-top: 6px; font-weight: 500; }
+
+    /* Divider */
+    .rd-divider { border: none; border-top: 1px solid var(--border); margin: 4px 0 20px; color: var(--border); }
+
+    /* Quick Links */
+    .quick-links { display: flex; gap: 9px; flex-wrap: wrap; margin-bottom: 26px; }
+    .quick-link-btn {
+        display: inline-flex; align-items: center; gap: 7px;
+        padding: 8px 17px; border: 1.5px solid var(--border);
+        border-radius: 8px; background: var(--surface); color: var(--text-muted);
+        font-size: 13px !important; font-weight: 600;
+        text-decoration: none; transition: all 0.18s;
+        font-family: 'DM Sans', sans-serif;
+        box-shadow: 0 1px 3px rgba(85,88,139,0.05);
+    }
+    .quick-link-btn i { font-size: 1rem; }
+    .quick-link-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-light); transform: translateY(-2px); box-shadow: 0 4px 12px var(--accent-shadow); text-decoration: none; }
+    .quick-link-btn.ql-active { background: var(--accent); border-color: var(--accent); color: #fff !important; }
+    .quick-link-btn.ql-reports { border-color: #c5e4d4; color: #2e7d5e; background: #f0fdf7; }
+    .quick-link-btn.ql-reports:hover { background: #dcfaed; border-color: #10b981; color: #10b981; box-shadow: 0 4px 12px rgba(16,185,129,0.15); }
+
+    /* Charts */
+    .charts-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+    .chart-card {
+        background: var(--surface); border-radius: var(--radius);
+        padding: 20px 22px; box-shadow: var(--shadow); border: 1px solid var(--border);
+        transition: transform 0.18s, box-shadow 0.18s;
+    }
+    .chart-card:hover { transform: translateY(-2px); box-shadow: 0 8px 28px var(--accent-shadow); }
+    .chart-card h6 { font-size: 0.875rem !important; font-weight: 700 !important; color: var(--text-primary) !important; margin-bottom: 16px !important; display: flex; align-items: center; gap: 7px; }
+    .chart-card h6 i { color: var(--accent) !important; font-size: 1rem; }
+
+    /* Doughnut layout */
+    .donut-wrap { display: flex; gap: 18px; align-items: center; height: 180px; }
+    .donut-wrap canvas { flex-shrink: 0; }
+    .legend-list { list-style: none; display: flex; flex-direction: column; gap: 8px; flex: 1; overflow-y: auto; padding: 0; margin: 0; }
+    .legend-item { display: flex; align-items: center; justify-content: space-between; font-size: 0.8rem; }
+    .legend-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-right: 7px; }
+    .legend-label { display: flex; align-items: center; color: var(--text-muted); flex: 1; }
+    .legend-count { font-weight: 700; font-family: 'DM Mono', monospace; font-size: 0.82rem; color: var(--text-primary); }
+
+    /* Responsive */
+    @media (max-width: 1200px) { .stats-grid { grid-template-columns: repeat(3, 1fr); } }
+    @media (max-width: 900px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } .charts-grid { grid-template-columns: 1fr; } }
+    @media (max-width: 600px) { .rd-shell { padding: 16px; } .stats-grid { grid-template-columns: 1fr 1fr; } }
+</style>
+{% endblock exstyle %}
+
+{% block page_title %}Recruitment{% endblock page_title %}
+
+{% block content %}
+<div class="rd-shell">
+
+    <!-- Header -->
+    <div class="rd-header">
+        <a href="{% url 'hr_dashboard' %}" class="btn-back">
+            <i class="bi bi-arrow-left"></i> Back to Home
+        </a>
+    </div>
+
+    <div class="rd-layout-sections">
+
+    <div class="lyra-dashboard-section">
+    <!-- Stat Cards -->
+    <div class="section-label s-head s-lbl">Pipeline Summary</div>
+    <div class="stats-grid">
+
+        <a class="stat-card" href="{% url 'job_list' %}" style="--card-color:#55588b;">
+            <div class="stat-icon"><i class="bi bi-briefcase-fill"></i></div>
+            <div class="stat-title">Open Positions</div>
+            <div class="stat-value">{{ total_open_positions }}</div>
+            <div class="stat-sub">Active job listings</div>
+        </a>
+
+        <a class="stat-card" href="{% url 'candidate_list' %}" style="--card-color:#3b82f6;">
+            <div class="stat-icon"><i class="bi bi-file-earmark-text-fill"></i></div>
+            <div class="stat-title">Total Applications</div>
+            <div class="stat-value">{{ total_applications }}</div>
+            <div class="stat-sub">All candidates</div>
+        </a>
+
+        <a class="stat-card" href="{% url 'candidate_list' %}?status=shortlisted" style="--card-color:#10b981;">
+            <div class="stat-icon"><i class="bi bi-person-check-fill"></i></div>
+            <div class="stat-title">Shortlisted</div>
+            <div class="stat-value">{{ shortlisted_candidates }}</div>
+            <div class="stat-sub">Ready for review</div>
+        </a>
+
+        <a class="stat-card" href="{% url 'candidate_list' %}?status=interview_scheduled" style="--card-color:#f59e0b;">
+            <div class="stat-icon"><i class="bi bi-calendar-event-fill"></i></div>
+            <div class="stat-title">Interviews Scheduled</div>
+            <div class="stat-value">{{ interviews_scheduled }}</div>
+            <div class="stat-sub">Upcoming sessions</div>
+        </a>
+
+        <a class="stat-card" href="{% url 'offer_list' %}" style="--card-color:#ef4444;">
+            <div class="stat-icon"><i class="bi bi-envelope-paper-fill"></i></div>
+            <div class="stat-title">Offers Released</div>
+            <div class="stat-value">{{ offers_released }}</div>
+            <div class="stat-sub">{% if offers_accepted %}{{ offers_accepted }} accepted{% else %}Pending responses{% endif %}</div>
+        </a>
+
+        <a class="stat-card" href="{% url 'candidate_list' %}?status=joined" style="--card-color:#8b5cf6;">
+            <div class="stat-icon"><i class="bi bi-person-plus-fill"></i></div>
+            <div class="stat-title">New Hires</div>
+            <div class="stat-value">{{ new_hires_this_month }}</div>
+            <div class="stat-sub">This month</div>
+        </a>
+
+    </div>
+    <hr class="rd-divider">
+    </div>
+
+    <div class="lyra-dashboard-section">
+    <!-- Quick Links -->
+    <div class="section-label s-head s-lbl">Quick Access</div>
+    <div class="quick-links">
+        <a class="quick-link-btn" href="{% url 'job_list' %}"><i class="bi bi-briefcase"></i> Jobs</a>
+        <a class="quick-link-btn" href="{% url 'candidate_list' %}"><i class="bi bi-people"></i> Candidates</a>
+        <a class="quick-link-btn" href="{% url 'candidate_list' %}?status=interview_scheduled"><i class="bi bi-calendar-check"></i> Interviews</a>
+        <a class="quick-link-btn" href="{% url 'offer_list' %}"><i class="bi bi-envelope"></i> Offers</a>
+        <a class="quick-link-btn ql-reports" href="{% url 'recruitment_reports' %}"><i class="bi bi-bar-chart"></i> Reports</a>
+    </div>
+    </div>
+
+    <div class="lyra-dashboard-section">
+    <!-- Charts -->
+    <div class="section-label s-head s-lbl">Analytics Overview</div>
+    <div class="charts-grid">
+
+        <!-- 1. Applications by Department -->
+        <div class="chart-card">
+            <h6><i class="bi bi-bar-chart-fill"></i> Applications by Department</h6>
+            <canvas id="deptChart" height="180"></canvas>
+        </div>
+
+        <!-- 2. Application Status Trend -->
+        <div class="chart-card">
+            <h6><i class="bi bi-graph-up-arrow"></i> Application Status Trend</h6>
+            <canvas id="trendChart" height="180"></canvas>
+        </div>
+
+        <!-- 3. Open Positions by Department (replaces Time-to-Hire) -->
+        <div class="chart-card">
+            <h6><i class="bi bi-stopwatch-fill"></i> Open Positions by Department <span style="font-size:0.7rem;font-weight:500;color:var(--text-muted);margin-left:4px;">(count)</span></h6>
+            <canvas id="openPositionsChart" height="180"></canvas>
+        </div>
+
+        <!-- 4. Source of Applications -->
+        <div class="chart-card">
+            <h6><i class="bi bi-pie-chart-fill"></i> Source of Applications</h6>
+            <div class="donut-wrap">
+                <canvas id="sourceChart" width="130" height="130" style="max-width:130px;max-height:130px;"></canvas>
+                <ul class="legend-list" id="sourceLegend"></ul>
+            </div>
+        </div>
+
+    </div>
+    </div>
+
+    </div>
+</div>
+{% endblock content %}
+
+{% block scripts %}
+<script>
+var LYRA_LAYOUT_API = {
+  getUrl: "{% url 'dashboard_layout_get' %}",
+  saveUrl: "{% url 'dashboard_layout_save' %}",
+  csrf: "{{ csrf_token }}"
+};
+
+var LYRA_ARRANGE_CONFIG = {
+  storagePrefix: "recruitment_dashboard:",
+  sectionContainer: ".rd-layout-sections",
+  enableSections: true,
+  arrangeLabel: "Arrange Layout",
+  doneLabel: "Done Arranging",
+  resetConfirm: "Reset recruitment dashboard to default layout?",
+  cardGroups: [
+    { container: ".stats-grid", child: ".stat-card", key: "stats" },
+    { container: ".quick-links", child: ".quick-link-btn", key: "quick_links" },
+    { container: ".charts-grid", child: ".chart-card", key: "charts" }
+  ]
+};
+</script>
+<script src="{% static 'js/dashboard_dragdrop.js' %}"></script>
+
+<script>
+const DASH = {
+    dept_rows:      [{% for row in dept_rows      %}{ label:"{{ row.label|escapejs }}", count:{{ row.count }} },{% endfor %}],
+    trend_rows:     [{% for row in trend_rows     %}{ label:"{{ row.label|escapejs }}", count:{{ row.count }} },{% endfor %}],
+        hire_time_rows: [{% for row in hire_time_rows %}{ label:"{{ row.label|escapejs }}", days:{{ row.days }} },{% endfor %}],
+        open_positions_rows:[{% for row in open_positions_rows %}{ label:"{{ row.label|escapejs }}", count:{{ row.count }} },{% endfor %}],
+    source_rows:    [{% for row in source_rows    %}{ label:"{{ row.label|escapejs }}", count:{{ row.count }} },{% endfor %}],
+};
+
+const ACCENT  = '#55588b';
+const PALETTE = ['#55588b','#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6','#14b8a6','#ec4899','#f97316','#6366f1'];
+
+Chart.defaults.font.family = "'DM Sans', sans-serif";
+Chart.defaults.color       = '#7c7ca0';
+
+/* fallbacks so charts always render with demo data if backend sends nothing */
+const fallbacks = {
+    dept:     [{label:'Engineering',count:18},{label:'Sales',count:12},{label:'HR',count:6},{label:'Finance',count:9},{label:'Design',count:5}],
+    trend:    [{label:'Jan',count:4},{label:'Feb',count:7},{label:'Mar',count:11},{label:'Apr',count:8},{label:'May',count:15},{label:'Jun',count:10}],
+        hireTime: [{label:'Software Engineer',days:28},{label:'Marketing Lead',days:21},{label:'HR Specialist',days:14},{label:'Data Analyst',days:35},{label:'UX Designer',days:18}],
+        openPositions: [{label:'Engineering',count:6},{label:'Sales',count:3},{label:'HR',count:2},{label:'Finance',count:1},{label:'Design',count:2}],
+    source:   [{label:'LinkedIn',count:32},{label:'Referral',count:18},{label:'Indeed',count:14},{label:'Website',count:9},{label:'Other',count:5}],
+};
+
+/* 1 ── Applications by Department (Vertical Bar) */
+(function() {
+    const rows = DASH.dept_rows.length ? DASH.dept_rows : fallbacks.dept;
+    new Chart(document.getElementById('deptChart'), {
+        type: 'bar',
+        data: {
+            labels: rows.map(r => r.label),
+            datasets: [{
+                label: 'Applications',
+                data:  rows.map(r => r.count),
+                backgroundColor: 'rgba(85,88,139,0.15)',
+                borderColor: ACCENT,
+                borderWidth: 2,
+                borderRadius: 6,
+                borderSkipped: false,
+            }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: true,
+            plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ` ${ctx.parsed.y} applications` } } },
+            scales: {
+                x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+                y: { grid: { color: '#ebebf5' }, ticks: { precision: 0, font: { size: 11 } }, beginAtZero: true }
+            },
+            animation: { duration: 700 }
+        }
+    });
+})();
+
+/* 2 ── Application Status Trend (Line) */
+(function() {
+    const rows = DASH.trend_rows.length ? DASH.trend_rows : fallbacks.trend;
+    new Chart(document.getElementById('trendChart'), {
+        type: 'line',
+        data: {
+            labels: rows.map(r => r.label),
+            datasets: [{
+                label: 'Applications',
+                data:  rows.map(r => r.count),
+                borderColor: ACCENT,
+                backgroundColor: 'rgba(85,88,139,0.08)',
+                borderWidth: 2.5,
+                pointBackgroundColor: ACCENT,
+                pointRadius: 4,
+                pointHoverRadius: 6,
+                tension: 0.4,
+                fill: true,
+            }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: true,
+            plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ` ${ctx.parsed.y} applications` } } },
+            scales: {
+                x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+                y: { grid: { color: '#ebebf5' }, ticks: { precision: 0, font: { size: 11 } }, beginAtZero: true }
+            },
+            animation: { duration: 700 }
+        }
+    });
+})();
+
+/* 3 ── Open Positions by Department (Horizontal Bar) */
+(function() {
+    const rows = DASH.open_positions_rows && DASH.open_positions_rows.length ? DASH.open_positions_rows : fallbacks.openPositions;
+    const colors = rows.map((_, i) => PALETTE[i % PALETTE.length]);
+    const openCtx = document.getElementById('openPositionsChart');
+    const openPositionsChart = new Chart(openCtx, {
+        type: 'bar',
+        data: {
+            labels: rows.map(r => r.label),
+            datasets: [{
+                label: 'Open Positions',
+                data:  rows.map(r => r.count),
+                backgroundColor: colors.map(c => c + '28'),
+                borderColor: colors,
+                borderWidth: 2,
+                borderRadius: 5,
+                borderSkipped: false,
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true, maintainAspectRatio: true,
+            plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ` ${ctx.parsed.x} open` } } },
+            scales: {
+                x: { grid: { color: '#ebebf5' }, ticks: { precision: 0, font: { size: 11 } }, beginAtZero: true },
+                y: { grid: { display: false }, ticks: { font: { size: 11 } } }
+            },
+            animation: { duration: 700 }
+        }
+    });
+
+    /* Fetch live open positions data and update chart */
+    fetch('{% url "ajax_open_positions_data" %}')
+        .then(r => r.ok ? r.json() : Promise.reject(r))
+        .then(data => {
+            if (!data || !Array.isArray(data.rows)) return;
+            const newRows = data.rows;
+            if (!newRows.length) return;
+            const newColors = newRows.map((_, i) => PALETTE[i % PALETTE.length]);
+            openPositionsChart.data.labels = newRows.map(r => r.label);
+            openPositionsChart.data.datasets[0].data = newRows.map(r => r.count);
+            openPositionsChart.data.datasets[0].backgroundColor = newColors.map(c => c + '28');
+            openPositionsChart.data.datasets[0].borderColor = newColors;
+            openPositionsChart.update();
+        }).catch(() => { /* silently ignore fetch errors */ });
+})();
+
+/* 4 ── Source of Applications (Doughnut + legend) */
+(function() {
+    const rows   = DASH.source_rows.length ? DASH.source_rows : fallbacks.source;
+    const colors = rows.map((_, i) => PALETTE[i % PALETTE.length]);
+
+    new Chart(document.getElementById('sourceChart'), {
+        type: 'doughnut',
+        data: {
+            labels: rows.map(r => r.label),
+            datasets: [{
+                data: rows.map(r => r.count),
+                backgroundColor: colors,
+                borderWidth: 2, borderColor: '#fff', hoverOffset: 4,
+            }]
+        },
+        options: {
+            cutout: '68%',
+            plugins: {
+                legend: { display: false },
+                tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${ctx.parsed}` } }
+            },
+            animation: { animateRotate: true, duration: 700 }
+        }
+    });
+
+    document.getElementById('sourceLegend').innerHTML = rows.map((r, i) => `
+        <li class="legend-item">
+            <span class="legend-label"><span class="legend-dot" style="background:${colors[i]}"></span>${r.label}</span>
+            <span class="legend-count">${r.count}</span>
+        </li>`).join('');
+})();
+
+/* Active quick-link */
+document.querySelectorAll('.quick-link-btn').forEach(btn => {
+    if (btn.href === window.location.href) btn.classList.add('ql-active');
+});
+</script>
+{% endblock scripts %}

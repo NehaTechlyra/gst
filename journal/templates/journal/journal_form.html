@@ -1,0 +1,1231 @@
+{% extends 'website/index.html' %}
+{% load static %}
+{% load widget_tweaks %}
+
+{% block page_title %}{{ title }}{% endblock %}
+
+{% block exstyle %}
+<link href="{% static 'Style/general.css' %}" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<style>
+    /* Card styles */
+    .card {
+        background: white;
+        border: 1px solid #e5e7eb;
+        box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
+        border-radius: 8px;
+    }
+    
+    .card-header {
+        background: white;
+        border-bottom: 1px solid #e5e7eb;
+        padding: 1rem;
+    }
+
+    /* Unified form field styles */
+    .form-control,
+    .form-select,
+    .select2-container--default .select2-selection--single {
+        height: 38px !important;
+        padding: 0.375rem 0.75rem !important;
+        font-size: 0.875rem !important;
+        line-height: 1.5 !important;
+        border: 1px solid #e5e7eb !important;
+        border-radius: 0.25rem !important;
+        background-color: #fff !important;
+        width: 100% !important;
+        box-shadow: none !important;
+        transition: border-color 0.15s ease-in-out !important;
+    }
+
+    /* Table-specific form control styles */
+    .journal-line .form-control,
+    .journal-line .form-select,
+    .journal-line .select2-container {
+        margin: 0 !important;
+        display: block !important;
+    }
+
+    /* Right-align number inputs */
+    .journal-line input[type="number"] {
+        text-align: right !important;
+    }
+
+    /* Consistent select2 styling */
+    .journal-line .select2-container .select2-selection--single {
+        border: 1px solid #e5e7eb !important;
+        outline: none !important;
+    }
+
+    /* Make Select2 match other inputs */
+    .select2-container {
+        width: 100% !important;
+    }
+
+    .select2-container--default .select2-selection--single {
+        display: flex !important;
+        align-items: center !important;
+    }
+
+    .select2-container--default .select2-selection--single .select2-selection__rendered {
+        line-height: 1.5 !important;
+        padding-left: 0.75rem !important;
+        padding-right: 30px !important;
+        color: #333 !important;
+    }
+
+    .select2-container--default .select2-selection--single .select2-selection__arrow {
+        height: 36px !important;
+        width: 25px !important;
+    }
+
+    .select2-container--default .select2-selection--single .select2-selection__clear {
+        position: absolute !important;
+        right: 30px !important;
+        font-size: 1.2rem !important;
+        color: #dc2626 !important;
+        margin: 0 !important;
+        padding: 0 3px !important;
+        cursor: pointer !important;
+    }
+
+    /* Reset Select2 dropdown styling */
+    .select2-container--default .select2-dropdown {
+        border-color: #e5e7eb;
+    }
+
+    .select2-container--default .select2-results__option--highlighted[aria-selected] {
+        background-color: #4f46e5;
+    }
+
+    .select2-container--default .select2-search--dropdown .select2-search__field {
+        border-color: #e5e7eb;
+        padding: 0.375rem;
+    }
+
+    /* Table styles */
+    .items-table {
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 0 !important;
+    }
+    
+    .items-table td {
+        padding: 0.5rem !important;
+        vertical-align: middle !important;
+        white-space: normal !important;
+    }
+
+    /* Ensure inputs take full width in cells */
+    .items-table input,
+    .items-table select,
+    .items-table .select2-container {
+        width: 100% !important;
+    }
+    
+    .table-responsive {
+        overflow-x: hidden !important;
+    }
+
+    /* Number input specific styles */
+    input[type="number"] {
+        text-align: right !important;
+    }
+
+    .table thead th {
+        font-weight: 500;
+        color: #6b7280;
+        background-color: #f9fafb;
+        border-bottom: 1px solid #e5e7eb;
+        padding: 0.75rem;
+        text-transform: uppercase;
+        font-size: 0.875rem;
+    }
+
+    .table > :not(caption) > * > * {
+        padding: 0.75rem;
+        vertical-align: middle;
+    }
+
+    /* Row states */
+    .error-row {
+        background-color: #fee2e2;
+    }
+
+    .delete-row {
+        text-decoration: line-through;
+        opacity: 0.5;
+    }
+
+    /* Button styles */
+    .btn-check:checked + .btn-outline-primary {
+        background-color: #4f46e5;
+        border-color: #4f46e5;
+        color: white;
+    }
+
+    .btn-outline-primary {
+        border-color: #4f46e5;
+        color: #4f46e5;
+    }
+
+    .btn-outline-primary:hover {
+        background-color: #4f46e5;
+        border-color: #4f46e5;
+        color: white;
+    }
+
+    #add-line {
+        color: #4f46e5;
+        background-color: #eef2ff;
+        border: none;
+        padding: 0.5rem 1rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    #add-line:hover {
+        background-color: #e0e7ff;
+    }
+
+    /* Icons and utilities */
+    .bx-x {
+        cursor: pointer;
+        font-size: 1.25rem;
+        color: #dc2626;
+    }
+
+    .text-danger {
+        color: #dc2626 !important;
+    }
+
+    /* Form field refinements */
+    .form-group {
+        margin-bottom: 1rem;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 500;
+        color: #374151;
+    }
+
+    .form-text {
+        font-size: 0.875rem;
+        color: #6b7280;
+    }
+    
+    /* Required field asterisk styling */
+    .required-asterisk {
+        color: #dc2626 !important;
+        font-weight: normal !important;
+    }
+    
+    /* Toast animation */
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translate(-50%, -10px); }
+        to { opacity: 1; transform: translate(-50%, 0); }
+    }
+    
+    /* Validation styles */
+    .is-invalid {
+        border-color: #e74c3c !important;
+        background-color: #ffe6e6 !important;
+    }
+    
+    .is-invalid:focus {
+        outline: 1.5px solid #e74c3c !important;
+    }
+    
+    /* Required field indicator */
+    .required::after {
+        content: " *";
+        color: red;
+        font-weight: bold;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid" style="max-width: 100%; overflow-x: hidden;">
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">New Journal</h5>
+        </div>
+        <div class="card-body">
+            <form method="post" id="journalForm" novalidate>
+                {% csrf_token %}
+                
+                <div class="row mb-3">
+                    <div class="col-md-3">
+                        <label for="{{ form.date.id_for_label }}" class="form-label required">Date</label>
+                        {{ form.date|add_class:"form-control" }}
+                        {% for error in form.date.errors %}
+                            <div class="text-danger small">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                    {% comment %} <div class="col-md-3">
+                        <label class="form-label">Journal#</label>
+                        <input type="text" class="form-control" value="1" readonly>
+                    </div> {% endcomment %}
+                    <div class="col-md-3">
+                        <label for="{{ form.reference.id_for_label }}" class="form-label">Reference#</label>
+                        {{ form.reference|add_class:"form-control" }}
+                        {% for error in form.reference.errors %}
+                            <div class="text-danger small">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                {% comment %} </div> {% endcomment %}
+
+                {% comment %} <div class="row mb-3"> {% endcomment %}
+                    <div class="col-5 rw">
+                        <label for="{{ form.narration.id_for_label }}" class="form-label">Narration</label>
+                        {{ form.narration|add_class:"form-control"|attr:"rows:4" }}
+                        {% for error in form.narration.errors %}
+                            <div class="text-danger small">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+
+                <!-- Notes field removed per UI request -->
+
+                <!-- Reporting Method and Currency removed per UI request -->
+
+                {{ formset.management_form }}
+                <div class="table-responsive">
+                    <table class="items-table table" id="journal-lines">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 30%" class="required">ACCOUNT</th>
+                                <th style="width: 45%" class="required">DESCRIPTION</th>
+                                <th style="width: 15%" class="required">DEBITS</th>
+                                <th style="width: 15%" class="required">CREDITS</th>
+                                <th style="width: 5%"></th>
+                            </tr>
+                        </thead>
+                                <tbody>
+                                    {% for form in formset.forms %}
+                                    <tr class="journal-line {% if form.errors %}error-row{% endif %} {% if form.DELETE.value %}delete-row{% endif %}">
+                                        <td>
+                                            {{ form.id }}
+                                            {{ form.account|add_class:"form-select" }}
+                                            {% for error in form.account.errors %}
+                                                <div class="text-danger small">{{ error }}</div>
+                                            {% endfor %}
+                                        </td>
+                                        <td>
+                                            {{ form.description|add_class:"form-control" }}
+                                            {% for error in form.description.errors %}
+                                                <div class="text-danger small">{{ error }}</div>
+                                            {% endfor %}
+                                        </td>
+                                        <td>
+                                            {{ form.debit|add_class:"form-control" }}
+                                            {% for error in form.debit.errors %}
+                                                <div class="text-danger small">{{ error }}</div>
+                                            {% endfor %}
+                                        </td>
+                                        <td>
+                                            {{ form.credit|add_class:"form-control" }}
+                                            {% for error in form.credit.errors %}
+                                                <div class="text-danger small">{{ error }}</div>
+                                            {% endfor %}
+                                        </td>
+                                        <td class="text-center">
+                                            <i class="bx bx-x delete-line"></i>
+                                            {{ form.DELETE.as_hidden }}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                        <tfoot>
+                            <tr>
+                                <td colspan="5">
+                                    <button type="button" class="btn btn-light" id="add-line">
+                                        <i class="bx bx-plus"></i> Add New Row
+                                    </button>
+                                </td>
+                            </tr>
+                            <tr class="table-light">
+                                <td colspan="2" class="text-end"><strong>Sub Total</strong></td>
+                                <td id="subtotal-debit" class="fw-bold">0.00</td>
+                                <td id="subtotal-credit" class="fw-bold">0.00</td>
+                                <td></td>
+                            </tr>
+                            <tr class="table-light">
+                                <td colspan="2" class="text-end"><strong>Total (₹)</strong></td>
+                                <td id="total-debit" class="fw-bold">0.00</td>
+                                <td id="total-credit" class="fw-bold">0.00</td>
+                                <td></td>
+                            </tr>
+                            <tr>
+                                <td colspan="2" class="text-end">Difference</td>
+                                <td colspan="2" class="text-danger" id="difference">0.00</td>
+                                <td></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <button type="submit" class="btn btn-primary" name="action" value="post">
+                            Save and Publish
+                        </button>
+                        <a href="{% url 'journal_list' %}" class="btn btn-light" id="cancel-button">Cancel</a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+    <!-- Add Account Modal -->
+    <div class="modal fade" id="addAccountModal" tabindex="-1" aria-labelledby="addAccountLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addAccountLabel">Add New Account</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form id="addAccountForm">
+                    <div class="modal-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <label class="form-label required">Name</label>
+                                <input type="text" name="name" id="modal-account-name" class="form-control" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label required">Account Type</label>
+                                <select id="modal-account-type" name="type" class="form-select">
+                                    <option value="">Select Account Type</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row mt-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Parent</label>
+                                <select id="modal-parent" name="parent" class="form-select">
+                                    <option value="">Select or search parent</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Account Code (optional)</label>
+                                <input type="text" name="search_code" id="modal-search-code" class="form-control">
+                            </div>
+                        </div>
+                        <div class="row mt-3">
+                            <div class="col-12">
+                                <label class="form-label">Description</label>
+                                <textarea name="description" id="modal-description" class="form-control" rows="3"></textarea>
+                            </div>
+                        </div>
+                        <div class="row mt-3">
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="modal-is-header" name="is_header">
+                                    <label class="form-check-label" for="modal-is-header">Is header</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="modal-active" name="active" checked>
+                                    <label class="form-check-label" for="modal-active">Active</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary" id="modal-save-account">Save Account</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script>
+$(document).ready(function() {
+    // Initialize Select2 for dropdowns
+    function initSelect2() {
+        // Destroy any existing select2 instances first
+        $('select[name*="-account"]').each(function() {
+            if ($(this).hasClass('select2-hidden-accessible')) {
+                $(this).select2('destroy');
+            }
+        });
+
+        // Initialize account selects with enhanced search
+        $('select[name*="-account"]').each(function() {
+            $(this).select2({
+                width: '100%',
+                minimumResultsForSearch: 0,
+                placeholder: $(this).data('placeholder') || "Search Account...",
+                allowClear: true,
+                dropdownParent: $(this).closest('.journal-line'),
+                templateResult: function(data) {
+                    if (!data.element) return data.text;
+
+                    // If inside an optgroup, indent display to improve readability
+                    if (data.element.parentElement && data.element.parentElement.tagName === 'OPTGROUP') {
+                        return $('<span style="padding-left: 10px;">' + data.text + '</span>');
+                    }
+                    return data.text;
+                }
+            }).on('select2:open', function() {
+                var self = this;
+                // remember which select opened so "create" can target it
+                window.activeAccountSelect = $(this);
+
+                setTimeout(function() {
+                    // style optgroup headers
+                    var $dropdown = $(self).data('select2').$dropdown || $('.select2-dropdown');
+                    $dropdown.find('.select2-results__group').css({
+                        'font-weight': 'bold',
+                        'color': '#4b5563',
+                        'padding': '6px 12px',
+                        'background': '#f9fafb',
+                        'border-bottom': '1px solid #e5e7eb'
+                    });
+
+                    // prepend a selectable "+ New Account" item at the top of the results
+                    var $results = $dropdown.find('.select2-results__options');
+                    // Only add a single global "+ New Account" item to avoid duplicates
+                    if ($results.length && $('.select2-add-item').length === 0) {
+                        var $addItem = $("<li class='select2-results__option select2-add-item' role='treeitem' aria-selected='false' data-select2-id='add-item'>+ New Account</li>");
+                        // Prefer inserting above the 'Asset' group if present, otherwise prepend
+                        var $assetGroup = $dropdown.find('.select2-results__group').filter(function() {
+                            var txt = $(this).text().trim().toLowerCase();
+                            return txt === 'asset' || txt === 'assets';
+                        }).first();
+
+                        if ($assetGroup.length) {
+                            $assetGroup.before($addItem);
+                        } else {
+                            $results.prepend($addItem);
+                        }
+                    }
+                }, 0);
+            });
+        });
+        
+        // No contact selects on this page — only account selects are initialized
+
+        // Fix focus issues
+        $(document).on('select2:open', () => {
+            document.querySelector('.select2-container--open .select2-search__field').focus();
+        });
+    }
+
+    // Clear default zeros from inputs
+    function clearZeroValues() {
+        $('#journal-lines tbody tr').each(function() {
+            var $row = $(this);
+            var inputs = [
+                $row.find('input[name*="-debit"]'),
+                $row.find('input[name*="-credit"]'),
+                $row.find('input[name*="-description"]')
+            ];
+
+            inputs.forEach(function($input) {
+                if ($input.length) {
+                    var val = $input.val();
+                    if (val === '0' || val === '0.00') {
+                        $input.val('');
+                    }
+                }
+            });
+        });
+    }
+
+    // Calculate totals
+    function calculateTotals() {
+        var totals = {debit: 0, credit: 0};
+        
+        $('.journal-line:visible').each(function() {
+            if ($(this).find('input[name$="-DELETE"]').val() !== 'on') {
+                totals.debit += parseFloat($(this).find('input[name*="-debit"]').val()) || 0;
+                totals.credit += parseFloat($(this).find('input[name*="-credit"]').val()) || 0;
+            }
+        });
+        
+        // Update displays
+        $('#subtotal-debit, #total-debit').text(totals.debit.toFixed(2));
+        $('#subtotal-credit, #total-credit').text(totals.credit.toFixed(2));
+        
+        var difference = Math.abs(totals.debit - totals.credit);
+        $('#difference')
+            .text(difference.toFixed(2))
+            .toggleClass('text-danger', difference > 0);
+    }
+
+    // Add new row
+    $('#add-line').click(function() {
+        var formCount = parseInt($('#id_lines-TOTAL_FORMS').val());
+        
+        var newRow = `
+            <tr class="journal-line">
+                <td>
+                    <select name="lines-${formCount}-account" id="id_lines-${formCount}-account" 
+                            class="form-select select2" data-placeholder="Search Account..." required>
+                        <option value=""></option>
+                    </select>
+                </td>
+                <td>
+                    <input type="text" name="lines-${formCount}-description" 
+                           id="id_lines-${formCount}-description" class="form-control" required>
+                </td>
+                <td>
+                    <input type="number" name="lines-${formCount}-debit" 
+                           id="id_lines-${formCount}-debit" class="form-control text-end" 
+                           step="0.01" min="0" required>
+                </td>
+                <td>
+                    <input type="number" name="lines-${formCount}-credit" 
+                           id="id_lines-${formCount}-credit" class="form-control text-end" 
+                           step="0.01" min="0" required>
+                </td>
+                <td class="text-center">
+                    <i class="bx bx-x delete-line"></i>
+                    <input type="hidden" name="lines-${formCount}-DELETE" 
+                           id="id_lines-${formCount}-DELETE">
+                </td>
+            </tr>
+        `;
+        
+        // Update form count and append row
+        $('#id_lines-TOTAL_FORMS').val(formCount + 1);
+        $('#journal-lines tbody').append(newRow);
+        
+        // Copy account options from first row
+        var $newRow = $('#journal-lines tbody tr:last');
+        var firstSelect = $('#journal-lines tbody tr:first select[name*="-account"]');
+        var newSelect = $newRow.find('select[name*="-account"]');
+        
+        // Clone optgroups and their options
+        if (firstSelect.length) {
+            newSelect.html(firstSelect.html());  // Copy complete HTML including optgroups
+        } else {
+            // Fall back to the first select on the page as template
+            var templateSelect = $('select[name*="-account"]').first();
+            if (templateSelect.length) {
+                newSelect.html(templateSelect.html());
+            }
+        }
+
+        // Initialize new row's dropdowns and ensure empty values
+        setTimeout(function() {
+            initSelect2();
+            clearZeroValues();
+        }, 100);
+    });
+
+    // Delete row
+    $(document).on('click', '.delete-line', function() {
+        var $row = $(this).closest('tr');
+        var formCount = parseInt($('#id_lines-TOTAL_FORMS').val());
+        
+        if ($row.find('input[name$="-id"]').val() === '') {
+            $row.remove();
+            $('#id_lines-TOTAL_FORMS').val(formCount - 1);
+        } else {
+            $row.find('input[name$="-DELETE"]').val('on');
+            $row.addClass('delete-row');
+            $row.hide();
+        }
+        calculateTotals();
+    });
+
+    // Update totals on input
+    $(document).on('input', 'input[name*="-debit"], input[name*="-credit"]', calculateTotals);
+    $(document).on('change', 'input[name$="-DELETE"]', calculateTotals);
+
+    // by adarshAuto-fill second row description when first row description is typed
+    $(document).on('input', 'input[name*="-description"]', function() {
+        const $row = $(this).closest('tr');
+        const $rows = $('.journal-line');
+        const rowIndex = $rows.index($row);
+        
+        // If this is the first data row (index 0), fill the second row
+        if (rowIndex === 0) {
+            const description = $(this).val();
+            const $nextRow = $rows.eq(rowIndex + 1);
+            if ($nextRow.length) {
+                $nextRow.find('input[name*="-description"]').val(description);
+            }
+        }
+    }); //byadarsh
+
+    // by adarsh Auto-fill opposite amount in next row when debit or credit is entered in ROW 1 ONLY
+    // BUT ONLY if there are exactly 2 rows (before adding third row)
+    $(document).on('input', 'input[name*="-debit"], input[name*="-credit"]', function() {
+        const $row = $(this).closest('tr');
+        const $rows = $('.journal-line');
+        const rowIndex = $rows.index($row);
+        const totalRows = $rows.length;
+        
+        // ONLY sync from Row 1 (index 0) to Row 2 (index 1) if there are exactly 2 rows
+        // Once a 3rd row is added, disable the auto-sync
+        if (rowIndex === 0 && totalRows === 2) {
+            const $nextRow = $rows.eq(1);
+            if ($nextRow.length) {
+                const amount = $(this).val();
+                const fieldName = $(this).attr('name');
+                
+                // If debit is entered, fill credit in next row and vice versa
+                if (fieldName.includes('-debit')) {
+                    $nextRow.find('input[name*="-credit"]').val(amount);
+                    // Clear debit in next row
+                    $nextRow.find('input[name*="-debit"]').val('');
+                } else if (fieldName.includes('-credit')) {
+                    $nextRow.find('input[name*="-debit"]').val(amount);
+                    // Clear credit in next row
+                    $nextRow.find('input[name*="-credit"]').val('');
+                }
+            }
+        }
+        // Once 3+ rows exist, no auto-sync happens - all rows are manual
+        calculateTotals();
+    }); // by adarsh
+
+    // Form validation
+    $('#journalForm').on('submit', function(e) {
+        // Reset validation styles
+        $('.is-invalid').removeClass('is-invalid');
+        
+        // Validate required fields
+        let isValid = true;
+        
+        // Validate date field
+        const $dateField = $('#id_date');
+        if (!$dateField.val()) {
+            $dateField.addClass('is-invalid');
+            isValid = false;
+        }
+        
+        // Narration is optional — no client-side required validation
+        
+        // Validate each journal line
+        $('.journal-line:visible').each(function() {
+            const $row = $(this);
+            
+            // Validate account field
+            const $accountField = $row.find('select[name*="-account"]');
+            if (!$accountField.val()) {
+                $accountField.addClass('is-invalid');
+                $accountField.next('.select2-container').addClass('is-invalid');
+                isValid = false;
+            }
+            
+            // Validate description field
+            const $descriptionField = $row.find('input[name*="-description"]');
+            if (!$descriptionField.val()) {
+                $descriptionField.addClass('is-invalid');
+                isValid = false;
+            }
+            
+            // Validate debit field
+            const $debitField = $row.find('input[name*="-debit"]');
+            if (!$debitField.val() && !$row.find('input[name*="-credit"]').val()) {
+                // Either debit or credit must have a value
+                if (!$debitField.val()) {
+                    $debitField.addClass('is-invalid');
+                    isValid = false;
+                }
+            }
+            
+            // Validate credit field
+            const $creditField = $row.find('input[name*="-credit"]');
+            if (!$creditField.val() && !$row.find('input[name*="-debit"]').val()) {
+                // Either debit or credit must have a value
+                if (!$creditField.val()) {
+                    $creditField.addClass('is-invalid');
+                    isValid = false;
+                }
+            }
+        });
+        
+        if (!isValid) {
+            e.preventDefault();
+            showToast('Please fill all required fields marked with *', 'warning');
+            return false;
+        }
+        
+        // Ensure any empty numeric fields are submitted as 0 so model validation passes
+        $('input[name*="-debit"], input[name*="-credit"]').each(function() {
+            if ($(this).val() === '' || $(this).val() == null) {
+                $(this).val('0');
+            }
+        });
+
+        var totalDebit = parseFloat($('#total-debit').text());
+        var totalCredit = parseFloat($('#total-credit').text());
+        
+        if (totalDebit !== totalCredit) {
+            e.preventDefault();
+            showToast('Total debits must equal total credits', 'warning');
+            return false;
+        }
+        
+        var validLines = $('.journal-line').filter(function() {
+            if ($(this).find('input[name$="-DELETE"]').val() === 'on') return false;
+            var debit = parseFloat($(this).find('input[name*="-debit"]').val()) || 0;
+            var credit = parseFloat($(this).find('input[name*="-credit"]').val()) || 0;
+            return debit > 0 || credit > 0;
+        }).length;
+        
+        if (validLines < 2) {
+            e.preventDefault();
+            showToast('At least two valid journal lines are required', 'warning');
+            return false;
+        }
+    });
+
+    // Check if this is an edit form (has existing rows with IDs)
+    function isEditForm() {
+        return $('input[name$="-id"]').filter(function() {
+            return $(this).val() !== '';
+        }).length > 0;
+    }
+
+    // Initialize everything
+    initSelect2();
+    clearZeroValues();
+    calculateTotals();
+    
+    // Hide any rows that are already marked for deletion on page load
+    $('.delete-row').hide();
+
+    // If this is an edit form, remove any empty rows that might have been added
+    if (isEditForm()) {
+        $('.journal-line').each(function() {
+            var $row = $(this);
+            var hasId = $row.find('input[name$="-id"]').val() !== '';
+            var debit = parseFloat($row.find('input[name*="-debit"]').val()) || 0;
+            var credit = parseFloat($row.find('input[name*="-credit"]').val()) || 0;
+            var account = $row.find('select[name*="-account"]').val();
+            
+            // Remove row if it's empty and has no ID (not an existing record)
+            if (!hasId && !debit && !credit && !account) {
+                $row.remove();
+            }
+        });
+        // Update form count
+        var visibleRows = $('.journal-line:visible').length;
+        $('#id_lines-TOTAL_FORMS').val(visibleRows);
+    }
+});
+
+// Toast helper function for warnings (uses alert-warning style from general.css)
+function showToast(msg, type) {
+    // Remove any existing toast
+    $('#journal-toast').remove();
+    
+    // Create toast element
+    var toastClass = 'alert-warning';
+    var bgColor = '#fff3cd';
+    var borderColor = '#ffeeba';
+    var textColor = '#856404';
+    
+    if (type === 'error') {
+        toastClass = 'alert-danger';
+        bgColor = '#f8d7da';
+        borderColor = '#f5c6cb';
+        textColor = '#721c24';
+    } else if (type === 'success') {
+        toastClass = 'alert-success';
+        bgColor = '#d4edda';
+        borderColor = '#c3e6cb';
+        textColor = '#155724';
+    } else if (type === 'info') {
+        toastClass = 'alert-info';
+        bgColor = '#d1ecf1';
+        borderColor = '#bee5eb';
+        textColor = '#0c5460';
+    }
+    
+    var toastHtml = `
+        <div id="journal-toast" class="alert ${toastClass}" style="
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translate(-50%, 0);
+            z-index: 9999;
+            min-width: 300px;
+            max-width: 500px;
+            padding: 15px;
+            border-radius: 6px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            background-color: ${bgColor};
+            border: 1px solid ${borderColor};
+            color: ${textColor};
+            font-size: 14px;
+            font-weight: 500;
+            animation: fadeIn 0.3s ease-out;
+            text-align: center;
+            margin: 0;
+        ">
+            ${msg}
+        </div>
+    `;
+    
+    // Add toast to body
+    $('body').append(toastHtml);
+    
+    // Auto remove after 5 seconds (increased from 3 seconds)
+    setTimeout(function() {
+        $('#journal-toast').fadeOut(300, function() {
+            $(this).remove();
+        });
+    }, 5000);
+}
+
+// Confirmation dialog for cancel button
+document.addEventListener('DOMContentLoaded', function() {
+    const cancelButton = document.getElementById('cancel-button');
+    
+    if (cancelButton) {
+        cancelButton.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            // Create the confirmation modal
+            const modalHtml = `
+                <div class="modal fade" id="cancelConfirmationModal" tabindex="-1" role="dialog" aria-labelledby="cancelConfirmationLabel" aria-hidden="true">
+                    <div class="modal-dialog" role="document">
+                        <div class="modal-content">
+                    <div class="modal-header">
+                                <h5 class="modal-title" id="cancelConfirmationLabel">Confirm Navigation</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <p>Are you sure you want to go back? All unsaved data will be lost.</p>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                <button type="button" class="btn btn-primary" id="confirm-cancel">OK</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Add modal to body
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+            
+            // Show the modal
+            const modal = new bootstrap.Modal(document.getElementById('cancelConfirmationModal'));
+            modal.show();
+            
+            // Handle the confirmation
+            document.getElementById('confirm-cancel').addEventListener('click', function() {
+                window.location.href = '{% url 'journal_list' %}';
+            });
+            
+            // Clean up modal when it's hidden
+            document.getElementById('cancelConfirmationModal').addEventListener('hidden.bs.modal', function () {
+                document.getElementById('cancelConfirmationModal').remove();
+            });
+        });
+    }
+});
+
+// Track form changes - Global variable
+let formChanged = false;
+const journalForm = document.querySelector('form');
+
+if (journalForm) {
+    // Track all form input changes
+    journalForm.addEventListener('change', function(e) {
+        formChanged = true;
+        console.log('Form changed via change event');
+    });
+    
+    journalForm.addEventListener('input', function(e) {
+        formChanged = true;
+        console.log('Form changed via input event');
+    });
+}
+
+// Track Select2 changes using jQuery delegation (works regardless of initialization timing)
+if (window.$ && window.jQuery) {
+    $(document).on('change', 'select.select2, .select2-hidden-accessible', function() {
+        formChanged = true;
+        console.log('Form changed via Select2 change event (delegation)');
+    });
+}
+
+// Direct select element change listeners as fallback
+document.addEventListener('change', function(e) {
+    if (e.target.tagName === 'SELECT') {
+        formChanged = true;
+        console.log('Form changed via direct select change event');
+    }
+}, true);
+
+// Utility: get CSRF token from cookie
+function getCookie(name) {
+    var cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        var cookies = document.cookie.split(';');
+        for (var i = 0; i < cookies.length; i++) {
+            var cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// Track which account select the user last focused (so modal can return value to it)
+$(document).on('focus', 'select[name*="-account"]', function() {
+    window.activeAccountSelect = $(this);
+});
+
+// Open modal from +New button; ensure we have an active select
+$('#open-add-account-modal').on('click', function() {
+    if (!window.activeAccountSelect || !window.activeAccountSelect.length) {
+        window.activeAccountSelect = $('select[name*="-account"]').first();
+    }
+    // Clear modal fields
+    $('#addAccountForm')[0].reset();
+    $('#modal-parent').html('<option value="">Select or search parent</option>');
+    // Load account types
+    loadAccountTypes();
+    var modal = new bootstrap.Modal(document.getElementById('addAccountModal'));
+    modal.show();
+});
+
+function loadAccountTypes() {
+    $.get("{% url 'get_account_types' %}", function(resp) {
+        var types = resp.types || [];
+        var $type = $('#modal-account-type');
+        $type.empty();
+        $type.append($('<option>').val('').text('Select Account Type'));
+        types.forEach(function(t) {
+            $type.append($('<option>').val(t.code).text(t.name));
+        });
+    });
+}
+
+// When account type changes, load potential parents
+$('#modal-account-type').on('change', function() {
+    var code = $(this).val();
+    var $parent = $('#modal-parent');
+    $parent.html('<option value="">Loading...</option>');
+    if (!code) {
+        $parent.html('<option value="">Select or search parent</option>');
+        return;
+    }
+    $.get("{% url 'get_parents_for_type' %}", {type_code: code}, function(resp) {
+        var parents = resp.parents || [];
+        $parent.empty();
+        $parent.append($('<option>').val('').text('Select or search parent'));
+        parents.forEach(function(p) {
+            $parent.append($('<option>').val(p.id).text(p.name));
+        });
+    });
+});
+
+// Submit modal form via AJAX and insert created account into selects
+$('#addAccountForm').on('submit', function(e) {
+    e.preventDefault();
+    var data = {
+        name: $('#modal-account-name').val(),
+        type: $('#modal-account-type').val(),
+        parent: $('#modal-parent').val(),
+        description: $('#modal-description').val(),
+        search_code: $('#modal-search-code').val(),
+        is_header: $('#modal-is-header').is(':checked') ? 1 : 0,
+        active: $('#modal-active').is(':checked') ? 1 : 0
+    };
+
+    $.ajax({
+        url: "{% url 'ajax-create-account' %}",
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCookie('csrftoken') },
+        data: data,
+        success: function(resp) {
+            if (resp.success) {
+                var newId = resp.id;
+                var newName = resp.name;
+                // Add option to every account select so future rows see it
+                $('select[name*="-account"]').each(function() {
+                    if ($(this).find('option[value="' + newId + '"]').length === 0) {
+                        var newOption = new Option(newName, newId, false, false);
+                        $(this).append(newOption);
+                    }
+                });
+
+                // Select it in the active select
+                if (window.activeAccountSelect && window.activeAccountSelect.length) {
+                    var $sel = window.activeAccountSelect;
+                    var newOption = new Option(newName, newId, true, true);
+                    $sel.append(newOption).val(newId).trigger('change');
+                }
+
+                var modalEl = document.getElementById('addAccountModal');
+                var modal = bootstrap.Modal.getInstance(modalEl);
+                if (modal) modal.hide();
+                showToast('Account created successfully', 'success');
+            } else {
+                showToast(resp.error || 'Failed to create account', 'error');
+            }
+        },
+        error: function(xhr) {
+            var err = 'Error creating account';
+            if (xhr.responseJSON && xhr.responseJSON.error) err = xhr.responseJSON.error;
+            showToast(err, 'error');
+        }
+    });
+});
+
+// Handle click on the "+ New Account" button injected into Select2 dropdown
+$(document).on('click', '.select2-add-account', function(e) {
+    e.preventDefault();
+    // Close any open select2 dropdown
+    if (window.activeAccountSelect && window.activeAccountSelect.length) {
+        try { window.activeAccountSelect.select2('close'); } catch (err) {}
+    }
+    // Ensure modal fields are reset and types loaded
+    $('#addAccountForm')[0].reset();
+    $('#modal-parent').html('<option value="">Select or search parent</option>');
+    loadAccountTypes();
+    var modal = new bootstrap.Modal(document.getElementById('addAccountModal'));
+    modal.show();
+});
+
+// Handle click on the "+ New Account" list item injected into Select2 results
+$(document).on('click', '.select2-add-item', function(e) {
+    e.preventDefault();
+    if (window.activeAccountSelect && window.activeAccountSelect.length) {
+        try { window.activeAccountSelect.select2('close'); } catch (err) {}
+    }
+    $('#addAccountForm')[0].reset();
+    $('#modal-parent').html('<option value="">Select or search parent</option>');
+    loadAccountTypes();
+    var modal = new bootstrap.Modal(document.getElementById('addAccountModal'));
+    modal.show();
+});
+
+// Allow activation via Enter key when the add-item is focused (keyboard accessible)
+$(document).on('keydown', '.select2-add-item', function(e) {
+    if (e.key === 'Enter' || e.keyCode === 13) {
+        e.preventDefault();
+        $(this).trigger('click');
+    }
+});
+
+// Global click interceptor for all links - Outside of form check
+document.addEventListener('click', function(e) {
+    // Check if clicked element is a link
+    let link = e.target.closest('a');
+    
+    console.log('Link clicked:', link ? link.href : 'not a link');
+    
+    if (link && formChanged) {
+        // Get the href
+        const href = link.getAttribute('href');
+        
+        console.log('Checking href:', href, 'formChanged:', formChanged);
+        
+        // Check if it's a navigation link (not modal, not anchor, not javascript)
+        if (href && !href.startsWith('#') && !link.getAttribute('data-bs-toggle') && !href.startsWith('javascript:')) {
+            console.log('Preventing navigation to:', href);
+            e.preventDefault();
+            e.stopPropagation();
+            
+            // Show confirmation modal
+            const navModalHtml = `
+                <div class="modal fade" id="navConfirmationModal" tabindex="-1" role="dialog" aria-labelledby="navConfirmationLabel" aria-hidden="true">
+                    <div class="modal-dialog" role="document">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="navConfirmationLabel">Confirm Navigation</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <p>Are you sure you want to leave this page? All unsaved data will be lost.</p>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                <button type="button" class="btn btn-primary" id="confirm-nav">OK</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Remove any existing modal
+            const existingModal = document.getElementById('navConfirmationModal');
+            if (existingModal) existingModal.remove();
+            
+            // Add new modal to body
+            document.body.insertAdjacentHTML('beforeend', navModalHtml);
+            
+            // Show the modal
+            const navModal = new bootstrap.Modal(document.getElementById('navConfirmationModal'));
+            navModal.show();
+            
+            // Store the target URL
+            const targetUrl = href;
+            
+            // Handle the confirmation
+            document.getElementById('confirm-nav').addEventListener('click', function() {
+                formChanged = false; // Reset to allow navigation
+                window.location.href = targetUrl;
+            });
+            
+            // Clean up modal when it's hidden
+            document.getElementById('navConfirmationModal').addEventListener('hidden.bs.modal', function () {
+                document.getElementById('navConfirmationModal').remove();
+            });
+        }
+    }
+}, true); // Use capture phase for better event handling
+
+// Show error modal if there's an error message
+document.addEventListener('DOMContentLoaded', function() {
+  const showErrorModal = {{ show_error_modal|lower|default:"false" }};
+  const errorMessage = `{{ error_message|escapejs }}`;
+  
+  if (showErrorModal && errorMessage) {
+    const errorModal = document.getElementById('errorModal');
+    if (errorModal) {
+      const errorBodyElement = document.getElementById('errorModalBody');
+      errorBodyElement.innerHTML = errorMessage.replace(/\n/g, '<br>');
+      const modal = new bootstrap.Modal(errorModal);
+      modal.show();
+    }
+  }
+});
+</script>
+
+<!-- ERROR MODAL FOR PERIOD LOCK AND OTHER ERRORS -->
+<div class="modal fade" id="errorModal" tabindex="-1" aria-labelledby="errorModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="border: 2px solid #d9534f; border-radius: 8px;">
+      <div class="modal-header" style="background-color: #f8d7da; border-bottom: 2px solid #d9534f;">
+        <h5 class="modal-title" id="errorModalLabel" style="color: #721c24;">
+          <i class="bi bi-exclamation-circle" style="color: #d9534f;"></i> Error
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="errorModalBody" style="color: #721c24; padding: 20px; line-height: 1.6;">
+        <!-- Error message will be inserted here -->
+      </div>
+      <div class="modal-footer" style="border-top: 1px solid #dee2e6;">
+        <button type="button" class="btn btn-primary" data-bs-dismiss="modal">OK</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

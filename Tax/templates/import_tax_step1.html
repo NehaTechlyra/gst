@@ -1,0 +1,409 @@
+{% extends "website/index.html" %}
+{% block page_title %}Import Taxes{% endblock page_title %}
+{% block content %}
+{% load dict_filters %}
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap');
+
+:root {
+  --ink: #0f0f0f;
+  --ink2: #3a3a3a;
+  --muted: #888;
+  --border: #e2e2e2;
+  --bg: #f7f6f3;
+  --white: #ffffff;
+  --accent: #1a56db;
+  --accent-light: #e8effc;
+  --danger: #dc2626;
+  --danger-bg: #fff5f5;
+  --success: #16a34a;
+  --mono: 'DM Mono', monospace;
+  --sans: 'DM Sans', sans-serif;
+}
+
+.imp-shell {
+  margin: 40px auto 80px;
+  font-family: var(--sans);
+  color: var(--ink);
+  padding: 0 16px;
+}
+
+/* Header */
+.imp-header { margin-bottom: 36px; }
+.imp-breadcrumb {
+  font-size: 12px;
+  color: var(--muted);
+  font-family: var(--mono);
+  letter-spacing: .04em;
+  margin-bottom: 10px;
+}
+.imp-breadcrumb a { color: var(--accent); text-decoration: none; }
+.imp-breadcrumb a:hover { text-decoration: underline; }
+.imp-title {
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: -.02em;
+  color: var(--ink);
+  margin: 0 0 4px;
+}
+.imp-subtitle {
+  font-size: 14px;
+  color: var(--muted);
+  font-weight: 300;
+}
+
+/* Progress strip */
+.imp-steps {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin-bottom: 36px;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0;
+  overflow: hidden;
+}
+.imp-step {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 20px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+  border-right: 1px solid var(--border);
+  transition: background .2s;
+}
+.imp-step:last-child { border-right: none; }
+.imp-step.active { background: var(--accent); color: #fff; }
+.imp-step.done { color: var(--success); background: #f0fdf4; }
+.step-n {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700;
+  background: rgba(0,0,0,.08);
+  flex-shrink: 0;
+}
+.imp-step.active .step-n { background: rgba(255,255,255,.25); color: #fff; }
+.imp-step.done .step-n { background: #dcfce7; color: var(--success); }
+
+/* Alerts */
+.imp-alert {
+  background: var(--danger-bg);
+  border-left: 3px solid var(--danger);
+  border-radius: 6px;
+  padding: 12px 16px;
+  font-size: 13px;
+  color: var(--danger);
+  margin-bottom: 20px;
+}
+
+/* Drop zone */
+.dz-outer {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 48px 32px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color .2s, background .2s, transform .15s;
+  margin-bottom: 20px;
+  position: relative;
+}
+.dz-outer:hover { border-color: var(--accent); }
+.dz-outer.drag-active {
+  border-color: var(--accent);
+  background: var(--accent-light);
+  transform: scale(1.005);
+}
+.dz-icon {
+  width: 56px; height: 56px;
+  background: var(--bg);
+  border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 18px;
+  color: var(--ink2);
+}
+.dz-main-text {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 16px;
+}
+.dz-or {
+  font-size: 12px;
+  color: var(--muted);
+  font-family: var(--mono);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  margin-bottom: 14px;
+}
+.btn-pick {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: var(--ink);
+  color: #fff;
+  border: none;
+  border-radius: 7px;
+  padding: 10px 22px;
+  font-size: 13.5px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: var(--sans);
+  transition: background .15s, transform .1s;
+}
+.btn-pick:hover { background: #333; }
+.btn-pick:active { transform: scale(.97); }
+.dz-meta {
+  font-size: 11.5px;
+  color: var(--muted);
+  margin-top: 16px;
+  font-family: var(--mono);
+}
+.dz-chosen {
+  display: none;
+  margin-top: 14px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--accent);
+  background: var(--accent-light);
+  border-radius: 6px;
+  padding: 10px 16px;
+}
+.dz-chosen.visible { display: flex; }
+.dz-chosen svg { flex-shrink: 0; }
+
+/* Cards */
+.imp-card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 22px 24px;
+  margin-bottom: 16px;
+}
+.imp-card-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink2);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  margin-bottom: 16px;
+  font-family: var(--mono);
+}
+
+/* Radio rows */
+.radio-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  border: 1.5px solid transparent;
+  transition: border-color .15s, background .15s;
+  margin-bottom: 8px;
+}
+.radio-row:hover { background: var(--bg); }
+.radio-row.selected { border-color: var(--accent); background: var(--accent-light); }
+.radio-row input[type=radio] { margin-top: 3px; accent-color: var(--accent); flex-shrink: 0; }
+.radio-label { font-size: 14px; font-weight: 600; color: var(--ink); }
+.radio-desc  { font-size: 12.5px; color: var(--muted); margin-top: 2px; line-height: 1.5; }
+
+/* Sample link */
+.sample-note {
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 20px;
+}
+.sample-note a {
+  color: var(--accent);
+  font-weight: 500;
+  text-decoration: none;
+}
+.sample-note a:hover { text-decoration: underline; }
+
+/* Tips */
+.tips-block {
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 10px;
+  padding: 16px 20px;
+  margin-bottom: 24px;
+}
+.tips-block-title {
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 10px;
+  color: #92400e;
+}
+.tips-block ul { margin: 0; padding-left: 18px; }
+.tips-block li { font-size: 12.5px; color: #78350f; margin-bottom: 4px; line-height: 1.5; }
+
+/* Bottom bar */
+.imp-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 8px;
+}
+.btn-next {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--accent);
+  color: #fff; border: none; border-radius: 8px;
+  padding: 11px 28px; font-size: 14px; font-weight: 600;
+  cursor: pointer; font-family: var(--sans);
+  transition: background .15s, transform .1s;
+}
+.btn-next:hover { background: #1648c4; }
+.btn-next:active { transform: scale(.97); }
+.btn-cancel {
+  font-size: 13.5px; color: var(--muted); text-decoration: none;
+  padding: 8px 12px; border-radius: 6px;
+  transition: color .15s, background .15s;
+}
+.btn-cancel:hover { color: var(--ink); background: var(--bg); }
+</style>
+
+<div class="imp-shell">
+
+  <div class="imp-header">
+    <div class="imp-breadcrumb">
+      <a href="{% url 'tax_list' company_code=company_code %}">Taxes</a> / Import
+    </div>
+    <p class="imp-subtitle">Upload a CSV or Excel file to bulk-create or update taxes</p>
+  </div>
+
+  <div class="imp-steps">
+    <div class="imp-step active">
+      <div class="step-n">1</div> Upload File
+    </div>
+    <div class="imp-step">
+      <div class="step-n">2</div> Map Columns
+    </div>
+    <div class="imp-step">
+      <div class="step-n">3</div> Preview and Import
+    </div>
+  </div>
+
+  {% for message in messages %}
+    <div class="imp-alert">Warning: {{ message }}</div>
+  {% endfor %}
+
+  <form method="post" enctype="multipart/form-data" id="imp-form">
+    {% csrf_token %}
+
+    <div class="dz-outer" id="dz"
+         ondragover="dzOver(event)" ondragleave="dzLeave()" ondrop="dzDrop(event)"
+         onclick="document.getElementById('imp_file').click()">
+      <div class="dz-icon">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+          <polyline points="17 8 12 3 7 8"/>
+          <line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+      </div>
+      <div class="dz-main-text">Drag and drop your file here</div>
+      <div class="dz-or">or</div>
+      <button type="button" class="btn-pick"
+              onclick="event.stopPropagation(); document.getElementById('imp_file').click()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+          <polyline points="17 8 12 3 7 8"/>
+          <line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+        Browse File
+      </button>
+      <div class="dz-meta">CSV | TSV | XLS | XLSX  |  Max 25 MB</div>
+
+      <div class="dz-chosen" id="dz-chosen">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
+        <span id="dz-chosen-name"></span>
+      </div>
+    </div>
+    <input type="file" id="imp_file" name="import_file"
+           accept=".csv,.tsv,.xls,.xlsx" style="display:none"
+           onchange="fileChosen(this)">
+
+    <p class="sample-note">
+      Not sure about the format?
+      <a href="{% url 'import_tax_sample' company_code=company_code %}">Download a sample CSV</a>
+      with all supported columns pre-filled.
+    </p>
+
+    <div class="imp-card">
+      <div class="imp-card-title">When a duplicate tax is found</div>
+
+      <label class="radio-row selected" id="r-skip-label">
+        <input type="radio" name="duplicate_handling" value="skip" checked
+               onchange="updateRadio()">
+        <div>
+          <div class="radio-label">Skip - keep existing tax unchanged</div>
+          <div class="radio-desc">Duplicate rows in the file will be ignored. Your current data is safe.</div>
+        </div>
+      </label>
+
+      <label class="radio-row" id="r-over-label">
+        <input type="radio" name="duplicate_handling" value="overwrite"
+               onchange="updateRadio()">
+        <div>
+          <div class="radio-label">Overwrite - update existing tax with new data</div>
+          <div class="radio-desc">Fields from the import file will replace the stored values.</div>
+        </div>
+      </label>
+    </div>
+
+    <div class="tips-block">
+      <div class="tips-block-title">Before you import</div>
+      <ul>
+        <li>Row 1 must contain column headers. Data starts from row 2.</li>
+        <li><strong>Tax Name</strong>, <strong>Tax Type</strong>, and <strong>Rate</strong> are required.</li>
+        <li>Tax Type must be one of: CGST, SGST, IGST, UTGST, Cess.</li>
+        <li>Rates must be plain numbers, for example: 5 or 2.50.</li>
+      </ul>
+    </div>
+
+    <div class="imp-bottom">
+      <button type="submit" class="btn-next">
+        Continue
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <path d="M5 12h14M12 5l7 7-7 7"/>
+        </svg>
+      </button>
+      <a href="{% url 'tax_list' company_code=company_code %}" class="btn-cancel">Cancel</a>
+    </div>
+  </form>
+</div>
+
+<script>
+function fileChosen(inp) {
+  if (!inp.files[0]) return;
+  document.getElementById('dz-chosen-name').textContent = inp.files[0].name;
+  document.getElementById('dz-chosen').classList.add('visible');
+}
+function dzOver(e)  { e.preventDefault(); document.getElementById('dz').classList.add('drag-active'); }
+function dzLeave()  { document.getElementById('dz').classList.remove('drag-active'); }
+function dzDrop(e)  {
+  e.preventDefault(); dzLeave();
+  var f = e.dataTransfer.files[0];
+  if (f) {
+    var inp = document.getElementById('imp_file');
+    inp.files = e.dataTransfer.files;
+    fileChosen(inp);
+  }
+}
+function updateRadio() {
+  var skip = document.querySelector('[value=skip]').checked;
+  document.getElementById('r-skip-label').classList.toggle('selected', skip);
+  document.getElementById('r-over-label').classList.toggle('selected', !skip);
+}
+</script>
+{% endblock %}

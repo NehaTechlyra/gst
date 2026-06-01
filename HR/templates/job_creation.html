@@ -1,0 +1,588 @@
+{% extends 'website/index.html' %}
+{% load static %}
+
+{% block exstyle %}
+{% comment %} <link href="{% static 'css/general.css' %}" rel="stylesheet"> {% endcomment %}
+<link href="{% static 'style/general.css' %}" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+<link href="https://fonts.googleapis.com/css2?family=Ubuntu&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<style>
+    /* =============================================
+       Job creation form — styled to match Sales page
+       ============================================= */
+
+    /* Page wrapper — matches sales .container mt-4 */
+    .job-form-container {
+        margin: 4px 17px;
+        padding: 8px 10px;
+        background: #fff;
+        font-family: 'Segoe UI', Arial, sans-serif;
+        color: #43425d;
+    }
+
+    /* Header row */
+    .job-form-header {
+        margin-bottom: 16px;
+        border-bottom: 1px solid #eee;
+        padding-bottom: 12px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    /* Form section — flat white, matches sales page content area */
+    .form-section {
+        background: #fff;
+        padding: 16px 0;
+        margin-bottom: 20px;
+    }
+
+    /* Section title — matches sales .section-title */
+    .form-section-title {
+        font-size: 1.05rem;
+        font-weight: 600;
+        color: #43425d;
+        margin-bottom: 18px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid #eee;
+    }
+
+    .form-group {
+        margin-bottom: 16px;
+    }
+
+    /* Labels — matches sales label style */
+    .form-group label {
+        display: block;
+        font-size: 0.92em;
+        margin-bottom: 6px;
+        color: #777;
+        font-weight: 500;
+    }
+
+    /* Inputs — matches sales input/select/textarea */
+    .form-control,
+    .form-select {
+        width: 100%;
+        padding: 5px 12px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        margin-bottom: 4px;
+        font-size: 1rem;
+        outline: none;
+        transition: border-color 0.2s, box-shadow 0.2s;
+        color: #43425d;
+        background-color: #fff;
+    }
+
+    .form-control:focus,
+    .form-select:focus {
+        border-color: #7d7cad;
+        box-shadow: 0 0 0 3px rgba(125, 124, 173, 0.15);
+        outline: none;
+    }
+
+    textarea.form-control {
+        min-height: 120px;
+        resize: vertical;
+    }
+
+    /* Select arrow — same as sales custom select arrow */
+    .form-select {
+        appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%236b7280' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 12px center;
+        background-size: 16px 12px;
+        padding-right: 36px;
+    }
+
+    /* Primary button — matches sales btn-primary (Bootstrap blue) */
+    .btn-primary {
+        background-color: #0d6efd;
+        color: #fff;
+        border: none;
+        padding: 8px 18px;
+        border-radius: 6px;
+        font-size: 1rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background-color 0.2s;
+        position: relative;
+    }
+
+    .btn-primary:hover {
+        background-color: #0b5ed7;
+    }
+
+    /* Disabled state — matches sales .savebtn:disabled */
+    .btn-primary:disabled {
+        cursor: not-allowed;
+        opacity: 0.6;
+    }
+
+    .btn-primary:disabled:hover::after {
+        content: "\26D4";
+        position: absolute;
+        color: red;
+        font-size: 1.5em;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        pointer-events: none;
+    }
+
+    /* Secondary / outline button — matches sales btn-secondary */
+    .btn-outline-secondary,
+    .btn-secondary {
+        background-color: transparent;
+        color: #6c757d;
+        border: 1px solid #6c757d;
+        padding: 8px 18px;
+        border-radius: 6px;
+        font-size: 1rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .btn-outline-secondary:hover,
+    .btn-secondary:hover {
+        background-color: #6c757d;
+        color: #fff;
+    }
+
+    /* Field errors */
+    .field-errors {
+        margin-top: 4px;
+        color: #b91c1c;
+        font-size: 0.87em;
+    }
+
+    /* 2-column grid — same rhythm as sales .row / .col-md-* */
+    .form-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 16px;
+    }
+
+    .form-grid .full-width {
+        grid-column: 1 / -1;
+    }
+
+    @media (max-width: 900px) {
+        .form-grid {
+            grid-template-columns: 1fr;
+        }
+        .form-grid .full-width {
+            grid-column: auto;
+        }
+    }
+
+    /* Action row at the bottom — matches sales .mt-3.savebtn-wrapper */
+    .form-actions {
+        display: inline-block;
+        position: relative;
+        cursor: not-allowed;          /* wrapper trick from sales page */
+    }
+
+    .form-actions-inner {
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        margin-top: 30px;
+    }
+
+    /* ---- Select2 overrides — match employee register look ---- */
+    .select2-container--default .select2-selection--single {
+        height: auto !important;
+        padding: 4px 12px;
+        border: 1px solid #ddd !important;
+        border-radius: 6px !important;
+        font-size: 1rem;
+        color: #43425d;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__rendered {
+        color: #43425d;
+        line-height: 1.6;
+        padding-left: 0;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__arrow {
+        height: 100%;
+    }
+    .select2-container--default.select2-container--focus .select2-selection--single,
+    .select2-container--default.select2-container--open .select2-selection--single {
+        border-color: #7d7cad !important;
+        box-shadow: 0 0 0 3px rgba(125, 124, 173, 0.15);
+        outline: none;
+    }
+    /* Inline flex wrapper for select + "+" add button — employee register pattern */
+    .select-with-add {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+    }
+    .select-with-add .select2-container {
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+    /* "+" add button — same btn-outline-secondary size used in employee register */
+    .btn-add-inline {
+        flex-shrink: 0;
+        padding: 5px 11px;
+        font-size: 1rem;
+        line-height: 1.4;
+        border-radius: 6px;
+        border: 1px solid #6c757d;
+        background: transparent;
+        color: #6c757d;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .btn-add-inline:hover {
+        background: #6c757d;
+        color: #fff;
+    }
+</style>
+{% endblock exstyle %}
+
+{% block page_title %}{% if page_mode == 'edit' %}Edit Job Opening{% else %}Create Job Opening{% endif %}{% endblock page_title %}
+
+{% block content %}
+<div class="job-form-container">
+        <div>
+            <a href="{% url 'job_list' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Back to Job List
+            </a>
+    <br><br><br>
+    </div>
+
+    <div class="form-section">
+
+
+        <form id="jobCreationForm" method="post">
+            {% csrf_token %}
+            <div class="form-grid">
+
+                <div class="form-group">
+                    <label for="{{ form.title.id_for_label }}">Job Name</label>
+                    {{ form.title }}
+                    {% if form.title.errors %}<div class="field-errors">{{ form.title.errors }}</div>{% endif %}
+                </div>
+
+                <div class="form-group">
+                    <label for="{{ form.employment_type.id_for_label }}">Job Type</label>
+                    {{ form.employment_type }}
+                    {% if form.employment_type.errors %}<div class="field-errors">{{ form.employment_type.errors }}</div>{% endif %}
+                </div>
+
+                <div class="form-group">
+                    <label for="{{ form.department.id_for_label }}">Department</label>
+                    <div class="select-with-add">
+                        {{ form.department }}
+                        <button type="button" class="btn-add-inline" id="btn-add-dept" title="Add Department">+</button>
+                    </div>
+                    {% if form.department.errors %}<div class="field-errors">{{ form.department.errors }}</div>{% endif %}
+                </div>
+
+                <div class="form-group">
+                    <label for="{{ form.designation.id_for_label }}">Designation</label>
+                    <div class="select-with-add">
+                        {{ form.designation }}
+                        <button type="button" class="btn-add-inline" id="btn-add-designation" title="Add Designation">+</button>
+                    </div>
+                    {% if form.designation.errors %}<div class="field-errors">{{ form.designation.errors }}</div>{% endif %}
+                </div>
+
+                <div class="form-group full-width">
+                    <label for="{{ form.description.id_for_label }}">Job Description</label>
+                    {{ form.description }}
+                    {% if form.description.errors %}<div class="field-errors">{{ form.description.errors }}</div>{% endif %}
+                </div>
+
+                <div class="form-group">
+                    <label for="{{ form.vacancies.id_for_label }}">Number of Openings</label>
+                    {{ form.vacancies }}
+                    {% if form.vacancies.errors %}<div class="field-errors">{{ form.vacancies.errors }}</div>{% endif %}
+                </div>
+
+                <div class="form-group">
+                    <label for="{{ form.work_location.id_for_label }}">Work Location</label>
+                    {{ form.work_location }}
+                    {% if form.work_location.errors %}<div class="field-errors">{{ form.work_location.errors }}</div>{% endif %}
+                </div>
+
+                <div class="form-group">
+                    <label for="{{ form.hiring_manager.id_for_label }}">Hiring Manager</label>
+                    {{ form.hiring_manager }}
+                    {% if form.hiring_manager.errors %}<div class="field-errors">{{ form.hiring_manager.errors }}</div>{% endif %}
+                </div>
+
+                <div class="form-group">
+                    <label for="{{ form.required_experience_years.id_for_label }}">Required Experience</label>
+                    {{ form.required_experience_years }}
+                    {% if form.required_experience_years.errors %}<div class="field-errors">{{ form.required_experience_years.errors }}</div>{% endif %}
+                </div>
+
+                <div class="form-group">
+                    <label for="{{ form.salary_min.id_for_label }}">Minimum CTC</label>
+                    {{ form.salary_min }}
+                    {% if form.salary_min.errors %}<div class="field-errors">{{ form.salary_min.errors }}</div>{% endif %}
+                </div>
+
+                <div class="form-group">
+                    <label for="{{ form.salary_max.id_for_label }}">Maximum CTC</label>
+                    {{ form.salary_max }}
+                    {% if form.salary_max.errors %}<div class="field-errors">{{ form.salary_max.errors }}</div>{% endif %}
+                </div>
+
+                <div class="form-group full-width">
+                    <label for="{{ form.required_skills.id_for_label }}">Required Skills</label>
+                    {{ form.required_skills }}
+                    {% if form.required_skills.errors %}<div class="field-errors">{{ form.required_skills.errors }}</div>{% endif %}
+                </div>
+
+                <div class="form-group">
+                    <label for="{{ form.opening_date.id_for_label }}">Opening Date</label>
+                    {{ form.opening_date }}
+                    {% if form.opening_date.errors %}<div class="field-errors">{{ form.opening_date.errors }}</div>{% endif %}
+                </div>
+
+                <div class="form-group">
+                    <label for="{{ form.closing_date.id_for_label }}">Closing Date</label>
+                    {{ form.closing_date }}
+                    {% if form.closing_date.errors %}<div class="field-errors">{{ form.closing_date.errors }}</div>{% endif %}
+                </div>
+
+                <div class="form-group">
+                    <label for="{{ form.status.id_for_label }}">Status</label>
+                    {{ form.status }}
+                    {% if form.status.errors %}<div class="field-errors">{{ form.status.errors }}</div>{% endif %}
+                </div>
+
+            </div>
+
+            <!-- Action buttons — mirror sales savebtn-wrapper pattern -->
+            <div class="form-actions-inner">
+                <div class="form-actions" title="Please fill all the required fields">
+                    <button type="button" class="btn btn-secondary" id="cancelBtn">Cancel</button>
+                    <button type="submit" class="btn btn-primary savebtn">
+                        {% if page_mode == 'edit' %}Update Job Opening{% else %}Create Job Opening{% endif %}
+                    </button>
+                </div>
+            </div>
+
+        </form>
+    </div>
+</div>
+{% endblock content %}
+
+{% block scripts %}
+<!-- Select2 JS — must load after jQuery (already loaded by base template) -->
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+
+    // ── 1. Apply form-control / form-select classes to Django-rendered fields ──
+    const fields = document.querySelectorAll('.form-group input, .form-group textarea, .form-group select');
+    fields.forEach(function (field) {
+        if (field.tagName === 'SELECT') {
+            field.classList.add('form-select');
+        } else {
+            field.classList.add('form-control');
+        }
+    });
+
+    // ── 2. Initialize Select2 on department and designation ──
+    //    (mirrors employee register initSelect2 helper)
+    function initSelect2(selector, placeholder) {
+        $(selector).select2({
+            placeholder: placeholder,
+            allowClear: true,
+            width: '100%',
+            closeOnSelect: true,
+            tags: false
+        });
+    }
+
+    const deptField      = '#{{ form.department.id_for_label }}';
+    const desigField     = '#{{ form.designation.id_for_label }}';
+
+    initSelect2(deptField,  'Select or search department');
+    initSelect2(desigField, 'Select or search designation');
+
+    // Auto-focus search box when Select2 opens (employee register behaviour)
+    $(document).on('select2:open', function () {
+        setTimeout(function () {
+            const searchField = document.querySelector('.select2-container--open .select2-search__field');
+            if (searchField) searchField.focus();
+        }, 10);
+    });
+
+    // ── 3. Department → Designation loader ──
+    //    When department changes, reload designations (same AJAX as employee register)
+    function loadDesignationsForDepartment(departmentId, selectedDesignationId) {
+        const $desig = $(desigField);
+        $desig.empty().append('<option value="">Loading…</option>');
+        if (!departmentId) {
+            $desig.empty().append('<option value="">Select Designation</option>');
+            $desig.trigger('change.select2');
+            return;
+        }
+        $.ajax({
+            url: '{% url "ajax_load_designations" %}',
+            data: { department_id: departmentId },
+            dataType: 'json',
+            success: function (data) {
+                $desig.empty().append('<option value="">Select Designation</option>');
+                data.forEach(function (item) {
+                    const selected = selectedDesignationId && String(selectedDesignationId) === String(item.id);
+                    $desig.append(new Option(item.designation_name, item.id, selected, selected));
+                });
+                $desig.trigger('change.select2');
+            },
+            error: function () {
+                $desig.empty().append('<option value="">Error loading designations</option>');
+                $desig.trigger('change.select2');
+            }
+        });
+    }
+
+    $(deptField).on('change', function () {
+        loadDesignationsForDepartment($(this).val(), null);
+    });
+
+    // On edit: if department already selected, load its designations and preselect stored value
+    const initialDept  = $(deptField).val();
+    const initialDesig = $(desigField).val();
+    if (initialDept) {
+        loadDesignationsForDepartment(initialDept, initialDesig);
+    }
+
+    // ── 4. Shared "Add entity" modal (dept / designation) ──
+    //    Identical structure to employee register entity-modal
+    if (!document.getElementById('job-entity-modal')) {
+        document.body.insertAdjacentHTML('beforeend', `
+        <div class="modal fade" id="job-entity-modal" tabindex="-1" aria-hidden="true">
+          <div class="modal-dialog modal-md modal-dialog-centered">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title" id="job-modal-title">Add Item</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+              </div>
+              <div class="modal-body">
+                <div class="mb-2">
+                  <label class="form-label">Name</label>
+                  <input id="job-modal-name" class="form-control" type="text" />
+                  <small id="job-modal-error" class="text-danger"></small>
+                </div>
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" id="job-modal-save" class="btn btn-primary">Save</button>
+              </div>
+            </div>
+          </div>
+        </div>`);
+    }
+
+    // Helper — open the modal for a given type
+    function openEntityModal(type, deptId) {
+        // Close any open Select2 dropdowns first (employee register pattern)
+        try {
+            $('.select2-hidden-accessible').each(function () { $(this).select2('close'); });
+        } catch (e) {}
+
+        $('#job-modal-title').text(type === 'department' ? 'Add Department' : 'Add Designation');
+        $('#job-modal-name').val('');
+        $('#job-modal-error').text('');
+        $('#job-entity-modal').data('type', type);
+        if (deptId) $('#job-entity-modal').data('dept-id', deptId);
+
+        const modalEl = document.getElementById('job-entity-modal');
+        const bsModal = new bootstrap.Modal(modalEl);
+        bsModal.show();
+        modalEl.addEventListener('shown.bs.modal', function () {
+            document.getElementById('job-modal-name').focus();
+        }, { once: true });
+    }
+
+    // Open modal buttons
+    document.getElementById('btn-add-dept').addEventListener('click', function (e) {
+        e.preventDefault();
+        openEntityModal('department');
+    });
+
+    document.getElementById('btn-add-designation').addEventListener('click', function (e) {
+        e.preventDefault();
+        const deptId = $(deptField).val();
+        if (!deptId) {
+            alert('Please select a department first.');
+            return;
+        }
+        openEntityModal('designation', deptId);
+    });
+
+    // Modal save handler — mirrors employee register #modal-save handler
+    $(document).on('click', '#job-modal-save', function () {
+        const type    = $('#job-entity-modal').data('type');
+        const name    = $('#job-modal-name').val().trim();
+        const errorEl = $('#job-modal-error');
+        const token   = $('input[name=csrfmiddlewaretoken]').val();
+        errorEl.text('');
+
+        if (!name) { errorEl.text('Please enter a name.'); return; }
+
+        if (type === 'department') {
+            $.post('{% url "ajax_create_department" %}', { name: name, csrfmiddlewaretoken: token })
+                .done(function (resp) {
+                    if (resp && resp.status === 'success') {
+                        const opt = new Option(resp.name, resp.id, true, true);
+                        $(deptField).append(opt).trigger('change');
+                        // reload designations for the new dept
+                        loadDesignationsForDepartment(resp.id, null);
+                        bootstrap.Modal.getInstance(document.getElementById('job-entity-modal')).hide();
+                    } else {
+                        errorEl.text(resp.message || 'Could not add department.');
+                    }
+                })
+                .fail(function () { errorEl.text('Server error. Please try again.'); });
+
+        } else if (type === 'designation') {
+            const deptId = $('#job-entity-modal').data('dept-id');
+            $.post('{% url "ajax_create_designation" %}', { name: name, department_id: deptId, csrfmiddlewaretoken: token })
+                .done(function (resp) {
+                    if (resp && resp.status === 'success') {
+                        const opt = new Option(resp.name, resp.id, true, true);
+                        $(desigField).append(opt).trigger('change');
+                        bootstrap.Modal.getInstance(document.getElementById('job-entity-modal')).hide();
+                    } else {
+                        errorEl.text(resp.message || 'Could not add designation.');
+                    }
+                })
+                .fail(function () { errorEl.text('Server error. Please try again.'); });
+        }
+    });
+
+    // ── 5. Cancel button ──
+    const cancelBtn = document.getElementById('cancelBtn');
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', function () {
+            window.location.href = "{% url 'job_list' %}";
+        });
+    }
+
+    // ── 6. Disable save on submit (spinner pattern from sales page) ──
+    const form    = document.getElementById('jobCreationForm');
+    const saveBtn = form ? form.querySelector('.savebtn') : null;
+    if (form && saveBtn) {
+        form.addEventListener('submit', function () {
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = '<i class="bi bi-arrow-repeat"></i> Saving…';
+        });
+    }
+
+});
+</script>
+{% endblock scripts %}

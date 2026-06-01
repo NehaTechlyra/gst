@@ -1,0 +1,25 @@
+"""
+Quick SQL queries to fix license and trial issues
+Run these in your company database (not master DB)
+"""
+
+# For Company table (check trial status):
+SELECT id, name, trial_active, is_trial_expired, trial_started_at, trial_expires_at FROM company WHERE id = 2;
+
+# If trial_expired is 1 but shouldn't be, reset it:
+UPDATE company SET is_trial_expired = 0 WHERE id = 2;
+
+# For LicenseKey table (check license status):
+SELECT id, license_key, is_active, is_license_expired, expiry_date FROM company_settings_licensekey WHERE company_id = 2;
+
+# If is_license_expired is 1 but expiry_date is in future, fix it:
+UPDATE company_settings_licensekey SET is_license_expired = 0 WHERE company_id = 2 AND expiry_date > CURDATE();
+
+# Verify the fixes:
+SELECT 
+    c.id, c.name, 
+    c.trial_active, c.is_trial_expired, c.trial_expires_at,
+    l.license_key, l.is_active, l.is_license_expired, l.expiry_date
+FROM company c
+LEFT JOIN company_settings_licensekey l ON c.id = l.company_id
+WHERE c.id = 2;

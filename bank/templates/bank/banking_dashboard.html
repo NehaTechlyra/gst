@@ -1,0 +1,292 @@
+{% extends 'website/index.html' %}
+{% load static %}
+
+{% block page_title %}Banking Dashboard{% endblock page_title %}
+
+{% block exstyle %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+
+<style>
+:root {
+  --bg:#ffffff; --bg2:#f3f4f6; --surface:#ffffff; --border:#e2e6f3; --border2:#d0d6ee;
+  --brand:#55588b; --brand-lt:#dce2f9; --brand-mid:#7b7fd4;
+  --t1:#111827; --t2:#4b5563; --t3:#9ca3af;
+  --radius:16px;
+  --shadow-sm:0 1px 3px rgba(85,88,139,.06),0 2px 8px rgba(85,88,139,.05);
+  --shadow:   0 2px 8px rgba(85,88,139,.08),0 8px 24px rgba(85,88,139,.06);
+  --shadow-lg:0 4px 16px rgba(85,88,139,.13),0 16px 40px rgba(85,88,139,.09);
+}
+*{box-sizing:border-box;margin:0;padding:0;font-family:'Plus Jakarta Sans',sans-serif;}
+.home-section{background:#ffffff!important;min-height:100vh;}
+.home-section::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:radial-gradient(ellipse 800px 500px at 85% 0%,rgba(85,88,139,.06) 0%,transparent 60%),
+             radial-gradient(ellipse 600px 400px at 10% 100%,rgba(13,148,136,.04) 0%,transparent 60%);}
+.home-content{background-color:#dce2f9;padding:0 20px;position:relative;z-index:1;}
+.home-content .text{color:#55588b;margin-bottom:10px;font-size:1.25rem;font-weight:700;}
+.lyra-dash{position:relative;z-index:1;padding:20px 24px 28px;display:flex;flex-direction:column;gap:24px;}
+.s-head{display:flex;align-items:center;gap:10px;margin-bottom:16px;}
+.s-pip{width:4px;height:18px;border-radius:3px;background:linear-gradient(180deg,var(--brand) 0%,#0d9488 100%);}
+.s-lbl{font-size:.7rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--t3);}
+
+/* ── KPI CARDS ── */
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;}
+.kpi-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+  padding:20px;text-decoration:none;color:inherit;display:flex;flex-direction:column;gap:13px;
+  position:relative;overflow:hidden;box-shadow:var(--shadow-sm);
+  transition:transform .2s,box-shadow .2s,border-color .2s;opacity:0;animation:riseIn .42s ease forwards;}
+.kpi-card:hover{transform:translateY(-3px);box-shadow:var(--shadow-lg);border-color:var(--border2);}
+.kpi-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;
+  background:linear-gradient(90deg,var(--kc1,var(--brand)),var(--kc2,var(--brand-mid)));
+  border-radius:var(--radius) var(--radius) 0 0;}
+.kpi-top{display:flex;align-items:center;justify-content:space-between;}
+.kpi-icon{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;
+  font-size:1.1rem;background:var(--kbg,var(--brand-lt));color:var(--kc1,var(--brand));border:1px solid var(--kborder,rgba(85,88,139,.13));}
+.kpi-pill{font-size:10px;font-weight:700;letter-spacing:.4px;padding:3px 9px;border-radius:20px;
+  background:var(--kbg,var(--brand-lt));color:var(--kc1,var(--brand));}
+.kpi-label{font-size:.7rem;font-weight:700;color:var(--t3);letter-spacing:.05em;text-transform:uppercase;}
+.kpi-value{font-size:1.8rem;font-weight:800;line-height:1;letter-spacing:-.04em;font-family:'JetBrains Mono',monospace;color:var(--t1);}
+.kpi-sub{font-size:11px;color:var(--t3);display:flex;align-items:center;gap:5px;}
+.kpi-sub i{color:var(--kc1,var(--brand));}
+@keyframes riseIn{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:translateY(0);}}
+
+/* ── PANEL ── */
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+  padding:22px 24px;box-shadow:var(--shadow-sm);opacity:0;animation:riseIn .42s .22s ease forwards;}
+.panel-head{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:18px;gap:10px;}
+.panel-title{font-size:.9rem;font-weight:800;color:var(--t1);display:flex;align-items:center;gap:8px;}
+.panel-title i{color:var(--brand);font-size:.95rem;}
+.panel-sub{font-size:.7rem;color:var(--t3);margin-top:3px;font-weight:500;}
+
+/* ── DATA TABLE ── */
+.data-table{width:100%;border-collapse:collapse;}
+.data-table th{font-size:.68rem;font-weight:800;color:var(--t3);text-transform:uppercase;letter-spacing:.07em;padding:0 10px 10px;text-align:left;border-bottom:1px solid var(--border);}
+.data-table td{font-size:.8rem;color:var(--t2);padding:10px;border-bottom:1px solid var(--border);vertical-align:middle;font-weight:500;}
+.data-table tr:last-child td{border-bottom:none;}
+.data-table tr:hover td{background:#f9faff;}
+.tbl-name{font-weight:700;color:var(--t1);}
+.tbl-mono{font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--t1);}
+.tbl-av{width:32px;height:32px;border-radius:8px;flex-shrink:0;
+  background:linear-gradient(135deg,var(--brand) 0%,var(--brand-mid) 100%);
+  color:#fff;font-size:11px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;}
+.tbl-badge{font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;white-space:nowrap;}
+
+.view-all{font-size:11px;font-weight:700;color:var(--brand);text-decoration:none;padding:4px 10px;
+  border-radius:7px;background:var(--brand-lt);border:1px solid rgba(85,88,139,.15);white-space:nowrap;}
+.view-all:hover{background:#cfd5f5;}
+
+/* ── STEPS ── */
+.step-item{display:flex;gap:14px;padding:12px;border-radius:12px;transition:background .2s;}
+.step-item:hover{background:var(--bg2);}
+.step-num{width:28px;height:28px;border-radius:50%;background:var(--brand);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;flex-shrink:0;}
+.step-content h6{font-size:.85rem;font-weight:800;color:var(--t1);margin-bottom:4px;}
+.step-content p{font-size:.75rem;color:var(--t3);line-height:1.5;margin:0;}
+
+.warn-bar {
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 12px;
+  padding: 12px 18px;
+  font-size: 13px; color: #92400e;
+  margin-bottom: 8px;
+  display: flex; align-items: flex-start; gap: 10px;
+  animation: riseIn .42s ease forwards;
+}
+.warn-bar i { color: #d97706; font-size: 16px; margin-top: 1px; }
+
+@media(max-width:1200px){.kpi-grid{grid-template-columns:repeat(2,1fr);}}
+@media(max-width:960px){.steps-grid-wrap{grid-template-columns:1fr!important;}}
+</style>
+{% endblock exstyle %}
+
+{% block dashboard %}
+<section class="home-section bg-light">
+
+  {# ══ TOPBAR ══ #}
+  <div class="home-content d-flex justify-content-between align-items-center mb-4"
+       style="background-color:#dce2f9;padding:0 20px;">
+    <span class="text" style="color:#55588b;margin-bottom:10px;">Banking Dashboard</span>
+    <span style="color:#55588b;margin-bottom:10px;font-weight:600;">LyraERP</span>
+  </div>
+
+  <div class="lyra-dash">
+
+    {# ── WARNING ── #}
+    <div class="warn-bar">
+      <i class="bi bi-exclamation-triangle-fill"></i>
+      <div>
+        <strong>Important Note:</strong> The opening balance cannot be edited once transactions have been reconciled.
+        Ensure it is correct before reconciling any transaction.
+      </div>
+    </div>
+
+    {# ── KPI CARDS ── #}
+    <div>
+      <div class="s-head"><div class="s-pip"></div><span class="s-lbl">Banking Summary</span></div>
+      <div class="kpi-grid" id="bankKpiGrid">
+
+        {# KPI 1: Active Accounts #}
+        <div class="kpi-card" style="--kc1:#55588b;--kc2:#7b7fd4;--kbg:#dce2f9;--kborder:rgba(85,88,139,.15);">
+          <div class="kpi-top">
+            <div class="kpi-icon"><i class="bi bi-bank2"></i></div>
+            <span class="kpi-pill">Accounts</span>
+          </div>
+          <div class="kpi-label">Active Accounts</div>
+          <div class="kpi-value">{{ accounts|length }}</div>
+          <div class="kpi-sub"><i class="bi bi-wallet2"></i> Connected bank accounts</div>
+        </div>
+
+        {# KPI 2: Reconciliations Link #}
+        <a href="{% url 'reconciliation_overview' %}" class="kpi-card"
+           style="--kc1:#0284c7;--kc2:#38bdf8;--kbg:#e0f2fe;--kborder:rgba(2,132,199,.15); animation-delay:.05s;">
+          <div class="kpi-top">
+            <div class="kpi-icon" style="background:#e0f2fe;color:#0284c7;border-color:rgba(2,132,199,.15);"><i class="bi bi-arrow-left-right"></i></div>
+            <span class="kpi-pill" style="background:#e0f2fe;color:#0284c7;">History</span>
+          </div>
+          <div class="kpi-label">Reconciliations</div>
+          <div class="kpi-value">Review</div>
+          <div class="kpi-sub"><i class="bi bi-clock-history"></i> View past periods</div>
+        </a>
+
+      </div>
+    </div>
+
+    {# ── MAIN ACCOUNTS TABLE ── #}
+    <div>
+      <div class="s-head"><div class="s-pip"></div><span class="s-lbl">Bank Accounts & Reconciliations</span></div>
+      <div class="panel" style="padding:18px 22px;">
+        <div class="panel-head" style="margin-bottom:14px;">
+          <div>
+            <div class="panel-title"><i class="bi bi-bank"></i> Accounts List</div>
+            <div class="panel-sub">Manage your company bank accounts and start reconciliations</div>
+          </div>
+          <div style="display:flex; gap:8px;">
+            <a href="{% url 'reconciliation_overview' %}" class="view-all">History</a>
+          </div>
+        </div>
+        {% if accounts %}
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Account Details</th>
+              <th>Bank Name</th>
+              <th>Status Summary</th>
+              <th>Last Reconciled</th>
+              <th class="text-end">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for acc in accounts %}
+            <tr>
+              <td>
+                <div style="display:flex;align-items:center;gap:12px;">
+                  <span class="tbl-av" style="background:linear-gradient(135deg,#55588b,#7b7fd4);">
+                    <i class="bi bi-wallet2" style="font-size:.8rem;"></i>
+                  </span>
+                  <div>
+                    <div class="tbl-name">{{ acc.account_name|default:"—" }}</div>
+                    <div class="tbl-mono text-muted" style="font-size:.7rem;">{{ acc.account_number|default:"—" }}</div>
+                  </div>
+                </div>
+              </td>
+              <td>
+                <span class="tbl-name">{{ acc.bank.bank_name|default:"—" }}</span>
+              </td>
+              <td>
+                <div style="display:flex; gap:16px;">
+                  <div style="text-align:center;">
+                    <div class="tbl-mono" style="font-size:.85rem;">{{ acc.total_recons }}</div>
+                    <div style="font-size:9px; color:var(--t3); text-transform:uppercase; font-weight:700;">Total</div>
+                  </div>
+                  <div style="text-align:center;">
+                    <div class="tbl-mono text-success" style="font-size:.85rem;">{{ acc.reconciled_count }}</div>
+                    <div style="font-size:9px; color:var(--t3); text-transform:uppercase; font-weight:700;">Done</div>
+                  </div>
+                  <div style="text-align:center;">
+                    <div class="tbl-mono text-primary" style="font-size:.85rem;">{{ acc.in_progress_count }}</div>
+                    <div style="font-size:9px; color:var(--t3); text-transform:uppercase; font-weight:700;">Active</div>
+                  </div>
+                </div>
+              </td>
+              <td style="font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--t3);">
+                {% if acc.last_reconciled %}{{ acc.last_reconciled|date:"d M Y" }}{% else %}—{% endif %}
+              </td>
+              <td class="text-end">
+                <a href="{% url 'reconciliation_list' acc.id %}" class="view-all" style="background:var(--brand); color:#fff; border:none; padding:6px 14px;">
+                  Reconcile <i class="bi bi-chevron-right"></i>
+                </a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <div class="empty-box">
+          <i class="bi bi-bank" style="font-size:2.5rem; opacity:.2;"></i>
+          <p>No bank accounts found</p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    {# ── HOW TO SECTION ── #}
+    <div>
+      <div class="panel">
+        <div class="panel-head" style="margin-bottom:18px;">
+          <div>
+            <div class="panel-title"><i class="bi bi-info-circle-fill"></i> How to Reconcile</div>
+            <div class="panel-sub">Follow these simple steps to balance your books</div>
+          </div>
+        </div>
+        <div class="steps-grid-wrap" id="bankStepsGrid" style="display:grid; grid-template-columns: repeat(3, 1fr); gap:16px;">
+          <div class="step-item">
+            <div class="step-num">1</div>
+            <div class="step-content">
+              <h6>Select Account & Date</h6>
+              <p>Choose the account and enter period dates with statement closing balance.</p>
+            </div>
+          </div>
+          <div class="step-item">
+            <div class="step-num">2</div>
+            <div class="step-content">
+              <h6>Match Transactions</h6>
+              <p>Upload statement or manually tick entries that match your bank records.</p>
+            </div>
+          </div>
+          <div class="step-item">
+            <div class="step-num">3</div>
+            <div class="step-content">
+              <h6>Verify & Close</h6>
+              <p>Ensure difference is zero and click Reconcile to lock the period permanently.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>{# /lyra-dash #}
+
+</section>
+
+<script>
+var LYRA_LAYOUT_API = {
+  getUrl: "{% url 'dashboard_layout_get' %}",
+  saveUrl: "{% url 'dashboard_layout_save' %}",
+  csrf: "{{ csrf_token }}"
+};
+
+var LYRA_ARRANGE_CONFIG = {
+  storagePrefix: "banking_dashboard:",
+  sectionContainer: ".lyra-dash",
+  arrangeLabel: "Arrange Layout",
+  doneLabel: "Done Arranging",
+  resetConfirm: "Reset banking dashboard to default layout?",
+  cardGroups: [
+    { container: "#bankKpiGrid", child: ".kpi-card", key: "kpi" },
+    { container: "#bankStepsGrid", child: ".step-item", key: "steps" }
+  ]
+};
+</script>
+<script src="{% static 'js/dashboard_dragdrop.js' %}"></script>
+{% endblock dashboard %}
+{% block content %}{% endblock content %}

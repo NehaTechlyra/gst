@@ -1,0 +1,125 @@
+{% extends 'base.html' %}
+{% load widget_tweaks %}
+
+{% block page_title %}Create Bank Reconciliation{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-book"></i> Step 1: Initialize Reconciliation
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted mb-4">
+                        Select the bank account and statement date range for reconciliation.
+                    </p>
+
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <div class="form-group">
+                            <label for="{{ form.company_bank_account.id_for_label }}" class="font-weight-bold">
+                                Bank Account <span class="text-danger">*</span>
+                            </label>
+                            {% render_form_field form.company_bank_account %}
+                            {% if form.company_bank_account.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.company_bank_account.errors }}
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="{{ form.statement_start_date.id_for_label }}" class="font-weight-bold">
+                                        Statement Start Date <span class="text-danger">*</span>
+                                    </label>
+                                    {% render_form_field form.statement_start_date %}
+                                    {% if form.statement_start_date.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {{ form.statement_start_date.errors }}
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="{{ form.statement_end_date.id_for_label }}" class="font-weight-bold">
+                                        Statement End Date <span class="text-danger">*</span>
+                                    </label>
+                                    {% render_form_field form.statement_end_date %}
+                                    {% if form.statement_end_date.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {{ form.statement_end_date.errors }}
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="{{ form.statement_balance.id_for_label }}" class="font-weight-bold">
+                                Bank Statement Ending Balance <span class="text-danger">*</span>
+                            </label>
+                            {% render_form_field form.statement_balance %}
+                            <small class="form-text text-muted">
+                                Enter the ending balance shown on your bank statement
+                            </small>
+                            {% if form.statement_balance.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.statement_balance.errors }}
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="form-group">
+                            <label for="{{ form.notes.id_for_label }}" class="font-weight-bold">Notes</label>
+                            {% render_form_field form.notes %}
+                        </div>
+
+                        {% if form.non_field_errors %}
+                        <div class="alert alert-danger">
+                            {{ form.non_field_errors }}
+                        </div>
+                        {% endif %}
+
+                        <div class="form-group mt-4">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="fas fa-arrow-right"></i> Next: Upload Statement
+                            </button>
+                            <a href="{% url 'banking_dashboard' %}" class="btn btn-secondary btn-lg ml-2">
+                                <i class="fas fa-times"></i> Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Info Box -->
+            <div class="card mt-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0"><i class="fas fa-info-circle"></i> About Bank Reconciliation</h5>
+                </div>
+                <div class="card-body">
+                    <p>
+                        Bank reconciliation is the process of matching your bank statement entries with 
+                        the transactions recorded in LyraERP. This ensures your financial records are accurate 
+                        and up-to-date.
+                    </p>
+                    <ul class="mb-0">
+                        <li>Upload your bank statement as a CSV file</li>
+                        <li>System automatically matches entries by date and amount</li>
+                        <li>Manually match any unmatched items</li>
+                        <li>Confirm when all items are matched</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,145 @@
+{% extends "website/index.html" %}
+{% load static %}
+
+{% block page_title %}Activity Log Detail{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <a href="{% url 'activity_log_list' %}" class="btn btn-secondary mb-3">
+                <i class="bi bi-arrow-left"></i> Back to Logs
+            </a>
+            <h2>Activity Log Detail</h2>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Basic Information</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-3"><strong>Timestamp:</strong></div>
+                        <div class="col-md-9">{{ log.timestamp|date:"F d, Y H:i:s" }}</div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-3"><strong>User:</strong></div>
+                        <div class="col-md-9">
+                            {% if log.user %}
+                                {{ log.user.username }} ({{ log.user.get_full_name }})
+                            {% else %}
+                                <span class="text-muted">System</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-3"><strong>Action:</strong></div>
+                        <div class="col-md-9">
+                            {% if log.action == 'CREATE' %}
+                                <span class="badge bg-success">{{ log.action }}</span>
+                            {% elif log.action == 'UPDATE' %}
+                                <span class="badge bg-primary">{{ log.action }}</span>
+                            {% elif log.action == 'DELETE' %}
+                                <span class="badge bg-danger">{{ log.action }}</span>
+                            {% else %}
+                                <span class="badge bg-info">{{ log.action }}</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-3"><strong>Model:</strong></div>
+                        <div class="col-md-9">{{ log.model_name }}</div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-3"><strong>Object:</strong></div>
+                        <div class="col-md-9">{{ log.object_repr }}</div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-3"><strong>Description:</strong></div>
+                        <div class="col-md-9">{{ log.description }}</div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-3"><strong>IP Address:</strong></div>
+                        <div class="col-md-9">{{ log.ip_address|default:'-' }}</div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-3"><strong>User Agent:</strong></div>
+                        <div class="col-md-9">
+                            <small>{{ log.user_agent|default:'-' }}</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {% if log.changes %}
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5>Changes</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Field</th>
+                                <th>Old Value</th>
+                                <th></th>
+                                <th>New Value</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for field, change in log.changes.items %}
+                            <tr>
+                                <td><strong>{{ field }}</strong></td>
+                                <td>
+                                    {% if change.old %}
+                                        <code>{{ change.old|truncatechars:100 }}</code>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    <i class="bi bi-arrow-right"></i>
+                                </td>
+                                <td>
+                                    {% if change.new %}
+                                        <code>{{ change.new|truncatechars:100 }}</code>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% endif %}
+
+            {% if log.old_values %}
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5>Old Values (Full)</h5>
+                </div>
+                <div class="card-body">
+                    <pre><code>{{ log.old_values|pprint }}</code></pre>
+                </div>
+            </div>
+            {% endif %}
+
+            {% if log.new_values %}
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5>New Values (Full)</h5>
+                </div>
+                <div class="card-body">
+                    <pre><code>{{ log.new_values|pprint }}</code></pre>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

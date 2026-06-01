@@ -1,0 +1,29 @@
+# django-cities-light
+cities_light_data/alternateNames.txt
+cities_light_data/alternateNames.zip
+
+<<<<<<< HEAD
+
+__pycache__/
+*.pyc
+=======
+# Archives
+*.zip
+
+# Logs
+*.log
+logs/*.log
+
+# Database dumps
+*.sql
+
+# Python
+__pycache__/
+*.pyc
+
+# Environment variables
+.env
+
+# Node modules
+node_modules/
+>>>>>>> 24f879507a8bc3dfbb632a7bbf50a2d0c76f125a

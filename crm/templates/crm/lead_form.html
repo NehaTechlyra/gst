@@ -1,0 +1,241 @@
+{% extends 'website/index.html' %}
+
+{% block title %}{{ title }} - Lyra CRM{% endblock %}
+{% block page_title %}{{ title }}{% endblock %}
+
+{% block exstyle %}
+<style>
+  /* Apply #55588b color to all text inside .container.crm-page except buttons */
+  .container.crm-page,
+  .container.crm-page label,
+  .container.crm-page h2,
+  .container.crm-page p,
+  .container.crm-page span,
+  .container.crm-page div,
+  .container.crm-page form,
+  .container.crm-page .form-label,
+  .container.crm-page .form-control,
+  .container.crm-page select,
+  .container.crm-page textarea {
+    color: #55588b !important;
+  }
+
+  /* Match sales quotation form field styling */
+  .container.crm-page input,
+  .container.crm-page select,
+  .container.crm-page textarea {
+    width: 100%;
+    padding: 5px 12px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    margin-bottom: 10px;
+    font-size: 1rem;
+    outline: none;
+  }
+
+  .container.crm-page label.form-label {
+    display: block;
+    font-size: 0.92em;
+    margin-bottom: 6px;
+    margin-top: 4px;
+    color: #55588b !important;
+    font-weight: 500;
+  }
+
+  /* Ensure red asterisks are not overridden by the global span color */
+  .container.crm-page .text-danger,
+  .container.crm-page span.text-danger {
+    color: #dc3545 !important;
+  }
+
+  /* Card styling to match quotation container */
+  .container.crm-page .card {
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+    border: none;
+  }
+
+  .container.crm-page .card-body {
+    padding: 24px;
+  }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    (function(){
+        function startsWithMatcher(params, data) {
+            if ($.trim(params.term) === '') { return data; }
+            if (data.text && data.text.toLowerCase().startsWith(params.term.toLowerCase())) { return data; }
+            return null;
+        }
+        $(function(){
+            try{
+                $('.container.crm-page .select2').each(function(){
+                    var $el = $(this);
+                    if ($el.hasClass('select2-hidden-accessible')) return; // skip django-select2 managed
+                    $el.select2({placeholder: $el.data('placeholder') || 'Search...', allowClear: true, matcher: startsWithMatcher, width: '100%'});
+                });
+            }catch(e){console.debug('crm select2 init',e);} 
+        });
+    })();
+</script>
+{% endblock %}
+
+
+
+{% block content %}
+<div class="container crm-page">
+
+<div class="card">
+    <div class="card-body">
+        <form method="post">
+            {% csrf_token %}
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Customer Name <span class="text-danger">*</span></label>
+                    {{ form.customer_name }}
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Phone</label>
+                    {{ form.phone }}
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Email</label>
+                    {{ form.email }}
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Product Interested <span class="text-danger">*</span></label>
+                    {{ form.product_interested }}
+                </div>
+                <div class="col-md-12 mb-3">
+                    <label class="form-label">Additional Information</label>
+                    {{ form.additional_info }}
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Source</label>
+                    {{ form.source }}
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Assigned Employee</label>
+                    {{ form.assigned_employee }}
+                </div>
+                <div class="col-md-2 mb-3">
+                    <label class="form-label">Priority</label>
+                    {{ form.priority }}
+                </div>
+                <div class="col-md-2 mb-3">
+                    <label class="form-label">Status</label>
+                    {{ form.status }}
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary">Save</button>
+            <a href="{% if lead %}{% url 'lead_detail' lead.pk %}{% else %}{% url 'lead_list' %}{% endif %}" class="btn btn-secondary">Cancel</a>
+        </form>
+    </div>
+</div>
+
+<script>
+    // Track form changes - Global variable
+    let formChanged = false;
+    const leadForm = document.querySelector('form');
+    
+    if (leadForm) {
+        // Track all form input changes
+        leadForm.addEventListener('change', function(e) {
+            formChanged = true;
+            console.log('Form changed via change event');
+        });
+        
+        leadForm.addEventListener('input', function(e) {
+            formChanged = true;
+            console.log('Form changed via input event');
+        });
+    }
+    
+    // Track Select2 changes using jQuery delegation (works regardless of initialization timing)
+    if (window.$ && window.jQuery) {
+        $(document).on('change', 'select.select2, .select2-hidden-accessible', function() {
+            formChanged = true;
+            console.log('Form changed via Select2 change event (delegation)');
+        });
+    }
+    
+    // Direct select element change listeners as fallback
+    document.addEventListener('change', function(e) {
+        if (e.target.tagName === 'SELECT') {
+            formChanged = true;
+            console.log('Form changed via direct select change event');
+        }
+    }, true);
+    
+    // Global click interceptor for all links - Outside of form check
+    document.addEventListener('click', function(e) {
+        // Check if clicked element is a link
+        let link = e.target.closest('a');
+        
+        console.log('Link clicked:', link ? link.href : 'not a link');
+        
+        if (link && formChanged) {
+            // Get the href
+            const href = link.getAttribute('href');
+            
+            console.log('Checking href:', href, 'formChanged:', formChanged);
+            
+            // Check if it's a navigation link (not modal, not anchor, not javascript)
+            if (href && !href.startsWith('#') && !link.getAttribute('data-bs-toggle') && !href.startsWith('javascript:')) {
+                console.log('Preventing navigation to:', href);
+                e.preventDefault();
+                e.stopPropagation();
+                
+                // Show confirmation modal
+                const navModalHtml = `
+                    <div class="modal fade" id="navConfirmationModal" tabindex="-1" role="dialog" aria-labelledby="navConfirmationLabel" aria-hidden="true">
+                        <div class="modal-dialog" role="document">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title" id="navConfirmationLabel">Confirm Navigation</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <p>Are you sure you want to leave this page? All unsaved data will be lost.</p>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                    <button type="button" class="btn btn-primary" id="confirm-nav">OK</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                // Remove any existing modal
+                const existingModal = document.getElementById('navConfirmationModal');
+                if (existingModal) existingModal.remove();
+                
+                // Add new modal to body
+                document.body.insertAdjacentHTML('beforeend', navModalHtml);
+                
+                // Show the modal
+                const navModal = new bootstrap.Modal(document.getElementById('navConfirmationModal'));
+                navModal.show();
+                
+                // Store the target URL
+                const targetUrl = href;
+                
+                // Handle the confirmation
+                document.getElementById('confirm-nav').addEventListener('click', function() {
+                    formChanged = false; // Reset to allow navigation
+                    window.location.href = targetUrl;
+                });
+                
+                // Clean up modal when it's hidden
+                document.getElementById('navConfirmationModal').addEventListener('hidden.bs.modal', function () {
+                    document.getElementById('navConfirmationModal').remove();
+                });
+            }
+        }
+    }, true); // Use capture phase for better event handling
+</script>
+{% endblock %}

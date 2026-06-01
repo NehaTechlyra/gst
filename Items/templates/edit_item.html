@@ -1,0 +1,53 @@
+{% comment %} {% extends 'base.html' %} {% endcomment %}
+{% block content %}
+
+<div class="container mt-4">
+
+  {% if item %}
+    <h2>Edit Item: {{ item.name }}</h2>
+  {% else %}
+    <h2>Add New Item</h2>
+  {% endif %}
+  
+  <form method="POST" enctype="multipart/form-data">
+    {% csrf_token %}
+    
+    {{ form.non_field_errors }}
+    
+    <div class="mb-3">
+      {{ form.name.label_tag }}
+      {{ form.name }}
+      {{ form.name.errors }}
+    </div>
+    
+    <div class="mb-3">
+      {{ form.unit.label_tag }}
+      {{ form.unit }}
+      {{ form.unit.errors }}
+    </div>
+
+    <div class="mb-3">
+      {{ form.hsn_code.label_tag }}
+      {{ form.hsn_code }}
+      {{ form.hsn_code.errors }}
+    </div>
+
+    <div class="mb-3">
+      {{ form.sac_code.label_tag }}
+      {{ form.sac_code }}
+      {{ form.sac_code.errors }}
+    </div>
+
+    {# Repeat for other fields #}
+
+    {% if item %}
+      <button type="submit" class="btn btn-primary">Update Item</button>
+      <a href="{% url 'items' %}" class="btn btn-secondary">Cancel</a>
+    {% else %}
+      <button type="submit" class="btn btn-primary">Save Item</button>
+    {% endif %}
+  </form>
+
+</div>
+
+{% endblock %}

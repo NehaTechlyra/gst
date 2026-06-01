@@ -1,0 +1,92 @@
+{# ─────────────────────────────────────────────────────────────────────────────
+   PASTE THIS BLOCK INSIDE invoice_detail.html, INSIDE  <div class="card mt-4">
+   (or anywhere suitable in the Quick Actions / body section)
+   Place it just after the Delivery Notes card block.
+
+   The block is guarded by company_is_india and the ₹50,000 threshold.
+   ──────────────────────────────────────────────────────────────────────────── #}
+
+{% if company_is_india and invoice.total_amount >= 50000 %}
+<div class="card mt-4 border-0 shadow-sm">
+
+  <!-- Card Header -->
+  <div class="card-header bg-white d-flex justify-content-between align-items-center py-3"
+       style="border-left:3px solid #55588b !important;">
+    <div class="d-flex align-items-center gap-2">
+      <i class="bi bi-file-earmark-check text-primary"></i>
+      <h5 class="mb-0 fw-bold" style="color:#55588b; font-size:.85rem; text-transform:uppercase; letter-spacing:.06em;">
+        E-Way Bill
+      </h5>
+    </div>
+    <!-- Status badge -->
+    {% if invoice.eway_bill %}
+      <span class="badge px-2 py-1
+        {% if invoice.eway_bill.status == 'generated' %}bg-warning text-dark
+        {% elif invoice.eway_bill.status == 'cancelled' %}bg-danger
+        {% else %}bg-secondary{% endif %}">
+        {{ invoice.eway_bill.get_status_display }}
+      </span>
+    {% else %}
+      <span class="badge bg-secondary">Not Generated</span>
+    {% endif %}
+  </div>
+
+  <!-- Card Body -->
+  <div class="card-body py-3">
+    {% if invoice.eway_bill %}
+      <!-- Show existing EWB info -->
+      <div class="row g-2 mb-3" style="font-size:.85rem;">
+        <div class="col-6 col-md-3">
+          <span class="text-muted d-block" style="font-size:.75rem;">EWB No.</span>
+          <strong style="font-family:monospace;">{{ invoice.eway_bill.ewb_number|default:"—" }}</strong>
+        </div>
+        <div class="col-6 col-md-3">
+          <span class="text-muted d-block" style="font-size:.75rem;">Vehicle No.</span>
+          <strong>{{ invoice.eway_bill.vehicle_number|default:"—" }}</strong>
+        </div>
+        <div class="col-6 col-md-3">
+          <span class="text-muted d-block" style="font-size:.75rem;">Transport Mode</span>
+          <strong>{{ invoice.eway_bill.get_mode_of_transport_display }}</strong>
+        </div>
+        <div class="col-6 col-md-3">
+          <span class="text-muted d-block" style="font-size:.75rem;">Generated At</span>
+          <strong>{{ invoice.eway_bill.generated_at|date:"d M Y, H:i"|default:"—" }}</strong>
+        </div>
+      </div>
+
+      <!-- Action buttons -->
+      <div class="d-flex gap-2 flex-wrap">
+        {% if invoice.eway_bill.status != 'cancelled' %}
+          <a href="{% if company_code %}{% url 'eway_bill_generate' company_code invoice.pk %}{% else %}{% url 'eway_bill_generate' invoice.pk %}{% endif %}"
+             class="btn btn-sm btn-outline-primary">
+            <i class="bi bi-pencil me-1"></i> Edit
+          </a>
+          <form method="POST"
+                action="{% if company_code %}{% url 'eway_bill_cancel' company_code invoice.eway_bill.pk %}{% else %}{% url 'eway_bill_cancel' invoice.eway_bill.pk %}{% endif %}"
+                onsubmit="return confirm('Cancel this E-Way Bill?');" style="display:inline; margin:0;">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-sm btn-outline-danger">
+              <i class="bi bi-x-circle me-1"></i> Cancel EWB
+            </button>
+          </form>
+        {% endif %}
+        <a href="{% if company_code %}{% url 'eway_bill_detail' company_code invoice.eway_bill.pk %}{% else %}{% url 'eway_bill_detail' invoice.eway_bill.pk %}{% endif %}"
+           class="btn btn-sm btn-outline-secondary">
+          <i class="bi bi-eye me-1"></i> View Details
+        </a>
+      </div>
+
+    {% else %}
+      <!-- Not yet generated -->
+      <p class="text-muted small mb-3">
+        This invoice (₹{{ invoice.total_amount|floatformat:2 }}) qualifies for E-Way Bill generation.
+      </p>
+      <a href="{% if company_code %}{% url 'eway_bill_generate' company_code invoice.pk %}{% else %}{% url 'eway_bill_generate' invoice.pk %}{% endif %}"
+         class="btn btn-sm btn-primary">
+        <i class="bi bi-plus-circle me-1"></i> Generate E-Way Bill
+      </a>
+    {% endif %}
+  </div>
+
+</div>
+{% endif %}

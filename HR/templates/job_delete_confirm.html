@@ -1,0 +1,39 @@
+{% extends 'website/index.html' %}
+{% load static %}
+
+{% block exstyle %}
+<link href="{% static 'style/general.css' %}" rel="stylesheet">
+<style>
+    .delete-shell {
+        padding: 20px 24px;
+        background-color: #f9fafb;
+        min-height: calc(100vh - 60px);
+    }
+    .delete-card {
+        max-width: 640px;
+        background: #fff;
+        border-radius: 10px;
+        padding: 24px;
+        box-shadow: 0 4px 12px rgba(15,23,42,0.06);
+        border: 1px solid #eef2ff;
+    }
+</style>
+{% endblock exstyle %}
+
+{% block page_title %}Delete Job Opening{% endblock page_title %}
+
+{% block content %}
+<div class="delete-shell">
+    <div class="delete-card">
+        <h4 style="margin-top:0;">Delete Job Opening</h4>
+        <p>Are you sure you want to delete <strong>{{ job.title }}</strong>?</p>
+        <form method="post">
+            {% csrf_token %}
+            <div style="display:flex; gap:10px; justify-content:flex-end;">
+                <a href="{% url 'job_list' %}" class="btn btn-outline-secondary">Cancel</a>
+                <button type="submit" class="btn btn-danger">Delete</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock content %}
