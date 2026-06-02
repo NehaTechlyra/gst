@@ -505,14 +505,21 @@ input:checked + .slider:before {
                         </div>
                         <div class="col-md-4 mb-3">
                             <label class="form-label required">Country</label>
-                            <select name="country" class="form-select">
-                                <option value="">Select Country</option>
-                                {% for code, name in countries %}
-                                <option value="{{ code }}" {% if company.country == code or company.country.code == code %}selected{% endif %}>
-                                    {{ name }}
-                                </option>
-                                {% endfor %}
+                            <select name="country" class="form-select" {% if not company %}disabled{% endif %}>
+                                {% if company %}
+                                    <option value="">Select Country</option>
+                                    {% for code, name in countries %}
+                                    <option value="{{ code }}" {% if company.country == code or company.country.code == code %}selected{% endif %}>
+                                        {{ name }}
+                                    </option>
+                                    {% endfor %}
+                                {% else %}
+                                    <option value="IN" selected>India</option>
+                                {% endif %}
                             </select>
+                            {% if not company %}
+                            <input type="hidden" name="country" value="IN">
+                            {% endif %}
                         </div>
                         <div class="col-md-4 mb-3">
                             <label class="form-label required">Postal Code</label>

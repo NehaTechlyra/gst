@@ -547,7 +547,7 @@
                                 <i class="bi bi-building"></i>Organization Name
                             </label>
                             <input type="text" class="form-control" name="name"
-                                   placeholder="Enter your organization name" required>
+                                   placeholder="Enter your organization name" value="{{ company.name|default:'' }}" required>
                         </div>
                     </div>
 
@@ -570,12 +570,10 @@
                             <label class="form-label required">
                                 <i class="bi bi-globe"></i>Country / Organization Location
                             </label>
-                            <select class="form-select" id="country" name="country" required>
-                                <option value="">Select Country</option>
-                                {% for code, name in countries %}
-                                <option value="{{ code }}">{{ name }}</option>
-                                {% endfor %}
+                            <select class="form-select" id="country" name="country" disabled>
+                                <option value="IN" selected>India</option>
                             </select>
+                            <input type="hidden" name="country" value="IN">
                         </div>
                     </div>
 
@@ -1578,12 +1576,9 @@ document.addEventListener('DOMContentLoaded', async function () {
     resetSelect(stateSelect, 'Select country first');
     resetSelect(citySelect, 'Select state first');
 
-    if (!initialCountryCode) {
-        return;
-    }
-
-    countrySelect.value = initialCountryCode;
-    await loadStates(initialCountryCode, initialStateId, initialCityId);
+    const startingCountry = initialCountryCode || 'IN';
+    countrySelect.value = startingCountry;
+    await loadStates(startingCountry, initialStateId, initialCityId);
 });
 
 {% comment %} document.addEventListener('DOMContentLoaded', function () {

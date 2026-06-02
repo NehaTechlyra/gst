@@ -71,7 +71,7 @@ def company_create(request):
             company.address_line2 = request.POST.get("address_line2")
             company.city = request.POST.get("city")
             company.state = request.POST.get("state")
-            company.country = request.POST.get("country")
+            company.country = request.POST.get("country") or "IN"
             company.postal_code = request.POST.get("postal_code")
             company.email = request.POST.get("email")
             company.phone = request.POST.get("phone")
@@ -195,6 +195,17 @@ def company_create(request):
                 base_choices.insert(0, (inferred, inferred))
             if inferred:
                 selected_base = inferred
+        except Exception:
+            pass
+
+    if not selected_base:
+        try:
+            inferred_default = base_currency_code_from_country('IN') or ''
+            inferred_default = inferred_default.strip().upper()[:3]
+            if inferred_default:
+                selected_base = inferred_default
+                if selected_base not in [c for c, _ in base_choices]:
+                    base_choices.insert(0, (selected_base, selected_base))
         except Exception:
             pass
 
