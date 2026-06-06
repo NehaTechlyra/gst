@@ -443,6 +443,33 @@
             border-left-color: #55588b;
             box-shadow: inset 0 0 0 1px rgba(85, 88, 139, 0.10), 0 0 0 2px rgba(85, 88, 139, 0.08);
         }
+
+        .sidebar .nav-links .sidebar-focused,
+        .sidebar .nav-links .sidebar-focused > a,
+        .sidebar .nav-links .icon-link.sidebar-focused {
+            background: #dce2f9;
+            color: #1f2a44;
+            {% comment %} box-shadow: inset 0 0 0 1px rgba(85, 88, 139, 0.14); {% endcomment %}
+        }
+
+        .sidebar .nav-links .icon-link.sidebar-focused .link_name,
+        .sidebar .nav-links .sidebar-focused .link_name,
+        .sidebar .nav-links a.sidebar-focused .link_name {
+            color: #1f2a44;
+        }
+
+        .sidebar .nav-links a.active-link ,{
+            background: #dce2f9;
+            color: #003a8c;
+            font-weight: 600;
+        }
+
+        .sidebar .nav-links a.active-link.sidebar-focused,
+        .sidebar .nav-links .icon-link.sidebar-focused.active-link {
+            background: #dce2f9;
+            color: #1f2a44;
+            {% comment %} box-shadow: inset 0 0 0 1px rgba(85, 88, 139, 0.14); {% endcomment %}
+        }
     </style>
     {% comment %} {% endblock style %} {% endcomment %}
 
@@ -932,7 +959,7 @@
                         </div>
                     </a>
                     {% endwith %}
-                    <a href="{% url 'logout' %}" style="text-decoration: none;"><i class='bx bx-log-out' style="color: #55588b;font-size:25px;margin-right:5px;margin-top:5px;"></i></a>
+                    <a href="{% url 'logout' %}" id="sidebar-logout" tabindex="0" role="button" aria-label="Logout" style="text-decoration: none;"><i class='bx bx-log-out' style="color: #55588b;font-size:25px;margin-right:5px;margin-top:5px;"></i></a>
                 </div>
             </li>
         </ul>
@@ -1002,6 +1029,7 @@ iconLinks.forEach(iconLink => {
 
                     // Toggle the menu of the clicked icon-link
                     this.parentElement.classList.toggle("showMenu");
+                    try { this.focus(); } catch (err) {}
                 });
 
                 iconLink.addEventListener("keydown", function(e) {
@@ -1015,18 +1043,333 @@ iconLinks.forEach(iconLink => {
             });
 
 
+            function initSidebarKeyboardNavigation() {
+                const sidebar = document.querySelector(".sidebar");
+                if (!sidebar) {
+                    return;
+                }
+
+                const navLinks = sidebar.querySelector(".nav-links");
+                if (!navLinks) {
+                    return;
+                }
+
+                // Make all links focusable and ensure they focus on click
+                navLinks.querySelectorAll('a[href]').forEach((a) => {
+                    a.setAttribute('tabindex', '0');
+                    a.addEventListener('click', function () { try { this.focus(); } catch (e) {} });
+                });
+
+                navLinks.setAttribute("role", "menu");
+
+                function getToggleButton(li) {
+                    return li.querySelector(".icon-link");
+                }
+
+                function getSubMenu(li) {
+                    return li.querySelector(".sub-menu:not(.blank)");
+                }
+
+                function setToggleAttributes(li) {
+                    const toggle = getToggleButton(li);
+                    const submenu = getSubMenu(li);
+                    if (!toggle || !submenu) {
+                        return;
+                    }
+
+                    if (!submenu.id) {
+                        submenu.id = `sidebar-submenu-${Math.random().toString(36).slice(2, 8)}`;
+                    }
+
+                    toggle.setAttribute("role", "menuitem");
+                    toggle.setAttribute("aria-haspopup", "true");
+                    toggle.setAttribute("aria-expanded", li.classList.contains("showMenu") ? "true" : "false");
+                    toggle.setAttribute("aria-controls", submenu.id);
+                    submenu.setAttribute("role", "menu");
+                    submenu.setAttribute("aria-hidden", li.classList.contains("showMenu") ? "false" : "true");
+                    submenu.querySelectorAll("li > a").forEach((link) => {
+                        link.setAttribute("role", "menuitem");
+                    });
+                }
+
+                function buildMenuItems() {
+                    const items = [];
+
+                    // Include the hamburger button (logo area) as the first navigable item
+                    const headerToggle = document.querySelector('.bx-menu');
+                    if (headerToggle) {
+                        headerToggle.setAttribute('role', 'menuitem');
+                        items.push({ node: headerToggle, type: 'hamburger' });
+                    }
+
+                    sidebar.querySelectorAll(".nav-links > li").forEach((li) => {
+                        const toggle = getToggleButton(li);
+                        const topLink = li.querySelector(":scope > a[href]");
+
+                        if (toggle) {
+                            items.push({ node: toggle, type: "toggle", li });
+                        } else if (topLink) {
+                            topLink.setAttribute("role", "menuitem");
+                            items.push({ node: topLink, type: "link", li });
+                        }
+
+                        const submenu = getSubMenu(li);
+                        if (submenu && li.classList.contains("showMenu")) {
+                            submenu.querySelectorAll("li > a[href]").forEach((link) => {
+                                if (link.offsetParent !== null) {
+                                    link.setAttribute("role", "menuitem");
+                                    items.push({ node: link, type: "sublink", parentToggle: toggle, li });
+                                }
+                            });
+                        }
+                    });
+
+                    // Include logout as last item
+                    const logoutBtn = document.getElementById('sidebar-logout');
+                    if (logoutBtn) {
+                        logoutBtn.setAttribute('role', 'menuitem');
+                        items.push({ node: logoutBtn, type: 'logout' });
+                    }
+
+                    return items.filter((item) => item.node && item.node.offsetParent !== null);
+                }
+
+                function clearFocusedVisuals() {
+                    sidebar.querySelectorAll(".sidebar-focused").forEach((el) => el.classList.remove("sidebar-focused"));
+                }
+
+                function focusMenuItem(item, options = { scroll: true }) {
+                    if (!item || !item.node) {
+                        return;
+                    }
+
+                    clearFocusedVisuals();
+                    item.node.classList.add("sidebar-focused");
+                    if (item.node.tabIndex < 0) {
+                        item.node.tabIndex = 0;
+                    }
+                    item.node.focus({ preventScroll: true });
+                    if (options.scroll && typeof item.node.scrollIntoView === "function") {
+                        item.node.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "smooth" });
+                    }
+                }
+
+                function getCurrentFocusedItem() {
+                    const active = document.activeElement;
+                    if (!active || !sidebar.contains(active)) {
+                        return null;
+                    }
+                    const items = buildMenuItems();
+                    return items.find((item) => item.node === active) || null;
+                }
+
+                function closeOtherGroups(exceptLi) {
+                    sidebar.querySelectorAll(".nav-links li.showMenu").forEach((openLi) => {
+                        if (openLi !== exceptLi) {
+                            openLi.classList.remove("showMenu");
+                            const toggle = getToggleButton(openLi);
+                            const submenu = getSubMenu(openLi);
+                            if (toggle) {
+                                toggle.setAttribute("aria-expanded", "false");
+                            }
+                            if (submenu) {
+                                submenu.setAttribute("aria-hidden", "true");
+                            }
+                        }
+                    });
+                }
+
+                function toggleMenu(li, expand) {
+                    const toggle = getToggleButton(li);
+                    const submenu = getSubMenu(li);
+                    if (!toggle || !submenu) {
+                        return;
+                    }
+
+                    const isExpanded = li.classList.contains("showMenu");
+                    const shouldExpand = typeof expand === "boolean" ? expand : !isExpanded;
+                    if (shouldExpand) {
+                        closeOtherGroups(li);
+                    }
+
+                    li.classList.toggle("showMenu", shouldExpand);
+                    toggle.setAttribute("aria-expanded", shouldExpand ? "true" : "false");
+                    submenu.setAttribute("aria-hidden", shouldExpand ? "false" : "true");
+                }
+
+                function focusRelative(offset) {
+                    const items = buildMenuItems();
+                    if (!items.length) {
+                        return;
+                    }
+                    const current = getCurrentFocusedItem();
+                    let index = current ? items.findIndex((item) => item.node === current.node) : -1;
+                    if (index === -1) {
+                        focusMenuItem(items[0]);
+                        return;
+                    }
+                    let nextIndex = index + offset;
+                    nextIndex = Math.max(0, Math.min(items.length - 1, nextIndex));
+                    focusMenuItem(items[nextIndex]);
+                }
+
+                function getParentItem(item) {
+                    if (!item || item.type !== "sublink") {
+                        return null;
+                    }
+                    const parentLi = item.node.closest("ul.sub-menu")?.closest("li");
+                    if (!parentLi) {
+                        return null;
+                    }
+                    const parentToggle = getToggleButton(parentLi);
+                    return parentToggle ? { node: parentToggle, type: "toggle", li: parentLi } : null;
+                }
+
+                sidebar.querySelectorAll(".nav-links > li").forEach((li) => {
+                    setToggleAttributes(li);
+                    const toggle = getToggleButton(li);
+                    if (toggle) {
+                        toggle.setAttribute("tabindex", "0");
+                    }
+                });
+
+                sidebar.addEventListener("focusin", function(event) {
+                    const items = buildMenuItems();
+                    const focusedItem = items.find((item) => item.node === event.target);
+                    if (focusedItem) {
+                        clearFocusedVisuals();
+                        focusedItem.node.classList.add("sidebar-focused");
+                    } else if (items.length && document.activeElement && sidebar.contains(document.activeElement)) {
+                        const firstItem = items[0];
+                        if (firstItem) {
+                            clearFocusedVisuals();
+                            firstItem.node.classList.add("sidebar-focused");
+                        }
+                    }
+                });
+
+                // Extract keyboard navigation logic into a reusable function
+                window.handleSidebarNavigationKey = function(key) {
+                    if (!["ArrowDown", "ArrowUp", "ArrowRight", "ArrowLeft", "Enter", " "].includes(key)) {
+                        return false;
+                    }
+                    const current = getCurrentFocusedItem() || buildMenuItems()[0];
+                    if (!current) {
+                        return false;
+                    }
+                    switch (key) {
+                        case "ArrowDown":
+                            focusRelative(1);
+                            return true;
+                        case "ArrowUp":
+                            focusRelative(-1);
+                            return true;
+                        case "ArrowRight": {
+                            if (current.type === "toggle") {
+                                const isExpanded = current.li.classList.contains("showMenu");
+                                if (!isExpanded) {
+                                    toggleMenu(current.li, true);
+                                } else {
+                                    const firstSubLink = current.li.querySelector(".sub-menu:not(.blank) > li > a[href]");
+                                    if (firstSubLink && firstSubLink.offsetParent !== null) {
+                                        focusMenuItem({ node: firstSubLink, type: "sublink", parentToggle: current, li: current.li });
+                                    }
+                                }
+                            }
+                            return true;
+                        }
+                        case "ArrowLeft":
+                            if (current.type === "sublink") {
+                                const parent = getParentItem(current);
+                                if (parent) {
+                                    focusMenuItem(parent);
+                                }
+                            } else if (current.type === "toggle" && current.li.classList.contains("showMenu")) {
+                                toggleMenu(current.li, false);
+                            }
+                            return true;
+                        case "Enter":
+                        case " ":
+                            if (current.type === "toggle") {
+                                toggleMenu(current.li);
+                                focusMenuItem(current);
+                            } else {
+                                current.node.click();
+                            }
+                            return true;
+                        default:
+                            return false;
+                    }
+                };
+
+                sidebar.addEventListener("keydown", function(event) {
+                    if (event.altKey || event.ctrlKey || event.metaKey) {
+                        return;
+                    }
+
+                    const validKeys = ["ArrowDown", "ArrowUp", "ArrowRight", "ArrowLeft", "Enter", " "];
+                    if (!validKeys.includes(event.key)) {
+                        return;
+                    }
+
+                    if (!sidebar.contains(document.activeElement)) {
+                        return;
+                    }
+
+                    if (isEditableTarget(event.target)) {
+                        return;
+                    }
+
+                    if (window.handleSidebarNavigationKey(event.key)) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                    }
+                }, true);
+            }
+            initSidebarKeyboardNavigation();
+
+            // Helper: focus the sidebar (first item) and forward a key to it.
+            window.focusSidebarAndSendKey = function(key) {
+                try {
+                    const sidebarEl = document.querySelector('.sidebar');
+                    if (!sidebarEl) return false;
+                    const items = sidebarEl.querySelectorAll('.nav-links a, .icon-link');
+                    if (!items || items.length === 0) return false;
+
+                    // If no element in sidebar is focused, focus the first visible item
+                    if (!sidebarEl.contains(document.activeElement)) {
+                        let first = null;
+                        for (const el of items) {
+                            if (el.offsetParent !== null) { first = el; break; }
+                        }
+                        if (!first) return false;
+                        try { first.focus(); } catch (e) { }
+                    }
+
+                    // Call the navigation handler directly
+                    if (window.handleSidebarNavigationKey && window.handleSidebarNavigationKey(key)) {
+                        return true;
+                    }
+                    return false;
+                } catch (e) {
+                    return false;
+                }
+            };
 
             let sidebar = document.querySelector(".sidebar");
             let sidebarBtn = document.querySelector(".bx-menu");
             sidebarBtn.setAttribute("tabindex", "0");
             sidebarBtn.setAttribute("role", "button");
             sidebarBtn.setAttribute("aria-label", "Toggle sidebar");
-            console.log(sidebarBtn);
-            sidebarBtn.addEventListener("click", () => {
-                sidebar.classList.toggle("close");
-                localStorage.setItem("sidebarClosed", sidebar.classList.contains("close"));
+            // Reflect whether sidebar is expanded for screen readers (expanded when NOT closed)
+            sidebarBtn.setAttribute("aria-expanded", sidebar && sidebar.classList.contains("close") ? "false" : "true");
 
+            sidebarBtn.addEventListener("click", () => {
+                const closed = sidebar.classList.toggle("close");
+                localStorage.setItem("sidebarClosed", closed);
+                sidebarBtn.setAttribute("aria-expanded", closed ? "false" : "true");
             });
+
             sidebarBtn.addEventListener("keydown", (event) => {
                 if (event.key !== "Enter" && event.key !== " ") {
                     return;
@@ -1035,6 +1378,28 @@ iconLinks.forEach(iconLink => {
                 event.preventDefault();
                 sidebarBtn.click();
             });
+
+            // Keyboard support for logout: focus via Shift+L and activate with Enter/Space
+            const logoutEl = document.getElementById('sidebar-logout');
+            if (logoutEl) {
+                logoutEl.setAttribute('role', 'button');
+                logoutEl.setAttribute('aria-label', logoutEl.getAttribute('aria-label') || 'Logout');
+                logoutEl.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        this.click();
+                    }
+                });
+
+                document.addEventListener('keydown', function(e) {
+                    if (e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey) return;
+                    if (isEditableTarget(e.target)) return;
+                    if ((e.key === 'L' || e.key === 'l') && e.shiftKey) {
+                        e.preventDefault();
+                        try { logoutEl.focus(); } catch (err) {}
+                    }
+                });
+            }
             if (localStorage.getItem("sidebarClosed") === "true") {
                 sidebar.classList.add("close");
             } else {
@@ -1049,6 +1414,77 @@ iconLinks.forEach(iconLink => {
                 return Boolean(
                     element.closest("input, textarea, select, [contenteditable='true'], [contenteditable=''], .select2-search__field")
                 );
+            }
+
+            // Helper: Focus first focusable element in home-section
+            function focusHomeSection() {
+                const homeSection = document.querySelector('.home-section');
+                if (!homeSection) return false;
+
+                const focusableSelectors = 'a, button, input, select, textarea, [tabindex]:not([tabindex="-1"])';
+                const focusables = Array.from(homeSection.querySelectorAll(focusableSelectors))
+                    .filter((el) => el.offsetParent !== null && !isEditableTarget(el));
+
+                const target = focusables.length ? focusables[0] : homeSection;
+                if (target === homeSection) {
+                    homeSection.tabIndex = -1;
+                }
+
+                try {
+                    target.focus({ preventScroll: true });
+                    target.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+                    return true;
+                } catch (e) {
+                    return false;
+                }
+            }
+
+            function isFocusInHomeSection() {
+                const homeSection = document.querySelector('.home-section');
+                return homeSection && homeSection.contains(document.activeElement);
+            }
+
+            function getHomeSectionFocusableItems() {
+                const homeSection = document.querySelector('.home-section');
+                if (!homeSection) return [];
+
+                const selectors = 'a[href], button:not([disabled]), [role="button"], [tabindex]:not([tabindex="-1"])';
+                return Array.from(homeSection.querySelectorAll(selectors))
+                    .filter((el) => el.offsetParent !== null)
+                    .filter((el) => !el.closest('.home-content'));
+            }
+
+            function focusHomeSectionRelative(offset) {
+                const items = getHomeSectionFocusableItems();
+                if (!items.length) {
+                    return false;
+                }
+
+                const active = document.activeElement;
+                let currentIndex = items.findIndex((item) => item === active);
+                if (currentIndex === -1) {
+                    try {
+                        items[0].focus({ preventScroll: true });
+                        items[0].scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+                    } catch (e) {}
+                    return true;
+                }
+
+                const nextIndex = Math.max(0, Math.min(items.length - 1, currentIndex + offset));
+                if (nextIndex !== currentIndex) {
+                    try {
+                        items[nextIndex].focus({ preventScroll: true });
+                        items[nextIndex].scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+                    } catch (e) {}
+                    return true;
+                }
+                return false;
+            }
+
+            // Helper: Check if focus is in sidebar
+            function isFocusInSidebar() {
+                const sidebar = document.querySelector('.sidebar');
+                return sidebar && sidebar.contains(document.activeElement);
             }
 
             function getDefaultScrollTarget() {
@@ -1096,6 +1532,63 @@ iconLinks.forEach(iconLink => {
                 if (isEditableTarget(event.target)) {
                     return;
                 }
+
+                // Handle Shift+Tab to jump bidirectionally between sidebar and home-section
+                if (event.key === 'Tab' && event.shiftKey) {
+                    if (isFocusInSidebar()) {
+                        event.preventDefault();
+                        focusHomeSection();
+                        return;
+                    }
+
+                    if (isFocusInHomeSection()) {
+                        event.preventDefault();
+                        const sidebar = document.querySelector('.sidebar');
+                        if (sidebar) {
+                            const items = Array.from(sidebar.querySelectorAll('.nav-links a, .icon-link'))
+                                .filter((el) => el.offsetParent !== null);
+                            const firstItem = items[0] || document.getElementById('sidebar-logout');
+                            if (firstItem) {
+                                try { firstItem.focus({ preventScroll: true }); } catch (e) {}
+                            }
+                        }
+                        return;
+                    }
+                }
+
+                // If Arrow keys are pressed anywhere and sidebar exists, route them to sidebar
+                try {
+                    const sidebarEl = document.querySelector('.sidebar');
+                    const homeSection = document.querySelector('.home-section');
+                    const arrowKeys = ["ArrowDown","ArrowUp","ArrowLeft","ArrowRight"];
+
+                    if (homeSection && homeSection.contains(document.activeElement)) {
+                        if (arrowKeys.includes(event.key)) {
+                            const offset = event.key === 'ArrowDown' || event.key === 'ArrowRight' ? 1 : -1;
+                            if (focusHomeSectionRelative(offset)) {
+                                event.preventDefault();
+                                event.stopPropagation();
+                                return;
+                            }
+                        }
+                    }
+
+                    // Route arrow keys to sidebar when focus isn't already handled by home-section
+                    if (sidebarEl && arrowKeys.includes(event.key) && !isEditableTarget(event.target)) {
+                        if (window.focusSidebarAndSendKey) {
+                            const ok = window.focusSidebarAndSendKey(event.key);
+                            if (ok) {
+                                event.preventDefault();
+                                event.stopPropagation();
+                                return;
+                            }
+                        }
+                    }
+                    // If focus is inside the sidebar, let the sidebar handler manage arrow keys.
+                    if (sidebarEl && sidebarEl.contains(document.activeElement)) {
+                        return;
+                    }
+                } catch (e) {}
 
                 const scrollTarget = getKeyboardScrollTarget(document.activeElement || event.target) || getDefaultScrollTarget();
                 const lineStep = 80;
