@@ -1105,6 +1105,84 @@ document.addEventListener('DOMContentLoaded', function() {
                 const spSelect = document.getElementById('sales_person_select') || document.getElementById('id_sales_person');
                 if(spSelect && !spSelect.id) spSelect.id = 'sales_person_select';
                 
+                document.addEventListener('DOMContentLoaded', function() {
+                  const quoteDateInput = document.querySelector('input[name="date"], #id_date');
+                  if (quoteDateInput) {
+                    quoteDateInput.removeAttribute('readonly');
+                    quoteDateInput.setAttribute('autocomplete', 'off');
+                    quoteDateInput.setAttribute('inputmode', 'numeric');
+                    quoteDateInput.setAttribute('placeholder', 'YYYY-MM-DD');
+
+                    quoteDateInput.addEventListener('keydown', function(e) {
+                      if ([
+                        'ArrowUp',
+                        'ArrowDown',
+                        'ArrowLeft',
+                        'ArrowRight',
+                        'PageUp',
+                        'PageDown',
+                        'Home',
+                        'End'
+                      ].includes(e.key)) {
+                        // Keep native date-field keyboard navigation inside this input
+                        e.stopPropagation();
+                      }
+                    });
+                  }
+
+                  // Enable ArrowUp / ArrowDown navigation between form fields
+                  const quotationForm = document.getElementById('salesquotation-form');
+                  if (quotationForm) {
+                    quotationForm.addEventListener('keydown', function(e) {
+                      const target = e.target;
+                      if (!target) return;
+
+                      // Only handle when focused element is a regular form control
+                      const isControl = target.matches && (target.matches('input, textarea, select, button') || target.classList.contains('select2-search__field'));
+                      if (!isControl) return;
+
+                      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                        // gather visible, tabbable form controls
+                        const selector = 'input, select, textarea, button, [tabindex]:not([tabindex="-1"])';
+                        const list = Array.from(quotationForm.querySelectorAll(selector)).filter(function(el) {
+                          return el.offsetParent !== null && !el.disabled && !el.hidden && el.type !== 'hidden';
+                        });
+
+                        // normalize a target index (handle select2 wrappers)
+                        let idx = list.indexOf(target);
+                        if (idx === -1) {
+                          // maybe the active element is a Select2 visible element; try to map back
+                          const sel = target.closest && target.closest('.select2');
+                          if (sel) {
+                            const forEl = quotationForm.querySelector('select[name="' + (sel.dataset && sel.dataset.originalName || '') + '"]');
+                            if (forEl) idx = list.indexOf(forEl);
+                          }
+                        }
+
+                        if (idx === -1) return;
+
+                        const nextIdx = e.key === 'ArrowDown' ? Math.min(list.length - 1, idx + 1) : Math.max(0, idx - 1);
+                        if (nextIdx !== idx) {
+                          e.preventDefault();
+                          let next = list[nextIdx];
+                          // If next is a native select used by Select2, focus the Select2 element instead
+                          if (next && next.tagName && next.tagName.toLowerCase() === 'select') {
+                            const sibling = next.nextElementSibling;
+                            if (sibling && sibling.classList && sibling.classList.contains('select2')) {
+                              const selEl = sibling.querySelector('.select2-selection');
+                              if (selEl) {
+                                try { selEl.focus(); } catch (err) { next.focus(); }
+                                return;
+                              }
+                            }
+                          }
+                          try { next.focus(); } catch (err) {}
+                        }
+                      }
+                    }, true);
+                  }
+                });
+                
                 $(function() {
                   $('#sales_person_select').select2({
                     placeholder: 'Choose sales person',

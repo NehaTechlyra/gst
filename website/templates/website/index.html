@@ -1448,7 +1448,7 @@ iconLinks.forEach(iconLink => {
                 const homeSection = document.querySelector('.home-section');
                 if (!homeSection) return [];
 
-                const selectors = 'a[href], button:not([disabled]), [role="button"], [tabindex]:not([tabindex="-1"])';
+                const selectors = 'a[href], button:not([disabled]), input, select, textarea, [role="button"], [tabindex]:not([tabindex="-1"])';
                 return Array.from(homeSection.querySelectorAll(selectors))
                     .filter((el) => el.offsetParent !== null)
                     .filter((el) => !el.closest('.home-content'));
@@ -1529,7 +1529,8 @@ iconLinks.forEach(iconLink => {
                     return;
                 }
 
-                if (isEditableTarget(event.target)) {
+                // Allow arrow navigation in the home-section even when the current field is editable
+                if (isEditableTarget(event.target) && !(event.key.startsWith('Arrow') && isFocusInHomeSection())) {
                     return;
                 }
 

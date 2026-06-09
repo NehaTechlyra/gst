@@ -110,12 +110,24 @@ class SalesQuotationForm(forms.ModelForm):
         widgets = {
             # 'customer': forms.Select(attrs={'class': 'form-control vendor-select'}),
             'customer': forms.Select(attrs={'class': 'form-control customer-select', 'id': 'customer_select'}),
-            'date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'date': forms.DateInput(attrs={
+                'type': 'date',
+                'class': 'form-control',
+                'autocomplete': 'off',
+                'inputmode': 'numeric',
+                'placeholder': 'YYYY-MM-DD'
+            }),
             'sales_person': forms.Select(attrs={'class': 'form-control sales_person-select', 'id': 'sales_person_select'}),
             'place_of_supply': forms.TextInput(attrs={'class': 'form-control', 'id': 'place-of-supply', 'type': 'hidden'}),
             'document_currency': forms.Select(attrs={'class': 'form-control select2', 'id': 'document_currency'}),
             'fx_rate_to_base': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.000001', 'placeholder': '1.000000'}),
-            'fx_rate_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'fx_rate_date': forms.DateInput(attrs={
+                'type': 'date',
+                'class': 'form-control',
+                'autocomplete': 'off',
+                'inputmode': 'numeric',
+                'placeholder': 'YYYY-MM-DD'
+            }),
         }
     
     def __init__(self, *args, **kwargs):
