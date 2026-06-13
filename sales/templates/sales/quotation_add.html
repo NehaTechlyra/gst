@@ -1446,10 +1446,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 <option value="{{ tax.tax_id }}" data-rate="{{ tax.tax_rate }}">{{ tax.tax_name }} ({{ tax.tax_rate }}%)</option>
               {% endfor %}
             </select>
-            <button id="tcs_manage_button" type="button" class="btn btn-sm btn-outline-secondary select-action-btn" title="Manage TCS">Manage</button>
+            {% comment %} <button id="tcs_manage_button" type="button" class="btn btn-sm btn-outline-secondary select-action-btn" title="Manage TCS">Manage</button> {% endcomment %}
           </div>
-          <button id="tds_add_button" type="button" class="btn btn-sm btn-primary">Add TDS</button>
-          <button id="tcs_add_button" type="button" class="btn btn-sm btn-primary" style="display:none;">Add TCS</button>
+          {% comment %} <button id="tds_add_button" type="button" class="btn btn-sm btn-primary">Add TDS</button>
+          <button id="tcs_add_button" type="button" class="btn btn-sm btn-primary" style="display:none;">Add TCS</button> {% endcomment %}
         <div style="display:flex; align-items:center; gap:0.5rem; white-space: nowrap;">
           <strong id="tds-tcs-amount" class="amount">₹0.00</strong>
         </div>
@@ -1499,7 +1499,7 @@ document.addEventListener('DOMContentLoaded', function() {
                   openTdsTcsManageModal('tds');
                 });
               } else if (triggerId === 'tcs_definition_select') {
-                var btnHtml2 = '<div class="select2-footer-add select2-footer-manage-tcs" style="padding:6px; border-top:1px solid #eee; background:#10b981; text-align:center;"><button type="button" class="btn select2-manage-tcs" style="color:#fff;padding:0px;width:100%;text-align:left;">Manage TCS</button></div>';
+                var btnHtml2 = '<div class="select2-footer-add select2-footer-manage-tcs" style="padding:6px; border-top:1px solid #eee; background:#3b82f6; text-align:center;"><button type="button" class="btn select2-manage-tcs" style="color:#fff;padding:0px;width:100%;text-align:left;">Manage TCS</button></div>';
                 $dropdown.append(btnHtml2);
                 $dropdown.find('.select2-manage-tcs').on('click', function (ev) {
                   ev.preventDefault();
