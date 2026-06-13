@@ -827,6 +827,7 @@
                         <li><a href="{% url 'tax_list' %}" class="{% if request.resolver_match.url_name in active_urls.split %}active-link{% endif %}">Taxes</a></li>
                     {% endwith %}
                     {% endif %}
+                    
                     {% if request.user.is_superuser or can_view_users %}
                     {% with active_urls=" add_user user_list user_edit " %}
                         <li><a href="{% url 'user_list' %}" class="{% if request.resolver_match.url_name in active_urls.split %}active-link{% endif %}">Users</a></li>

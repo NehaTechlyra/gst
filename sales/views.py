@@ -26,7 +26,7 @@ try:
 except ImportError:
     calculate_tax = None
 from journal.models import JournalEntry, JournalLine
-from Tax.models import TaxGroup, Tax
+from Tax.models import TaxGroup, Tax, TaxMaster, TdsMaster, TcsMaster
 from django.core.paginator import Paginator
 from django.db.models import Max
 from django.db.models import OuterRef, Subquery, F
@@ -230,6 +230,9 @@ def quotation_add(request):
     opportunity_id = request.GET.get('opportunity_id')
 
     # Pass both to the template
+    tds_tax_master_items = TdsMaster.objects.filter(company=company, is_active=True) if company else TdsMaster.objects.none()
+    tcs_tax_master_items = TcsMaster.objects.filter(company=company, is_active=True) if company else TcsMaster.objects.none()
+
     return render(request, 'sales/quotation_add.html', {
         'quotation_form': quotation_form,
         'item_formset': item_formset,
@@ -245,6 +248,8 @@ def quotation_add(request):
         'company_currencies': company_currencies,
         'company_base_currency_symbol': base_currency_symbol,
         'company_base_currency_code': base_currency_code,
+        'tds_tax_master_items': tds_tax_master_items,
+        'tcs_tax_master_items': tcs_tax_master_items,
     })
 
 #updt by neha on 6-02-26 for listing companies

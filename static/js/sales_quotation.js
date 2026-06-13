@@ -1566,6 +1566,25 @@ function calculateTotals() {
   grandTotal = totalBeforeDiscount - TotalDiscount;
   if (grandTotal < 0) grandTotal = 0;
 
+  syncTdsTcsDefinitionState();
+  const tdsTcsType = document.querySelector('input[name="tds_tcs_type"]:checked')?.value || 'tds';
+  const tdsTcsRate = parseFloat(document.getElementById('tds_tcs_rate')?.value) || 0;
+  let tdsTcsAmount = 0;
+  if (tdsTcsRate > 0) {
+    tdsTcsAmount = grandTotal * tdsTcsRate / 100;
+  }
+  const tdsTcsLabel = tdsTcsType === 'tcs' ? 'TCS Amount' : 'TDS Amount';
+  if (document.getElementById('tds-tcs-label')) {
+    document.getElementById('tds-tcs-label').innerText = tdsTcsLabel;
+  }
+  if (document.getElementById('tds-tcs-amount')) {
+    const sign = tdsTcsType === 'tds' ? '-' : '+';
+    document.getElementById('tds-tcs-amount').innerText = getDocumentCurrencySymbol() + ' ' + sign + tdsTcsAmount.toFixed(2);
+  }
+  if (document.getElementById('tds_tcs_amount')) {
+    document.getElementById('tds_tcs_amount').value = tdsTcsAmount.toFixed(2);
+  }
+
   const turnoverSelect = document.getElementById('turnover_tax_select');
   const isTurnoverCompany = String(window.COMPANY_TAX_TYPE || '').trim().toUpperCase() === 'TURNOVER';
   let turnoverTaxAmount = 0;
@@ -1585,15 +1604,20 @@ function calculateTotals() {
   if (document.getElementById("turnover-tax-amount")) {
     document.getElementById("turnover-tax-amount").innerText = getDocumentCurrencySymbol() + ' ' + turnoverTaxAmount.toFixed(2);
   }
-  if (document.getElementById("grand-total")) document.getElementById("grand-total").innerText = getDocumentCurrencySymbol() + ' ' + finalGrandTotal.toFixed(2);
-  document.getElementById('grandTotal').value = finalGrandTotal.toFixed(2);
+
+  const tdsTcsSignedAmount = tdsTcsType === 'tds' ? -tdsTcsAmount : tdsTcsAmount;
+  let finalGrandTotalWithTdsTcs = finalGrandTotal + tdsTcsSignedAmount;
+  if (finalGrandTotalWithTdsTcs < 0) finalGrandTotalWithTdsTcs = 0;
+
+  if (document.getElementById("grand-total")) document.getElementById("grand-total").innerText = getDocumentCurrencySymbol() + ' ' + finalGrandTotalWithTdsTcs.toFixed(2);
+  document.getElementById('grandTotal').value = finalGrandTotalWithTdsTcs.toFixed(2);
 
   const fxInput = document.getElementById('fx_rate_to_base');
   const fxRateValue = fxInput ? (parseFloat(fxInput.value) || 1) : 1;
   const baseSubtotalValue = subtotal * fxRateValue;
   const baseTotalTaxValue = totalTax * fxRateValue;
   const baseTotalDiscountValue = TotalDiscount * fxRateValue;
-  const baseGrandTotalValue = finalGrandTotal * fxRateValue;
+  const baseGrandTotalValue = finalGrandTotalWithTdsTcs * fxRateValue;
 
   const baseSummaryCard = document.getElementById('base-transaction-summary');
   if (baseSummaryCard) {
@@ -1633,6 +1657,58 @@ $('#items-table').on('input change', '.qty, .price, .item-discount, .discount-ty
 });
 
 $('#grand-discount, #grand-discount-type').on('input change', calculateTotals);
+function syncTdsTcsDefinitionState() {
+  const selectedType = document.querySelector('input[name="tds_tcs_type"]:checked')?.value || 'tds';
+  const tdsSelect = document.getElementById('tds_definition_select');
+  const tcsSelect = document.getElementById('tcs_definition_select');
+  const tdsManage = document.getElementById('tds_manage_button');
+  const tcsManage = document.getElementById('tcs_manage_button');
+  const tdsAdd = document.getElementById('tds_add_button');
+  const tcsAdd = document.getElementById('tcs_add_button');
+  const hiddenRate = document.getElementById('tds_tcs_rate');
+  const hiddenId = document.getElementById('tds_tcs_definition_id');
+
+  if (tdsSelect) {
+    tdsSelect.style.display = selectedType === 'tds' ? 'inline-block' : 'none';
+  }
+  if (tcsSelect) {
+    tcsSelect.style.display = selectedType === 'tcs' ? 'inline-block' : 'none';
+  }
+  if (tdsManage) {
+    tdsManage.style.display = selectedType === 'tds' ? 'inline-flex' : 'none';
+  }
+  if (tcsManage) {
+    tcsManage.style.display = selectedType === 'tcs' ? 'inline-flex' : 'none';
+  }
+  if (tdsAdd) {
+    tdsAdd.style.display = selectedType === 'tds' ? 'inline-flex' : 'none';
+  }
+  if (tcsAdd) {
+    tcsAdd.style.display = selectedType === 'tcs' ? 'inline-flex' : 'none';
+  }
+
+  let selectedOption = null;
+  if (selectedType === 'tds' && tdsSelect) {
+    selectedOption = tdsSelect.options[tdsSelect.selectedIndex];
+  } else if (selectedType === 'tcs' && tcsSelect) {
+    selectedOption = tcsSelect.options[tcsSelect.selectedIndex];
+  }
+
+  const rate = selectedOption ? parseFloat(selectedOption.dataset.rate || selectedOption.value || 0) : 0;
+  const taxId = selectedOption ? selectedOption.value || '' : '';
+
+  if (hiddenRate) {
+    hiddenRate.value = Number.isFinite(rate) ? rate : 0;
+  }
+  if (hiddenId) {
+    hiddenId.value = taxId;
+  }
+}
+
+$(document).on('change', 'input[name="tds_tcs_type"], #tds_definition_select, #tcs_definition_select', function () {
+  syncTdsTcsDefinitionState();
+  calculateTotals();
+});
 $(document).on('select2:select', '#turnover_tax_select', function (event) {
   const selected = event.params && event.params.data;
   if (!selected) return;

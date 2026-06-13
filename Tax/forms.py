@@ -1,5 +1,5 @@
 from django import forms
-from .models import TaxGroup, Tax, TaxType, TaxMaster
+from .models import TaxGroup, Tax, TaxType, TaxMaster, TdsMaster, TcsMaster
 from django.core.exceptions import ValidationError
 
 class TaxTypeChoiceField(forms.ModelChoiceField):
@@ -166,10 +166,22 @@ class TaxMasterForm(forms.ModelForm):
         # Always hide and default applicable_on to ALL
         self.fields['applicable_on'].widget = forms.HiddenInput()
         self.fields['applicable_on'].initial = 'ALL'
-        
+
+        tax_name_value = ''
+        if self.is_bound:
+            tax_name_value = self.data.get(self.add_prefix('tax_name')) or self.data.get('tax_name', '')
+        if not tax_name_value:
+            tax_name_value = self.initial.get('tax_name', '')
+        tax_name_value = (str(tax_name_value) or '').lower()
+        if 'tds' in tax_name_value or 'tcs' in tax_name_value:
+            self.fields['tax_scope'].widget = forms.HiddenInput()
+            self.fields['tax_scope'].initial = 'INVOICE'
+            self.fields['tax_method'].widget = forms.HiddenInput()
+            self.fields['tax_method'].initial = 'PERCENT'
+
         self.fields['tax_name'].widget.attrs.update({'class': 'form-control'})
         self.fields['tax_scope'].widget.attrs.update({'class': 'form-control'})
-        self.fields['tax_rate'].widget.attrs.update({'class': 'form-control', 'step': '0.01'})
+        self.fields['tax_rate'].widget.attrs.update({'class': 'form-control', 'step': '0.01', 'min': '0'})
         # self.fields['tax_method'].widget.attrs.update({'class': 'form-control'})
         # self.fields['tax_order'].widget.attrs.update({'class': 'form-control'})
         # self.fields['is_active'].widget.attrs.update({'class': 'form-check-input'})
@@ -202,6 +214,152 @@ class TaxMasterForm(forms.ModelForm):
         if self.company and self.company.tax_type in ('TURNOVER', 'NONE') and tax_scope == 'ITEM':
             raise ValidationError('Item scope taxes are not allowed for TURNOVER or NONE tax types.')
         return tax_scope
+
+
+class TdsMasterForm(forms.ModelForm):
+    period_start = forms.DateField(
+        required=False,
+        widget=forms.DateInput(attrs={
+            'class': 'form-control',
+            'type': 'date',
+            'placeholder': 'dd/mm/yyyy',
+            'inputmode': 'numeric',
+        }),
+        input_formats=['%Y-%m-%d', '%d/%m/%Y'],
+        error_messages={'invalid': 'Start Date must be in dd/mm/yyyy format.'}
+    )
+    period_end = forms.DateField(
+        required=False,
+        widget=forms.DateInput(attrs={
+            'class': 'form-control',
+            'type': 'date',
+            'placeholder': 'dd/mm/yyyy',
+            'inputmode': 'numeric',
+        }),
+        input_formats=['%Y-%m-%d', '%d/%m/%Y'],
+        error_messages={'invalid': 'End Date must be in dd/mm/yyyy format.'}
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['tax_name'].widget.attrs.update({'class': 'form-control'})
+        self.fields['tax_rate'].widget.attrs.update({'class': 'form-control', 'step': '0.01', 'min': '0.01'})
+        self.fields['income_tax_act'].widget.attrs.update({'class': 'form-select'})
+        self.fields['section'].widget.attrs.update({'class': 'form-select'})
+        self.fields['higher_rate'].widget.attrs.update({'class': 'form-check-input'})
+        self.fields['period_start'].widget.attrs.update({'class': 'form-control'})
+        self.fields['period_end'].widget.attrs.update({'class': 'form-control'})
+
+    def clean(self):
+        cleaned_data = super().clean()
+        period_start = cleaned_data.get('period_start')
+        period_end = cleaned_data.get('period_end')
+        if period_start and period_end and period_end < period_start:
+            self.add_error('period_end', 'End Date cannot be earlier than Start Date.')
+        return cleaned_data
+
+    def clean_tax_rate(self):
+        raw = self.cleaned_data.get('tax_rate')
+        if raw is None:
+            return raw
+        try:
+            # Handle comma as decimal separator (user locale)
+            if isinstance(raw, str):
+                raw = raw.replace(',', '.')
+            from decimal import Decimal, InvalidOperation
+            if isinstance(raw, Decimal):
+                val = raw
+            else:
+                val = Decimal(str(raw).strip())
+            return val
+        except Exception:
+            raise ValidationError('Enter a valid tax rate.')
+
+    class Meta:
+        model = TdsMaster
+        fields = ['tax_name', 'tax_rate', 'income_tax_act', 'section', 'higher_rate', 'period_start', 'period_end']
+        labels = {
+            'tax_name': 'Tax Name',
+            'tax_rate': 'Rate (%)',
+            'income_tax_act': 'Applicable Income Tax Act',
+            'section': 'Section',
+            'higher_rate': 'This is a Higher TDS Rate',
+            'period_start': 'Start Date',
+            'period_end': 'End Date',
+        }
+
+
+class TcsMasterForm(forms.ModelForm):
+    period_start = forms.DateField(
+        required=False,
+        widget=forms.DateInput(attrs={
+            'class': 'form-control',
+            'type': 'date',
+            'placeholder': 'dd/mm/yyyy',
+            'inputmode': 'numeric',
+        }),
+        input_formats=['%Y-%m-%d', '%d/%m/%Y'],
+        error_messages={'invalid': 'Start Date must be in dd/mm/yyyy format.'}
+    )
+    period_end = forms.DateField(
+        required=False,
+        widget=forms.DateInput(attrs={
+            'class': 'form-control',
+            'type': 'date',
+            'placeholder': 'dd/mm/yyyy',
+            'inputmode': 'numeric',
+        }),
+        input_formats=['%Y-%m-%d', '%d/%m/%Y'],
+        error_messages={'invalid': 'End Date must be in dd/mm/yyyy format.'}
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['tax_name'].widget.attrs.update({'class': 'form-control'})
+        self.fields['tax_rate'].widget.attrs.update({'class': 'form-control', 'step': '0.01', 'min': '0.01'})
+        self.fields['income_tax_act'].widget.attrs.update({'class': 'form-select'})
+        self.fields['section'].widget.attrs.update({'class': 'form-select'})
+        self.fields['higher_rate'].widget.attrs.update({'class': 'form-check-input'})
+        self.fields['period_start'].widget.attrs.update({'class': 'form-control'})
+        self.fields['period_end'].widget.attrs.update({'class': 'form-control'})
+
+    def clean(self):
+        cleaned_data = super().clean()
+        period_start = cleaned_data.get('period_start')
+        period_end = cleaned_data.get('period_end')
+        if period_start and period_end and period_end < period_start:
+            self.add_error('period_end', 'End Date cannot be earlier than Start Date.')
+        return cleaned_data
+
+    def clean_tax_rate(self):
+        raw = self.cleaned_data.get('tax_rate')
+        if raw is None:
+            return raw
+        try:
+            # Handle comma as decimal separator (user locale)
+            if isinstance(raw, str):
+                raw = raw.replace(',', '.')
+            from decimal import Decimal, InvalidOperation
+            if isinstance(raw, Decimal):
+                val = raw
+            else:
+                val = Decimal(str(raw).strip())
+            return val
+        except Exception:
+            raise ValidationError('Enter a valid tax rate.')
+
+    class Meta:
+        model = TcsMaster
+        fields = ['tax_name', 'tax_rate', 'income_tax_act', 'section', 'higher_rate', 'period_start', 'period_end']
+        labels = {
+            'tax_name': 'Tax Name',
+            'tax_rate': 'Rate (%)',
+            'income_tax_act': 'Applicable Income Tax Act',
+            'section': 'Section',
+            'higher_rate': 'This is a Higher Rate',
+            'period_start': 'Start Date',
+            'period_end': 'End Date',
+        }
 
 
 class TaxGroupForm(forms.ModelForm):

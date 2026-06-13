@@ -1,0 +1,43 @@
+<div class="tds-tcs-manage-modal-body">
+    <div class="d-flex justify-content-between align-items-start mb-3">
+        <div>
+            <h5 class="mb-0">TDS Definitions</h5>
+            <p class="text-muted mb-0">Choose a saved TDS definition to apply.</p>
+        </div>
+        <button type="button" class="btn btn-primary" id="tdsTcsAddNewButton" data-type="TDS">Add TDS</button>
+    </div>
+
+    <form id="tdsTcsManageSearchForm" class="d-flex mb-3">
+        <input type="text" name="q" class="form-control" placeholder="Search definitions..." value="{{ search_query }}">
+        <button type="submit" class="btn btn-outline-secondary ms-2">Search</button>
+    </form>
+
+    {% if taxes %}
+    <div class="table-responsive">
+        <table class="table table-sm table-hover">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Rate</th>
+                    <th class="text-end">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for tax in taxes %}
+                <tr>
+                    <td>{{ tax.tax_name }}</td>
+                    <td>{{ tax.tax_rate }}%</td>
+                    <td class="text-end">
+                        <button type="button" class="btn btn-sm btn-outline-primary tds-tcs-select-btn" data-id="{{ tax.id }}" data-rate="{{ tax.tax_rate }}">Use</button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="alert alert-secondary">
+        No saved TDS definitions found. Click Add TDS to create one.
+    </div>
+    {% endif %}
+</div>

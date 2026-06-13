@@ -1,5 +1,7 @@
 from django.db import models
 from django.conf import settings 
+from django.core.validators import MinValueValidator
+from decimal import Decimal
 
 class TaxType(models.Model):
     name = models.CharField(max_length=50)   # CGST, SGST, VAT
@@ -153,6 +155,56 @@ class TaxMaster(models.Model):
     class Meta:
         db_table = 'tax_master'
         ordering = ['tax_order', 'tax_name']
+
+    def __str__(self):
+        return self.tax_name
+
+
+class TdsTcsBase(models.Model):
+    INCOME_TAX_ACT_CHOICES = [
+        ('new-2025', 'New Income Tax Act 2025'),
+        ('old-1961', 'Income Tax Act 1961'),
+    ]
+    SECTION_CHOICES = [
+        ('194c', 'Section 194C'),
+        ('194j', 'Section 194J'),
+        ('194q', 'Section 194Q'),
+        ('192', 'Section 192'),
+    ]
+
+    tax_id = models.AutoField(primary_key=True)
+    tax_name = models.CharField(max_length=255)
+    tax_rate = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(Decimal('0.01'))])
+    income_tax_act = models.CharField(max_length=50, choices=INCOME_TAX_ACT_CHOICES, blank=True, null=True)
+    section = models.CharField(max_length=50, choices=SECTION_CHOICES, blank=True, null=True)
+    higher_rate = models.BooleanField(default=False)
+    period_start = models.DateField(blank=True, null=True)
+    period_end = models.DateField(blank=True, null=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        abstract = True
+
+
+class TdsMaster(TdsTcsBase):
+    company = models.ForeignKey('company.Company', on_delete=models.CASCADE, related_name='tds_master_items')
+
+    class Meta:
+        db_table = 'tds_master'
+        ordering = ['tax_name']
+
+    def __str__(self):
+        return self.tax_name
+
+
+class TcsMaster(TdsTcsBase):
+    company = models.ForeignKey('company.Company', on_delete=models.CASCADE, related_name='tcs_master_items')
+
+    class Meta:
+        db_table = 'tcs_master'
+        ordering = ['tax_name']
 
     def __str__(self):
         return self.tax_name

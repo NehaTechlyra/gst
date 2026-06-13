@@ -4,8 +4,8 @@ from django.http import JsonResponse
 # Create your views here.
 from django.shortcuts import render, redirect, get_object_or_404
 from Lyraerp.utils.redirect_utils import redirect_with_company, get_company_code
-from .forms import TaxForm, TaxGroupForm, TaxTypeForm, TaxMasterForm
-from .models import Tax, TaxGroup, TaxType, TaxMaster
+from .forms import TaxForm, TaxGroupForm, TaxTypeForm, TaxMasterForm, TdsMasterForm, TcsMasterForm
+from .models import Tax, TaxGroup, TaxType, TaxMaster, TdsMaster, TcsMaster
 from company.models import Company
 from django.core.paginator import Paginator
 from django.db.models import Q
@@ -175,13 +175,19 @@ def tax_master_add(request):
             messages.success(request, "Tax added successfully.")
             return redirect_with_company('tax_list')
     else:
-        form = TaxMasterForm(company=company)
+        initial_data = {}
+        tax_name = request.GET.get('tax_name')
+        if tax_name:
+            initial_data['tax_name'] = tax_name
+        form = TaxMasterForm(company=company, initial=initial_data)
 
     return render(request, 'Tax/tax_add.html', {'form': form})
 
 
 def tax_master_add_modal(request):
     company = _get_current_company(request)
+    if not company:
+        return JsonResponse({'success': False, 'html_form': 'Company context not found.'})
     if request.method == 'POST':
         form = TaxMasterForm(request.POST, company=company)
         if form.is_valid():
@@ -192,14 +198,131 @@ def tax_master_add_modal(request):
                 'success': True,
                 'tax_id': tax.tax_id,
                 'tax_name': tax.tax_name,
+                'tax_rate': float(tax.tax_rate) if tax.tax_rate is not None else 0,
             })
         return JsonResponse({
             'success': False,
             'html_form': render_to_string('Tax/partial_tax_master_form.html', {'form': form}, request=request)
         })
 
-    form = TaxMasterForm(company=company)
+    initial_data = {}
+    tax_name = request.GET.get('tax_name')
+    if tax_name:
+        initial_data['tax_name'] = tax_name
+    form = TaxMasterForm(company=company, initial=initial_data)
     return render(request, 'Tax/partial_tax_master_form.html', {'form': form})
+
+
+def tds_master_add_modal(request):
+    company = _get_current_company(request)
+    if not company:
+        return JsonResponse({'success': False, 'html_form': 'Company context not found.'})
+    if request.method == 'POST':
+        form = TdsMasterForm(request.POST)
+        if form.is_valid():
+            tax = form.save(commit=False)
+            tax.company = company
+            tax.save()
+            return JsonResponse({
+                'success': True,
+                'tax_id': tax.tax_id,
+                'tax_name': tax.tax_name,
+                'tax_rate': float(tax.tax_rate) if tax.tax_rate is not None else 0,
+            })
+        return JsonResponse({
+            'success': False,
+            'html_form': render_to_string('Tax/partial_tds_master_form.html', {'form': form}, request=request)
+        })
+    form = TdsMasterForm()
+    return render(request, 'Tax/partial_tds_master_form.html', {'form': form})
+
+
+def tcs_master_add_modal(request):
+    company = _get_current_company(request)
+    if not company:
+        return JsonResponse({'success': False, 'html_form': 'Company context not found.'})
+    if request.method == 'POST':
+        form = TcsMasterForm(request.POST)
+        if form.is_valid():
+            tax = form.save(commit=False)
+            tax.company = company
+            tax.save()
+            return JsonResponse({
+                'success': True,
+                'tax_id': tax.tax_id,
+                'tax_name': tax.tax_name,
+                'tax_rate': float(tax.tax_rate) if tax.tax_rate is not None else 0,
+            })
+        return JsonResponse({
+            'success': False,
+            'html_form': render_to_string('Tax/partial_tcs_master_form.html', {'form': form}, request=request)
+        })
+    form = TcsMasterForm()
+    return render(request, 'Tax/partial_tcs_master_form.html', {'form': form})
+
+
+def tax_master_modal_list(request):
+    company = _get_current_company(request)
+    tds_tcs_type = request.GET.get('type', 'tds').lower()
+    search_query = request.GET.get('q', '').strip()
+
+    taxes = TaxMaster.objects.none()
+    if company:
+        taxes = TaxMaster.objects.filter(company=company, is_active=True)
+        if tds_tcs_type == 'tds':
+            taxes = taxes.filter(tax_name__icontains='tds')
+        elif tds_tcs_type == 'tcs':
+            taxes = taxes.filter(tax_name__icontains='tcs')
+
+        if search_query:
+            taxes = taxes.filter(
+                Q(tax_name__icontains=search_query) |
+                Q(tax_type__icontains=search_query) |
+                Q(tax_scope__icontains=search_query)
+            )
+
+        taxes = taxes.order_by('tax_order', 'tax_name')
+
+    context = {
+        'taxes': taxes,
+        'tds_tcs_type': tds_tcs_type,
+        'search_query': search_query,
+    }
+    return render(request, 'Tax/partial_tax_master_modal_list.html', context)
+
+
+def tds_master_modal_list(request):
+    company = _get_current_company(request)
+    search_query = request.GET.get('q', '').strip()
+    taxes = TdsMaster.objects.none()
+    if company:
+        taxes = TdsMaster.objects.filter(company=company, is_active=True)
+        if search_query:
+            taxes = taxes.filter(
+                Q(tax_name__icontains=search_query)
+            )
+        taxes = taxes.order_by('tax_name')
+    return render(request, 'Tax/partial_tds_master_modal_list.html', {
+        'taxes': taxes,
+        'search_query': search_query,
+    })
+
+
+def tcs_master_modal_list(request):
+    company = _get_current_company(request)
+    search_query = request.GET.get('q', '').strip()
+    taxes = TcsMaster.objects.none()
+    if company:
+        taxes = TcsMaster.objects.filter(company=company, is_active=True)
+        if search_query:
+            taxes = taxes.filter(
+                Q(tax_name__icontains=search_query)
+            )
+        taxes = taxes.order_by('tax_name')
+    return render(request, 'Tax/partial_tcs_master_modal_list.html', {
+        'taxes': taxes,
+        'search_query': search_query,
+    })
 
 
 def tax_master_edit(request, pk):

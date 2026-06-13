@@ -1,0 +1,72 @@
+<form id="taxMasterForm" action="{% url 'tds_master_add_modal' %}" method="post" novalidate>
+    {% csrf_token %}
+    <div class="row gy-3">
+        <div class="col-md-6">
+            <label class="form-label" for="id_tax_name">Tax Name<span class="text-danger">*</span></label>
+            {{ form.tax_name }}
+            {% if form.tax_name.errors %}
+                <div class="invalid-feedback d-block">{{ form.tax_name.errors|join:", " }}</div>
+            {% endif %}
+        </div>
+        <div class="col-md-6">
+            <label class="form-label" for="id_tax_rate">Rate (%)<span class="text-danger">*</span></label>
+            {{ form.tax_rate }}
+            {% if form.tax_rate.errors %}
+                <div class="invalid-feedback d-block">{{ form.tax_rate.errors|join:", " }}</div>
+            {% endif %}
+        </div>
+
+        <div class="col-md-6">
+            <label class="form-label" for="id_income_tax_act">Applicable Income Tax Act 456789</label>
+            {{ form.income_tax_act }}
+            {% if form.income_tax_act.errors %}
+                <div class="invalid-feedback d-block">{{ form.income_tax_act.errors|join:", " }}</div>
+            {% endif %}
+        </div>
+        <div class="col-md-6">
+            <label class="form-label" for="id_section">Section<span class="text-danger">*</span></label>
+            {{ form.section }}
+            {% if form.section.errors %}
+                <div class="invalid-feedback d-block">{{ form.section.errors|join:", " }}</div>
+            {% endif %}
+        </div>
+
+        <div class="col-12">
+            <div class="alert alert-info py-2 mb-0">
+                By default, TDS will be tracked under <strong>TDS Payable</strong> and <strong>TDS Receivable</strong> accounts. Click <a href="#" class="fw-semibold">Edit</a> to choose an account of your choice.
+            </div>
+        </div>
+
+        {% comment %} <div class="col-12">
+            <div class="form-check">
+                {{ form.higher_tds_rate }}
+                <label class="form-check-label" for="id_higher_tds_rate">This is a Higher TDS Rate</label>
+            </div>
+            {% if form.higher_tds_rate.errors %}
+                <div class="invalid-feedback d-block">{{ form.higher_tds_rate.errors|join:", " }}</div>
+            {% endif %}
+        </div> {% endcomment %}
+
+        <div class="col-md-6">
+            <label class="form-label" for="id_period_start">Start Date</label>
+            {{ form.period_start }}
+            <small class="form-text text-muted">Enter date in dd/mm/yyyy format or choose from calendar.</small>
+            {% if form.period_start.errors %}
+                <div class="invalid-feedback d-block">{{ form.period_start.errors|join:", " }}</div>
+            {% endif %}
+        </div>
+        <div class="col-md-6">
+            <label class="form-label" for="id_period_end">End Date</label>
+            {{ form.period_end }}
+            <small class="form-text text-muted">Enter date in dd/mm/yyyy format or choose from calendar.</small>
+            {% if form.period_end.errors %}
+                <div class="invalid-feedback d-block">{{ form.period_end.errors|join:", " }}</div>
+            {% endif %}
+        </div>
+
+        <div class="col-12 d-flex justify-content-end gap-2">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save</button>
+        </div>
+    </div>
+</form>

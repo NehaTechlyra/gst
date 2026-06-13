@@ -1,0 +1,70 @@
+<form id="taxMasterForm" action="{% url 'tax_master_add_modal' %}" method="post">
+    {% csrf_token %}
+    <div class="row gy-3">
+        <input type="hidden" name="modal_type" value="{{ modal_type }}">
+        <div class="col-md-6">
+            <label class="form-label" for="id_tax_name">Tax Name<span class="text-danger">*</span></label>
+            {{ form.tax_name }}
+            {% if form.tax_name.errors %}
+                <div class="invalid-feedback d-block">{{ form.tax_name.errors|join:", " }}</div>
+            {% endif %}
+        </div>
+        <div class="col-md-6">
+            <label class="form-label" for="id_tax_rate">Rate (%)<span class="text-danger">*</span></label>
+            {{ form.tax_rate }}
+            {% if form.tax_rate.errors %}
+                <div class="invalid-feedback d-block">{{ form.tax_rate.errors|join:", " }}</div>
+            {% endif %}
+        </div>
+
+        <div class="col-md-6">
+            <label class="form-label" for="id_income_tax_act">Applicable Income Tax Act</label>
+            <select name="income_tax_act" id="id_income_tax_act" class="form-select" required>
+                <option value="new-2025" selected>New Income Tax Act 2025</option>
+                <option value="old-1961">Income Tax Act 1961</option>
+            </select>
+        </div>
+        <div class="col-md-6">
+            <label class="form-label" for="id_section">Section<span class="text-danger">*</span></label>
+            <select name="section" id="id_section" class="form-select" required>
+                <option value="">Select a Section</option>
+                <option value="194c">194C</option>
+                <option value="194j">194J</option>
+                <option value="194q">194Q</option>
+                <option value="192">192</option>
+            </select>
+        </div>
+
+        <div class="col-12">
+            <div class="alert alert-info py-2 mb-0">
+                By default, TDS will be tracked under <strong>TDS Payable</strong> and <strong>TDS Receivable</strong> accounts. Click <a href="#" class="fw-semibold">Edit</a> to choose an account of your choice.
+            </div>
+        </div>
+
+        {% comment %} <div class="col-12">
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="id_higher_tds_rate" name="higher_tds_rate">
+                <label class="form-check-label" for="id_higher_tds_rate">This is a Higher TDS Rate</label>
+            </div>
+        </div> {% endcomment %}
+
+        <div class="col-md-6">
+            <label class="form-label" for="id_period_start">Start Date</label>
+            <input type="date" name="period_start" id="id_period_start" class="form-control">
+        </div>
+        <div class="col-md-6">
+            <label class="form-label" for="id_period_end">End Date</label>
+            <input type="date" name="period_end" id="id_period_end" class="form-control">
+        </div>
+
+        <div class="col-12 d-flex justify-content-end gap-2">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save</button>
+        </div>
+    </div>
+
+    {{ form.tax_type }}
+    {{ form.tax_scope }}
+    {{ form.tax_method }}
+    {{ form.applicable_on }}
+</form>

@@ -91,6 +91,7 @@ INSTALLED_APPS = [
     'company_settings',
     # 'django_apscheduler',
     'pricelists',
+    
 ]
 INSTALLED_APPS += ['django_countries']
 INSTALLED_APPS += ['cities_light']
