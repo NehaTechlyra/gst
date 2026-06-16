@@ -1217,6 +1217,327 @@
           <span>Total Discount</span>
           <strong id="discount-amount" class="amount"><span class="currency-symbol">₹</span>0.00</strong>
         </div>
+        <div class="totals-row" style="align-items:center; gap:1rem;">
+          <label style="display:flex; align-items:center; gap:0.35rem; white-space: nowrap;">
+            <input type="radio" name="tds_tcs_type" style="margin-bottom: 0px;" value="tds" checked>
+            TDS
+          </label>
+          <label style="display:flex; align-items:center; gap:0.35rem; white-space: nowrap;">
+            <input type="radio" name="tds_tcs_type" style="margin-bottom: 0px;" value="tcs">
+            TCS
+          </label>
+          <div class="select-with-action" style="width:125px; min-width:125px;">
+            <select id="tds_definition_select" name="tds_tcs_definition_select" class="form-select" style="width:100%;">
+              <option value="">Select TDS</option>
+              {% for tax in tds_tax_master_items %}
+                <option value="{{ tax.tax_id }}" data-rate="{{ tax.tax_rate }}">{{ tax.tax_name }} ({{ tax.tax_rate }}%)</option>
+              {% endfor %}
+            </select>
+            {% comment %} <a id="tds_manage_button" href="{% url 'tax_master_list' %}?q=tds" class="btn btn-sm btn-outline-secondary select-action-btn" title="Manage TDS">Manage</a> {% endcomment %}
+          </div>
+          <div class="select-with-action" style="width:125px; min-width:125px; display:none;" id="tcs_select_wrapper">
+            <select id="tcs_definition_select" name="tds_tcs_definition_select" class="form-select" style="width:100%;">
+              <option value="">Select TCS</option>
+              {% for tax in tcs_tax_master_items %}
+                <option value="{{ tax.tax_id }}" data-rate="{{ tax.tax_rate }}">{{ tax.tax_name }} ({{ tax.tax_rate }}%)</option>
+              {% endfor %}
+            </select>
+            {% comment %} <button id="tcs_manage_button" type="button" class="btn btn-sm btn-outline-secondary select-action-btn" title="Manage TCS">Manage</button> {% endcomment %}
+          </div>
+          {% comment %} <button id="tds_add_button" type="button" class="btn btn-sm btn-primary">Add TDS</button>
+          <button id="tcs_add_button" type="button" class="btn btn-sm btn-primary" style="display:none;">Add TCS</button> {% endcomment %}
+        <div style="display:flex; align-items:center; gap:0.5rem; white-space: nowrap;">
+          <strong id="tds-tcs-amount" class="amount">₹0.00</strong>
+        </div>
+        <input type="hidden" name="tds_tcs_amount" id="tds_tcs_amount" value="0.00">
+        <input type="hidden" name="tds_tcs_rate" id="tds_tcs_rate" value="0">
+        <input type="hidden" name="tds_tcs_definition_id" id="tds_tcs_definition_id" value="">
+      </div>
+      <script>
+        (function(){
+          // Initialize Select2 for TDS/TCS selects like other selects on the page
+          try {
+            if (window.jQuery && jQuery().select2) {
+              $('#tds_definition_select').select2({
+                placeholder: 'Select TDS',
+                allowClear: true,
+                width: '100%'
+              });
+              $('#tcs_definition_select').select2({
+                placeholder: 'Select TCS',
+                allowClear: true,
+                width: '100%'
+              });
+            }
+          } catch (e) {
+            console.warn('Select2 init failed for TDS/TCS selects', e);
+          }
+
+          // Add Manage footer inside Select2 dropdowns (mimic payment-terms behavior)
+          $(document).on('select2:open', function (e) {
+            try {
+              var $openContainer = $('.select2-container--open');
+              var $dropdown = $openContainer.find('.select2-dropdown');
+              if (!$dropdown.length) return;
+
+              var $trigger = $(e.target);
+              var triggerId = $trigger.attr('id');
+
+              // Remove any existing footers to avoid duplicates
+              $dropdown.find('.select2-footer-add').remove();
+
+              if (triggerId === 'tds_definition_select') {
+                var btnHtml = '<div class="select2-footer-add select2-footer-manage-tds" style="padding:6px; border-top:1px solid #eee; background:#3b82f6; text-align:center;"><button type="button" class="btn select2-manage-tds" style="color:#fff;padding:0px;width:100%;text-align:left;">Manage TDS</button></div>';
+                $dropdown.append(btnHtml);
+                $dropdown.find('.select2-manage-tds').on('click', function (ev) {
+                  ev.preventDefault();
+                  openTdsTcsManageModal('tds');
+                });
+              } else if (triggerId === 'tcs_definition_select') {
+                var btnHtml2 = '<div class="select2-footer-add select2-footer-manage-tcs" style="padding:6px; border-top:1px solid #eee; background:#3b82f6; text-align:center;"><button type="button" class="btn select2-manage-tcs" style="color:#fff;padding:0px;width:100%;text-align:left;">Manage TCS</button></div>';
+                $dropdown.append(btnHtml2);
+                $dropdown.find('.select2-manage-tcs').on('click', function (ev) {
+                  ev.preventDefault();
+                  openTdsTcsManageModal('tcs');
+                });
+              }
+            } catch (err) { console.warn('select2 footer error', err); }
+          });
+
+          // Keep wrapper visibility in sync when page loads
+          function initialSync() {
+            const selectedType = document.querySelector('input[name="tds_tcs_type"]:checked')?.value || 'tds';
+            document.getElementById('tcs_select_wrapper').style.display = selectedType === 'tcs' ? 'inline-block' : 'none';
+          }
+
+          // Toggle visibility of TDS/TCS selects and action buttons when radio changes
+          function syncTdsTcsVisibility() {
+            try {
+              const type = document.querySelector('input[name="tds_tcs_type"]:checked')?.value || 'tds';
+              const tdsSelectEl = document.getElementById('tds_definition_select');
+              const tdsWrapper = tdsSelectEl ? tdsSelectEl.closest('.select-with-action') : null;
+              const tcsWrapper = document.getElementById('tcs_select_wrapper');
+              const tdsAddBtn = document.getElementById('tds_add_button');
+              const tcsAddBtn = document.getElementById('tcs_add_button');
+
+              if (type === 'tcs') {
+                if (tdsWrapper) tdsWrapper.style.display = 'none';
+                if (tcsWrapper) tcsWrapper.style.display = 'inline-block';
+                if (tdsAddBtn) tdsAddBtn.style.display = 'none';
+                if (tcsAddBtn) tcsAddBtn.style.display = 'inline-block';
+              } else {
+                if (tdsWrapper) tdsWrapper.style.display = 'inline-block';
+                if (tcsWrapper) tcsWrapper.style.display = 'none';
+                if (tdsAddBtn) tdsAddBtn.style.display = 'inline-block';
+                if (tcsAddBtn) tcsAddBtn.style.display = 'none';
+              }
+
+              // Close any open select2 dropdowns and clear hidden selection when switching
+              try {
+                if (window.jQuery && jQuery().select2) {
+                  if (type === 'tcs') {
+                    $(tdsSelectEl).val('').trigger('change');
+                    $('#tds_definition_select').select2('close');
+                  } else {
+                    $('#tcs_definition_select').val('').trigger('change');
+                    $('#tcs_definition_select').select2('close');
+                  }
+                }
+              } catch (e) { /* ignore */ }
+            } catch (err) { console.warn('syncTdsTcsVisibility error', err); }
+          }
+
+          // Wire up radio change events
+          document.addEventListener('change', function (e) {
+            if (e.target && e.target.name === 'tds_tcs_type') {
+              syncTdsTcsVisibility();
+            }
+          }, true);
+
+          function loadModalHtml(url, callback, errorMessage) {
+            try {
+              if (window.fetch) {
+                fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+                  .then(function (response) { return response.text(); })
+                  .then(callback)
+                  .catch(function (error) {
+                    console.error(errorMessage, error);
+                    if (window.jQuery) {
+                      $.ajax({
+                        url: url,
+                        method: 'GET',
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                        success: callback,
+                        error: function (xhr, status, err) {
+                          console.error(errorMessage, status, err);
+                        }
+                      });
+                    }
+                  });
+              } else if (window.jQuery) {
+                $.ajax({
+                  url: url,
+                  method: 'GET',
+                  headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                  success: callback,
+                  error: function (xhr, status, err) {
+                    console.error(errorMessage, status, err);
+                  }
+                });
+              }
+            } catch (error) {
+              console.error(errorMessage, error);
+            }
+          }
+
+          function getCompanyPrefix() {
+            var pathParts = window.location.pathname.split('/');
+            return pathParts[1] ? '/' + pathParts[1] : '';
+          }
+
+          function getTaxUrl(relativePath) {
+            var prefix = getCompanyPrefix();
+            return prefix + '/tax/' + relativePath;
+          }
+
+          function openTdsTcsManageModal(type, searchQuery) {
+            var endpoint = type.toLowerCase() === 'tcs' ? 'tcs-master/modal/' : 'tds-master/modal/';
+            var url = getTaxUrl(endpoint + '?type=' + encodeURIComponent(type));
+            if (searchQuery) {
+              url += '&q=' + encodeURIComponent(searchQuery);
+            }
+            try {
+              $('#tds_definition_select, #tcs_definition_select').select2('close');
+            } catch (e) { }
+            loadModalHtml(url, function (html) {
+              var modalBody = document.querySelector('#tdsTcsManageModal .modal-body');
+              if (modalBody) {
+                modalBody.innerHTML = html;
+              }
+              var modalEl = document.getElementById('tdsTcsManageModal');
+              if (modalEl) {
+                modalEl.dataset.type = type;
+                var modal = new bootstrap.Modal(modalEl);
+                modal.show();
+              }
+            }, 'Failed to load TDS/TCS definitions');
+          }
+
+          function openTdsTcsAddModal(type) {
+            var endpoint = type.toLowerCase() === 'tcs' ? 'tcs-master/add/modal/' : 'tds-master/add/modal/';
+            var url = getTaxUrl(endpoint);
+            loadModalHtml(url, function (html) {
+              var modalBody = document.querySelector('#tdsTcsAddModal .modal-body');
+              if (modalBody) {
+                modalBody.innerHTML = html;
+              }
+              var modalEl = document.getElementById('tdsTcsAddModal');
+              if (modalEl) {
+                modalEl.dataset.type = type.toUpperCase();
+                var modal = new bootstrap.Modal(modalEl);
+                modal.show();
+              }
+            }, 'Failed to load add tax definition form');
+          }
+
+          $(document).on('submit', '#tdsTcsManageSearchForm', function (e) {
+            e.preventDefault();
+            var type = document.getElementById('tdsTcsManageModal')?.dataset.type || 'tds';
+            var query = $(this).find('input[name="q"]').val();
+            openTdsTcsManageModal(type, query);
+          });
+
+          $(document).on('click', '#tdsTcsAddNewButton', function (e) {
+            e.preventDefault();
+            var type = $(this).data('type') || 'TDS';
+            openTdsTcsAddModal(type);
+          });
+
+          $(document).on('click', '#tds_add_button', function (e) {
+            e.preventDefault();
+            openTdsTcsAddModal('TDS');
+          });
+
+          $(document).on('click', '#tcs_add_button', function (e) {
+            e.preventDefault();
+            openTdsTcsAddModal('TCS');
+          });
+
+          $(document).on('click', '#tcs_manage_button', function (e) {
+            e.preventDefault();
+            openTdsTcsManageModal('tcs');
+          });
+
+          $(document).on('click', '.tds-tcs-select-btn', function (e) {
+            e.preventDefault();
+            var type = document.getElementById('tdsTcsManageModal')?.dataset.type || 'tds';
+            var selectedId = $(this).data('id');
+            var selectId = type === 'tcs' ? '#tcs_definition_select' : '#tds_definition_select';
+            $(selectId).val(selectedId).trigger('change');
+            $('#tdsTcsManageModal').modal('hide');
+          });
+
+          $(document).on('submit', '#taxMasterForm', function (e) {
+            e.preventDefault();
+            var $form = $(this);
+
+            // Normalize tax_rate input (handle comma decimals) and log serialized data
+            try {
+              var $rateInput = $form.find('[name="tax_rate"]');
+              if ($rateInput && $rateInput.length) {
+                var raw = $rateInput.val();
+                if (typeof raw === 'string') {
+                  var normalized = raw.replace(',', '.').trim();
+                  // If numeric-ish, keep as-is; otherwise leave to validation
+                  if (!isNaN(Number(normalized)) && normalized !== '') {
+                    $rateInput.val(normalized);
+                  }
+                }
+              }
+            } catch (err) { console.warn('Rate normalization failed', err); }
+
+            try { console.debug('Submitting taxMasterForm data:', $form.serialize()); } catch (err) {}
+
+            // Use HTML5 validation before sending; if invalid, show native messages and stop
+            try {
+              var nativeForm = $form[0];
+              if (nativeForm && typeof nativeForm.checkValidity === 'function' && !nativeForm.checkValidity()) {
+                nativeForm.reportValidity();
+                return;
+              }
+            } catch (err) { console.warn('Validation check failed', err); }
+
+            var actionUrl = $form.attr('action');
+            $.post(actionUrl, $form.serialize(), function (response) {
+              if (response.success) {
+                var modalType = document.getElementById('tdsTcsAddModal')?.dataset.type || 'TDS';
+                var selectId = modalType.toLowerCase() === 'tcs' ? '#tcs_definition_select' : '#tds_definition_select';
+                var optionText = response.tax_name + ' (' + Number(response.tax_rate).toFixed(2) + '%)';
+                var newOption = new Option(optionText, response.tax_id, true, true);
+                $(newOption).attr('data-rate', response.tax_rate);
+                $(selectId).append(newOption).trigger('change');
+                var addModalEl = document.getElementById('tdsTcsAddModal');
+                if (addModalEl) {
+                  var addModal = bootstrap.Modal.getInstance(addModalEl);
+                  if (addModal) {
+                    addModal.hide();
+                  }
+                }
+                var manageModalEl = document.getElementById('tdsTcsManageModal');
+                if (manageModalEl && bootstrap.Modal.getInstance(manageModalEl)) {
+                  openTdsTcsManageModal(modalType.toLowerCase());
+                }
+              } else if (response.html_form) {
+                $('#tdsTcsAddModal .modal-body').html(response.html_form);
+              }
+            }, 'json').fail(function () {
+              console.error('Failed to save tax definition.');
+            });
+          });
+
+          document.addEventListener('DOMContentLoaded', initialSync);
+        })();
+      </script>
         <hr>
         <div class="totals-row" style="margin-top:14px;">
           <span style="font-size:1.2em; font-weight:600;">Total</span>
@@ -1312,6 +1633,30 @@
         <button type="button" class="btn btn-secondary" onclick="window.history.back()">Cancel</button>
       </div>
     </form>
+    <div class="modal fade" id="tdsTcsManageModal" tabindex="-1" aria-labelledby="tdsTcsManageModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title" id="tdsTcsManageModalLabel">Manage TDS / TCS</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal fade" id="tdsTcsAddModal" tabindex="-1" aria-labelledby="tdsTcsAddModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title" id="tdsTcsAddModalLabel">Add TDS / TCS Definition</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body"></div>
+          </div>
+        </div>
+      </div>
+</div>
   </div>
 
   {% comment %} Pay terms list modal {% endcomment %}
