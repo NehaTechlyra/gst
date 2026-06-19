@@ -28,7 +28,7 @@
                     <td>{{ tax.tax_name }}</td>
                     <td>{{ tax.tax_rate }}%</td>
                     <td class="text-end">
-                        <button type="button" class="btn btn-sm btn-outline-primary tds-tcs-select-btn" data-id="{{ tax.id }}" data-rate="{{ tax.tax_rate }}">Use</button>
+                        <button type="button" class="btn btn-sm btn-outline-primary tds-tcs-edit-btn" data-id="{{ tax.pk }}" data-rate="{{ tax.tax_rate }}">Edit</button>
                     </td>
                 </tr>
                 {% endfor %}

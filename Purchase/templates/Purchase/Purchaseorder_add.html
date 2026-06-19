@@ -1255,6 +1255,28 @@ document.addEventListener('DOMContentLoaded', function() {
             $('#tdsTcsManageModal').modal('hide');
           });
 
+          // Open edit modal when user clicks Edit in manage modal
+          $(document).on('click', '.tds-tcs-edit-btn', function (e) {
+            e.preventDefault();
+            try { $('#tds_definition_select, #tcs_definition_select').select2('close'); } catch (err) {}
+            var type = document.getElementById('tdsTcsManageModal')?.dataset.type || 'tds';
+            var id = $(this).data('id');
+            var endpoint = type === 'tcs' ? 'tcs-master/' + id + '/edit/modal/' : 'tds-master/' + id + '/edit/modal/';
+            var url = getTaxUrl(endpoint);
+            loadModalHtml(url, function (html) {
+              var modalBody = document.querySelector('#tdsTcsAddModal .modal-body');
+              if (modalBody) {
+                modalBody.innerHTML = html;
+              }
+              var modalEl = document.getElementById('tdsTcsAddModal');
+              if (modalEl) {
+                modalEl.dataset.type = type.toUpperCase();
+                var modal = new bootstrap.Modal(modalEl);
+                modal.show();
+              }
+            }, 'Failed to load edit form');
+          });
+
           $(document).on('submit', '#taxMasterForm', function (e) {
             e.preventDefault();
             var $form = $(this);
@@ -1291,20 +1313,22 @@ document.addEventListener('DOMContentLoaded', function() {
                 var modalType = document.getElementById('tdsTcsAddModal')?.dataset.type || 'TDS';
                 var selectId = modalType.toLowerCase() === 'tcs' ? '#tcs_definition_select' : '#tds_definition_select';
                 var optionText = response.tax_name + ' (' + Number(response.tax_rate).toFixed(2) + '%)';
-                var newOption = new Option(optionText, response.tax_id, true, true);
-                $(newOption).attr('data-rate', response.tax_rate);
-                $(selectId).append(newOption).trigger('change');
+                var $select = $(selectId);
+                var existing = $select.find('option[value="' + response.tax_id + '"]');
+                if (existing.length) {
+                  existing.text(optionText);
+                  existing.attr('data-rate', response.tax_rate);
+                  if ($select.hasClass('select2-hidden-accessible')) { $select.trigger('change'); }
+                } else {
+                  var newOption = new Option(optionText, response.tax_id, true, true);
+                  $(newOption).attr('data-rate', response.tax_rate);
+                  $select.append(newOption);
+                  if ($select.hasClass('select2-hidden-accessible')) { $select.trigger('change'); }
+                }
                 var addModalEl = document.getElementById('tdsTcsAddModal');
-                if (addModalEl) {
-                  var addModal = bootstrap.Modal.getInstance(addModalEl);
-                  if (addModal) {
-                    addModal.hide();
-                  }
-                }
+                if (addModalEl) { var addModal = bootstrap.Modal.getInstance(addModalEl); if (addModal) { addModal.hide(); } }
                 var manageModalEl = document.getElementById('tdsTcsManageModal');
-                if (manageModalEl && bootstrap.Modal.getInstance(manageModalEl)) {
-                  openTdsTcsManageModal(modalType.toLowerCase());
-                }
+                if (manageModalEl && bootstrap.Modal.getInstance(manageModalEl)) { openTdsTcsManageModal(modalType.toLowerCase()); }
               } else if (response.html_form) {
                 $('#tdsTcsAddModal .modal-body').html(response.html_form);
               }

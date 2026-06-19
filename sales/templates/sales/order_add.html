@@ -1609,7 +1609,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 var optionText = response.tax_name + ' (' + Number(response.tax_rate).toFixed(2) + '%)';
                 var newOption = new Option(optionText, response.tax_id, true, true);
                 $(newOption).attr('data-rate', response.tax_rate);
-                $(selectId).append(newOption).trigger('change');
+                
+                // ✅ FIX: Properly handle Select2 to show the new option
+                var $select = $(selectId);
+                $select.append(newOption);
+                
+                // ✅ Refresh Select2 to display the new option
+                if ($select.hasClass('select2-hidden-accessible')) {
+                  // Select2 is already initialized, trigger change to refresh
+                  $select.trigger('change');
+                }
+                
                 var addModalEl = document.getElementById('tdsTcsAddModal');
                 if (addModalEl) {
                   var addModal = bootstrap.Modal.getInstance(addModalEl);

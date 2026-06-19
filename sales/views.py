@@ -5349,6 +5349,9 @@ def quotation_edit(request, pk):
         'selected_currency_id': quote.document_currency_id or '',
         'fx_rate_to_base': quote.fx_rate_to_base,
         'fx_rate_date': quote.fx_rate_date,
+        # ✅ Fetch TDS and TCS for quotation_edit template
+        'tds_tax_master_items': TdsMaster.objects.filter(company=company, is_active=True),
+        'tcs_tax_master_items': TcsMaster.objects.filter(company=company, is_active=True),
     }
     
     return render(request, 'sales/quotation_duplicate.html', context)
@@ -6228,6 +6231,12 @@ def order_add(request):
     # Pass both to the template
     resolved_company = _get_company_for_request(request)
     company_tax_type = (str(getattr(resolved_company, 'tax_type', '') or '').strip().upper() if resolved_company else '')
+    
+    # ✅ Fetch TDS and TCS for order_add template
+    company = resolved_company
+    tds_tax_master_items = TdsMaster.objects.filter(company=company, is_active=True) if company else TdsMaster.objects.none()
+    tcs_tax_master_items = TcsMaster.objects.filter(company=company, is_active=True) if company else TcsMaster.objects.none()
+    
     return render(request, 'sales/order_add.html', {
         'order_form': order_form,
         'item_formset': item_formset,
@@ -6240,6 +6249,8 @@ def order_add(request):
         'company_currencies': company_currencies,
         'company_base_currency_symbol': company_base_currency_symbol,
         'company_base_currency_code': company_base_currency_code,
+        'tds_tax_master_items': tds_tax_master_items,
+        'tcs_tax_master_items': tcs_tax_master_items,
     })
 
 def _extract_line_items(post_data, prd_brcd_map):
@@ -7836,6 +7847,9 @@ def order_edit(request, pk):
         'selected_currency_id': order.document_currency_id or '',
         'fx_rate_to_base': order.fx_rate_to_base,
         'fx_rate_date': order.fx_rate_date,
+        # ✅ Fetch TDS and TCS for order_edit template
+        'tds_tax_master_items': TdsMaster.objects.filter(company=_get_company_for_request(request), is_active=True),
+        'tcs_tax_master_items': TcsMaster.objects.filter(company=_get_company_for_request(request), is_active=True),
     }
     if readonly:
         for form in sales_formset.forms:
@@ -10121,6 +10135,11 @@ def inv_add(request):
         base_currency_symbol = base_currency.code if base_currency and base_currency.code else '₹'
     base_currency_code = base_currency.code if base_currency else ''
     company_country = _get_current_company_country(request)
+    
+    # ✅ Fetch TDS and TCS for invoice_add template
+    tds_tax_master_items = TdsMaster.objects.filter(company=company, is_active=True) if company else TdsMaster.objects.none()
+    tcs_tax_master_items = TcsMaster.objects.filter(company=company, is_active=True) if company else TcsMaster.objects.none()
+    
     # Pass both to the template
     return render(request, 'sales/invoice_add.html', {
         'invoice_form': invoice_form,
@@ -10135,6 +10154,8 @@ def inv_add(request):
         'company_currencies': company_currencies,
         'company_base_currency_symbol': base_currency_symbol,
         'company_base_currency_code': base_currency_code,
+        'tds_tax_master_items': tds_tax_master_items,
+        'tcs_tax_master_items': tcs_tax_master_items,
     })
 
 
@@ -11404,6 +11425,9 @@ def invoice_edit(request, pk):
         'selected_currency_id': invoice.document_currency_id or '',
         'fx_rate_to_base': invoice.fx_rate_to_base,
         'fx_rate_date': invoice.fx_rate_date,
+        # ✅ Fetch TDS and TCS for invoice_edit template
+        'tds_tax_master_items': TdsMaster.objects.filter(company=_get_company_for_request(request), is_active=True),
+        'tcs_tax_master_items': TcsMaster.objects.filter(company=_get_company_for_request(request), is_active=True),
     }
     if readonly:
         for form in sales_formset.forms:
@@ -18154,6 +18178,10 @@ def performa_inv_add(request):
         base_currency_symbol = base_currency.code if base_currency and base_currency.code else '₹'
     base_currency_code = base_currency.code if base_currency else ''
     
+    # ✅ Fetch TDS and TCS for performa_invoice_add template
+    tds_tax_master_items = TdsMaster.objects.filter(company=company, is_active=True) if company else TdsMaster.objects.none()
+    tcs_tax_master_items = TcsMaster.objects.filter(company=company, is_active=True) if company else TcsMaster.objects.none()
+    
     return render(request, 'sales/performa_invoice_add.html', {
         'invoice_form': invoice_form,
         'item_formset': item_formset,
@@ -18170,6 +18198,8 @@ def performa_inv_add(request):
         'selected_currency_id': None,
         'fx_rate_to_base': None,
         'fx_rate_date': None,
+        'tds_tax_master_items': tds_tax_master_items,
+        'tcs_tax_master_items': tcs_tax_master_items,
     })
 
 
@@ -18236,6 +18266,9 @@ def performa_invoice_edit(request, pk):
         'selected_currency_id': invoice.document_currency_id,
         'fx_rate_to_base': invoice.fx_rate_to_base,
         'fx_rate_date': invoice.fx_rate_date,
+        # ✅ Fetch TDS and TCS for performa_invoice_edit template
+        'tds_tax_master_items': TdsMaster.objects.filter(company=company, is_active=True),
+        'tcs_tax_master_items': TcsMaster.objects.filter(company=company, is_active=True),
     })
 
 

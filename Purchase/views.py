@@ -8,6 +8,7 @@ from Lyraerp.utils.redirect_utils import redirect_with_company, get_company_redi
 from .models import PurchaseOrder,OrderPrefix,PurchaseOrderItem,Bill,BillItem,PaymentMode,BillPaymentAttachment,BillPayment,BillPaymentAllocation,VendorAdvancePayment, BillPrefix,PurchaseReturn,PurchaseReturnItem,DeliveryNote
 from .forms import PurchaseOrderForm,PurchaseOrderItemForm,BillForm, BillItemForm,BillPaymentForm, PurchaseReturnForm
 from company.models import Company
+from Tax.models import TaxGroup, Tax, TaxMaster, TdsMaster, TcsMaster
 from django import forms
 import io
 import traceback
@@ -1603,7 +1604,7 @@ def purchase_order_add(request):
     purchase_formset = PurchaseOrderItemFormSet()
     all_items = Item.objects.all()
     # If opened from a lead or opportunity, keep id so save can link back
-   
+    
 
     # Pass both to the template
     company = _get_company_for_request(request)
@@ -1615,6 +1616,9 @@ def purchase_order_add(request):
 
     company_is_india = _is_indian_company_country(_get_purchase_company_country(request))
     company_tax_type = _get_purchase_company_tax_type(request)
+    # Pass both to the template
+    tds_tax_master_items = TdsMaster.objects.filter(company=company, is_active=True) if company else TdsMaster.objects.none()
+    tcs_tax_master_items = TcsMaster.objects.filter(company=company, is_active=True) if company else TcsMaster.objects.none()
     return render(request, 'Purchase/Purchaseorder_add.html', {
         'order_form': order_form,
         'item_formset': item_formset,
@@ -1627,6 +1631,9 @@ def purchase_order_add(request):
         'company_currencies': company_currencies,
         'company_base_currency_symbol': base_currency_symbol,
         'company_base_currency_code': base_currency_code,
+                # ✅ Fetch TDS and TCS for quotation_edit template
+        'tds_tax_master_items': TdsMaster.objects.filter(company=company, is_active=True),
+        'tcs_tax_master_items': TcsMaster.objects.filter(company=company, is_active=True),
     })
 
 
@@ -3798,6 +3805,7 @@ def bill_add(request):
     # Pass both to the template
     company_is_india = _is_indian_company_country(_get_purchase_company_country(request))
     company_tax_type = _get_purchase_company_tax_type(request)
+    
     try:
         company = _get_company_for_request(request)
         from currencies.models import Currency
@@ -3809,6 +3817,9 @@ def bill_add(request):
         company_currencies = []
         company_base_currency_symbol = 'INR'
         company_base_currency_code = ''
+    # Pass both to the template
+    tds_tax_master_items = TdsMaster.objects.filter(company=company, is_active=True) if company else TdsMaster.objects.none()
+    tcs_tax_master_items = TcsMaster.objects.filter(company=company, is_active=True) if company else TcsMaster.objects.none()
     return render(request, 'Purchase/bill_add.html', {
         'bill_form': bill_form,
         'item_formset': item_formset,
@@ -3821,6 +3832,9 @@ def bill_add(request):
         'company_currencies': company_currencies,
         'company_base_currency_symbol': company_base_currency_symbol,
         'company_base_currency_code': company_base_currency_code,
+        # ✅ Fetch TDS and TCS for quotation_edit template
+        'tds_tax_master_items': TdsMaster.objects.filter(company=company, is_active=True),
+        'tcs_tax_master_items': TcsMaster.objects.filter(company=company, is_active=True),
         
     })
 
@@ -4964,6 +4978,10 @@ def bill_edit(request, pk):
     #     'readonly': readonly,
         
     # })
+    company=_get_company_for_request(request)
+    # Pass both to the template
+    tds_tax_master_items = TdsMaster.objects.filter(company=company, is_active=True) if company else TdsMaster.objects.none()
+    tcs_tax_master_items = TcsMaster.objects.filter(company=company, is_active=True) if company else TcsMaster.objects.none()
     context = {
         'bill_form': bill_form,
         'bill_formset': bill_formset,
@@ -4985,6 +5003,9 @@ def bill_edit(request, pk):
         'place_of_supply': bill.place_of_supply or '',
         'company_is_india': _is_indian_company_country(_get_purchase_company_country(request)),
         'company_tax_type': _get_purchase_company_tax_type(request),
+                # ✅ Fetch TDS and TCS for quotation_edit template
+        'tds_tax_master_items': TdsMaster.objects.filter(company=company, is_active=True),
+        'tcs_tax_master_items': TcsMaster.objects.filter(company=company, is_active=True),
     }
     try:
         company = _get_company_for_request(request)

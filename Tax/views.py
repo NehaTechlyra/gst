@@ -11,6 +11,7 @@ from django.core.paginator import Paginator
 from django.db.models import Q
 from django.views.decorators.http import require_POST
 from django.template.loader import render_to_string
+from django.urls import reverse
 from itertools import chain
 from decimal import Decimal
 
@@ -237,6 +238,28 @@ def tds_master_add_modal(request):
     return render(request, 'Tax/partial_tds_master_form.html', {'form': form})
 
 
+def tds_master_edit_modal(request, pk):
+    company = _get_current_company(request)
+    company_code = get_company_code(request)
+    tax = get_object_or_404(TdsMaster, pk=pk, company=company)
+    if request.method == 'POST':
+        form = TdsMasterForm(request.POST, instance=tax)
+        if form.is_valid():
+            tax = form.save(commit=False)
+            tax.company = company
+            tax.save()
+            return JsonResponse({
+                'success': True,
+                'tax_id': tax.tax_id,
+                'tax_name': tax.tax_name,
+                'tax_rate': float(tax.tax_rate) if tax.tax_rate is not None else 0,
+            })
+        return JsonResponse({'success': False, 'html_form': render_to_string('Tax/partial_tds_master_form_modal.html', {'form': form, 'action_url': reverse('tds_master_edit_modal', args=[company_code, pk])}, request=request)})
+
+    form = TdsMasterForm(instance=tax)
+    return render(request, 'Tax/partial_tds_master_form_modal.html', {'form': form, 'action_url': reverse('tds_master_edit_modal', args=[company_code, pk])})
+
+
 def tcs_master_add_modal(request):
     company = _get_current_company(request)
     if not company:
@@ -259,6 +282,28 @@ def tcs_master_add_modal(request):
         })
     form = TcsMasterForm()
     return render(request, 'Tax/partial_tcs_master_form.html', {'form': form})
+
+
+def tcs_master_edit_modal(request, pk):
+    company = _get_current_company(request)
+    company_code = get_company_code(request)
+    tax = get_object_or_404(TcsMaster, pk=pk, company=company)
+    if request.method == 'POST':
+        form = TcsMasterForm(request.POST, instance=tax)
+        if form.is_valid():
+            tax = form.save(commit=False)
+            tax.company = company
+            tax.save()
+            return JsonResponse({
+                'success': True,
+                'tax_id': tax.tax_id,
+                'tax_name': tax.tax_name,
+                'tax_rate': float(tax.tax_rate) if tax.tax_rate is not None else 0,
+            })
+        return JsonResponse({'success': False, 'html_form': render_to_string('Tax/partial_tcs_master_form_modal.html', {'form': form, 'action_url': reverse('tcs_master_edit_modal', args=[company_code, pk])}, request=request)})
+
+    form = TcsMasterForm(instance=tax)
+    return render(request, 'Tax/partial_tcs_master_form_modal.html', {'form': form, 'action_url': reverse('tcs_master_edit_modal', args=[company_code, pk])})
 
 
 def tax_master_modal_list(request):
