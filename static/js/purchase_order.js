@@ -2006,6 +2006,10 @@ function calculateTotals() {
   }
   if (baseGrandDiscountValue > baseTotalBeforeDiscount) baseGrandDiscountValue = baseTotalBeforeDiscount;
   const baseTotal = baseTotalBeforeDiscount - baseGrandDiscountValue;
+  const baseTdsTcsAmount = tdsTcsRate > 0 ? (baseTotal * tdsTcsRate / 100) : 0;
+  const baseTdsTcsSignedAmount = tdsTcsType === 'tds' ? -baseTdsTcsAmount : baseTdsTcsAmount;
+  let baseGrandTotal = baseTotal + baseTdsTcsSignedAmount;
+  if (baseGrandTotal < 0) baseGrandTotal = 0;
   const baseTotalDiscount = baseItemDiscount + baseGrandDiscountValue;
 
   const baseSubtotalEl = document.getElementById('base-subtotal');
@@ -2013,6 +2017,8 @@ function calculateTotals() {
   const baseSgstEl = document.getElementById('base-tax-sgst');
   const baseVatEl = document.getElementById('base-tax-vat');
   const baseTotalDiscountEl = document.getElementById('base-total-discount');
+  const baseTdsTcsAmountEl = document.getElementById('base-tds-tcs-amount');
+  const baseTdsTcsLabelEl = document.getElementById('base-tds-tcs-label');
   const baseGrandTotalEl = document.getElementById('base-grand-total');
 
   const formatBase = (val) => baseSymbol + ' ' + (Number.isFinite(val) ? val : 0).toFixed(2);
@@ -2022,7 +2028,9 @@ function calculateTotals() {
   if (baseSgstEl) baseSgstEl.innerText = formatBase(baseTax / 2);
   if (baseVatEl) baseVatEl.innerText = formatBase(baseTax);
   if (baseTotalDiscountEl) baseTotalDiscountEl.innerText = formatBase(baseTotalDiscount);
-  if (baseGrandTotalEl) baseGrandTotalEl.innerText = formatBase(baseTotal);
+  if (baseTdsTcsLabelEl) baseTdsTcsLabelEl.innerText = tdsTcsType === 'tds' ? 'TDS Amount' : 'TCS Amount';
+  if (baseTdsTcsAmountEl) baseTdsTcsAmountEl.innerText = formatBase(baseTdsTcsAmount);
+  if (baseGrandTotalEl) baseGrandTotalEl.innerText = formatBase(baseGrandTotal);
 
 }
 
@@ -2087,6 +2095,19 @@ function syncTdsTcsDefinitionState() {
 $(document).on('change', 'input[name="tds_tcs_type"], #tds_definition_select, #tcs_definition_select', function () {
   syncTdsTcsDefinitionState();
   calculateTotals();
+});
+
+document.addEventListener('submit', function (e) {
+  if (!e.target || e.target.tagName !== 'FORM') {
+    return;
+  }
+  if (e.target.id === 'bill-form' || e.target.id === 'purchase-order-form' || e.target.closest('#bill-form') || e.target.closest('#purchase-order-form')) {
+    try {
+      syncTdsTcsDefinitionState();
+    } catch (err) {
+      console.warn('Failed to sync TDS/TCS before submit', err);
+    }
+  }
 });
 
 document.querySelectorAll('input[type="number"]').forEach(input => {

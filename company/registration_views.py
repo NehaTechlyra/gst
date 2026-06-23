@@ -434,7 +434,11 @@ def load_countries(request):
     return JsonResponse(
         {
             "countries": [
-                {"code": country.code2, "name": country.name}
+                {
+                    "code": country.code2,
+                    "name": country.name,
+                    "dial_code": (country.phone or "").split(",", 1)[0].strip(),
+                }
                 for country in countries
             ]
         }

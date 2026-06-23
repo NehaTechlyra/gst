@@ -197,6 +197,35 @@ class PurchaseOrder(models.Model):
     shipping_state = models.CharField(max_length=100, blank=True, null=True, verbose_name="Shipping State")
     shipping_postal_code = models.CharField(max_length=20, blank=True, null=True, verbose_name="Shipping Postal Code")
     place_of_supply = models.CharField(max_length=100, blank=True, null=True, verbose_name="Place of Supply")
+    TDS_TCS_TYPE_CHOICES = [
+        ('tds', 'TDS'),
+        ('tcs', 'TCS'),
+    ]
+    tds_tcs_type = models.CharField(
+        max_length=10,
+        choices=TDS_TCS_TYPE_CHOICES,
+        default='tds',
+        blank=True,
+        null=True,
+        verbose_name='TDS/TCS Type'
+    )
+    tds_tcs_definition_id = models.PositiveIntegerField(
+        blank=True,
+        null=True,
+        verbose_name='TDS/TCS Definition ID'
+    )
+    tds_tcs_rate = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        verbose_name='TDS/TCS Rate'
+    )
+    tds_tcs_amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        verbose_name='TDS/TCS Amount'
+    )
    # added by adarsh
 
     def get_currency_symbol(self):
@@ -312,6 +341,35 @@ class Bill(models.Model):
     shipping_state = models.CharField(max_length=100, blank=True, null=True, verbose_name="Shipping State")
     shipping_postal_code = models.CharField(max_length=20, blank=True, null=True, verbose_name="Shipping Postal Code")
     place_of_supply = models.CharField(max_length=100, blank=True, null=True, verbose_name="Place of Supply")
+    TDS_TCS_TYPE_CHOICES = [
+        ('tds', 'TDS'),
+        ('tcs', 'TCS'),
+    ]
+    tds_tcs_type = models.CharField(
+        max_length=10,
+        choices=TDS_TCS_TYPE_CHOICES,
+        default='tds',
+        blank=True,
+        null=True,
+        verbose_name='TDS/TCS Type'
+    )
+    tds_tcs_definition_id = models.PositiveIntegerField(
+        blank=True,
+        null=True,
+        verbose_name='TDS/TCS Definition ID'
+    )
+    tds_tcs_rate = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        verbose_name='TDS/TCS Rate'
+    )
+    tds_tcs_amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        verbose_name='TDS/TCS Amount'
+    )
     # added by adarsh
 
     def get_currency_symbol(self):

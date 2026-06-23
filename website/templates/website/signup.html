@@ -521,7 +521,7 @@
                                 Phone Number
                             </label>
                             <div class="phone-input-group">
-                                <!-- Searchable country code select (populated via REST Countries API) -->
+                                <!-- Searchable country code select -->
                                 <select id="country_select" class="form-control"></select>
                                 <!-- Local phone number input -->
                                 <input type="text" class="form-control" id="phone_local" name="phone_local" 
@@ -616,6 +616,21 @@ $(document).ready(function() {
     const countrySelect = $('#country_select');
     const phoneLocal = $('#phone_local');
     const phoneFull = document.getElementById('phone_full');
+    const localCountriesUrl = document.querySelector('[data-location-load-countries-url]')?.getAttribute('data-location-load-countries-url') || "{% url 'load_countries' %}";
+    const fallbackPhoneCountries = [
+        { name: 'India', cca2: 'IN', dial: '91' },
+        { name: 'United Arab Emirates', cca2: 'AE', dial: '971' },
+        { name: 'Saudi Arabia', cca2: 'SA', dial: '966' },
+        { name: 'United Kingdom', cca2: 'GB', dial: '44' },
+        { name: 'United States', cca2: 'US', dial: '1' },
+        { name: 'Canada', cca2: 'CA', dial: '1' },
+        { name: 'Australia', cca2: 'AU', dial: '61' },
+        { name: 'Singapore', cca2: 'SG', dial: '65' },
+        { name: 'Qatar', cca2: 'QA', dial: '974' },
+        { name: 'Kuwait', cca2: 'KW', dial: '965' },
+        { name: 'Oman', cca2: 'OM', dial: '968' },
+        { name: 'Bahrain', cca2: 'BH', dial: '973' }
+    ];
 
     function populateCountries() {
         // Format for dropdown list - show flag + country name + dial code
@@ -670,50 +685,39 @@ $(document).ready(function() {
             countrySelect.val('91').trigger('change.select2');
         }
 
-        fetch('https://restcountries.com/v3.1/all').then(r => r.json()).then(data => {
-            const countries = data.map(c => {
-                let dial = '';
-                try {
-                    if (c.idd && c.idd.root) {
-                        const root = c.idd.root || '';
-                        const suffix = (c.idd.suffixes && c.idd.suffixes[0]) ? c.idd.suffixes[0] : '';
-                        dial = (root + suffix).replace(/\+/g, '');
-                    }
-                } catch(e) { dial = ''; }
-                return { name: c.name && c.name.common ? c.name.common : (c.cca2||''), cca2: c.cca2 || '', dial: dial || '' };
-            }).filter(x => x.dial).sort((a,b) => a.name.localeCompare(b.name));
-
+        function addCountries(countries) {
             if (countries.length) {
                 countries.forEach(c => { 
                     const opt = new Option(`${c.name} (+${c.dial})`, c.dial, false, false); 
                     $(opt).attr('data-cca2', c.cca2); 
                     countrySelect.append(opt); 
                 });
-                console.log('populateCountries: loaded', countries.length, 'countries (v3)');
                 initSelect2AfterPopulate();
-                return;
+                return true;
             }
-            throw new Error('v3 returned no countries');
-        }).catch(() => {
-            fetch('https://restcountries.com/v2/all?fields=name,callingCodes,alpha2Code').then(r => r.json()).then(data => {
-                const countries = data.map(c => ({ name: c.name || '', cca2: c.alpha2Code || '', dial: (c.callingCodes && c.callingCodes[0]) ? c.callingCodes[0] : '' }))
-                    .filter(x => x.dial).sort((a,b) => a.name.localeCompare(b.name));
-                if (countries.length) {
-                    countries.forEach(c => { 
-                        const opt = new Option(`${c.name} (+${c.dial})`, c.dial, false, false);
-                        $(opt).attr('data-cca2', c.cca2); 
-                        countrySelect.append(opt); 
-                    });
-                    initSelect2AfterPopulate();
-                    console.log('populateCountries: loaded', countries.length, 'countries (v2)');
-                    return;
-                }
-                throw new Error('v2 returned no countries');
-            }).catch(() => {
-                // No hardcoded fallback - show error message
-                console.error('Failed to load countries from API');
-                countrySelect.append(new Option('Failed to load countries - please refresh', '', false, false));
-            });
+            return false;
+        }
+
+        fetch(localCountriesUrl, {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            credentials: 'same-origin'
+        }).then(r => {
+            if (!r.ok) throw new Error(`Countries request failed: ${r.status}`);
+            return r.json();
+        }).then(data => {
+            const countries = (data.countries || []).map(c => ({
+                name: c.name || c.code || '',
+                cca2: c.code || '',
+                dial: (c.dial_code || '').toString().replace(/\D/g, '')
+            })).filter(x => x.dial).sort((a,b) => a.name.localeCompare(b.name));
+
+            if (!addCountries(countries)) {
+                throw new Error('Local endpoint returned no phone countries');
+            }
+            console.log('populateCountries: loaded', countries.length, 'countries (local)');
+        }).catch((error) => {
+            console.warn('Using fallback phone countries', error);
+            addCountries(fallbackPhoneCountries);
         });
     }
 

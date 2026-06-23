@@ -115,6 +115,25 @@ def _is_indian_company_country(country):
     return str(country or '').strip().upper() == 'IN'
 
 
+def _parse_decimal(value, default='0'):
+    try:
+        return Decimal(str(value or default))
+    except Exception:
+        return Decimal(str(default))
+
+
+def _parse_positive_int(value):
+    try:
+        iv = int(value)
+        return iv if iv >= 0 else None
+    except Exception:
+        return None
+
+
+def _get_tax_type_code(value):
+    return normalize_tax_code(value)
+
+
 def _get_tax_type_code(value):
     return normalize_tax_code(value)
 
@@ -2058,6 +2077,10 @@ def save_purchaseorder(request):
                         shipping_state=request.POST.get('shipping_state', ''),
                         shipping_postal_code=request.POST.get('shipping_postal_code', ''),
                         place_of_supply=request.POST.get('place_of_supply', ''),
+                        tds_tcs_type=request.POST.get('tds_tcs_type', 'tds'),
+                        tds_tcs_definition_id=_parse_positive_int(request.POST.get('tds_tcs_definition_id')),
+                        tds_tcs_rate=_parse_decimal(request.POST.get('tds_tcs_rate', '0')),
+                        tds_tcs_amount=_parse_decimal(request.POST.get('tds_tcs_amount', '0.00')),
                     )
 
                     order._current_user = request.user
@@ -2613,6 +2636,11 @@ def purchase_order_edit(request, pk):
                 for existing_item in existing_items_qs
             }
             
+            order_obj.tds_tcs_type = request.POST.get('tds_tcs_type', 'tds')
+            order_obj.tds_tcs_definition_id = _parse_positive_int(request.POST.get('tds_tcs_definition_id'))
+            order_obj.tds_tcs_rate = _parse_decimal(request.POST.get('tds_tcs_rate', '0'))
+            order_obj.tds_tcs_amount = _parse_decimal(request.POST.get('tds_tcs_amount', '0.00'))
+            
             # Persist payment term if provided
             pay_term_id = request.POST.get('payment_term')
             if pay_term_id:
@@ -2767,6 +2795,8 @@ def purchase_order_edit(request, pk):
                 'q_no': order.order_number,
                 'order': order,
                 'readonly': readonly,
+                'tds_tax_master_items': TdsMaster.objects.filter(company=_get_company_for_request(request), is_active=True),
+                'tcs_tax_master_items': TcsMaster.objects.filter(company=_get_company_for_request(request), is_active=True),
                 'shipping_attention': order.shipping_attention or '',
                 'shipping_email': order.shipping_email or '',
                 'shipping_phone': order.shipping_phone or '',
@@ -2931,6 +2961,8 @@ def purchase_order_edit(request, pk):
         'q_no': order.order_number,
         'order': order,
         'readonly': readonly,
+        'tds_tax_master_items': TdsMaster.objects.filter(company=_get_company_for_request(request), is_active=True),
+        'tcs_tax_master_items': TcsMaster.objects.filter(company=_get_company_for_request(request), is_active=True),
         # Shipping #by adarshaddress fields for prefilling
         'shipping_attention': order.shipping_attention or '',
         'shipping_email': order.shipping_email or '',
@@ -4659,6 +4691,10 @@ def bill_edit(request, pk):
 
             with transaction.atomic():
                 bill_obj = bill_form.save(commit=False)
+                bill_obj.tds_tcs_type = request.POST.get('tds_tcs_type', 'tds')
+                bill_obj.tds_tcs_definition_id = _parse_positive_int(request.POST.get('tds_tcs_definition_id'))
+                bill_obj.tds_tcs_rate = _parse_decimal(request.POST.get('tds_tcs_rate', '0'))
+                bill_obj.tds_tcs_amount = _parse_decimal(request.POST.get('tds_tcs_amount', '0.00'))
 
                 pay_term_id = request.POST.get('payment_term')
                 if pay_term_id:
@@ -5219,6 +5255,10 @@ def bill_duplicate(request, pk):
             shipping_state=request.POST.get('shipping_state', ''),
             shipping_postal_code=request.POST.get('shipping_postal_code', ''),
             place_of_supply=request.POST.get('place_of_supply', ''),
+            tds_tcs_type=request.POST.get('tds_tcs_type', 'tds'),
+            tds_tcs_definition_id=_parse_positive_int(request.POST.get('tds_tcs_definition_id')),
+            tds_tcs_rate=_parse_decimal(request.POST.get('tds_tcs_rate', '0')),
+            tds_tcs_amount=_parse_decimal(request.POST.get('tds_tcs_amount', '0.00')),
         )
 
         pay_term_id = request.POST.get('payment_term')
