@@ -1374,16 +1374,24 @@ function getRowBaseAmount($row, qty, price) {
   console.log("gst included:" + gstval);
   console.log("priceBase", priceBase, "oPriceBase", oPriceBase, "fxRate", fxRate);
 
-  // Document-side calculations should be driven by exact document-currency values.
-  // When we have stored base prices, convert them back using the active FX rate
-  // instead of trusting the rounded visible input.
+  const visibleAmount = qty * price;
+  let baseAmountFromData = null;
+
   if (gstIncluded && Number.isFinite(oPriceBase) && oPriceBase > 0 && fxRate > 0) {
-    return qty * (oPriceBase / fxRate);
+    baseAmountFromData = qty * (oPriceBase / fxRate);
+  } else if (Number.isFinite(priceBase) && priceBase > 0 && fxRate > 0) {
+    baseAmountFromData = qty * (priceBase / fxRate);
   }
-  if (Number.isFinite(priceBase) && priceBase > 0 && fxRate > 0) {
-    return qty * (priceBase / fxRate);
+
+  if (baseAmountFromData !== null && baseAmountFromData > 0) {
+    const diff = Math.abs(baseAmountFromData - visibleAmount);
+    if (diff > 0.0001 && visibleAmount > 0) {
+      return visibleAmount;
+    }
+    return baseAmountFromData;
   }
-  return qty * price;
+
+  return visibleAmount;
 }
 
 function getRowGrossAmount($row, qty, price, baseAmount, taxRate) {

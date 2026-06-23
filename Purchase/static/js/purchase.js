@@ -509,19 +509,7 @@ function calculateTotals() {
     let oPriceInput = row.querySelector(".o_price");
     let opriceval = oPriceInput && oPriceInput.value ? parseFloat(oPriceInput.value) || 0 : 0;
 
-
-    // let opriceval = parseFloat(row.querySelector(".o_price").value) || 0;
-    console.log("opriceval" + opriceval);
-    let baseAmount;
-    if (gstval) {
-      baseAmount = qty * price;
-
-    }
-    else {
-      baseAmount = qty * opriceval;
-
-
-    }
+    let baseAmount = qty * price;
     console.log("baseAmount1" + baseAmount);
 
     allitmtotal += baseAmount;
