@@ -7898,6 +7898,10 @@ def order_edit(request, pk):
         'selected_currency_id': order.document_currency_id or '',
         'fx_rate_to_base': order.fx_rate_to_base,
         'fx_rate_date': order.fx_rate_date,
+        'tds_tcs_type': order.tds_tcs_type or 'tds',
+        'tds_tcs_definition_id': order.tds_tcs_definition_id or '',
+        'tds_tcs_rate': order.tds_tcs_rate or 0,
+        'tds_tcs_amount': order.tds_tcs_amount or 0,
         # ✅ Fetch TDS and TCS for order_edit template
         'tds_tax_master_items': TdsMaster.objects.filter(company=_get_company_for_request(request), is_active=True),
         'tcs_tax_master_items': TcsMaster.objects.filter(company=_get_company_for_request(request), is_active=True),
@@ -11500,6 +11504,10 @@ def invoice_edit(request, pk):
         'selected_currency_id': invoice.document_currency_id or '',
         'fx_rate_to_base': invoice.fx_rate_to_base,
         'fx_rate_date': invoice.fx_rate_date,
+        'tds_tcs_type': invoice.tds_tcs_type or 'tds',
+        'tds_tcs_definition_id': invoice.tds_tcs_definition_id or '',
+        'tds_tcs_rate': invoice.tds_tcs_rate or 0,
+        'tds_tcs_amount': invoice.tds_tcs_amount or 0,
         # ✅ Fetch TDS and TCS for invoice_edit template
         'tds_tax_master_items': TdsMaster.objects.filter(company=_get_company_for_request(request), is_active=True),
         'tcs_tax_master_items': TcsMaster.objects.filter(company=_get_company_for_request(request), is_active=True),
@@ -18349,6 +18357,10 @@ def performa_invoice_edit(request, pk):
         'selected_currency_id': invoice.document_currency_id,
         'fx_rate_to_base': invoice.fx_rate_to_base,
         'fx_rate_date': invoice.fx_rate_date,
+        'tds_tcs_type': invoice.tds_tcs_type or 'tds',
+        'tds_tcs_definition_id': invoice.tds_tcs_definition_id or '',
+        'tds_tcs_rate': invoice.tds_tcs_rate or 0,
+        'tds_tcs_amount': invoice.tds_tcs_amount or 0,
         # ✅ Fetch TDS and TCS for performa_invoice_edit template
         'tds_tax_master_items': TdsMaster.objects.filter(company=company, is_active=True),
         'tcs_tax_master_items': TcsMaster.objects.filter(company=company, is_active=True),
