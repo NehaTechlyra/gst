@@ -1423,18 +1423,18 @@ document.addEventListener('DOMContentLoaded', function() {
       </div>
       <div class="totals-row" style="align-items:center; gap:1rem;">
           <label style="display:flex; align-items:center; gap:0.35rem; white-space: nowrap;">
-            <input type="radio" name="tds_tcs_type" style="margin-bottom: 0px;" value="tds" checked>
+            <input type="radio" name="tds_tcs_type" style="margin-bottom: 0px;" value="tds" {% if tds_tcs_type|default:'tds' == 'tds' %}checked{% endif %}>
             TDS
           </label>
           <label style="display:flex; align-items:center; gap:0.35rem; white-space: nowrap;">
-            <input type="radio" name="tds_tcs_type" style="margin-bottom: 0px;" value="tcs">
+            <input type="radio" name="tds_tcs_type" style="margin-bottom: 0px;" value="tcs" {% if tds_tcs_type|default:'tds' == 'tcs' %}checked{% endif %}>
             TCS
           </label>
           <div class="select-with-action" style="width:125px; min-width:125px;">
             <select id="tds_definition_select" name="tds_tcs_definition_select" class="form-select" style="width:100%;">
               <option value="">Select TDS</option>
               {% for tax in tds_tax_master_items %}
-                <option value="{{ tax.tax_id }}" data-rate="{{ tax.tax_rate }}">{{ tax.tax_name }} ({{ tax.tax_rate }}%)</option>
+                <option value="{{ tax.tax_id }}" data-rate="{{ tax.tax_rate }}" {% if tds_tcs_type|default:'tds' == 'tds' and tds_tcs_definition_id|stringformat:'s' == tax.tax_id|stringformat:'s' %}selected{% endif %}>{{ tax.tax_name }} ({{ tax.tax_rate }}%)</option>
               {% endfor %}
             </select>
             {% comment %} <a id="tds_manage_button" href="{% url 'tax_master_list' %}?q=tds" class="btn btn-sm btn-outline-secondary select-action-btn" title="Manage TDS">Manage</a> {% endcomment %}
@@ -1443,7 +1443,7 @@ document.addEventListener('DOMContentLoaded', function() {
             <select id="tcs_definition_select" name="tds_tcs_definition_select" class="form-select" style="width:100%;">
               <option value="">Select TCS</option>
               {% for tax in tcs_tax_master_items %}
-                <option value="{{ tax.tax_id }}" data-rate="{{ tax.tax_rate }}">{{ tax.tax_name }} ({{ tax.tax_rate }}%)</option>
+                <option value="{{ tax.tax_id }}" data-rate="{{ tax.tax_rate }}" {% if tds_tcs_type|default:'tds' == 'tcs' and tds_tcs_definition_id|stringformat:'s' == tax.tax_id|stringformat:'s' %}selected{% endif %}>{{ tax.tax_name }} ({{ tax.tax_rate }}%)</option>
               {% endfor %}
             </select>
             {% comment %} <button id="tcs_manage_button" type="button" class="btn btn-sm btn-outline-secondary select-action-btn" title="Manage TCS">Manage</button> {% endcomment %}
@@ -1453,9 +1453,9 @@ document.addEventListener('DOMContentLoaded', function() {
         <div style="display:flex; align-items:center; gap:0.5rem; white-space: nowrap;">
           <strong id="tds-tcs-amount" class="amount">₹0.00</strong>
         </div>
-        <input type="hidden" name="tds_tcs_amount" id="tds_tcs_amount" value="0.00">
-        <input type="hidden" name="tds_tcs_rate" id="tds_tcs_rate" value="0">
-        <input type="hidden" name="tds_tcs_definition_id" id="tds_tcs_definition_id" value="">
+        <input type="hidden" name="tds_tcs_amount" id="tds_tcs_amount" value="{{ tds_tcs_amount|default:0|floatformat:2 }}">
+        <input type="hidden" name="tds_tcs_rate" id="tds_tcs_rate" value="{{ tds_tcs_rate|default:0 }}">
+        <input type="hidden" name="tds_tcs_definition_id" id="tds_tcs_definition_id" value="{{ tds_tcs_definition_id|default:'' }}">
       </div>
       <hr>
       <script>

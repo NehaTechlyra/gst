@@ -98,7 +98,35 @@ class SalesQuotation(models.Model):
         blank=True,
         related_name='sales_quotations_turnover_tax',
     )
-
+    TDS_TCS_TYPE_CHOICES = [
+        ('tds', 'TDS'),
+        ('tcs', 'TCS'),
+    ]
+    tds_tcs_type = models.CharField(
+        max_length=10,
+        choices=TDS_TCS_TYPE_CHOICES,
+        default='tds',
+        blank=True,
+        null=True,
+        verbose_name='TDS/TCS Type'
+    )
+    tds_tcs_definition_id = models.PositiveIntegerField(
+        blank=True,
+        null=True,
+        verbose_name='TDS/TCS Definition ID'
+    )
+    tds_tcs_rate = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        verbose_name='TDS/TCS Rate'
+    )
+    tds_tcs_amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        verbose_name='TDS/TCS Amount'
+    )
 
     def __str__(self):
         return f'{self.quote_number} - {self.customer.first_name if self.customer else "N/A"}'
@@ -212,7 +240,35 @@ class SalesOrder(models.Model):
     shipping_state = models.CharField(max_length=100, blank=True, null=True, verbose_name="Shipping State")
     shipping_postal_code = models.CharField(max_length=20, blank=True, null=True, verbose_name="Shipping Postal Code")
     origin_performa = models.ForeignKey('sales.PerformaInvoice', on_delete=models.SET_NULL, null=True, blank=True, related_name='sales_orders')
-
+    TDS_TCS_TYPE_CHOICES = [
+        ('tds', 'TDS'),
+        ('tcs', 'TCS'),
+    ]
+    tds_tcs_type = models.CharField(
+        max_length=10,
+        choices=TDS_TCS_TYPE_CHOICES,
+        default='tds',
+        blank=True,
+        null=True,
+        verbose_name='TDS/TCS Type'
+    )
+    tds_tcs_definition_id = models.PositiveIntegerField(
+        blank=True,
+        null=True,
+        verbose_name='TDS/TCS Definition ID'
+    )
+    tds_tcs_rate = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        verbose_name='TDS/TCS Rate'
+    )
+    tds_tcs_amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        verbose_name='TDS/TCS Amount'
+    )
 
     def __str__(self):
         return f"Order-{self.pk} - {self.customer.first_name}"
@@ -324,7 +380,35 @@ class SalesInvoice(models.Model):
         blank=True,
         related_name='sales_invoices_turnover_tax',
     )
-
+    TDS_TCS_TYPE_CHOICES = [
+        ('tds', 'TDS'),
+        ('tcs', 'TCS'),
+    ]
+    tds_tcs_type = models.CharField(
+        max_length=10,
+        choices=TDS_TCS_TYPE_CHOICES,
+        default='tds',
+        blank=True,
+        null=True,
+        verbose_name='TDS/TCS Type'
+    )
+    tds_tcs_definition_id = models.PositiveIntegerField(
+        blank=True,
+        null=True,
+        verbose_name='TDS/TCS Definition ID'
+    )
+    tds_tcs_rate = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        verbose_name='TDS/TCS Rate'
+    )
+    tds_tcs_amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        verbose_name='TDS/TCS Amount'
+    )
     def __str__(self):
         # return f"Order-{self.pk} - {self.customer.first_name}"//commented by sree on 11-o2-2026
         return f"{self.inv_number}"
@@ -1086,7 +1170,35 @@ class PerformaInvoice(models.Model):
     shipping_city = models.CharField(max_length=100, blank=True, null=True, verbose_name="Shipping City")
     shipping_state = models.CharField(max_length=100, blank=True, null=True, verbose_name="Shipping State")
     shipping_postal_code = models.CharField(max_length=20, blank=True, null=True, verbose_name="Shipping Postal Code")
-
+    TDS_TCS_TYPE_CHOICES = [
+        ('tds', 'TDS'),
+        ('tcs', 'TCS'),
+    ]
+    tds_tcs_type = models.CharField(
+        max_length=10,
+        choices=TDS_TCS_TYPE_CHOICES,
+        default='tds',
+        blank=True,
+        null=True,
+        verbose_name='TDS/TCS Type'
+    )
+    tds_tcs_definition_id = models.PositiveIntegerField(
+        blank=True,
+        null=True,
+        verbose_name='TDS/TCS Definition ID'
+    )
+    tds_tcs_rate = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        verbose_name='TDS/TCS Rate'
+    )
+    tds_tcs_amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        verbose_name='TDS/TCS Amount'
+    )
     def __str__(self):
         return f"{self.inv_number}"
 

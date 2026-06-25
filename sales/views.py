@@ -157,6 +157,21 @@ def get_customer_display_name(customer):
         return customer.company_name or ''
     return f"{customer.first_name} {customer.last_name or ''}".strip()
 
+
+def _parse_decimal(value, default='0'):
+    try:
+        return Decimal(str(value or default))
+    except Exception:
+        return Decimal(str(default))
+
+
+def _parse_positive_int(value):
+    try:
+        integer_value = int(value)
+        return integer_value if integer_value >= 0 else None
+    except Exception:
+        return None
+
 from django.views.generic import ListView, DetailView, CreateView, UpdateView
 from .models import SalesDeliveryNote,SalesDeliveryNoteItem
 from .forms import SalesDeliveryNoteForm, SalesReturnForm
@@ -1318,6 +1333,10 @@ def save_salesquote(request):
         shipping_city = request.POST.get('shipping_city', '')
         shipping_state = request.POST.get('shipping_state', '')
         shipping_postal_code = request.POST.get('shipping_postal_code', '')
+        tds_tcs_type = request.POST.get('tds_tcs_type', 'tds')
+        tds_tcs_definition_id = _parse_positive_int(request.POST.get('tds_tcs_definition_id'))
+        tds_tcs_rate = _parse_decimal(request.POST.get('tds_tcs_rate', '0'))
+        tds_tcs_amount = _parse_decimal(request.POST.get('tds_tcs_amount', '0.00'))
         
         # Capture currency fields
         currency_id = request.POST.get('document_currency', '')
@@ -1383,6 +1402,10 @@ def save_salesquote(request):
                 shipping_city=shipping_city,
                 shipping_state=shipping_state,
                 shipping_postal_code=shipping_postal_code,
+                tds_tcs_type=tds_tcs_type,
+                tds_tcs_definition_id=tds_tcs_definition_id,
+                tds_tcs_rate=tds_tcs_rate,
+                tds_tcs_amount=tds_tcs_amount,
                 document_currency=document_currency,
                 fx_rate_to_base=fx_rate_to_base,
                 fx_rate_date=fx_rate_date if fx_rate_date else None,
@@ -5141,6 +5164,10 @@ def quotation_edit(request, pk):
             quote_obj.shipping_city = request.POST.get('shipping_city', '')
             quote_obj.shipping_state = request.POST.get('shipping_state', '')
             quote_obj.shipping_postal_code = request.POST.get('shipping_postal_code', '')
+            quote_obj.tds_tcs_type = request.POST.get('tds_tcs_type', quote_obj.tds_tcs_type or 'tds')
+            quote_obj.tds_tcs_definition_id = _parse_positive_int(request.POST.get('tds_tcs_definition_id'))
+            quote_obj.tds_tcs_rate = _parse_decimal(request.POST.get('tds_tcs_rate', '0'))
+            quote_obj.tds_tcs_amount = _parse_decimal(request.POST.get('tds_tcs_amount', '0.00'))
             # Persist place of supply if provided from the form
             quote_obj.place_of_supply = request.POST.get('place_of_supply', quote_obj.place_of_supply or '')
             quote_obj._current_user = request.user
@@ -5349,6 +5376,10 @@ def quotation_edit(request, pk):
         'selected_currency_id': quote.document_currency_id or '',
         'fx_rate_to_base': quote.fx_rate_to_base,
         'fx_rate_date': quote.fx_rate_date,
+        'tds_tcs_type': quote.tds_tcs_type or 'tds',
+        'tds_tcs_definition_id': quote.tds_tcs_definition_id or '',
+        'tds_tcs_rate': quote.tds_tcs_rate or 0,
+        'tds_tcs_amount': quote.tds_tcs_amount or 0,
         # ✅ Fetch TDS and TCS for quotation_edit template
         'tds_tax_master_items': TdsMaster.objects.filter(company=company, is_active=True),
         'tcs_tax_master_items': TcsMaster.objects.filter(company=company, is_active=True),
@@ -5754,6 +5785,10 @@ def quotation_duplicate(request, pk):
                 shipping_city=request.POST.get('shipping_city', ''),
                 shipping_state=request.POST.get('shipping_state', ''),
                 shipping_postal_code=request.POST.get('shipping_postal_code', ''),
+                tds_tcs_type=request.POST.get('tds_tcs_type', original_quote.tds_tcs_type or 'tds'),
+                tds_tcs_definition_id=_parse_positive_int(request.POST.get('tds_tcs_definition_id')),
+                tds_tcs_rate=_parse_decimal(request.POST.get('tds_tcs_rate', '0')),
+                tds_tcs_amount=_parse_decimal(request.POST.get('tds_tcs_amount', '0.00')),
                 document_currency=document_currency,
                 fx_rate_to_base=fx_rate_to_base,
                 fx_rate_date=fx_rate_date,
@@ -5893,6 +5928,10 @@ def convert_quotation_to_order(request, quotation_id):
         shipping_city=quotation.shipping_city,
         shipping_state=quotation.shipping_state,
         shipping_postal_code=quotation.shipping_postal_code,
+        tds_tcs_type=quotation.tds_tcs_type,
+        tds_tcs_definition_id=quotation.tds_tcs_definition_id,
+        tds_tcs_rate=quotation.tds_tcs_rate,
+        tds_tcs_amount=quotation.tds_tcs_amount,
         document_currency=quotation.document_currency,
         fx_rate_to_base=quotation.fx_rate_to_base,
         fx_rate_date=quotation.fx_rate_date,
@@ -6470,6 +6509,10 @@ def save_salesorder(request):
                         fx_rate_to_base = Decimal(str(fx_rate_str))
                     except Exception:
                         fx_rate_to_base = Decimal('1.000000')
+                tds_tcs_type = request.POST.get('tds_tcs_type', 'tds')
+                tds_tcs_definition_id = _parse_positive_int(request.POST.get('tds_tcs_definition_id'))
+                tds_tcs_rate = _parse_decimal(request.POST.get('tds_tcs_rate', '0'))
+                tds_tcs_amount = _parse_decimal(request.POST.get('tds_tcs_amount', '0.00'))
 
                 order = SalesOrder.objects.create(
                     customer=customer,
@@ -6490,6 +6533,10 @@ def save_salesorder(request):
                     shipping_city=request.POST.get('shipping_city', ''),
                     shipping_state=request.POST.get('shipping_state', ''),
                     shipping_postal_code=request.POST.get('shipping_postal_code', ''),
+                    tds_tcs_type=tds_tcs_type,
+                    tds_tcs_definition_id=tds_tcs_definition_id,
+                    tds_tcs_rate=tds_tcs_rate,
+                    tds_tcs_amount=tds_tcs_amount,
                     document_currency=document_currency,
                     fx_rate_to_base=fx_rate_to_base,
                     fx_rate_date=fx_rate_date if fx_rate_date else None,
@@ -7575,6 +7622,10 @@ def order_edit(request, pk):
             except (InvalidOperation, ValueError, TypeError):
                 order_obj.discount_value = Decimal('0.00')
             order_obj.discount_type = request.POST.get('discount_type', 'percent')
+            order_obj.tds_tcs_type = request.POST.get('tds_tcs_type', order_obj.tds_tcs_type or 'tds')
+            order_obj.tds_tcs_definition_id = _parse_positive_int(request.POST.get('tds_tcs_definition_id'))
+            order_obj.tds_tcs_rate = _parse_decimal(request.POST.get('tds_tcs_rate', '0'))
+            order_obj.tds_tcs_amount = _parse_decimal(request.POST.get('tds_tcs_amount', '0.00'))
             company = _get_company_for_request(request)
             if _get_request_company_tax_type(request, company) == 'TURNOVER':
                 turnover_tax_id = (request.POST.get('turnover_tax') or '').strip()
@@ -8090,6 +8141,10 @@ def order_duplicate(request, pk):
         shipping_city=request.POST.get('shipping_city', ''),
         shipping_state=request.POST.get('shipping_state', ''),
         shipping_postal_code=request.POST.get('shipping_postal_code', ''),
+        tds_tcs_type=request.POST.get('tds_tcs_type', old_order.tds_tcs_type or 'tds'),
+        tds_tcs_definition_id=_parse_positive_int(request.POST.get('tds_tcs_definition_id')),
+        tds_tcs_rate=_parse_decimal(request.POST.get('tds_tcs_rate', '0')),
+        tds_tcs_amount=_parse_decimal(request.POST.get('tds_tcs_amount', '0.00')),
     )
 
     pay_term_id = post_data.get('payment_term')
@@ -8297,6 +8352,10 @@ def convert_quotation_to_inv(request, quotation_id):
         shipping_city=quotation.shipping_city,
         shipping_state=quotation.shipping_state,
         shipping_postal_code=quotation.shipping_postal_code,
+        tds_tcs_type=quotation.tds_tcs_type,
+        tds_tcs_definition_id=quotation.tds_tcs_definition_id,
+        tds_tcs_rate=quotation.tds_tcs_rate,
+        tds_tcs_amount=quotation.tds_tcs_amount,
     )
 
     try:
@@ -8624,6 +8683,10 @@ def convert_order_to_inv(request, order_id):
         shipping_city=order.shipping_city,
         shipping_state=order.shipping_state,
         shipping_postal_code=order.shipping_postal_code,
+        tds_tcs_type=order.tds_tcs_type,
+        tds_tcs_definition_id=order.tds_tcs_definition_id,
+        tds_tcs_rate=order.tds_tcs_rate,
+        tds_tcs_amount=order.tds_tcs_amount,
     )
 
     # Copy SalesQuotationItems to SalesOrderItems
@@ -10284,6 +10347,10 @@ def save_salesinvoice(request):
                 turnover_tax_id = (request.POST.get('turnover_tax') or '').strip()
                 if turnover_tax_id:
                     turnover_tax_obj = Tax.objects.filter(id=turnover_tax_id, tax_type__iexact='TURNOVER').first()
+            tds_tcs_type = request.POST.get('tds_tcs_type', 'tds')
+            tds_tcs_definition_id = _parse_positive_int(request.POST.get('tds_tcs_definition_id'))
+            tds_tcs_rate = _parse_decimal(request.POST.get('tds_tcs_rate', '0'))
+            tds_tcs_amount = _parse_decimal(request.POST.get('tds_tcs_amount', '0.00'))
             
             invoice = SalesInvoice.objects.create(
                 customer=customer,
@@ -10307,6 +10374,10 @@ def save_salesinvoice(request):
                 shipping_city=request.POST.get('shipping_city', ''),
                 shipping_state=request.POST.get('shipping_state', ''),
                 shipping_postal_code=request.POST.get('shipping_postal_code', ''),
+                tds_tcs_type=tds_tcs_type,
+                tds_tcs_definition_id=tds_tcs_definition_id,
+                tds_tcs_rate=tds_tcs_rate,
+                tds_tcs_amount=tds_tcs_amount,
                 turnover_tax=turnover_tax_obj,
             )
 
@@ -10852,6 +10923,10 @@ def invoice_edit(request, pk):
                 invoice.shipping_city = request.POST.get('shipping_city', '')
                 invoice.shipping_state = request.POST.get('shipping_state', '')
                 invoice.shipping_postal_code = request.POST.get('shipping_postal_code', '')
+                invoice.tds_tcs_type = request.POST.get('tds_tcs_type', invoice.tds_tcs_type or 'tds')
+                invoice.tds_tcs_definition_id = _parse_positive_int(request.POST.get('tds_tcs_definition_id'))
+                invoice.tds_tcs_rate = _parse_decimal(request.POST.get('tds_tcs_rate', '0'))
+                invoice.tds_tcs_amount = _parse_decimal(request.POST.get('tds_tcs_amount', '0.00'))
                 invoice._current_user = request.user
 
                 invoice._current_request = request
@@ -11697,6 +11772,10 @@ def invoice_duplicate(request, pk):
                 shipping_city=request.POST.get('shipping_city', ''),
                 shipping_state=request.POST.get('shipping_state', ''),
                 shipping_postal_code=request.POST.get('shipping_postal_code', ''),
+                tds_tcs_type=request.POST.get('tds_tcs_type', original_invoice.tds_tcs_type or 'tds'),
+                tds_tcs_definition_id=_parse_positive_int(request.POST.get('tds_tcs_definition_id')),
+                tds_tcs_rate=_parse_decimal(request.POST.get('tds_tcs_rate', '0')),
+                tds_tcs_amount=_parse_decimal(request.POST.get('tds_tcs_amount', '0.00')),
     )
 
     try:
@@ -18091,6 +18170,10 @@ def convert_performa_to_order(request, performa_id):
         shipping_city=performa.shipping_city,
         shipping_state=performa.shipping_state,
         shipping_postal_code=performa.shipping_postal_code,
+        tds_tcs_type=performa.tds_tcs_type,
+        tds_tcs_definition_id=performa.tds_tcs_definition_id,
+        tds_tcs_rate=performa.tds_tcs_rate,
+        tds_tcs_amount=performa.tds_tcs_amount,
         origin_performa=performa,
     )
 
@@ -18501,6 +18584,10 @@ def save_performa_invoice(request):
             turnover_tax_id = (request.POST.get('turnover_tax') or '').strip()
             if turnover_tax_id:
                 turnover_tax_obj = Tax.objects.filter(id=turnover_tax_id, tax_type__iexact='TURNOVER').first()
+        tds_tcs_type = request.POST.get('tds_tcs_type', 'tds')
+        tds_tcs_definition_id = _parse_positive_int(request.POST.get('tds_tcs_definition_id'))
+        tds_tcs_rate = _parse_decimal(request.POST.get('tds_tcs_rate', '0'))
+        tds_tcs_amount = _parse_decimal(request.POST.get('tds_tcs_amount', '0.00'))
         with transaction.atomic():
             if is_edit:
                 performa_invoice = get_object_or_404(PerformaInvoice, pk=invoice_id)
@@ -18521,6 +18608,10 @@ def save_performa_invoice(request):
                 performa_invoice.shipping_city = request.POST.get('shipping_city', '')
                 performa_invoice.shipping_state = request.POST.get('shipping_state', '')
                 performa_invoice.shipping_postal_code = request.POST.get('shipping_postal_code', '')
+                performa_invoice.tds_tcs_type = tds_tcs_type
+                performa_invoice.tds_tcs_definition_id = tds_tcs_definition_id
+                performa_invoice.tds_tcs_rate = tds_tcs_rate
+                performa_invoice.tds_tcs_amount = tds_tcs_amount
                 performa_invoice.turnover_tax = turnover_tax_obj if company_tax_type == 'TURNOVER' else None
                 performa_invoice.save()
             else:
@@ -18544,6 +18635,10 @@ def save_performa_invoice(request):
                     shipping_city=request.POST.get('shipping_city', ''),
                     shipping_state=request.POST.get('shipping_state', ''),
                     shipping_postal_code=request.POST.get('shipping_postal_code', ''),
+                    tds_tcs_type=tds_tcs_type,
+                    tds_tcs_definition_id=tds_tcs_definition_id,
+                    tds_tcs_rate=tds_tcs_rate,
+                    tds_tcs_amount=tds_tcs_amount,
                     turnover_tax=turnover_tax_obj,
                 )
 
