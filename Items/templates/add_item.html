@@ -546,27 +546,55 @@ $(document).ready(function() {
 
     {% comment %} console.log("value of lastVendorSearchTerm:"+lastVendorSearchTerm); {% endcomment %}
 
-    $('#vendor_select').on('select2:selecting', function(e) {
+    $('#vendor_select').on('select2:select', function(e) {
       var data = (e.params && e.params.args && e.params.args.data) ? e.params.args.data : e.params.data;
       if (data && data.isNew) {
         e.preventDefault();
-        $.get('/purchase/vendor_createform/', function(formHtml) {
-          var $mb = $('#vendorCreateModal .modal-body');
+        $.get("{% company_path '/purchase/vendor_createform/' %}", function(formHtml) {
+          var $mb = $('#addVendorModal .modal-body');
           $mb.html(formHtml);
+          // Auto-generate vendor code after the modal form loads, matching purchase order
+          setTimeout(function () {
+            var nameToUse = $mb.find('input[name="company_name"]').val().trim() ||
+              $mb.find('input[name="first_name"]').val().trim();
+            if (nameToUse) {
+              autoGenerateVendorCode(nameToUse);
+            }
+          }, 300);
           // Initialize select2 for any select elements injected into this modal
           try {
             if (window.jQuery && window.jQuery.fn && window.jQuery.fn.select2) {
               $mb.find('.select2').each(function() {
                 var $el = $(this);
-                try { $el.select2('destroy'); } catch(e) {}
-                $el.select2({ placeholder: $el.data('placeholder') || 'Select', allowClear: true, width: 'resolve', dropdownParent: $('#vendorCreateModal') });
+                if ($el.hasClass('select2-hidden-accessible')) {
+                  try { $el.select2('destroy'); } catch(e) {}
+                }
+                $el.select2({ placeholder: $el.data('placeholder') || 'Select', allowClear: true, width: 'resolve', dropdownParent: $('#addVendorModal') });
               });
-            }
+          }
           } catch (initErr) { console.warn('Select2 init failed in Items vendor modal:', initErr); }
-          $('#vendorCreateModal').modal('show');
-          var $vendorModal = $('#vendorCreateModal');
-          $vendorModal.find('select[name="vendor_type"]').val('company').trigger('change');
+          try {
+            var $injectedForm = $mb.find('form').first();
+            if ($injectedForm.length) {
+              $injectedForm.attr('novalidate', 'novalidate');
+              var pathParts = window.location.pathname.split('/');
+              var companyCode = pathParts[1] || '';
+              $injectedForm.attr('action', '/' + companyCode + '/purchase/add_vendor/');
+            }
+          } catch (e) { }
+          $mb.find('.text-danger.small, .text-danger, .invalid-feedback, .alert.alert-danger').hide();
+          $mb.find('*').filter(function () { return $(this).text().trim() === 'This field is required.'; }).hide();
+          $('#addVendorModal').data('vendorFormSubmitted', false);
+          var bsModalEl = document.getElementById('addVendorModal');
+          var bsModal = new bootstrap.Modal(bsModalEl);
+          bsModal.show();
+          var $vendorModal = $('#addVendorModal');
+          $vendorModal.find('select[name="vendor_type"]').val('individual').trigger('change');
+          $vendorModal.find('input[name="first_name"]').val(lastVendorSearchTerm);
           $vendorModal.find('input[name="company_name"]').val(lastVendorSearchTerm);
+          if (lastVendorSearchTerm) {
+            autoGenerateVendorCode(lastVendorSearchTerm);
+          }
 
         });
         // Reset selection after opening modal
@@ -576,8 +604,9 @@ $(document).ready(function() {
   });
 
 // AJAX submit for vendor modal: supports JSON success {id, name} or returns HTML with form (validation errors)
-$(document).on('submit', '#vendorCreateModal form', function(ev) {
-  console.log("submitting vendorCreateModal form");
+// AJAX submit for vendor modal: supports JSON success {id, name} or returns HTML with form (validation errors)
+$(document).on('submit', '#addVendorModal form', function (ev) {
+  console.log("submitting addVendorModal form");
   ev.preventDefault();
   var $form = $(this);
   var action = $form.attr('action') || window.location.href;
@@ -592,7 +621,7 @@ $(document).on('submit', '#vendorCreateModal form', function(ev) {
     processData: false,
     contentType: false,
     headers: { 'X-Requested-With': 'XMLHttpRequest' },
-    success: function(response, status, xhr) {
+    success: function (response, status, xhr) {
       // Try to parse JSON
       var ct = xhr.getResponseHeader('Content-Type') || '';
       // Accept JSON responses even if content-type mismatches
@@ -605,26 +634,26 @@ $(document).on('submit', '#vendorCreateModal form', function(ev) {
       if (parsed && (parsed.success === true || (parsed.id && parsed.name))) {
         var data = parsed;
         // Close modal reliably: prefer existing instance, fallback to creating one, then jQuery
-        var modalEl = document.getElementById('vendorCreateModal');
+        var modalEl = document.getElementById('addVendorModal');
         try {
-          var modalEl = document.getElementById('vendorCreateModal');
+          var modalEl = document.getElementById('addVendorModal');
 
-            if (window.bootstrap && bootstrap.Modal) {
-              var instance = bootstrap.Modal.getInstance(modalEl);
-              if (instance) {
-                instance.hide();
-              }
-            } else {
-              $('#vendorCreateModal').modal('hide');
+          if (window.bootstrap && bootstrap.Modal) {
+            var instance = bootstrap.Modal.getInstance(modalEl);
+            if (instance) {
+              instance.hide();
             }
+          } else {
+            $('#addVendorModal').modal('hide');
+          }
 
         } catch (e) {
-          try { $('#vendorCreateModal').modal('hide'); } catch (ee) { /* ignore */ }
+          try { $('#addVendorModal').modal('hide'); } catch (ee) { /* ignore */ }
         }
 
         // Remove any previous errors and clear modal body
-        $('#vendorCreateModal .modal-body .alert.alert-danger').remove();
-        $('#vendorCreateModal .modal-body .text-danger.small').remove();
+        $('#addVendorModal .modal-body .alert.alert-danger').remove();
+        $('#addVendorModal .modal-body .text-danger.small').remove();
 
         var displayName = data.name || (data.first_name ? (data.first_name + (data.last_name ? ' ' + data.last_name : '')) : 'New');
         var newOption = new Option(displayName, data.id, true, true);
@@ -632,40 +661,38 @@ $(document).on('submit', '#vendorCreateModal form', function(ev) {
         // Remove any existing option with same value to avoid duplicates
         $sel.find('option[value="' + data.id + '"]').remove();
         $sel.append(newOption);
-        $sel.val(String(data.id)).trigger('change');
         console.log("just befor loadVendorDetails");
-        //added by neha on 4-2-26 
-        //loadVendorDetails(data.id);
-        // Also trigger select2 select programmatically
-        // $sel.val(data.id).trigger('select2:select');
+        $sel.val(String(data.id)).trigger('change');
 
         // Clear modal content after short delay to avoid race if Bootstrap animates
-        setTimeout(function() { $('#vendorCreateModal .modal-body').empty(); }, 300);
+        setTimeout(function () { $('#addVendorModal .modal-body').empty(); }, 300);
         return;
       }
 
       // Otherwise assume HTML returned (form with errors or full form) - replace modal body
-      $('#vendorCreateModal .modal-body').html(response);
+      $('#addVendorModal .modal-body').html(response);
       // Initialize by adarshselect2 for any selects injected into the modal (validation/error case)
       try {
-        var $mbv = $('#vendorCreateModal .modal-body');
+        var $mbv = $('#addVendorModal .modal-body');
         if (window.jQuery && window.jQuery.fn && window.jQuery.fn.select2) {
-          $mbv.find('.select2').each(function() {
+          $mbv.find('.select2').each(function () {
             var $el = $(this);
-            try { $el.select2('destroy'); } catch(e) {}
-            $el.select2({ placeholder: $el.data('placeholder') || 'Select', allowClear: true, width: 'resolve', dropdownParent: $('#vendorCreateModal') });
+            if ($el.hasClass('select2-hidden-accessible')) {
+              try { $el.select2('destroy'); } catch (e) { }
+            }
+            $el.select2({ placeholder: $el.data('placeholder') || 'Select', allowClear: true, width: 'resolve', dropdownParent: $('#addVendorModal') });
           });
         }
       } catch (ie) { console.warn('Select2 init failed after vendor submit response:', ie); }//byadarsh
       // Reveal errors because this was a submit attempt
       try {
-        $('#vendorCreateModal').data('VendorFormSubmitted', true);
-        var $mb = $('#vendorCreateModal .modal-body');
+        $('#addVendorModal').data('VendorFormSubmitted', true);
+        var $mb = $('#addVendorModal .modal-body');
         $mb.find('.text-danger.small, .text-danger, .invalid-feedback, .alert.alert-danger').show();
-        $mb.find('*').filter(function() { return $(this).text().trim() === 'This field is required.'; }).show();
+        $mb.find('*').filter(function () { return $(this).text().trim() === 'This field is required.'; }).show();
       } catch (e) { }
     },
-    error: function(xhr) {
+    error: function (xhr) {
       // Better error handling: if server returned JSON errors, render them in modal
       var ct = xhr.getResponseHeader('Content-Type') || '';
       var handled = false;
@@ -673,40 +700,40 @@ $(document).on('submit', '#vendorCreateModal form', function(ev) {
         var json = xhr.responseJSON || JSON.parse(xhr.responseText || '{}');
         if (json && json.errors) {
           // Clear any previous field errors
-          $('#vendorCreateModal .text-danger.small').remove();
-          $('#vendorCreateModal .alert.alert-danger').remove();
+          $('#addVendorModal .text-danger.small').remove();
+          $('#addVendorModal .alert.alert-danger').remove();
 
           // Render non-field errors
           if (json.errors.__all__ || json.errors.non_field_errors) {
             var nf = json.errors.__all__ || json.errors.non_field_errors;
-            $('#vendorCreateModal .modal-body').prepend('<div class="alert alert-danger">' + nf.join('<br>') + '</div>');
+            $('#addVendorModal .modal-body').prepend('<div class="alert alert-danger">' + nf.join('<br>') + '</div>');
           }
 
           // Render field-specific errors next to inputs
-          Object.keys(json.errors).forEach(function(field) {
+          Object.keys(json.errors).forEach(function (field) {
             if (field === '__all__' || field === 'non_field_errors') return;
             var msgs = json.errors[field];
             // Try to find input/select/textarea with that name
-            var $field = $('#vendorCreateModal').find('[name="' + field + '"]');
+            var $field = $('#addVendorModal').find('[name="' + field + '"]');
             if ($field.length) {
               // Append error messages after the field (avoid duplicates)
-              $field.each(function() {
+              $field.each(function () {
                 var $el = $(this);
-                msgs.forEach(function(m) {
+                msgs.forEach(function (m) {
                   $el.after('<div class="text-danger small">' + m + '</div>');
                 });
               });
             } else {
               // If not found, show at top
-              $('#vendorCreateModal .modal-body').prepend('<div class="alert alert-danger"><strong>' + field + ':</strong> ' + msgs.join(', ') + '</div>');
+              $('#addVendorModal .modal-body').prepend('<div class="alert alert-danger"><strong>' + field + ':</strong> ' + msgs.join(', ') + '</div>');
             }
           });
 
           // Mark that the user attempted to submit so we reveal errors
-          $('#vendorCreateModal').data('VendorFormSubmitted', true);
+          $('#addVendorModal').data('VendorFormSubmitted', true);
           // Reveal any errors we just added (CSS hides them by default inside the modal)
           try {
-            var $mb_errors = $('#vendorCreateModal .modal-body');
+            var $mb_errors = $('#addVendorModal .modal-body');
             $mb_errors.find('.text-danger.small, .text-danger, .invalid-feedback, .alert.alert-danger').show();
             // scroll to first error
             var $firstErr = $mb_errors.find('.text-danger.small, .alert.alert-danger').first();
@@ -725,23 +752,25 @@ $(document).on('submit', '#vendorCreateModal form', function(ev) {
 
       if (!handled) {
         if (ct.indexOf('text/html') !== -1) {
-          $('#vendorCreateModal .modal-body').html(xhr.responseText);
+          $('#addVendorModal .modal-body').html(xhr.responseText);
           try { //byadarsh
-            var $mb3 = $('#vendorCreateModal .modal-body');
+            var $mb3 = $('#addVendorModal .modal-body');
             if (window.jQuery && window.jQuery.fn && window.jQuery.fn.select2) {
-              $mb3.find('.select2').each(function() {
+              $mb3.find('.select2').each(function () {
                 var $el = $(this);
-                try { $el.select2('destroy'); } catch(e) {}
-                $el.select2({ placeholder: $el.data('placeholder') || 'Select', allowClear: true, width: 'resolve', dropdownParent: $('#vendorCreateModal') });
+                if ($el.hasClass('select2-hidden-accessible')) {
+                  try { $el.select2('destroy'); } catch (e) { }
+                }
+                $el.select2({ placeholder: $el.data('placeholder') || 'Select', allowClear: true, width: 'resolve', dropdownParent: $('#addVendorModal') });
               });
             }
           } catch (ee) { console.warn('Select2 init failed for error HTML:', ee); }//byadarsh
           // Reveal errors since this is response after failed submit
           try {
-            $('#vendorCreateModal').data('VendorFormSubmitted', true);
-            var $mb2 = $('#vendorCreateModal .modal-body');
+            $('#addVendorModal').data('VendorFormSubmitted', true);
+            var $mb2 = $('#addVendorModal .modal-body');
             $mb2.find('.text-danger.small, .text-danger, .invalid-feedback, .alert.alert-danger').show();
-            $mb2.find('*').filter(function() { return $(this).text().trim() === 'This field is required.'; }).show();
+            $mb2.find('*').filter(function () { return $(this).text().trim() === 'This field is required.'; }).show();
           } catch (ee) { }
         } else {
           alert('Error saving vendor. See console for details.');
@@ -750,6 +779,70 @@ $(document).on('submit', '#vendorCreateModal form', function(ev) {
       }
     }
   });
+});
+
+$(document).on('click', '#addVendorModal .btn-save-vendor', function (ev) {
+  ev.preventDefault();
+  $(this).closest('form').trigger('submit');
+});
+
+function autoGenerateVendorCode(name) {
+  if (!name || name.trim().length === 0) return;
+  var pathParts = window.location.pathname.split('/');
+  var companyCode = pathParts[1] || '';
+  var ajaxUrl = '/' + companyCode + '/purchase/generate-vendor-code/';
+
+  fetch(ajaxUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'X-Requested-With': 'XMLHttpRequest',
+      'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+    },
+    body: 'name=' + encodeURIComponent(name.trim())
+  })
+    .then(function (response) { return response.json(); })
+    .then(function (data) {
+      if (data.success && data.code) {
+        $('#addVendorModal').find('input[name="vendor_code"]').val(data.code);
+        console.log('Auto-generated vendor code:', data.code);
+      } else {
+        $('#addVendorModal').find('input[name="vendor_code"]').val('');
+      }
+    })
+    .catch(function (error) {
+      console.error('Error:', error);
+      $('#addVendorModal').find('input[name="vendor_code"]').val('');
+    });
+}
+
+$(document).on('click', '#addVendorModal .generate-vendor-code-btn', function (e) {
+  e.preventDefault();
+  autoGenerateVendorCode();
+});
+
+$(document).on('input', '#addVendorModal input[name="company_name"]', function () {
+  var name = $(this).val().trim();
+  if (name.length >= 1) {
+    autoGenerateVendorCode(name);
+  }
+});
+
+$(document).on('input', '#addVendorModal input[name="first_name"]', function () {
+  var name = $(this).val().trim();
+  if (name.length >= 1) {
+    autoGenerateVendorCode(name);
+  }
+});
+
+$(document).on('input', '#addVendorModal input[name="first_name"]', function () {
+  var companyName = $('#addVendorModal input[name="company_name"]').val().trim();
+  if (!companyName) {
+    var name = $(this).val().trim();
+    if (name.length >= 1) {
+      autoGenerateVendorCode(name);
+    }
+  }
 });
 
 
@@ -1734,7 +1827,7 @@ $(document).on('submit', '#itemTypeCreateForm', function(e) {
 </div>
 
 <!-- Vendor creation modal (AJAX loads the full form markup into .modal-body) -->
-<div class="modal fade" id="vendorCreateModal" tabindex="-1" aria-hidden="true">
+<div class="modal fade" id="addVendorModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog ">
     <div class="modal-content custom-modal-content">
       <div class="modal-header border-0 pb-1">
@@ -1742,7 +1835,7 @@ $(document).on('submit', '#itemTypeCreateForm', function(e) {
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
-        <!-- form HTML loaded here via AJAX from /Items/vendor_createform/ -->
+        <!-- form HTML loaded here via AJAX from /purchase/vendor_createform/ -->
       </div>
       <!-- Footer buttons are provided by the AJAX-loaded vendor form; no duplicate Save here -->
     </div>

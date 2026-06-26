@@ -390,10 +390,11 @@ def _get_posted_item_lookup_context(request):
 
 
 def _build_add_item_context(request, form, units, vendors, hsn, warehouses, company_country, **extra):
+    company_db = getattr(request, 'company_db', 'default')
     vendor_id = request.POST.get('preferred_vendor') if request.method == "POST" else ''
     vendor_text = ''
     if vendor_id:
-        vendor_obj = Vendor.objects.filter(id=vendor_id).first()
+        vendor_obj = Vendor.objects.using(company_db).filter(id=vendor_id).first()
         if vendor_obj:
             vendor_text = str(vendor_obj)
 
@@ -1154,7 +1155,7 @@ def add_item(request):
                 item.created_by = request.user
                 preferred_vendor_id = request.POST.get('preferred_vendor')
                 if preferred_vendor_id:
-                    item.preferred_vendor = Vendor.objects.filter(pk=preferred_vendor_id).first()
+                    item.preferred_vendor = Vendor.objects.using(db).filter(pk=preferred_vendor_id).first()
                 else:
                     item.preferred_vendor = None
                 _assign_item_tax_fields(item, post_data, company_country, company_tax_type)
@@ -1710,7 +1711,7 @@ def item_edit(request, pk):
             updated_item.updated_by = request.user
             preferred_vendor_id = request.POST.get('preferred_vendor')
             if preferred_vendor_id:
-                updated_item.preferred_vendor = Vendor.objects.filter(pk=preferred_vendor_id).first()
+                updated_item.preferred_vendor = Vendor.objects.using(db).filter(pk=preferred_vendor_id).first()
             else:
                 updated_item.preferred_vendor = None
             # ✅ Store request context for activity logging to find correct company_db

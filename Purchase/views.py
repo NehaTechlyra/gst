@@ -1660,10 +1660,11 @@ def purchase_order_add(request):
 def vendor_search(request):
     query = request.GET.get('q', '').strip()
     results = []
+    company_db = getattr(request, 'company_db', 'default')
 
     if query:
         vendors = (
-            Vendor.objects
+            Vendor.objects.using(company_db)
             .annotate(
                 fullname=Concat('first_name', Value(' '), 'last_name')
             )
