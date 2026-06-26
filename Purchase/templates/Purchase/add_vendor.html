@@ -234,10 +234,7 @@
             // Update required
             if (firstNameInput) firstNameInput.required = true;
             if (lastNameInput) lastNameInput.required = true;
-            if (companyNameInput) {
-                companyNameInput.required = false;
-                companyNameInput.value = ''; // Clear value
-            }
+            if (companyNameInput) companyNameInput.required = false;
             
         } else if (vendorType === 'company') {
             console.log("Showing company field");
@@ -249,11 +246,9 @@
             // Update required
             if (firstNameInput) {
                 firstNameInput.required = false;
-                firstNameInput.value = ''; // Clear value
             }
             if (lastNameInput) {
                 lastNameInput.required = false;
-                lastNameInput.value = ''; // Clear value
             }
             if (companyNameInput) companyNameInput.required = true;
             

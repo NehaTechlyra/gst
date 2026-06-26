@@ -564,8 +564,9 @@ $(document).ready(function() {
             }
           } catch (initErr) { console.warn('Select2 init failed in Items vendor modal:', initErr); }
           $('#vendorCreateModal').modal('show');
-          $('#vendorCreateModal').find('input[name="first_name"]').val(lastVendorSearchTerm);
-          $('#vendorCreateModal').find('input[name="company_name"]').val(lastVendorSearchTerm);
+          var $vendorModal = $('#vendorCreateModal');
+          $vendorModal.find('select[name="vendor_type"]').val('company').trigger('change');
+          $vendorModal.find('input[name="company_name"]').val(lastVendorSearchTerm);
 
         });
         // Reset selection after opening modal
@@ -630,13 +631,13 @@ $(document).on('submit', '#vendorCreateModal form', function(ev) {
         var $sel = $('#vendor_select');
         // Remove any existing option with same value to avoid duplicates
         $sel.find('option[value="' + data.id + '"]').remove();
-        $sel.append(newOption).trigger('change');
+        $sel.append(newOption);
+        $sel.val(String(data.id)).trigger('change');
         console.log("just befor loadVendorDetails");
         //added by neha on 4-2-26 
         //loadVendorDetails(data.id);
         // Also trigger select2 select programmatically
         // $sel.val(data.id).trigger('select2:select');
-        $sel.append(newOption).val(data.id).trigger('change');
 
         // Clear modal content after short delay to avoid race if Bootstrap animates
         setTimeout(function() { $('#vendorCreateModal .modal-body').empty(); }, 300);

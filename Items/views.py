@@ -390,6 +390,13 @@ def _get_posted_item_lookup_context(request):
 
 
 def _build_add_item_context(request, form, units, vendors, hsn, warehouses, company_country, **extra):
+    vendor_id = request.POST.get('preferred_vendor') if request.method == "POST" else ''
+    vendor_text = ''
+    if vendor_id:
+        vendor_obj = Vendor.objects.filter(id=vendor_id).first()
+        if vendor_obj:
+            vendor_text = str(vendor_obj)
+
     context = {
         'units': units,
         'vendors': vendors,
@@ -402,6 +409,8 @@ def _build_add_item_context(request, form, units, vendors, hsn, warehouses, comp
         'base_currency': _get_company_base_currency(request),
         'can_create': (getattr(request.user, 'is_superuser', False) or can_create_items(request.user)),
         'can_edit': (getattr(request.user, 'is_superuser', False) or can_edit_items(request.user)),
+        'vendor_id': vendor_id,
+        'vendor_text': vendor_text,
     }
     if request.method == "POST":
         context.update(_get_posted_item_lookup_context(request))
@@ -1143,6 +1152,11 @@ def add_item(request):
                 item = form.save(commit=False)
                 # item.status = True
                 item.created_by = request.user
+                preferred_vendor_id = request.POST.get('preferred_vendor')
+                if preferred_vendor_id:
+                    item.preferred_vendor = Vendor.objects.filter(pk=preferred_vendor_id).first()
+                else:
+                    item.preferred_vendor = None
                 _assign_item_tax_fields(item, post_data, company_country, company_tax_type)
                 # ✅ Store request context for activity logging to find correct company_db
                 item._current_request = request
@@ -1694,6 +1708,11 @@ def item_edit(request, pk):
             # Preserve created_by, set updated_by to current user
             # updated_item.created_by = item.created_by
             updated_item.updated_by = request.user
+            preferred_vendor_id = request.POST.get('preferred_vendor')
+            if preferred_vendor_id:
+                updated_item.preferred_vendor = Vendor.objects.filter(pk=preferred_vendor_id).first()
+            else:
+                updated_item.preferred_vendor = None
             # ✅ Store request context for activity logging to find correct company_db
             updated_item._current_request = request
             _assign_item_tax_fields(updated_item, post_data, company_country, company_tax_type)

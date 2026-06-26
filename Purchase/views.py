@@ -1726,6 +1726,10 @@ def add_vendor(request):
     except Exception:
         company = None
 
+    if request.method != "POST":
+        form = VendorFormmodal(company=company)
+        return render(request, 'Purchase/add_vendor.html', {'vendor_form': form})
+
     if request.method == "POST":
         form = VendorFormmodal(request.POST, company=company)
         if form.is_valid():
@@ -1807,7 +1811,7 @@ def add_vendor(request):
                 display_name = f"{vendor.first_name or ''} {vendor.last_name or ''}".strip() or vendor.email or str(vendor.id)
             return JsonResponse({'success': True, 'id': vendor.id, 'name': display_name})
         else:
-            return JsonResponse({'success': False, 'errors': form.errors}, status=400)
+                    return JsonResponse({'success': False, 'errors': form.errors}, status=400)
     return JsonResponse({'success': False, 'errors': {'__all__': ['Invalid method']}}, status=405)
 
 
@@ -2974,6 +2978,10 @@ def purchase_order_edit(request, pk):
         'shipping_state': order.shipping_state or '',
         'shipping_postal_code': order.shipping_postal_code or '',#by adarsh
         'place_of_supply': order.place_of_supply or '',
+        'tds_tcs_type': order.tds_tcs_type or 'tds',
+        'tds_tcs_definition_id': order.tds_tcs_definition_id or '',
+        'tds_tcs_rate': order.tds_tcs_rate or 0,
+        'tds_tcs_amount': order.tds_tcs_amount or 0,
         'company_is_india': _is_indian_company_country(_get_purchase_company_country(request)),
         'company_tax_type': _get_purchase_company_tax_type(request),
     }
@@ -2989,6 +2997,10 @@ def purchase_order_edit(request, pk):
         context['company_currencies'] = []
         context['company_base_currency_symbol'] = '₹'
         context['company_base_currency_code'] = ''
+    context['tds_tcs_type'] = bill.tds_tcs_type or 'tds'
+    context['tds_tcs_definition_id'] = bill.tds_tcs_definition_id or ''
+    context['tds_tcs_rate'] = bill.tds_tcs_rate or 0
+    context['tds_tcs_amount'] = bill.tds_tcs_amount or 0
     if readonly:
         for form in purchase_formset.forms:
             for field_name, field in form.fields.items():
