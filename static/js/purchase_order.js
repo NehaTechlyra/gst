@@ -2038,6 +2038,18 @@ function calculateTotals() {
 // --- On qty or price change ---
 $('#items-table').on('input change', '.qty, .price, .item-discount, .discount-type', function () {
   let $row = $(this).closest('tr');
+
+  // When user edits visible document-currency price, update stored base price and hidden input
+  if ($(this).hasClass('price')) {
+    const docPrice = parseFloat($row.find('.price').val()) || 0;
+    const fx = parseFloat($('#fx_rate_to_base').val()) || 1;
+    const priceBase = docPrice * fx;
+    $row.data('price_base', priceBase);
+    $row.data('o_price_base', priceBase);
+    $row.find('.o_price').val(priceBase.toFixed(4));
+    try { setBasePriceDisplay($row, priceBase); } catch (e) { }
+  }
+
   updateRowAmount($row);
   calculateTotals();
 });
