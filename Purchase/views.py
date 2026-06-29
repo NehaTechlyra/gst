@@ -2246,7 +2246,9 @@ def purchaseorder_detail(request, pk):
         fx_rate = Decimal('1.000000')
     if fx_rate <= 0:
         fx_rate = Decimal('1.000000')
-
+    tds_tcs_type = (order.tds_tcs_type or '').strip().lower()
+    tds_tcs_amount = Decimal(str(order.tds_tcs_amount or 0))
+    tds_tcs_amount_base = tds_tcs_amount * fx_rate
     def _to_base(amount):
         try:
             return (Decimal(str(amount or 0)) * fx_rate).quantize(Decimal('0.01'))
@@ -2430,7 +2432,11 @@ def purchaseorder_detail(request, pk):
         'company_base_currency_symbol': company_base_currency_symbol,
         'company_base_currency_code': company_base_currency_code,
         'fx_rate_to_base': fx_rate,
+        'fx_rate': fx_rate,
         'bill_conversion_count': order.bills.count(),
+        'tds_tcs_type': tds_tcs_type,
+        'tds_tcs_amount': tds_tcs_amount,
+        'tds_tcs_amount_base': tds_tcs_amount_base,
         
     }
     return render(request, 'Purchase/PurchaseOrder_detail.html', context)
@@ -2998,10 +3004,10 @@ def purchase_order_edit(request, pk):
         context['company_currencies'] = []
         context['company_base_currency_symbol'] = '₹'
         context['company_base_currency_code'] = ''
-    context['tds_tcs_type'] = bill.tds_tcs_type or 'tds'
-    context['tds_tcs_definition_id'] = bill.tds_tcs_definition_id or ''
-    context['tds_tcs_rate'] = bill.tds_tcs_rate or 0
-    context['tds_tcs_amount'] = bill.tds_tcs_amount or 0
+    context['tds_tcs_type'] = order.tds_tcs_type or 'tds'
+    context['tds_tcs_definition_id'] = order.tds_tcs_definition_id or ''
+    context['tds_tcs_rate'] = order.tds_tcs_rate or 0
+    context['tds_tcs_amount'] = order.tds_tcs_amount or 0
     if readonly:
         for form in purchase_formset.forms:
             for field_name, field in form.fields.items():
@@ -4296,6 +4302,9 @@ def bill_detail(request, pk):
         fx_rate = Decimal('1.000000')
     if fx_rate <= 0:
         fx_rate = Decimal('1.000000')
+    tds_tcs_type = (bill.tds_tcs_type or '').strip().lower()
+    tds_tcs_amount = Decimal(str(bill.tds_tcs_amount or 0))
+    tds_tcs_amount_base = tds_tcs_amount * fx_rate
 
     def _resolve_bill_item_base_price(item_obj, bill_obj, current_fx_rate):
         from decimal import Decimal
@@ -4573,6 +4582,9 @@ def bill_detail(request, pk):
         'can_edit_purchase_returns': can_edit_purchase_returns(request.user),
         'can_view_purchase_delivery': can_view_purchase_delivery(request.user),
         'can_edit_purchase_delivery': can_edit_purchase_delivery(request.user),
+        'tds_tcs_type': tds_tcs_type,
+        'tds_tcs_amount': tds_tcs_amount,
+        'tds_tcs_amount_base': tds_tcs_amount_base,
         
     }
     return render(request, 'Purchase/bill_detail.html', context)

@@ -1056,6 +1056,7 @@ document.addEventListener('DOMContentLoaded', function() {
               <td style="text-align:right; color:var(--success);">–{% if document_currency_symbol %}{{ document_currency_symbol }}{{ total_discount_combined|floatformat:2 }}{% else %}{{ company_base_currency_symbol }}{{ total_discount_combined|floatformat:2 }}{% endif %}</td>
               <td style="text-align:right; color:var(--success);">{% if company_base_currency_symbol %}–{{ company_base_currency_symbol }}{{ total_discount_combined_base|floatformat:2 }}{% else %}<span class="text-muted">—</span>{% endif %}</td>
             </tr>
+            
             {% if company_tax_type|default:''|upper == 'TURNOVER' %}
             <tr>
               <td>Turnover Tax</td>
@@ -1066,6 +1067,21 @@ document.addEventListener('DOMContentLoaded', function() {
               <td>Turnover Tax Amount</td>
               <td style="text-align:right;">{% if document_currency_symbol %}{{ document_currency_symbol }}{{ turnover_tax_amount|floatformat:2 }}{% else %}{{ company_base_currency_symbol }}{{ turnover_tax_amount|floatformat:2 }}{% endif %}</td>
               <td style="text-align:right;">{% if company_base_currency_symbol %}{{ company_base_currency_symbol }}{{ turnover_tax_amount_base|floatformat:2 }}{% else %}<span class="text-muted">â€”</span>{% endif %}</td>
+            </tr>
+            {% endif %}
+            {% if tds_tcs_type and tds_tcs_amount and tds_tcs_amount > 0 %}
+            <tr>
+              <td>{% if tds_tcs_type == 'tcs' %}TCS Amount{% else %}TDS Amount{% endif %}</td>
+              <td style="text-align:right;">
+                {% if tds_tcs_type == 'tcs' %}+{% else %}-{% endif %}{% if document_currency_symbol %}{{ document_currency_symbol }}{{ tds_tcs_amount|floatformat:2 }}{% else %}{{ company_base_currency_symbol }}{{ tds_tcs_amount|floatformat:2 }}{% endif %}
+              </td>
+              <td style="text-align:right;">
+                {% if company_base_currency_symbol %}
+                  {% if tds_tcs_type == 'tcs' %}+{% else %}-{% endif %}{{ company_base_currency_symbol }}{{ tds_tcs_amount_base|floatformat:2 }}
+                {% else %}
+                  <span class="text-muted">â€”</span>
+                {% endif %}
+              </td>
             </tr>
             {% endif %}
             <tr class="total-final">
