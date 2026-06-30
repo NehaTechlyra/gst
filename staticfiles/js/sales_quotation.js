@@ -1517,8 +1517,31 @@ function calculateTotals() {
   if (document.getElementById("grand-total")) document.getElementById("grand-total").innerText = getDocumentCurrencySymbol() + ' ' + grandTotal.toFixed(2);
   document.getElementById('grandTotal').value = grandTotal.toFixed(2);
 
+  syncTdsTcsDefinitionState();
+  const tdsTcsType = document.querySelector('input[name="tds_tcs_type"]:checked')?.value || 'tds';
+  const tdsTcsRate = parseFloat(document.getElementById('tds_tcs_rate')?.value) || 0;
+  let tdsTcsAmount = 0;
+  if (tdsTcsRate > 0) {
+    tdsTcsAmount = grandTotal * tdsTcsRate / 100;
+  }
+  const tdsTcsLabel = tdsTcsType === 'tcs' ? 'TCS Amount' : 'TDS Amount';
+  const tdsLabelEl = document.getElementById('tds-tcs-label');
+  if (tdsLabelEl) {
+    tdsLabelEl.innerText = tdsTcsLabel;
+  }
+  const tdsAmountEl = document.getElementById('tds-tcs-amount');
+  if (tdsAmountEl) {
+    const sign = tdsTcsType === 'tds' ? '-' : '+';
+    tdsAmountEl.innerText = getDocumentCurrencySymbol() + ' ' + sign + tdsTcsAmount.toFixed(2);
+  }
+  const tdsHiddenAmountEl = document.getElementById('tds_tcs_amount');
+  if (tdsHiddenAmountEl) {
+    tdsHiddenAmountEl.value = tdsTcsAmount.toFixed(2);
+  }
+
   const fxInput = document.getElementById('fx_rate_to_base');
   const fxRateValue = fxInput ? (parseFloat(fxInput.value) || 1) : 1;
+  const baseTdsTcsAmountValue = tdsTcsAmount * fxRateValue;
   const baseSubtotalValue = subtotal * fxRateValue;
   const baseTotalTaxValue = totalTax * fxRateValue;
   const baseTotalDiscountValue = TotalDiscount * fxRateValue;
@@ -1544,6 +1567,10 @@ function calculateTotals() {
     if (baseVatEl) baseVatEl.innerText = formatAmount(baseTotalTaxValue);
     const baseDiscountEl = document.getElementById('base-total-discount');
     if (baseDiscountEl) baseDiscountEl.innerText = formatAmount(baseTotalDiscountValue);
+    const baseTdsTcsLabelEl = document.getElementById('base-tds-tcs-label');
+    if (baseTdsTcsLabelEl) baseTdsTcsLabelEl.innerText = tdsTcsType === 'tcs' ? 'TCS Amount' : 'TDS Amount';
+    const baseTdsTcsAmountEl = document.getElementById('base-tds-tcs-amount');
+    if (baseTdsTcsAmountEl) baseTdsTcsAmountEl.innerText = formatAmount(baseTdsTcsAmountValue);
     const baseGrandTotalEl = document.getElementById('base-grand-total');
     if (baseGrandTotalEl) baseGrandTotalEl.innerText = formatAmount(baseGrandTotalValue);
   }

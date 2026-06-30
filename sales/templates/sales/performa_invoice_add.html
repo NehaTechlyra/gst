@@ -1591,6 +1591,10 @@ document.addEventListener('DOMContentLoaded', function() {
           <span>Total Discount</span>
           <strong id="base-total-discount" class="amount">{{ company_base_currency_symbol|default:"₹" }}0.00</strong>
         </div>
+        <div class="totals-row">
+            <span id="base-tds-tcs-label">TDS Amount</span>
+            <strong id="base-tds-tcs-amount" class="amount">{{ company_base_currency_symbol|default:"&#x20B9;" }}0.00</strong>
+          </div>
         <hr>
         <div class="totals-row" style="margin-top:14px;">
           <span style="font-size:1.2em; font-weight:600;">Grand Total</span>

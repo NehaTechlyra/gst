@@ -1593,6 +1593,10 @@ function calculateTotals() {
     document.getElementById('tds_tcs_amount').value = tdsTcsAmount.toFixed(2);
   }
 
+  const fxInput = document.getElementById('fx_rate_to_base');
+  const fxRateValue = fxInput ? (parseFloat(fxInput.value) || 1) : 1;
+  const baseTdsTcsAmountValue = tdsTcsAmount * fxRateValue;
+
   const turnoverSelect = document.getElementById('turnover_tax_select');
   const isTurnoverCompany = String(window.COMPANY_TAX_TYPE || '').trim().toUpperCase() === 'TURNOVER';
   let turnoverTaxAmount = 0;
@@ -1619,9 +1623,6 @@ function calculateTotals() {
 
   if (document.getElementById("grand-total")) document.getElementById("grand-total").innerText = getDocumentCurrencySymbol() + ' ' + finalGrandTotalWithTdsTcs.toFixed(2);
   document.getElementById('grandTotal').value = finalGrandTotalWithTdsTcs.toFixed(2);
-
-  const fxInput = document.getElementById('fx_rate_to_base');
-  const fxRateValue = fxInput ? (parseFloat(fxInput.value) || 1) : 1;
   const baseSubtotalValue = subtotal * fxRateValue;
   const baseTotalTaxValue = totalTax * fxRateValue;
   const baseTotalDiscountValue = TotalDiscount * fxRateValue;
@@ -1647,6 +1648,10 @@ function calculateTotals() {
     if (baseVatEl) baseVatEl.innerText = formatAmount(baseTotalTaxValue);
     const baseDiscountEl = document.getElementById('base-total-discount');
     if (baseDiscountEl) baseDiscountEl.innerText = formatAmount(baseTotalDiscountValue);
+    const baseTdsTcsLabelEl = document.getElementById('base-tds-tcs-label');
+    if (baseTdsTcsLabelEl) baseTdsTcsLabelEl.innerText = tdsTcsType === 'tcs' ? 'TCS Amount' : 'TDS Amount';
+    const baseTdsTcsAmountEl = document.getElementById('base-tds-tcs-amount');
+    if (baseTdsTcsAmountEl) baseTdsTcsAmountEl.innerText = formatAmount(baseTdsTcsAmountValue);
     const baseGrandTotalEl = document.getElementById('base-grand-total');
     if (baseGrandTotalEl) baseGrandTotalEl.innerText = formatAmount(baseGrandTotalValue);
   }
