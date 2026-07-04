@@ -129,6 +129,14 @@ TAX_ACCOUNT_TEMPLATES = {
 }
 
 
+TDS_TCS_ACCOUNT_TEMPLATES = [
+    _account_spec("1020711", "TDS Receivable", "1", "10207", "TDS withheld by customer and recoverable as tax credit"),
+    _account_spec("1020712", "TCS Receivable", "1", "10207", "TCS collected by supplier and recoverable as tax credit"),
+    _account_spec("2020212", "TDS Payable", "2", "20202", "TDS withheld from supplier and payable to authorities"),
+    _account_spec("2020216", "TCS Payable", "2", "20202", "TCS collected from customer and payable to authorities"),
+]
+
+
 def _tax_accounts_for_type(tax_type):
     tax_type = str(tax_type or "").strip().upper()
     return TAX_ACCOUNT_TEMPLATES.get(tax_type, [])
@@ -162,6 +170,8 @@ def sync_chart_of_accounts_for_country(country_code, using="default", tax_type=N
 
     for account in selected_tax_accounts:
         _upsert_account(account, using=using)
+
+    ensure_tds_tcs_accounts(using=using)
 
     # Only deactivate known tax accounts when we have a selected tax template.
     # An empty template should never wipe all seeded tax accounts.
@@ -218,6 +228,39 @@ def _find_first_account(names, using="default"):
 
 def ensure_vat_accounts(using="default"):
     return ensure_tax_accounts_for_type("VAT", using=using)
+
+
+def ensure_tds_tcs_accounts(using="default"):
+    if not _db_has_chart_of_accounts_table(using):
+        return []
+    for account in TDS_TCS_ACCOUNT_TEMPLATES:
+        _upsert_account(account, using=using)
+    return TDS_TCS_ACCOUNT_TEMPLATES
+
+
+def resolve_tds_tcs_account(tds_tcs_type, direction="receivable", using="default"):
+    if not _db_has_chart_of_accounts_table(using):
+        return None
+
+    ensure_tds_tcs_accounts(using=using)
+
+    tds_tcs_type = str(tds_tcs_type or "").strip().lower()
+    direction = str(direction or "").strip().lower()
+
+    if tds_tcs_type == "tds":
+        if direction == "receivable":
+            names = ["TDS Receivable"]
+        else:
+            names = ["TDS Payable"]
+    elif tds_tcs_type == "tcs":
+        if direction == "receivable":
+            names = ["TCS Receivable"]
+        else:
+            names = ["TCS Payable"]
+    else:
+        return None
+
+    return _find_first_account(names, using=using)
 
 
 def resolve_tax_account(tax_code, direction="input", using="default"):

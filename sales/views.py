@@ -19,8 +19,13 @@ from .models import (
 from .models import SalesStockMovement
 from Purchase.models import PaymentMode
 from chart_of_accounts.models import ChartOfAccounts
-from chart_of_accounts.services import get_company_tax_type, resolve_tax_account, normalize_tax_code
-from chart_of_accounts.services import resolve_tax_account, normalize_tax_code
+from chart_of_accounts.services import (
+    ensure_tds_tcs_accounts,
+    get_company_tax_type,
+    normalize_tax_code,
+    resolve_tax_account,
+    resolve_tds_tcs_account,
+)
 try:
     from taxation.services.tax_engine import calculate_tax
 except ImportError:
@@ -74,6 +79,40 @@ from unit.models import Unit
 from Items.models import Item,Barcode,Uom,Uom_name
 from django.contrib import messages
 logger = logging.getLogger(__name__)
+
+
+def _post_tds_tcs_journal_line(journal, document, using, sequence, posting_role):
+    tds_tcs_type = str(getattr(document, 'tds_tcs_type', '') or '').strip().lower()
+    if tds_tcs_type not in ('tds', 'tcs'):
+        return sequence
+
+    amount = scale_amount_for_journal(Decimal(getattr(document, 'tds_tcs_amount', 0) or 0), document)
+    if amount <= 0:
+        return sequence
+
+    ensure_tds_tcs_accounts(using=using)
+    if posting_role == 'sales':
+        direction = 'receivable' if tds_tcs_type == 'tds' else 'payable'
+    else:
+        direction = 'payable' if tds_tcs_type == 'tds' else 'receivable'
+
+    account = resolve_tds_tcs_account(tds_tcs_type, direction=direction, using=using)
+    if not account:
+        return sequence
+
+    debit_amount = amount if direction == 'receivable' else Decimal('0.00')
+    credit_amount = amount if direction == 'payable' else Decimal('0.00')
+    reference_number = getattr(document, 'inv_number', None) or getattr(document, 'bill_number', None) or getattr(document, 'quote_number', None) or getattr(document, 'performa_inv_number', None) or getattr(document, 'number', None) or getattr(document, 'pk', '')
+    journal_prefix = 'Invoice' if posting_role == 'sales' else 'Bill'
+    JournalLine.objects.create(
+        journal=journal,
+        account=account,
+        description=f"{journal_prefix} {reference_number} - {account.name}",
+        debit=debit_amount,
+        credit=credit_amount,
+        sequence=sequence,
+    )
+    return sequence + 10
 from .permissions import (
     can_create_quotations, can_edit_quotations, can_delete_quotations,
     can_create_orders, can_create_invoices
@@ -8623,6 +8662,7 @@ def convert_quotation_to_inv(request, quotation_id):
                 )
                 seq += 10
 
+        seq = _post_tds_tcs_journal_line(journal, sales_inv, company_db, seq, posting_role='sales')
         journal.total_debit = sum(line.debit or 0 for line in journal.lines.all())
         journal.total_credit = sum(line.credit or 0 for line in journal.lines.all())
 
@@ -8918,6 +8958,7 @@ def convert_order_to_inv(request, order_id):
             # )
             seq += 10
 
+        seq = _post_tds_tcs_journal_line(journal, sales_inv, db, seq, posting_role='sales')
         journal.total_debit = sum(line.debit or 0 for line in journal.lines.all())
         journal.total_credit = sum(line.credit or 0 for line in journal.lines.all())
 
@@ -10761,6 +10802,7 @@ def save_salesinvoice(request):
                     )
                     seq += 10
             # update journal totals
+            seq = _post_tds_tcs_journal_line(journal, invoice, db, seq, posting_role='sales')
             journal.total_debit = sum(line.debit or 0 for line in journal.lines.all())
             journal.total_credit = sum(line.credit or 0 for line in journal.lines.all())
 
@@ -11326,6 +11368,7 @@ def invoice_edit(request, pk):
                         seq += 10
                 
                 # Check for rounding
+                seq = _post_tds_tcs_journal_line(new_journal, invoice, db, seq, posting_role='sales')
                 new_journal.total_debit = sum(line.debit or 0 for line in new_journal.lines.all())
                 new_journal.total_credit = sum(line.credit or 0 for line in new_journal.lines.all())
                 

@@ -49,13 +49,51 @@ import re
 from collections import defaultdict
 from django.db.models import Value
 from chart_of_accounts.models import ChartOfAccounts
-from chart_of_accounts.services import get_company_tax_type, normalize_tax_code, resolve_tax_account
+from chart_of_accounts.services import (
+    ensure_tds_tcs_accounts,
+    get_company_tax_type,
+    normalize_tax_code,
+    resolve_tax_account,
+    resolve_tds_tcs_account,
+)
 from currencies.services import refresh_document_total_base, scale_amount_for_journal
 from django.db.models import Sum, Q, F
 from django.contrib.auth.decorators import login_required
 from journal.models import JournalEntry, JournalLine
 import logging
 logger = logging.getLogger(__name__)
+
+
+def _post_tds_tcs_journal_line(journal, document, using, sequence):
+    tds_tcs_type = str(getattr(document, 'tds_tcs_type', '') or '').strip().lower()
+    if tds_tcs_type not in ('tds', 'tcs'):
+        return sequence
+
+    amount = scale_amount_for_journal(Decimal(getattr(document, 'tds_tcs_amount', 0) or 0), document)
+    if amount <= 0:
+        return sequence
+
+    ensure_tds_tcs_accounts(using=using)
+    direction = 'payable' if tds_tcs_type == 'tds' else 'receivable'
+    if tds_tcs_type == 'tcs':
+        direction = 'receivable'
+
+    account = resolve_tds_tcs_account(tds_tcs_type, direction=direction, using=using)
+    if not account:
+        return sequence
+
+    debit_amount = amount if direction == 'receivable' else Decimal('0.00')
+    credit_amount = amount if direction == 'payable' else Decimal('0.00')
+    reference_number = getattr(document, 'bill_number', None) or getattr(document, 'order_number', None) or getattr(document, 'pk', '')
+    JournalLine.objects.using(using).create(
+        journal=journal,
+        account=account,
+        description=f"Bill {reference_number} - {account.name}",
+        debit=debit_amount,
+        credit=credit_amount,
+        sequence=sequence,
+    )
+    return sequence + 10
 
 
 def _get_purchase_company_country(request=None, using=None):
@@ -8873,7 +8911,9 @@ def post_bill_to_journal(bill, user=None):
             )
             total_credit += payable_amount
             seq += 10
-        
+
+        seq = _post_tds_tcs_journal_line(journal, bill, company_db, seq)
+
         # Handle rounding (if debit != credit)
         diff = (total_debit - total_credit).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
         if diff != Decimal('0.00'):

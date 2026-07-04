@@ -1698,8 +1698,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
           // Keep wrapper visibility in sync when page loads
           function initialSync() {
-            const selectedType = document.querySelector('input[name="tds_tcs_type"]:checked')?.value || 'tds';
-            document.getElementById('tcs_select_wrapper').style.display = selectedType === 'tcs' ? 'inline-block' : 'none';
+            syncTdsTcsVisibility();
           }
 
           // Toggle visibility of TDS/TCS selects and action buttons when radio changes
