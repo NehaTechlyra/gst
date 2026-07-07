@@ -1095,7 +1095,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     .notes-box {
-      margin-top: 0;
+      margin-top: 30px;
       font-size: 1rem;
     }
 
@@ -1107,48 +1107,11 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     .notes-box textarea {
-      width: 100%;
-      max-width: 100%;
+      width: 50%;
       height: 115px;
       border-radius: 6px;
-      padding: 12px 14px;
+      padding: 10px;
       font-size: 1rem;
-      margin-bottom: 0;
-      resize: vertical;
-    }
-
-    .po-bottom-layout {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) 380px;
-      gap: 28px;
-      align-items: start;
-      margin-top: 28px;
-    }
-
-    .po-main-panel,
-    .po-side-panel {
-      min-width: 0;
-    }
-
-    .po-main-panel {
-      grid-column: 1;
-      grid-row: 1;
-    }
-
-    .po-side-panel {
-      grid-column: 2;
-      grid-row: 1;
-    }
-
-    .po-side-panel .totals-section {
-      float: none;
-      width: 100%;
-      max-width: none;
-      margin: 0 0 20px;
-    }
-
-    .po-side-panel .totals-section:last-child {
-      margin-bottom: 0;
     }
 
     .savebtn-wrapper {
@@ -1175,19 +1138,6 @@ document.addEventListener('DOMContentLoaded', function () {
       .totals-section {
         float: none;
         max-width: 100%;
-      }
-    }
-
-    @media (max-width: 991.98px) {
-      .po-bottom-layout {
-        grid-template-columns: 1fr;
-        gap: 22px;
-      }
-
-      .po-main-panel,
-      .po-side-panel {
-        grid-column: auto;
-        grid-row: auto;
       }
     }
 
@@ -1559,8 +1509,6 @@ document.addEventListener('DOMContentLoaded', function () {
       <button type="button" id="add-item-btn" class="add-item-btn">+ Add an Item</button>
 
 
-      <div class="po-bottom-layout">
-        <div class="po-side-panel">
       <div class="totals-section">
         <div class="totals-row">
           <span>Subtotal</span>
@@ -1568,29 +1516,22 @@ document.addEventListener('DOMContentLoaded', function () {
               class="currency-symbol">₹</span>0.00</strong>
         </div>
 
-        <div class="totals-row">
-
-        </div>
         {% if company_tax_type|default:''|upper != 'NONE' %}
-        {% if company_tax_type == 'GST' %}
-        <div class="totals-row">
-          <span>Total CGST</span>
-          <strong id="tax-total-cgst" class="amount"><span class="currency-symbol">₹</span>0.00</strong>
-        </div>
-        <div class="totals-row">
-          <span>Total SGST</span>
-          <strong id="tax-total-sgst" class="amount"><span class="currency-symbol">₹</span>0.00</strong>
-        </div>
-        {% else %}
-        <div class="totals-row">
-          {% if company_tax_type|default:''|upper == 'VAT' or company_tax_type|default:''|upper == 'SALES' or company_tax_type|default:''|upper == 'TURNOVER' %}
-            <span>Total Tax</span>
+          {% if company_tax_type == 'GST' %}
+            <div class="totals-row">
+              <span>Total CGST</span>
+              <strong id="tax-total-cgst" class="amount"><span class="currency-symbol">₹</span>0.00</strong>
+            </div>
+            <div class="totals-row">
+              <span>Total SGST</span>
+              <strong id="tax-total-sgst" class="amount"><span class="currency-symbol">₹</span>0.00</strong>
+            </div>
           {% else %}
-            <span>Total Tax</span>
+            <div class="totals-row">
+              <span>Total Tax</span>
+              <strong id="tax-total-vat" class="amount">₹0.00</strong>
+            </div>
           {% endif %}
-          {% endif %}
-          <strong id="tax-total-vat" class="amount">₹0.00</strong>
-        </div>
         {% endif %}
         <div class="totals-row">
           <span>Add Discount</span>
@@ -2021,9 +1962,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
       </div>
       <!-- ===== END BASE CURRENCY TRANSACTION ===== -->
-        </div>
 
-        <div class="po-main-panel">
       <div class="notes-box">
         <label for="notes">Notes</label>
         <textarea name="notes" id="notes"
@@ -2037,10 +1976,6 @@ document.addEventListener('DOMContentLoaded', function () {
         <button type="submit" class="savebtn btn btn-primary">Save Bill</button>
         {% comment %} {% endif %} {% endcomment %}
         <a href="{% url 'bill_list' %}" class="btn btn-secondary">Cancel</a>
-
-
-      </div>
-        </div>
       </div>
     </form>
     <div class="modal fade" id="tdsTcsManageModal" tabindex="-1" aria-labelledby="tdsTcsManageModalLabel" aria-hidden="true">
@@ -3073,3 +3008,8 @@ document.addEventListener('DOMContentLoaded', function () {
 </script>
 
 {% endblock %}
+
+
+
+
+
