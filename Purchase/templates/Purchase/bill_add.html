@@ -1219,18 +1219,18 @@
         </div>
         <div class="totals-row" style="align-items:center; gap:1rem;">
           <label style="display:flex; align-items:center; gap:0.35rem; white-space: nowrap;">
-            <input type="radio" name="tds_tcs_type" style="margin-bottom: 0px;" value="tds" checked>
+            <input type="radio" name="tds_tcs_type" style="margin-bottom: 0px;" value="tds" {% if bill and bill.tds_tcs_type == 'tds' or not bill %}checked{% endif %}>
             TDS
           </label>
           <label style="display:flex; align-items:center; gap:0.35rem; white-space: nowrap;">
-            <input type="radio" name="tds_tcs_type" style="margin-bottom: 0px;" value="tcs">
+            <input type="radio" name="tds_tcs_type" style="margin-bottom: 0px;" value="tcs" {% if bill and bill.tds_tcs_type == 'tcs' %}checked{% endif %}>
             TCS
           </label>
           <div class="select-with-action" style="width:125px; min-width:125px;">
             <select id="tds_definition_select" name="tds_tcs_definition_select" class="form-select" style="width:100%;">
               <option value="">Select TDS</option>
               {% for tax in tds_tax_master_items %}
-                <option value="{{ tax.tax_id }}" data-rate="{{ tax.tax_rate }}">{{ tax.tax_name }} ({{ tax.tax_rate }}%)</option>
+                <option value="{{ tax.tax_id }}" data-rate="{{ tax.tax_rate }}" {% if bill and bill.tds_tcs_definition_id == tax.tax_id and bill.tds_tcs_type == 'tds' %}selected{% endif %}>{{ tax.tax_name }} ({{ tax.tax_rate }}%)</option>
               {% endfor %}
             </select>
             {% comment %} <a id="tds_manage_button" href="{% url 'tax_master_list' %}?q=tds" class="btn btn-sm btn-outline-secondary select-action-btn" title="Manage TDS">Manage</a> {% endcomment %}
@@ -1239,7 +1239,7 @@
             <select id="tcs_definition_select" name="tds_tcs_definition_select" class="form-select" style="width:100%;">
               <option value="">Select TCS</option>
               {% for tax in tcs_tax_master_items %}
-                <option value="{{ tax.tax_id }}" data-rate="{{ tax.tax_rate }}">{{ tax.tax_name }} ({{ tax.tax_rate }}%)</option>
+                <option value="{{ tax.tax_id }}" data-rate="{{ tax.tax_rate }}" {% if bill and bill.tds_tcs_definition_id == tax.tax_id and bill.tds_tcs_type == 'tcs' %}selected{% endif %}>{{ tax.tax_name }} ({{ tax.tax_rate }}%)</option>
               {% endfor %}
             </select>
             {% comment %} <button id="tcs_manage_button" type="button" class="btn btn-sm btn-outline-secondary select-action-btn" title="Manage TCS">Manage</button> {% endcomment %}
@@ -1249,9 +1249,9 @@
         <div style="display:flex; align-items:center; gap:0.5rem; white-space: nowrap;">
           <strong id="tds-tcs-amount" class="amount">₹0.00</strong>
         </div>
-        <input type="hidden" name="tds_tcs_amount" id="tds_tcs_amount" value="0.00">
-        <input type="hidden" name="tds_tcs_rate" id="tds_tcs_rate" value="0">
-        <input type="hidden" name="tds_tcs_definition_id" id="tds_tcs_definition_id" value="">
+        <input type="hidden" name="tds_tcs_amount" id="tds_tcs_amount" value="{% if bill and bill.tds_tcs_amount %}{{ bill.tds_tcs_amount|floatformat:2 }}{% else %}0.00{% endif %}">
+        <input type="hidden" name="tds_tcs_rate" id="tds_tcs_rate" value="{% if bill and bill.tds_tcs_rate %}{{ bill.tds_tcs_rate }}{% else %}0{% endif %}">
+        <input type="hidden" name="tds_tcs_definition_id" id="tds_tcs_definition_id" value="{% if bill and bill.tds_tcs_definition_id %}{{ bill.tds_tcs_definition_id }}{% else %}{% endif %}">
       </div>
       <script>
         (function(){
@@ -1268,6 +1268,80 @@
                 allowClear: true,
                 width: '100%'
               });
+
+              // ✅ FIXED: Attach event listeners RIGHT AFTER Select2 initialization
+              // These listeners ensure hidden form fields are updated when selections change
+              $('#tds_definition_select').on('select2:select select2:clear', function () {
+                console.log('✅ TDS select2:select event fired');
+                if (window.syncTdsTcsDefinitionState) {
+                  console.log('Calling syncTdsTcsDefinitionState from purchase_order.js');
+                  window.syncTdsTcsDefinitionState();
+                  if (window.calculateTotals) {
+                    window.calculateTotals();
+                  }
+                } else {
+                  console.warn('syncTdsTcsDefinitionState not available, using inline implementation');
+                  syncTdsTcsDefinitionStateInline('tds');
+                }
+              });
+
+              $('#tcs_definition_select').on('select2:select select2:clear', function () {
+                console.log('✅ TCS select2:select event fired');
+                if (window.syncTdsTcsDefinitionState) {
+                  console.log('Calling syncTdsTcsDefinitionState from purchase_order.js');
+                  window.syncTdsTcsDefinitionState();
+                  if (window.calculateTotals) {
+                    window.calculateTotals();
+                  }
+                } else {
+                  console.warn('syncTdsTcsDefinitionState not available, using inline implementation');
+                  syncTdsTcsDefinitionStateInline('tcs');
+                }
+              });
+
+              // ✅ FALLBACK: Inline implementation in case purchase_order.js function is not available
+              function syncTdsTcsDefinitionStateInline(forceType) {
+                const selectedType = forceType || document.querySelector('input[name="tds_tcs_type"]:checked')?.value || 'tds';
+                const tdsSelect = document.getElementById('tds_definition_select');
+                const tcsSelect = document.getElementById('tcs_definition_select');
+                const hiddenRate = document.getElementById('tds_tcs_rate');
+                const hiddenId = document.getElementById('tds_tcs_definition_id');
+
+                let selectedValue = '';
+                let selectedOption = null;
+
+                if (selectedType === 'tds' && tdsSelect) {
+                  selectedValue = tdsSelect.value;
+                  selectedOption = tdsSelect.options[tdsSelect.selectedIndex];
+                } else if (selectedType === 'tcs' && tcsSelect) {
+                  selectedValue = tcsSelect.value;
+                  selectedOption = tcsSelect.options[tcsSelect.selectedIndex];
+                }
+
+                let rate = 0;
+                if (selectedOption && selectedOption.value) {
+                  if (selectedOption.dataset && selectedOption.dataset.rate) {
+                    rate = parseFloat(selectedOption.dataset.rate) || 0;
+                  }
+                  if (rate === 0 && selectedOption.text) {
+                    const match = selectedOption.text.match(/\(([0-9.]+)%\)/);
+                    if (match && match[1]) {
+                      rate = parseFloat(match[1]) || 0;
+                    }
+                  }
+                }
+
+                console.log('🔄 Inline sync - Type:', selectedType, 'Value:', selectedValue, 'Rate:', rate);
+
+                if (hiddenRate) {
+                  hiddenRate.value = Number.isFinite(rate) ? rate : 0;
+                  console.log('✅ Set tds_tcs_rate to:', hiddenRate.value);
+                }
+                if (hiddenId) {
+                  hiddenId.value = selectedValue;
+                  console.log('✅ Set tds_tcs_definition_id to:', hiddenId.value);
+                }
+              }
             }
           } catch (e) {
             console.warn('Select2 init failed for TDS/TCS selects', e);
@@ -1306,8 +1380,33 @@
 
           // Keep wrapper visibility in sync when page loads
           function initialSync() {
+            console.log('🔄 Initializing TDS/TCS state on page load...');
             const selectedType = document.querySelector('input[name="tds_tcs_type"]:checked')?.value || 'tds';
             document.getElementById('tcs_select_wrapper').style.display = selectedType === 'tcs' ? 'inline-block' : 'none';
+            
+            // ✅ FIXED: Also sync TDS/TCS definition state on page load
+            if (window.syncTdsTcsDefinitionState) {
+              try {
+                console.log('Calling window.syncTdsTcsDefinitionState');
+                window.syncTdsTcsDefinitionState();
+              } catch (err) {
+                console.warn('Failed to sync TDS/TCS on page load with window function', err);
+                syncTdsTcsDefinitionStateInline();
+              }
+            } else {
+              console.warn('window.syncTdsTcsDefinitionState not available, using inline');
+              syncTdsTcsDefinitionStateInline();
+            }
+            
+            // ✅ FIXED: Display TDS/TCS amount on page load for edit mode
+            const tdsAmount = document.getElementById('tds_tcs_amount')?.value;
+            if (tdsAmount && parseFloat(tdsAmount) > 0) {
+              const displayElem = document.getElementById('tds-tcs-amount');
+              if (displayElem) {
+                displayElem.textContent = '₹' + parseFloat(tdsAmount).toFixed(2);
+                console.log('✅ Updated TDS/TCS amount display:', displayElem.textContent);
+              }
+            }
           }
 
           // Toggle visibility of TDS/TCS selects and action buttons when radio changes
@@ -1350,7 +1449,14 @@
           // Wire up radio change events
           document.addEventListener('change', function (e) {
             if (e.target && e.target.name === 'tds_tcs_type') {
+              console.log('📻 TDS/TCS radio changed to:', e.target.value);
               syncTdsTcsVisibility();
+              // Also sync the hidden fields when radio changes
+              if (window.syncTdsTcsDefinitionState) {
+                window.syncTdsTcsDefinitionState();
+              } else {
+                syncTdsTcsDefinitionStateInline(e.target.value);
+              }
             }
           }, true);
 
@@ -1552,7 +1658,36 @@
             });
           });
 
-          document.addEventListener('DOMContentLoaded', initialSync);
+          // ✅ FIXED: Add form submission handler for bill form to ensure TDS/TCS is synced before submit
+          document.addEventListener('submit', function(e) {
+            if (e.target && e.target.id === 'bill-form') {
+              console.log('📋 Bill form submitting - syncing TDS/TCS values...');
+              try {
+                const tdsRate = document.getElementById('tds_tcs_rate')?.value;
+                const tdsId = document.getElementById('tds_tcs_definition_id')?.value;
+                const tdsAmount = document.getElementById('tds_tcs_amount')?.value;
+                console.log('Before sync - Rate:', tdsRate, 'ID:', tdsId, 'Amount:', tdsAmount);
+                
+                if (window.syncTdsTcsDefinitionState) {
+                  window.syncTdsTcsDefinitionState();
+                } else {
+                  syncTdsTcsDefinitionStateInline();
+                }
+
+                const tdsRateAfter = document.getElementById('tds_tcs_rate')?.value;
+                const tdsIdAfter = document.getElementById('tds_tcs_definition_id')?.value;
+                const tdsAmountAfter = document.getElementById('tds_tcs_amount')?.value;
+                console.log('After sync - Rate:', tdsRateAfter, 'ID:', tdsIdAfter, 'Amount:', tdsAmountAfter);
+              } catch (err) {
+                console.warn('Failed to sync TDS/TCS before bill form submit', err);
+              }
+            }
+          }, true);
+
+          document.addEventListener('DOMContentLoaded', function() {
+            console.log('⏱️ DOMContentLoaded fired for TDS/TCS inline script');
+            initialSync();
+          });
         })();
       </script>
         <hr>

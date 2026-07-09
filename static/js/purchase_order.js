@@ -2087,14 +2087,36 @@ function syncTdsTcsDefinitionState() {
   }
 
   let selectedOption = null;
+  let selectedValue = '';
+  
   if (selectedType === 'tds' && tdsSelect) {
+    selectedValue = tdsSelect.value;
     selectedOption = tdsSelect.options[tdsSelect.selectedIndex];
   } else if (selectedType === 'tcs' && tcsSelect) {
+    selectedValue = tcsSelect.value;
     selectedOption = tcsSelect.options[tcsSelect.selectedIndex];
   }
 
-  const rate = selectedOption ? parseFloat(selectedOption.dataset.rate || selectedOption.value || 0) : 0;
-  const taxId = selectedOption ? selectedOption.value || '' : '';
+  // ✅ FIXED: Properly extract rate and ID from selected option
+  let rate = 0;
+  let taxId = selectedValue || '';
+  
+  if (selectedOption && selectedOption.value) {
+    // Try to get data-rate attribute first
+    if (selectedOption.dataset && selectedOption.dataset.rate) {
+      rate = parseFloat(selectedOption.dataset.rate) || 0;
+    }
+    // If we still don't have a rate, try to parse from text (fallback)
+    if (rate === 0 && selectedOption.text) {
+      const match = selectedOption.text.match(/\(([0-9.]+)%\)/);
+      if (match && match[1]) {
+        rate = parseFloat(match[1]) || 0;
+      }
+    }
+  }
+
+  // Debug logging
+  console.debug('syncTdsTcsDefinitionState - Type:', selectedType, 'Value:', selectedValue, 'Rate:', rate, 'Option:', selectedOption);
 
   if (hiddenRate) {
     hiddenRate.value = Number.isFinite(rate) ? rate : 0;
@@ -2104,7 +2126,21 @@ function syncTdsTcsDefinitionState() {
   }
 }
 
+// ✅ FIXED: Expose function globally so inline scripts can call it
+window.syncTdsTcsDefinitionState = syncTdsTcsDefinitionState;
+
 $(document).on('change', 'input[name="tds_tcs_type"], #tds_definition_select, #tcs_definition_select', function () {
+  syncTdsTcsDefinitionState();
+  calculateTotals();
+});
+
+// ✅ FIXED: Add Select2 event listeners for TDS/TCS selects (Select2 doesn't trigger 'change' event)
+$('#tds_definition_select').on('select2:select select2:clear', function () {
+  syncTdsTcsDefinitionState();
+  calculateTotals();
+});
+
+$('#tcs_definition_select').on('select2:select select2:clear', function () {
   syncTdsTcsDefinitionState();
   calculateTotals();
 });
@@ -2129,6 +2165,14 @@ document.querySelectorAll('input[type="number"]').forEach(input => {
 });
 
 document.addEventListener("DOMContentLoaded", function () {
+  // ✅ FIXED: Initialize TDS/TCS state on page load (important for editing existing bills)
+  try {
+    syncTdsTcsDefinitionState();
+    calculateTotals();
+  } catch (err) {
+    console.warn('Failed to initialize TDS/TCS state on page load', err);
+  }
+
   // restoreFormData();
 
 

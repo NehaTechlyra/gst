@@ -89,21 +89,23 @@
                     </tbody>
                     <tfoot>
                         <tr>
-                            <td colspan="2" class="text-end">Sub Total</td>
+                            <td colspan="2" class="text-end">Journal Total</td>
                             <td id="subtotal-debit" class="text-end">0.00</td>
                             <td id="subtotal-credit" class="text-end">0.00</td>
                         </tr>
                         <tr>
-                            <td colspan="2" class="text-end">Total</td>
-                            <td id="total-debit" class="text-end">0.00</td>
-                            <td id="total-credit" class="text-end">0.00</td>
+                            <td colspan="2" class="text-end" id="invoice-payable-label">Invoice Receivable</td>
+                            <td colspan="2" id="invoice-receivable" class="text-end">0.00</td>
                         </tr>
                         <tr>
-                            <td colspan="2" class="text-end">Difference</td>
+                            <td colspan="2" class="text-end">Balance</td>
                             <td colspan="2" class="text-end"><span id="difference">0.00</span></td>
                         </tr>
                     </tfoot>
                 </table>
+            </div>
+            <div class="small text-muted mt-2">
+                Journal totals include all posted lines. For TDS/TCS invoices, the net invoice amount appears on the Debtors receivable or Creditors payable line and the TDS/TCS amount is shown separately.
             </div>
             <script>
                 // Compute totals client-side from rendered rows so we can show per-column totals
@@ -132,8 +134,35 @@
                     // If the template already rendered placeholders, use them; otherwise inject at end of table
                     setText('subtotal-debit', sumDebit);
                     setText('subtotal-credit', sumCredit);
-                    setText('total-debit', sumDebit);
-                    setText('total-credit', sumCredit);
+
+                    // Calculate the net invoice receivable amount using only the Debtors account.
+                    var receivableAmount = 0;
+                    var payableAmount = 0;
+                    debitCells.forEach(function(td){
+                        var row = td.parentElement;
+                        var accountName = row.querySelector('td:nth-child(1)').textContent || '';
+                        if(accountName.toLowerCase().indexOf('debtors') !== -1) {
+                            receivableAmount += parseAmount(td.textContent || td.innerText);
+                        }
+                    });
+                    creditCells.forEach(function(td){
+                        var row = td.parentElement;
+                        var accountName = row.querySelector('td:nth-child(1)').textContent || '';
+                        if(accountName.toLowerCase().indexOf('creditors') !== -1 || accountName.toLowerCase().indexOf('accounts payable') !== -1) {
+                            payableAmount += parseAmount(td.textContent || td.innerText);
+                        }
+                    });
+                    var invoiceReceivableEl = document.getElementById('invoice-receivable');
+                    var invoicePayableLabel = document.getElementById('invoice-payable-label');
+                    if(invoiceReceivableEl && invoicePayableLabel){
+                        if(payableAmount > 0 && receivableAmount === 0) {
+                            invoicePayableLabel.textContent = 'Bill Payable';
+                            invoiceReceivableEl.textContent = payableAmount.toFixed(2);
+                        } else {
+                            invoicePayableLabel.textContent = 'Invoice Receivable';
+                            invoiceReceivableEl.textContent = receivableAmount.toFixed(2);
+                        }
+                    }
 
                     var diff = Math.abs(sumDebit - sumCredit);
                     var diffEl = document.getElementById('difference');

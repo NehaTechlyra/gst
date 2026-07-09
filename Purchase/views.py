@@ -69,7 +69,14 @@ def _post_tds_tcs_journal_line(journal, document, using, sequence):
     if tds_tcs_type not in ('tds', 'tcs'):
         return sequence
 
-    amount = scale_amount_for_journal(Decimal(getattr(document, 'tds_tcs_amount', 0) or 0), document)
+    # Scale TDS/TCS using explicit fx_rate_to_base to avoid relying on
+    # `document.total_amount` vs `total_amount_base` ratio which may be inconsistent.
+    try:
+        amt = Decimal(str(getattr(document, 'tds_tcs_amount', 0) or 0))
+        fx = getattr(document, 'fx_rate_to_base', None) or Decimal('1')
+        amount = (amt * fx).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+    except Exception:
+        amount = Decimal('0.00')
     if amount <= 0:
         return sequence
 
@@ -4059,6 +4066,22 @@ def save_bill(request):
                 except Warehouse.DoesNotExist:
                     messages.error(request, "Selected warehouse does not exist.")
                     return redirect_with_company('bill_list')
+            # ✅ FIXED: Extract and log TDS/TCS values
+            tds_tcs_type_val = request.POST.get('tds_tcs_type', 'tds')
+            tds_tcs_def_id_val = _parse_positive_int(request.POST.get('tds_tcs_definition_id'))
+            tds_tcs_rate_val = _parse_decimal(request.POST.get('tds_tcs_rate', '0'))
+            tds_tcs_amount_val = _parse_decimal(request.POST.get('tds_tcs_amount', '0.00'))
+            
+            print(f"DEBUG: TDS/TCS values from POST:")
+            print(f"  tds_tcs_type (raw): '{request.POST.get('tds_tcs_type')}'")
+            print(f"  tds_tcs_type (parsed): '{tds_tcs_type_val}'")
+            print(f"  tds_tcs_definition_id (raw): '{request.POST.get('tds_tcs_definition_id')}'")
+            print(f"  tds_tcs_definition_id (parsed): {tds_tcs_def_id_val}")
+            print(f"  tds_tcs_rate (raw): '{request.POST.get('tds_tcs_rate')}'")
+            print(f"  tds_tcs_rate (parsed): {tds_tcs_rate_val}")
+            print(f"  tds_tcs_amount (raw): '{request.POST.get('tds_tcs_amount')}'")
+            print(f"  tds_tcs_amount (parsed): {tds_tcs_amount_val}")
+            
             # Create bill with zero total for now; we'll recalculate after items are processed
             bill = Bill.objects.create(
                 vendor=vendor,
@@ -4082,7 +4105,18 @@ def save_bill(request):
                 shipping_state=request.POST.get('shipping_state', ''),
                 shipping_postal_code=request.POST.get('shipping_postal_code', ''),#by adarsh
                 place_of_supply=request.POST.get('place_of_supply', ''),
+                # ✅ FIXED: Save TDS/TCS values from the form
+                tds_tcs_type=tds_tcs_type_val,
+                tds_tcs_definition_id=tds_tcs_def_id_val,
+                tds_tcs_rate=tds_tcs_rate_val,
+                tds_tcs_amount=tds_tcs_amount_val,
             )
+            
+            print(f"DEBUG: Bill created with ID {bill.id}")
+            print(f"  Stored tds_tcs_type: '{bill.tds_tcs_type}'")
+            print(f"  Stored tds_tcs_definition_id: {bill.tds_tcs_definition_id}")
+            print(f"  Stored tds_tcs_rate: {bill.tds_tcs_rate}")
+            print(f"  Stored tds_tcs_amount: {bill.tds_tcs_amount}")
 
             bill._current_user = request.user
             bill._current_request = request
@@ -4111,9 +4145,22 @@ def save_bill(request):
                 try:
                     pt = PayTerms.objects.get(pk=pay_term_id)
                     bill.payment_term = pt
-                    bill.save()
                 except PayTerms.DoesNotExist:
                     pass
+            
+            # ✅ CRITICAL FIX: Re-save TDS/TCS values after all modifications
+            # These may have been lost during apply_bill_fx or other operations
+            bill.tds_tcs_type = tds_tcs_type_val
+            bill.tds_tcs_definition_id = tds_tcs_def_id_val
+            bill.tds_tcs_rate = tds_tcs_rate_val
+            bill.tds_tcs_amount = tds_tcs_amount_val
+            bill.save()
+            
+            print(f"DEBUG: Bill saved AFTER all modifications")
+            print(f"  Final tds_tcs_type: '{bill.tds_tcs_type}'")
+            print(f"  Final tds_tcs_definition_id: {bill.tds_tcs_definition_id}")
+            print(f"  Final tds_tcs_rate: {bill.tds_tcs_rate}")
+            print(f"  Final tds_tcs_amount: {bill.tds_tcs_amount}")
         except IntegrityError as e:
             
             if 'unique constraint' in str(e).lower() or 'duplicate entry' in str(e).lower():
@@ -4218,6 +4265,18 @@ def save_bill(request):
             if grand_discount > calculated_total:
                 grand_discount = calculated_total
             final_total = calculated_total - grand_discount
+            
+            # ✅ FIXED: Adjust total_amount for TDS/TCS
+            # TDS (Tax Deducted at Source): Reduces the amount payable
+            # TCS (Tax Collected at Source): Increases the amount payable
+            if tds_tcs_amount_val and tds_tcs_amount_val > 0:
+                if tds_tcs_type_val == 'tds':
+                    final_total = final_total - tds_tcs_amount_val
+                    print(f"DEBUG: Adjusted total for TDS: {final_total} = {calculated_total - grand_discount} - {tds_tcs_amount_val} (TDS)")
+                elif tds_tcs_type_val == 'tcs':
+                    final_total = final_total + tds_tcs_amount_val
+                    print(f"DEBUG: Adjusted total for TCS: {final_total} = {calculated_total - grand_discount} + {tds_tcs_amount_val} (TCS)")
+            
             bill.total_amount = final_total
             bill.discount_value = grand_discount_value
             bill.discount_type = grand_discount_type
@@ -4237,6 +4296,18 @@ def save_bill(request):
                 )
             except Exception:
                 logger.exception('Failed to refresh FX totals for bill %s', getattr(bill, 'pk', None))
+            
+            # ✅ SAFETY: Re-preserve TDS/TCS values after FX application
+            bill.tds_tcs_type = tds_tcs_type_val
+            bill.tds_tcs_definition_id = tds_tcs_def_id_val
+            bill.tds_tcs_rate = tds_tcs_rate_val
+            bill.tds_tcs_amount = tds_tcs_amount_val
+            bill.save()
+            
+            print(f"DEBUG: Bill after FX and final TDS/TCS preservation:")
+            print(f"  tds_tcs_type: '{bill.tds_tcs_type}'")
+            print(f"  tds_tcs_amount: {bill.tds_tcs_amount}")
+            print(f"  total_amount: {bill.total_amount}")
 
             # Post to journal if status is 'Open'
             if bill.status == 'Open':
@@ -5102,6 +5173,10 @@ def bill_edit(request, pk):
         'place_of_supply': bill.place_of_supply or '',
         'company_is_india': _is_indian_company_country(_get_purchase_company_country(request)),
         'company_tax_type': _get_purchase_company_tax_type(request),
+        'tds_tcs_type': bill.tds_tcs_type or 'tds',
+        'tds_tcs_definition_id': bill.tds_tcs_definition_id or '',
+        'tds_tcs_rate': bill.tds_tcs_rate or 0,
+        'tds_tcs_amount': bill.tds_tcs_amount or 0,
                 # ✅ Fetch TDS and TCS for quotation_edit template
         'tds_tax_master_items': TdsMaster.objects.filter(company=company, is_active=True),
         'tcs_tax_master_items': TcsMaster.objects.filter(company=company, is_active=True),
@@ -8914,7 +8989,10 @@ def post_bill_to_journal(bill, user=None):
 
         seq = _post_tds_tcs_journal_line(journal, bill, company_db, seq)
 
-        # Handle rounding (if debit != credit)
+        # Recompute totals after any TDS/TCS journal line has been added.
+        total_debit = sum(line.debit or Decimal('0.00') for line in journal.lines.all())
+        total_credit = sum(line.credit or Decimal('0.00') for line in journal.lines.all())
+
         diff = (total_debit - total_credit).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
         if diff != Decimal('0.00'):
             rounded_off_acct = ChartOfAccounts.objects.using(company_db).filter(name__iexact='Rounded Off').first()
@@ -8931,7 +9009,6 @@ def post_bill_to_journal(bill, user=None):
                         credit=abs(diff),
                         sequence=seq
                     )
-                    total_credit += abs(diff)
                 else:  # Credit more, so debit the difference
                     JournalLine.objects.using(company_db).create(
                         journal=journal,
@@ -8941,11 +9018,9 @@ def post_bill_to_journal(bill, user=None):
                         credit=Decimal('0.00'),
                         sequence=seq
                     )
-                    total_debit += abs(diff)
-        
-        # Update journal totals
-        journal.total_debit = total_debit
-        journal.total_credit = total_credit
+
+        journal.total_debit = sum(line.debit or Decimal('0.00') for line in journal.lines.all())
+        journal.total_credit = sum(line.credit or Decimal('0.00') for line in journal.lines.all())
         journal.save()
         
         logger.info(f"Posted Bill {bill.bill_number} to Journal {entry_number}")

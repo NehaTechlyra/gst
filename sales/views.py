@@ -86,7 +86,9 @@ def _post_tds_tcs_journal_line(journal, document, using, sequence, posting_role)
     if tds_tcs_type not in ('tds', 'tcs'):
         return sequence
 
-    amount = scale_amount_for_journal(Decimal(getattr(document, 'tds_tcs_amount', 0) or 0), document)
+    # Scale TDS/TCS using explicit fx_rate to avoid distortions when
+    # `total_amount` (document net) and `total_amount_base` (gross base) differ.
+    amount = _scaled_tds_tcs_amount(document)
     if amount <= 0:
         return sequence
 
@@ -113,6 +115,21 @@ def _post_tds_tcs_journal_line(journal, document, using, sequence, posting_role)
         sequence=sequence,
     )
     return sequence + 10
+
+
+def _scaled_tds_tcs_amount(document):
+    """Return TDS/TCS amount expressed in base currency using explicit fx_rate_to_base.
+
+    We avoid using `scale_amount_for_journal` here because that helper
+    relies on `document.total_amount` vs `total_amount_base` ratio which may
+    be inconsistent when TDS/TCS is present (net vs gross mismatch).
+    """
+    try:
+        amt = Decimal(str(getattr(document, 'tds_tcs_amount', 0) or 0))
+        fx = getattr(document, 'fx_rate_to_base', None) or Decimal('1')
+        return (amt * fx).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+    except Exception:
+        return Decimal('0.00')
 from .permissions import (
     can_create_quotations, can_edit_quotations, can_delete_quotations,
     can_create_orders, can_create_invoices
@@ -8524,13 +8541,36 @@ def convert_quotation_to_inv(request, quotation_id):
         debt_acct = ChartOfAccounts.objects.using(company_db).filter(name__icontains='Debtors').first()
         if not debt_acct:
             debt_acct = ChartOfAccounts.objects.using(company_db).filter(code='1020101').first()
+        # Adjust receivable for TDS/TCS so the JV balances correctly.
+        tds_base = _scaled_tds_tcs_amount(sales_inv)
+        debit_amt = Decimal(sales_inv.total_amount_base or 0)
+        if str(getattr(sales_inv, 'tds_tcs_type', '') or '').strip().lower() == 'tds':
+            debit_amt = (debit_amt - tds_base).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+        elif str(getattr(sales_inv, 'tds_tcs_type', '') or '').strip().lower() == 'tcs':
+            debit_amt = (debit_amt + tds_base).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
         JournalLine.objects.create(
             journal=journal,
             account=debt_acct,
             description=f"Invoice {sales_inv.inv_number} - Receivable",
-            debit=Decimal(sales_inv.total_amount_base or 0),
+            debit=debit_amt,
             credit=Decimal(0),
             sequence=10
+        )
+        logger.info(
+            "Posting order->inv sales JV %s: inv=%s total_amount_base=%s tds_base=%s debit_amt=%s",
+            entry_number,
+            getattr(sales_inv, 'inv_number', None),
+            getattr(sales_inv, 'total_amount_base', None),
+            tds_base,
+            debit_amt,
+        )
+        logger.info(
+            "Posting sales JV %s: inv=%s total_amount_base=%s tds_base=%s debit_amt=%s",
+            entry_number,
+            getattr(sales_inv, 'inv_number', None),
+            getattr(sales_inv, 'total_amount_base', None),
+            tds_base,
+            debit_amt,
         )
 
         # byadarshDebit: Individual Customer Account
@@ -8854,11 +8894,17 @@ def convert_order_to_inv(request, order_id):
         debt_acct = ChartOfAccounts.objects.filter(name__icontains='Debtors').first()
         if not debt_acct:
             debt_acct = ChartOfAccounts.objects.filter(code='1020101').first()
+        tds_base = _scaled_tds_tcs_amount(sales_inv)
+        debit_amt = Decimal(sales_inv.total_amount_base or 0)
+        if str(getattr(sales_inv, 'tds_tcs_type', '') or '').strip().lower() == 'tds':
+            debit_amt = (debit_amt - tds_base).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+        elif str(getattr(sales_inv, 'tds_tcs_type', '') or '').strip().lower() == 'tcs':
+            debit_amt = (debit_amt + tds_base).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
         JournalLine.objects.create(
             journal=journal,
             account=debt_acct,
             description=f"Invoice {sales_inv.inv_number} - Receivable",
-            debit=Decimal(sales_inv.total_amount_base or 0),
+            debit=debit_amt,
             credit=Decimal(0),
             sequence=10
         )
@@ -10672,14 +10718,29 @@ def save_salesinvoice(request):
             debt_acct = ChartOfAccounts.objects.using(db).filter(name__icontains='Debtors').first()
             if not debt_acct:
                 debt_acct = ChartOfAccounts.objects.using(db).filter(code='1020101').first()
+            # Adjust receivable for TDS/TCS so the JV balances correctly.
+            tds_base = _scaled_tds_tcs_amount(invoice)
+            debit_amt = Decimal(invoice.total_amount_base or 0)
+            if str(getattr(invoice, 'tds_tcs_type', '') or '').strip().lower() == 'tds':
+                debit_amt = (debit_amt - tds_base).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+            elif str(getattr(invoice, 'tds_tcs_type', '') or '').strip().lower() == 'tcs':
+                debit_amt = (debit_amt + tds_base).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
             JournalLine.objects.create(
                 journal=journal,
                 account=debt_acct,
                 description=f"Invoice {invoice.inv_number} - Receivable",
-                debit=Decimal(invoice.total_amount_base or 0),
+                debit=debit_amt,
                 credit=Decimal(0),
                 sequence=10
             )#byadarsh
+            logger.info(
+                "Posting save_salesinvoice JV %s: inv=%s total_amount_base=%s tds_base=%s debit_amt=%s",
+                entry_number,
+                getattr(invoice, 'inv_number', None),
+                getattr(invoice, 'total_amount_base', None),
+                tds_base,
+                debit_amt,
+            )
 
             # byadarshDebit: Individual Customer Account
             # if invoice.customer:
@@ -11273,11 +11334,17 @@ def invoice_edit(request, pk):
                 debt_acct = ChartOfAccounts.objects.using(db).filter(name__icontains='Debtors').first()
                 if not debt_acct:
                     debt_acct = ChartOfAccounts.objects.using(db).filter(code='1020101').first()
+                tds_base = _scaled_tds_tcs_amount(invoice)
+                debit_amt = Decimal(invoice.total_amount_base or 0)
+                if str(getattr(invoice, 'tds_tcs_type', '') or '').strip().lower() == 'tds':
+                    debit_amt = (debit_amt - tds_base).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+                elif str(getattr(invoice, 'tds_tcs_type', '') or '').strip().lower() == 'tcs':
+                    debit_amt = (debit_amt + tds_base).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
                 JournalLine.objects.using(db).create(
                     journal=new_journal,
                     account=debt_acct,
                     description=f"Invoice {invoice.inv_number} - Receivable",
-                    debit=Decimal(invoice.total_amount_base or 0),
+                    debit=debit_amt,
                     credit=Decimal(0),
                     sequence=10
                 )
