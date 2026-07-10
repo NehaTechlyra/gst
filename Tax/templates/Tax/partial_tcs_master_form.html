@@ -30,14 +30,14 @@
                 <div class="invalid-feedback d-block">{{ form.section.errors|join:", " }}</div>
             {% endif %}
         </div>
-
+{% comment %} 
         <div class="col-12">
             <div class="alert alert-info py-2 mb-0">
                 By default, TCS will be tracked under <strong>TCS Payable</strong> and <strong>TCS Receivable</strong> accounts. Click <a href="#" class="fw-semibold">Edit</a> to choose an account of your choice.
             </div>
-        </div>
+        </div> {% endcomment %}
 
-        <div class="col-12">
+        {% comment %} <div class="col-12">
             <div class="form-check">
                 {{ form.higher_tds_rate }}
                 <label class="form-check-label" for="id_higher_tds_rate">This is a Higher Rate</label>
@@ -45,7 +45,7 @@
             {% if form.higher_tds_rate.errors %}
                 <div class="invalid-feedback d-block">{{ form.higher_tds_rate.errors|join:", " }}</div>
             {% endif %}
-        </div>
+        </div> {% endcomment %}
 
         <div class="col-md-6">
             <label class="form-label" for="id_period_start">Start Date</label>
