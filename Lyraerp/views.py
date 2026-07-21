@@ -249,6 +249,28 @@ def LoginView(request, company_code=None):
                                 exc_info=True,
                             )
 
+                            # ── CREATE DEFAULT WAREHOUSE: Create a default warehouse
+                        #    in the company DB with the company's address
+                        logger.info(
+                            f"[STEP 4b] Creating default warehouse for {db_name}..."
+                        )
+                        try:
+                            from company.signals import create_default_warehouse_for_company
+                            if create_default_warehouse_for_company(company):
+                                logger.info(
+                                    f"✅ Default warehouse created for {db_name}"
+                                )
+                            else:
+                                logger.warning(
+                                    f"⚠️ Default warehouse creation skipped or failed for {db_name}"
+                                )
+                        except Exception as warehouse_err:
+                            logger.error(
+                                f"⚠️ Default warehouse creation failed for {db_name}: {warehouse_err}",
+                                exc_info=True,
+                            )
+
+
                         # ── ASYNC: Full migration + permissions + modules
                         logger.info(
                             f"[STEP 5] Launching async company setup in background..."

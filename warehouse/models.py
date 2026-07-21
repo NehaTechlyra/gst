@@ -38,9 +38,11 @@ class Warehouse(models.Model):
     )
 
     def save(self, *args, **kwargs):
+        # Extract the 'using' parameter to ensure queries use the correct database
+        using = kwargs.get('using') or 'default'
         if self.is_default:
             # Make all other warehouses non-default
-            Warehouse.objects.exclude(pk=self.pk).update(is_default=False)
+            Warehouse.objects.using(using).exclude(pk=self.pk).update(is_default=False)
         super().save(*args, **kwargs)
 
     def delete(self, *args, **kwargs):
