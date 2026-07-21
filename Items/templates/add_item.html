@@ -294,6 +294,15 @@ $(document).ready(function() {
       $('#unit_select').append(option).trigger('change');
     }
 
+    // ✅ Restore warehouse selection on form re-render after validation error
+    var currentWarehouseId = "{{ current_warehouse_id }}";
+    var currentWarehouseName = "{{ current_warehouse_name }}";
+
+    if (currentWarehouseId && currentWarehouseName) {
+      var option = new Option(currentWarehouseName, currentWarehouseId, true, true);
+      $('#warehouse_select').append(option).trigger('change');
+    }
+
 
     let lastBrndSearchTerm = '';
     $('#brand_select').select2({
@@ -1249,7 +1258,7 @@ $(document).on('submit', '#itemTypeCreateForm', function(e) {
       </div>
       <div class="col-md-4">
         <label for="brcd" class="form-label">Barcode<span class="text-danger">*</span></label>
-        <input type="text" class="form-control" name="brcd" id="brcd" value="{% if form.data.brcd %}{{ form.data.brcd }}{% elif item.barcode %}{{ item.barcode }}{% endif %}" required data-original-main-barcode="{% if form.data.brcd %}{{ form.data.brcd }}{% elif item.barcode %}{{ item.barcode }}{% endif %}">
+         <input type="text" class="form-control" name="brcd" id="brcd" value="{% if brcd_value %}{{ brcd_value }}{% elif form.data.brcd %}{{ form.data.brcd }}{% elif item.barcode %}{{ item.barcode }}{% endif %}" required data-original-main-barcode="{% if brcd_value %}{{ brcd_value }}{% elif form.data.brcd %}{{ form.data.brcd }}{% elif item.barcode %}{{ item.barcode }}{% endif %}">
         <span class="barcode-status"></span>
       </div>
     </div>
@@ -1588,10 +1597,10 @@ $(document).on('submit', '#itemTypeCreateForm', function(e) {
                   </select> {% endcomment %}
                   <select class="form-select" name="warehouse" id="warehouse_select" style="width: 100%;">
                       <option value="">Choose...</option>
-                      {% comment %} {% if warehouse_id and warehouse_text %}
+                      
+                      {% if warehouse_id and warehouse_text %}
                       <option value="{{ warehouse_id }}" selected="selected">{{ warehouse_text }}</option>
-                      {% endif %} {% endcomment %}
-                      {% if is_edit %}
+                      {% elif is_edit %}
                           {% for wh in warehouses %}
                               <option value="{{ wh.id }}" selected>{{ wh.name }}</option>
                           {% endfor %}
@@ -1603,15 +1612,15 @@ $(document).on('submit', '#itemTypeCreateForm', function(e) {
                         {% for wh in warehouses %}
                             <div class="col-md-4">
                                 <label class="form-label">Opening Stock (Quantity)<span class="text-danger">*</span></label>
-                                <input type="number" id="op_stock_input"  class="form-control" name="op_stock_{{ wh.id }}" value="{{ wh.opening_stock }}" required step="0.01" >
+                              <input type="number" id="op_stock_input"  class="form-control" name="op_stock_{{ wh.id }}" value="{% if op_stock_value %}{{ op_stock_value }}{% else %}{{ wh.opening_stock }}{% endif %}" required step="0.01" >
                             </div>
 
                             {% comment %} # -------min_stock field aded by sree on 05-03-2026------ {% endcomment %}
                             <div class="col-md-4">
                               <label for="min_stock" class="form-label">Minimum Stock Level</label>
                               <input type="number" class="form-control" name="min_stock" id="min_stock"
-                                    value="{% if form.data.min_stock %}{{ form.data.min_stock }}{% elif item %}{{ item.min_stock }}{% endif %}"
-                                    step="0.01" min="0"
+                              value="{% if min_stock_value %}{{ min_stock_value }}{% elif form.data.min_stock %}{{ form.data.min_stock }}{% elif item %}{{ item.min_stock }}{% endif %}"      
+                              step="0.01" min="0"
                                     placeholder="e.g. 10">
                               
                             </div>
@@ -1620,13 +1629,13 @@ $(document).on('submit', '#itemTypeCreateForm', function(e) {
                   {% else %}
                     <div class="col-md-4">
                           <label class="form-label">Opening Stock (Quantity)<span class="text-danger">*</span></label>
-                          <input type="number" class="form-control" id="op_stock" name="op_stock" value="" required step="0.01" >
-                      </div>
+                      <input type="number" class="form-control" id="op_stock" name="op_stock" value="{{ op_stock_value }}" required step="0.01" >
+                        </div>
 
                       <div class="col-md-4">
                               <label for="min_stock" class="form-label">Minimum Stock Level</label>
                               <input type="number" class="form-control" name="min_stock" id="min_stock_input"
-                                    value=""
+                                    value="{{ min_stock_value }}"
                                     step="0.01" min="0"
                                     placeholder="e.g. 10">
                               
@@ -1636,12 +1645,12 @@ $(document).on('submit', '#itemTypeCreateForm', function(e) {
                 {% else %}
                     <div class="col-md-4">
                         <label class="form-label">Opening Stock (Quantity)<span class="text-danger">*</span></label>
-                        <input type="number" class="form-control" name="op_stock" value="" required step="0.01" >
+                        <input type="number" class="form-control" name="op_stock" value="{{ op_stock_value }}" required step="0.01" >
                     </div>
                      <div class="col-md-4">
                               <label for="min_stock" class="form-label">Minimum Stock Level</label>
                               <input type="number" class="form-control" name="min_stock" id="min_stock_input"
-                                    value=""
+                                    value="{{ min_stock_value }}"
                                     step="0.01" min="0"
                                     placeholder="e.g. 10">
                               
@@ -2821,6 +2830,28 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 });
+
+// IMMEDIATE: Trigger barcode checks on page load (in case form was re-rendered after error)
+// This runs immediately without waiting for DOMContentLoaded in case that doesn't fire on form re-submission
+(function() {
+  const barcodeInputs = document.querySelectorAll('input[name="brcd"], input[name="barcode[]"], input[name="barcodes[]"]');
+  barcodeInputs.forEach(input => {
+    // Ensure event listener is bound first
+    if (!input.hasAttribute('data-event-bound')) {
+      input.addEventListener('input', function() {
+        checkForDuplicatesAndUpdateUI(input);
+      });
+      input.setAttribute('data-event-bound', 'true');
+    }
+    
+    // If input has a value, trigger the check immediately
+    if (input.value && input.value.trim()) {
+      // Use setTimeout to ensure DOM is ready
+      setTimeout(() => checkForDuplicatesAndUpdateUI(input), 100);
+    }
+  });
+})();
+
 
 // Example for dynamically added input rows (adjust based on your add row code)
 // function addNewBarcodeRow(barcodeValue='') {

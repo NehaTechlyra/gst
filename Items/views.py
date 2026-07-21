@@ -388,6 +388,53 @@ def _get_posted_item_lookup_context(request):
         'item_type_text': item_type_text,
     }
 
+def _preserve_post_data_for_error_rendering(request):
+    """
+    Extract and preserve POST data values for form re-rendering after validation errors.
+    This ensures that user-entered values are not lost when validation fails.
+    """
+    if request.method != "POST":
+        return {}
+    
+    # Get warehouse ID and look up its name
+    warehouse_id = request.POST.get('warehouse', '')
+    warehouse_text = ''
+    if warehouse_id:
+        try:
+            warehouse_obj = Warehouse.objects.filter(id=warehouse_id).first()
+            if warehouse_obj:
+                warehouse_text = warehouse_obj.warehouse_name or warehouse_obj.name or str(warehouse_obj)
+        except Exception:
+            pass
+    
+    # Get unit ID and look up its name
+    unit_id = request.POST.get('unit', '')
+    unit_text = ''
+    if unit_id:
+        try:
+            unit_obj = Unit.objects.filter(id=unit_id).first()
+            if unit_obj:
+                unit_text = unit_obj.unit_name or str(unit_obj)
+        except Exception:
+            pass
+    
+    return {
+        'warehouse_id': warehouse_id,
+        'warehouse_text': warehouse_text,
+        'op_stock_value': request.POST.get('op_stock', ''),
+        'op_rate_value': request.POST.get('op_rate', ''),
+        'min_stock_value': request.POST.get('min_stock', ''),
+        'reorder_qty_value': request.POST.get('reorder_qty', ''),
+        'track_inventory': request.POST.get('track_inventory', False),
+        'brcd_value': request.POST.get('brcd', ''),
+        'opening_stock_equity_account_id': request.POST.get('opening_stock_equity_account', ''),
+        'default_unit_id': unit_id,
+        'default_unit_text': unit_text,
+        'barcodes_list': request.POST.getlist('barcodes[]'),
+        'uom_names': request.POST.getlist('uom[]'),
+        'conv_factors': request.POST.getlist('conversion_factor[]'),
+        'barcode_values': request.POST.getlist('barcode[]'),
+    }
 
 def _build_add_item_context(request, form, units, vendors, hsn, warehouses, company_country, **extra):
     company_db = getattr(request, 'company_db', 'default')
@@ -416,6 +463,14 @@ def _build_add_item_context(request, form, units, vendors, hsn, warehouses, comp
     if request.method == "POST":
         context.update(_get_posted_item_lookup_context(request))
         context.update(_get_item_tax_context(post=request.POST))
+        # ✅ NEW: Preserve POST data for error re-rendering so user doesn't lose input
+        preserved_data = _preserve_post_data_for_error_rendering(request)
+        context.update(preserved_data)
+        # ✅ Map preserved unit and warehouse data to context variables used by template JS
+        context['current_unit_id'] = preserved_data.get('default_unit_id', '')
+        context['current_unit_name'] = preserved_data.get('default_unit_text', '')
+        context['current_warehouse_id'] = preserved_data.get('warehouse_id', '')
+        context['current_warehouse_name'] = preserved_data.get('warehouse_text', '')
     else:
         context.update(_get_item_tax_context())
     context.update(extra)
@@ -1147,6 +1202,146 @@ def add_item(request):
                     company_country,
                 )
                 return render(request, 'add_item.html', context)
+            # ===== PRE-VALIDATION: Validate ALL required data BEFORE saving item =====
+            # This ensures that if validation fails, nothing gets saved to the database
+            
+            # Validate main barcode
+            brcd_value = request.POST.get('brcd', '').strip()
+            print('Barcode received:', brcd_value)
+            if brcd_value:
+                if Barcode.objects.filter(barcode=brcd_value).exists():
+                    messages.error(request, f"The barcode '{brcd_value}' already exists. Please enter a unique barcode.")
+                    context = _build_add_item_context(
+                        request,
+                        form,
+                        units,
+                        vendors,
+                        hsn,
+                        warehouses,
+                        company_country,
+                    )
+                    return render(request, 'add_item.html', context)
+            
+            # Validate additional barcodes list
+            barcodes_list = request.POST.getlist('barcodes[]')
+            for code in barcodes_list:
+                code_stripped = code.strip()
+                if code_stripped:
+                    if Barcode.objects.filter(barcode=code_stripped).exists():
+                        messages.error(request, f"The barcode '{code_stripped}' already exists. Please enter a unique barcode.")
+                        context = _build_add_item_context(
+                            request,
+                            form,
+                            units,
+                            vendors,
+                            hsn,
+                            warehouses,
+                            company_country,
+                        )
+                        return render(request, 'add_item.html', context)
+            
+            # Validate UOM barcodes
+            uom_names = request.POST.getlist('uom[]')
+            conv_factors = request.POST.getlist('conversion_factor[]')
+            barcode_values = request.POST.getlist('barcode[]')  # <- user entered barcode strings
+            
+            for name_id, conv, brcd_val in zip(uom_names, conv_factors, barcode_values):
+                if name_id and brcd_val and brcd_val.strip():
+                    if Barcode.objects.filter(barcode=brcd_val.strip()).exists():
+                        messages.error(request, f"The barcode '{brcd_val.strip()}' already exists. Please enter a unique barcode.")
+                        context = _build_add_item_context(
+                            request,
+                            form,
+                            units,
+                            vendors,
+                            hsn,
+                            warehouses,
+                            company_country,
+                        )
+                        return render(request, 'add_item.html', context)
+            
+            # Validate opening stock rate if opening stock is provided
+            selected_warehouse_id = request.POST.get('warehouse')
+            op_stock_value = request.POST.get('op_stock')
+            track_inventory = request.POST.get('track_inventory')
+            
+            if track_inventory and op_stock_value and selected_warehouse_id:
+                # We need to check op_rate before saving
+                op_rate = request.POST.get('op_rate', '').strip()
+                if not op_rate:
+                    messages.error(
+                        request,
+                        f"❌ REQUIRED: Opening Stock Rate\n\n"
+                        f"You entered opening quantity of {op_stock_value} units,\n"
+                        f"but 'Opening Stock Rate per Unit' is empty.\n\n"
+                        f"Opening stock must use explicitly provided historical cost.\n"
+                        f"Please fill 'Opening Stock Rate per Unit' field and try again."
+                    )
+                    context = _build_add_item_context(
+                        request,
+                        form,
+                        units,
+                        vendors,
+                        hsn,
+                        warehouses,
+                        company_country,
+                    )
+                    return render(request, 'add_item.html', context)
+                
+                try:
+                    op_rate_decimal = Decimal(str(op_rate))
+                    if op_rate_decimal <= 0:
+                        messages.error(
+                            request,
+                            f"❌ INVALID: Opening Stock Rate\n\n"
+                            f"Opening Stock Rate must be greater than 0.\n"
+                            f"You entered: {op_rate}"
+                        )
+                        context = _build_add_item_context(
+                            request,
+                            form,
+                            units,
+                            vendors,
+                            hsn,
+                            warehouses,
+                            company_country,
+                        )
+                        return render(request, 'add_item.html', context)
+                except (ValueError, TypeError):
+                    messages.error(
+                        request,
+                        f"❌ INVALID: Opening Stock Rate\n\n"
+                        f"Opening Stock Rate must be a valid number.\n"
+                        f"You entered: {op_rate}"
+                    )
+                    context = _build_add_item_context(
+                        request,
+                        form,
+                        units,
+                        vendors,
+                        hsn,
+                        warehouses,
+                        company_country,
+                    )
+                    return render(request, 'add_item.html', context)
+                
+                try:
+                    warehouse_instance = Warehouse.objects.get(pk=selected_warehouse_id)
+                except Warehouse.DoesNotExist:
+                    messages.error(request, "Please select a valid warehouse for stock entry.")
+                    context = _build_add_item_context(
+                        request,
+                        form,
+                        units,
+                        vendors,
+                        hsn,
+                        warehouses,
+                        company_country,
+                    )
+                    return render(request, 'add_item.html', context)
+            
+            # ===== END PRE-VALIDATION =====
+            
             with transaction.atomic():
                 
                 # item = form.save()
@@ -1185,35 +1380,17 @@ def add_item(request):
                 item.save()
                 main_barcode_obj = None
                 
-                brcd_value = request.POST.get('brcd', '').strip()
-                print('Barcode received:', brcd_value)
+                
                 if brcd_value:
                     
-                    if Barcode.objects.filter(barcode=brcd_value).exists():
-                        messages.error(request, f"The barcode '{brcd_value}' already exists. Please enter a unique barcode.")
-                        context = _build_add_item_context(
-                            request,
-                            form,
-                            units,
-                            vendors,
-                            hsn,
-                            warehouses,
-                            company_country,
-                        )
-                        return render(request, 'add_item.html', context)
-                        # Save barcodes
-                    else:
-                        # Create or get the barcode for this item
-                        main_barcode_obj, created = Barcode.objects.get_or_create(item=item, barcode=brcd_value)
-                        # Assign it as main barcode to the item
-                        item.main_barcode = main_barcode_obj
-                        item.save()
+                    # Create or get the barcode for this item
+                    main_barcode_obj, created = Barcode.objects.get_or_create(item=item, barcode=brcd_value)
+                    # Assign it as main barcode to the item
+                    item.main_barcode = main_barcode_obj
+                    item.save()
                     
                 # Save barcodes
-                # Assume barcodes sent in POST as 'barcodes[]' (adjust according to your form)
-                barcodes_list = request.POST.getlist('barcodes[]')
-                # Clear old barcodes if any (if editing)
-                # Barcode.objects.filter(item=item).delete()
+               
                 # Exclude the main barcode from deletion
                 if main_barcode_obj:
                     Barcode.objects.filter(item=item).exclude(id=main_barcode_obj.id).delete()
@@ -1222,26 +1399,13 @@ def add_item(request):
 
                 for code in barcodes_list:
                     code_stripped = code.strip()
-                    if code.strip():
-                        if Barcode.objects.filter(barcode=code_stripped).exists():
-                            # messages.error(request, f"The barcode '{code_stripped}' already exists. Please enter a unique barcode.")
-                            context = _build_add_item_context(
-                                request,
-                                form,
-                                units,
-                                vendors,
-                                hsn,
-                                warehouses,
-                                company_country,
-                            )
-                            return render(request, 'add_item.html', context)
+                    if code_stripped:
+                            
                         Barcode.objects.create(item=item, barcode=code_stripped)
 
 
                 # Save UOMs
-                uom_names = request.POST.getlist('uom[]')
-                conv_factors = request.POST.getlist('conversion_factor[]')
-                barcode_values = request.POST.getlist('barcode[]')  # <- user entered barcode strings
+               
 
                 Uom.objects.filter(item=item).delete()
 
@@ -1249,18 +1413,7 @@ def add_item(request):
                     if name_id:
                         barcode_fk = None
                         if brcd_val and brcd_val.strip():
-                            if Barcode.objects.filter(barcode=brcd_val.strip()).exists():
-                                # messages.error(request, f"The barcode '{brcd_val.strip()}' already exists. Please enter a unique barcode.")
-                                context = _build_add_item_context(
-                                    request,
-                                    form,
-                                    units,
-                                    vendors,
-                                    hsn,
-                                    warehouses,
-                                    company_country,
-                                )
-                                return render(request, 'add_item.html', context)
+                            
                             barcode_fk = Barcode.objects.create(item=item, barcode=brcd_val.strip())
                         uom_name_instance = get_object_or_404(Uom_name, pk=name_id)
                         Uom.objects.create(
@@ -1270,38 +1423,10 @@ def add_item(request):
                             barcode=barcode_fk
                         )
                 # --- Save opening stock in Stock table ---
-                selected_warehouse_id = request.POST.get('warehouse')
-                op_stock_value = request.POST.get('op_stock')
-                if selected_warehouse_id:
-                    try:
-                        warehouse_instance = Warehouse.objects.get(pk=selected_warehouse_id)
-                    except Warehouse.DoesNotExist:
-                        warehouse_instance = None
-                else:
-                    warehouse_instance = None
-                
-                # 🔥 VALIDATION: If opening stock provided, opening rate MUST be provided
-                if item.track_inventory and op_stock_value and warehouse_instance:
-                    # Check that opening rate is explicitly provided
-                    if not item.op_rate or Decimal(str(item.op_rate)) <= 0:
-                        messages.error(
-                            request,
-                            f"❌ REQUIRED: Opening Stock Rate\n\n"
-                            f"You entered opening quantity of {op_stock_value} units,\n"
-                            f"but 'Opening Stock Rate per Unit' is empty.\n\n"
-                            f"Opening stock must use explicitly provided historical cost.\n"
-                            f"Please fill 'Opening Stock Rate per Unit' field and try again."
-                        )
-                        context = _build_add_item_context(
-                            request,
-                            form,
-                            units,
-                            vendors,
-                            hsn,
-                            warehouses,
-                            company_country,
-                        )
-                        return render(request, 'add_item.html', context)
+                # Note: All pre-validation already confirmed that if we reach here:
+                # - If op_stock_value exists, warehouse_instance and op_rate are valid
+                if track_inventory and op_stock_value and selected_warehouse_id:
+                    warehouse_instance = Warehouse.objects.get(pk=selected_warehouse_id)
                     
                     stock_record = Stock.objects.create(
                         item=item,
@@ -1348,30 +1473,7 @@ def add_item(request):
                         else:
                             messages.error(request, f"❌ Opening stock posting failed: {msg}")
                             logger.warning(f"Opening stock posting failed: {msg}")
-                elif item.track_inventory and op_stock_value and not warehouse_instance:
-                    messages.error(request, "Please select a valid warehouse for stock entry.")
-                    context = _build_add_item_context(
-                        request,
-                        form,
-                        units,
-                        vendors,
-                        hsn,
-                        warehouses,
-                        company_country,
-                    )
-                    return render(request, 'add_item.html', context)
-                elif item.track_inventory and warehouse_instance and not op_stock_value:
-                    messages.error(request, "Please enter an opening stock value.")
-                    context = _build_add_item_context(
-                        request,
-                        form,
-                        units,
-                        vendors,
-                        hsn,
-                        warehouses,
-                        company_country,
-                    )
-                    return render(request, 'add_item.html', context)
+                
 
                 # --- End opening stock save ---
             messages.success(request, "Item created successfully!")
