@@ -182,6 +182,11 @@
             transform: rotate(-180deg);
         }
 
+        /* Ensure Item Properties arrow rotates when showMenu is applied */
+        .item-properties-menu.showMenu .arrow {
+            transform: rotate(-180deg) !important;
+        }
+
         .sidebar.close .nav-links i.arrow {
             display: none;
         }
@@ -218,6 +223,21 @@
             
         }
 
+        /* Ensure Item Properties submenu displays when showMenu is applied */
+        .item-properties-menu.showMenu .sub-menu {
+            display: block !important;
+        }
+        /* Nested Item Properties submenu should be hidden by default,
+        even when the parent Masters menu is open */
+        .sidebar .nav-links li .sub-menu .item-properties-menu .sub-menu {
+            display: none !important;
+        }
+
+        /* ...and only shown when Item Properties itself is toggled open */
+        .sidebar .nav-links li .sub-menu .item-properties-menu.showMenu .sub-menu {
+            display: block !important;
+        }
+        
         .sidebar .nav-links li .sub-menu a {
             color: #55588b;
             font-size: 13px;
@@ -808,7 +828,8 @@
             {% with active_urls="masters_dashboard tax_list add_tax add_taxgrp tax_edit tax_add_modal edit_taxgrp tax_choices_partial add_user user_list user_edit roles_view roles_list roles_edit items add_item item_edit import_items_step3 import_items_step2 import_items_step1 category_list category_add edit_category import_category_step1 import_category_step2 import_category_step3 type_list type_add edit_type import_type_step1 import_type_step2 import_type_step3 import_unit_step1 import_unit_step2 import_unit_step3 customer_list add_customers add_customer edit_customer vendor_list vendor_create vendor_edit brand_list edit_brand brand_add import_brand_step3 import_brand_step2 import_brand_step1 unit_list add_unit items_add_unit edit_unit warehouse_list warehouse_add edit_warehouse add_multiple_stock edit_stock stock_list payterm_view payterm_add edit_payterm" %}
             <li class="{% if request.resolver_match.url_name in active_urls.split %}showMenu{% endif %}">
                  <div class="icon-link">
-                    <a href="{% url 'master_list' %}" class="{% if request.resolver_match.url_name in active_urls.split %}active-link{% endif %}">
+                    {% comment %} <a href="{% url 'master_list' %}" class="{% if request.resolver_match.url_name in active_urls.split %}active-link{% endif %}"> {% endcomment %}
+                    <a  class="{% if request.resolver_match.url_name in active_urls.split %}active-link{% endif %}">
                         <i class='bx bx-cog'></i>
                         <span class="link_name">Masters</span>
                         
@@ -840,19 +861,45 @@
                     {% endif %}
                     
                     {% if request.user.is_superuser or can_view_items %}
-                    <li><a href="{% url 'items' %}" class="{% if request.resolver_match.url_name in 'items add_item item_edit import_items_step1 import_items_step2 import_items_step3 ' %}active-link{% endif %}">Items List</a></li>
-                    {% if request.user.is_superuser or can_view_brands %}
-                    <li style="margin-left: 20px;"><a href="{% url 'brand_list' %}" class="{% if request.resolver_match.url_name in 'brand_list edit_brand brand_add import_brand_step1 import_brand_step2 import_brand_step3' %}active-link{% endif %}">Brand</a></li>
-                    {% endif %}
-                    {% if request.user.is_superuser or can_view_categories %}
-                    <li style="margin-left: 20px;"><a href="{% url 'category_list' %}" class="{% if request.resolver_match.url_name in 'category_list category_add edit_category import_category_step1 import_category_step2 import_category_step3' %}active-link{% endif %}">Category</a></li>
-                    {% endif %}
-                    {% if request.user.is_superuser or can_view_types %}
-                    <li style="margin-left: 20px;"><a href="{% url 'type_list' %}" class="{% if request.resolver_match.url_name in 'type_list type_add edit_type import_type_step1 import_type_step2 import_type_step3' %}active-link{% endif %}">Type</a></li>
-                    {% endif %}
-                    {% if request.user.is_superuser or can_view_units %}
-                    <li style="margin-left: 20px;"><a href="{% url 'unit_list' %}" class="{% if request.resolver_match.url_name in 'unit_list add_unit items_add_unit edit_unit import_unit_step1 import_unit_step2 import_unit_step3' %}active-link{% endif %}">Unit</a></li>
-                    {% endif %}
+                    {% with active_urls="items add_item item_edit import_items_step1 import_items_step2 import_items_step3 brand_list edit_brand brand_add import_brand_step1 import_brand_step2 import_brand_step3 category_list category_add edit_category import_category_step1 import_category_step2 import_category_step3 type_list type_add edit_type import_type_step1 import_type_step2 import_type_step3 unit_list add_unit items_add_unit edit_unit import_unit_step1 import_unit_step2 import_unit_step3" %}
+                        <li class="item-properties-menu {% if request.resolver_match.url_name in active_urls.split %}showMenu{% endif %}">
+                            <div class="icon-link item-properties-icon-link" style="margin: -5px 0px;align-items: unset;" >
+                                <a class="{% if request.resolver_match.url_name in active_urls.split %}active-link{% endif %}">
+                                    <span class="link_name" style="display: block;!important">Item Properties</span>
+                                </a>
+                                <i class='bx bxs-chevron-down arrow'></i>
+                            </div>
+                            <ul class="sub-menu">
+                                {% with active_urls="items add_item item_edit import_items_step1 import_items_step2 import_items_step3" %}
+                                <li><a href="{% url 'items' %}" class="{% if request.resolver_match.url_name in active_urls.split %}active-link{% endif %}">Items</a></li>
+                                {% endwith %}
+
+                                {% if request.user.is_superuser or can_view_brands %}
+                                {% with active_urls="brand_list edit_brand brand_add import_brand_step1 import_brand_step2 import_brand_step3" %}
+                                <li><a href="{% url 'brand_list' %}" class="{% if request.resolver_match.url_name in active_urls.split %}active-link{% endif %}">Brand</a></li>
+                                {% endwith %}
+                                {% endif %}
+
+                                {% if request.user.is_superuser or can_view_categories %}
+                                {% with active_urls="category_list category_add edit_category import_category_step1 import_category_step2 import_category_step3" %}
+                                <li><a href="{% url 'category_list' %}" class="{% if request.resolver_match.url_name in active_urls.split %}active-link{% endif %}">Category</a></li>
+                                {% endwith %}
+                                {% endif %}
+
+                                {% if request.user.is_superuser or can_view_types %}
+                                {% with active_urls="type_list type_add edit_type import_type_step1 import_type_step2 import_type_step3" %}
+                                <li><a href="{% url 'type_list' %}" class="{% if request.resolver_match.url_name in active_urls.split %}active-link{% endif %}">Type</a></li>
+                                {% endwith %}
+                                {% endif %}
+
+                                {% if request.user.is_superuser or can_view_units %}
+                                {% with active_urls="unit_list add_unit items_add_unit edit_unit import_unit_step1 import_unit_step2 import_unit_step3" %}
+                                <li><a href="{% url 'unit_list' %}" class="{% if request.resolver_match.url_name in active_urls.split %}active-link{% endif %}">Unit</a></li>
+                                {% endwith %}
+                                {% endif %}
+                            </ul>
+                        </li>
+                        {% endwith %}
                     {% endif %}
                     
                     {% if request.user.is_superuser or can_view_customers %}
@@ -1021,16 +1068,43 @@ iconLinks.forEach(iconLink => {
                 iconLink.addEventListener("click", function(e) {
                     e.preventDefault();
 
-                    // Close all other open menus
-                    document.querySelectorAll(".nav-links li.showMenu").forEach(openItem => {
-                        if (openItem !== this.parentElement) {
-                            openItem.classList.remove("showMenu");
-                        }
+                  e.stopPropagation();
+
+                    // Check if this is Item Properties menu
+                    const isItemProperties = this.classList.contains("item-properties-icon-link");
+                    console.log("Icon-link clicked:", {
+                        isItemProperties,
+                        classList: this.classList,
+                        element: this
                     });
 
-                    // Toggle the menu of the clicked icon-link
-                    this.parentElement.classList.toggle("showMenu");
-                    try { this.focus(); } catch (err) {}
+                    if (isItemProperties) {
+                        // For Item Properties, only toggle its own submenu
+                        const liParent = this.closest("li");
+                        console.log("Item Properties - Parent LI:", liParent);
+                        if (liParent) {
+                            console.log("Before toggle - classes:", liParent.className);
+                            liParent.classList.toggle("showMenu");
+                            console.log("After toggle - classes:", liParent.className);
+                            console.log("Sub-menu element:", liParent.querySelector(".sub-menu"));
+                            console.log("Sub-menu display:", window.getComputedStyle(liParent.querySelector(".sub-menu")).display);
+                        }
+                    } else {
+                        // For other menus, close all others and toggle this one
+                        const liParent = this.closest("li");
+                        console.log("Other menu clicked:", liParent);
+                        document.querySelectorAll(".nav-links li.showMenu").forEach(openItem => {
+                            if (openItem !== liParent) {
+                                openItem.classList.remove("showMenu");
+                            }
+                        });
+
+                        // Toggle the menu of the clicked icon-link
+                        if (liParent) {
+                            liParent.classList.toggle("showMenu");
+                        }
+                    }
+                    
                 });
 
                 iconLink.addEventListener("keydown", function(e) {

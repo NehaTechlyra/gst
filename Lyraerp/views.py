@@ -651,7 +651,7 @@ def Signup(request):
                 #       then write ALL three fields in a single .update()
                 #       to guarantee they land in master DB together.
                 comp_code = generate_company_code(company_name, company.id)
-                db_name   = generate_db_name(company_name, company.id)
+                db_name   = generate_db_name(company_name, company.id, company_code=comp_code)
 
                 Company.objects.using('default').filter(pk=company.pk).update(
                     company_code=comp_code,

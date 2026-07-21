@@ -8,26 +8,41 @@ from django.conf import settings
 logger = logging.getLogger(__name__)
 
 
-def generate_db_name(company_name, company_id):
+def generate_db_name(company_name, company_id, company_code=None):
     """
     Generate a tenant database name that is unique across master databases.
 
-    MySQL schemas are server-wide, not nested inside the active master DB.
-    Including the master DB name prevents separate masters from producing the
-    same tenant name for matching company ids, e.g. lyra_sony_3.
+    The database name now uses the generated company code as the main identifier,
+    e.g. lyraerp_abc2026k7m2.
     """
     master_name = settings.DATABASES.get("default", {}).get("NAME", "master")
     clean_master = re.sub(r"[^a-z0-9]", "", str(master_name).lower()) or "master"
-    clean_name = re.sub(r"[^a-z0-9]", "", company_name.lower()) or "company"
+
+    if company_code:
+        clean_name = re.sub(r"[^a-z0-9]+", "", str(company_code).lower()) or "company"
+    else:
+        clean_name = re.sub(r"[^a-z0-9]", "", company_name.lower()) or "company"
 
     # MySQL database names are limited to 64 characters.
     clean_master = clean_master[:16]
     clean_name = clean_name[:24]
     alphabet = "abcdefghijklmnopqrstuvwxyz0123456789"
 
+    base_name = f"lyraerp_{clean_name}"
+    candidates = [base_name, f"{base_name}_{company_id}"]
+
+    for candidate in candidates:
+        with connections["default"].cursor() as cursor:
+            cursor.execute(
+                "SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = %s",
+                [candidate],
+            )
+            if not cursor.fetchone():
+                return candidate
+
     for _ in range(50):
         suffix = "".join(secrets.choice(alphabet) for _ in range(6))
-        db_name = f"lyra_{clean_master}_{clean_name}_{company_id}_{suffix}"
+        db_name = f"{base_name}_{suffix}"
 
         with connections["default"].cursor() as cursor:
             cursor.execute(
@@ -38,8 +53,7 @@ def generate_db_name(company_name, company_id):
                 return db_name
 
     fallback = "".join(secrets.choice(alphabet) for _ in range(10))
-    return f"lyra_{clean_master}_{clean_name[:20]}_{company_id}_{fallback}"
-
+    return f"{base_name[:50]}_{fallback}"
 
 def create_physical_database(db_name):
     """Create physical MySQL database"""
@@ -67,7 +81,6 @@ def create_physical_database(db_name):
     except Exception as e:
         logger.error(f"[ERROR] Failed to create database {db_name}: {e}")
         raise
-
 
 def register_database(db_name):
     """Register company database in Django settings"""
