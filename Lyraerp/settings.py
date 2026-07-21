@@ -32,10 +32,11 @@ except Exception:
 SECRET_KEY = 'django-insecure-#3nbjk1zuz02@)^)#ukp5djq3=um9l71-0ycjri-!h*r_be6j='
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True  # Set to False in production
+DEBUG = False  # Set to False in production
 
 # ALLOWED_HOSTS - required when DEBUG is False
-ALLOWED_HOSTS = ['*']  # In production, specify your domain(s): ['yourdomain.com', 'www.yourdomain.com']
+ALLOWED_HOSTS = ["erp.techlyra.com",
+    "www.erp.techlyra.com",]  # In production, specify your domain(s): ['yourdomain.com', 'www.yourdomain.com']
 
 # Application definition
 
@@ -91,7 +92,7 @@ INSTALLED_APPS = [
     'company_settings',
     # 'django_apscheduler',
     'pricelists',
-    
+
 ]
 INSTALLED_APPS += ['django_countries']
 INSTALLED_APPS += ['cities_light']
@@ -222,7 +223,7 @@ TEMPLATES = [
                 'company.context_processors.license_context',
                 # Ensure unified user permission context runs last so it can
                 # override per-app flags and enforce license filtering.
-                
+
             ],
             # ============================================================================
             # CRITICAL: GLOBAL TEMPLATE TAGS
@@ -246,9 +247,9 @@ WSGI_APPLICATION = 'Lyraerp.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'mastertech7',
-        'USER': 'lyrafour-user',
-        'PASSWORD': 'Tiger#2024',
+        'NAME': 'lyramaster',
+        'USER': 'lyrauser',
+        'PASSWORD': 'TechL#2024',
         'HOST': 'localhost',
         'PORT': '3306',
     }
@@ -290,11 +291,11 @@ USE_TZ = True
 # STATIC FILES (CSS, JavaScript, Images)
 # ============================================================================
 
-STATIC_URL = '/static/'   
+STATIC_URL = '/static/'
 
 # Static files directory (for development)
 STATICFILES_DIRS = [
-    BASE_DIR / "static",
+    BASE_DIR / "staticfiles",
 ]
 
 # Static files collection directory (for production)
@@ -436,7 +437,7 @@ LOGGING = {
         },
         'file': {
             'class': 'logging.FileHandler',
-            'filename': 'logs/database_creation.log',
+            'filename': BASE_DIR / 'logs' / 'database_creation.log',
             'formatter': 'verbose',
         },
     },
