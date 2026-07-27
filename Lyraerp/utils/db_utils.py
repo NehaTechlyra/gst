@@ -12,24 +12,41 @@ def generate_db_name(company_name, company_id, company_code=None):
     """
     Generate a tenant database name that is unique across master databases.
 
-    The database name now uses the generated company code as the main identifier,
-    e.g. lyraerp_abc2026k7m2.
+    The database name uses a compact company code without the year,
+    e.g. erp_abck7m2. Names are capped at 15 characters.
     """
-    master_name = settings.DATABASES.get("default", {}).get("NAME", "master")
-    clean_master = re.sub(r"[^a-z0-9]", "", str(master_name).lower()) or "master"
+    max_db_name_length = 15
+    prefix = "erp_"
+    max_identifier_length = max_db_name_length - len(prefix)
 
     if company_code:
-        clean_name = re.sub(r"[^a-z0-9]+", "", str(company_code).lower()) or "company"
-    else:
-        clean_name = re.sub(r"[^a-z0-9]", "", company_name.lower()) or "company"
+        code_parts = re.findall(r"[A-Za-z0-9]+", str(company_code))
+        code_parts = [part for part in code_parts if not re.fullmatch(r"(19|20)\d{2}", part)]
 
-    # MySQL database names are limited to 64 characters.
-    clean_master = clean_master[:16]
-    clean_name = clean_name[:24]
+        company_part = (code_parts[0] if code_parts else company_name) or "company"
+        clean_company = re.sub(r"[^a-z0-9]", "", str(company_part).lower())[:5]
+        clean_suffix = "".join(
+            re.sub(r"[^a-z0-9]", "", str(part).lower())
+            for part in code_parts[1:]
+        )
+        clean_name = f"{clean_company}{clean_suffix}" or "company"
+    else:
+        clean_name = re.sub(r"[^a-z0-9]", "", str(company_name).lower())[:5] or "company"
+
+    clean_name = clean_name[:max_identifier_length]
     alphabet = "abcdefghijklmnopqrstuvwxyz0123456789"
 
-    base_name = f"lyraerp_{clean_name}"
-    candidates = [base_name, f"{base_name}_{company_id}"]
+    def build_name(identifier, suffix=None):
+        if suffix:
+            suffix = re.sub(r"[^a-z0-9]", "", str(suffix).lower()) or "x"
+            suffix = suffix[: max_db_name_length - len(prefix) - 2]
+            available = max_db_name_length - len(prefix) - len(suffix) - 1
+            identifier = identifier[:max(1, available)]
+            return f"{prefix}{identifier}_{suffix}"
+        return f"{prefix}{identifier[:max_identifier_length]}"
+
+    base_name = build_name(clean_name)
+    candidates = [base_name, build_name(clean_name, company_id)]
 
     for candidate in candidates:
         with connections["default"].cursor() as cursor:
@@ -41,8 +58,8 @@ def generate_db_name(company_name, company_id, company_code=None):
                 return candidate
 
     for _ in range(50):
-        suffix = "".join(secrets.choice(alphabet) for _ in range(6))
-        db_name = f"{base_name}_{suffix}"
+        suffix = "".join(secrets.choice(alphabet) for _ in range(4))
+        db_name = build_name(clean_name, suffix)
 
         with connections["default"].cursor() as cursor:
             cursor.execute(
@@ -52,8 +69,8 @@ def generate_db_name(company_name, company_id, company_code=None):
             if not cursor.fetchone():
                 return db_name
 
-    fallback = "".join(secrets.choice(alphabet) for _ in range(10))
-    return f"{base_name[:50]}_{fallback}"
+    fallback = "".join(secrets.choice(alphabet) for _ in range(6))
+    return build_name(clean_name, fallback)
 
 def create_physical_database(db_name):
     """Create physical MySQL database"""
