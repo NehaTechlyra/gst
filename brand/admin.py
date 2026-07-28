@@ -1,4 +1,4 @@
-from django.contrib import admin
-from .models import Brand
+# from django.contrib import admin
+# from .models import Brand
 
-admin.site.register(Brand)
+# admin.site.register(Brand)

@@ -17,14 +17,22 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
+from django.shortcuts import redirect
 from django.contrib.auth import views as auth_views
 from Lyraerp.views import Signup, LoginView, LogoutView, CompanyPasswordResetView
 from . import views
 from company.views import activate_license, license_restricted_view, trial_expired_page
 from company.debug_license_status import debug_license_status
 
+def redirect_to_admin(request, company_code, admin_path=''):
+    url = f'/admin/{admin_path}'
+    if request.META.get('QUERY_STRING'):
+        url += f"?{request.META['QUERY_STRING']}"
+    return redirect(url)
+
 urlpatterns = [
     # public endpoints – do not include company_code prefix
+    path('admin/', admin.site.urls),
     path('login/', LoginView, name='login'),
     path('login/<str:company_code>/', views.LoginView, name='login_with_code'),
     path('logout/', LogoutView, name='logout'),
@@ -61,7 +69,8 @@ urlpatterns = [
     path('<str:company_code>/activate-license/', activate_license, name='activate_license'),
 
     # tenant-aware URLs start here
-    path('<str:company_code>/admin/', admin.site.urls),
+    path('<str:company_code>/admin/', redirect_to_admin),
+    path('<str:company_code>/admin/<path:admin_path>', redirect_to_admin),
     path('<str:company_code>/', include('website.urls')),
     path('<str:company_code>/Project/', include('Project.urls')),
     path('<str:company_code>/Employee/', include('Employee.urls')),

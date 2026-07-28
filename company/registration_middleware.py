@@ -19,6 +19,8 @@ import re
 
 logger = logging.getLogger(__name__)
 
+ADMIN_PATH_REGEX = re.compile(r'^/(?:[A-Z0-9-]+/)?admin(?:/|$)')
+
 
 class RegistrationFlowMiddleware:
     """
@@ -51,7 +53,7 @@ class RegistrationFlowMiddleware:
             '/admin/',
         ]
         
-        if any(request.path.startswith(path) for path in exempt_paths):
+        if ADMIN_PATH_REGEX.match(request.path) or any(request.path.startswith(path) for path in exempt_paths):
             logger.debug(f"[REG FLOW] ✅ EXEMPT PATH: {request.path}")
             return self.get_response(request)
         
@@ -178,7 +180,7 @@ class RegistrationCompletionMiddleware:
             '/admin/',
         ]
         
-        if any(request.path.startswith(path) for path in exempt_paths):
+        if ADMIN_PATH_REGEX.match(request.path) or any(request.path.startswith(path) for path in exempt_paths):
             logger.debug(f"[REG COMPLETION] ✅ EXEMPT PATH")
             return self.get_response(request)
         

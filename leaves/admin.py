@@ -1,6 +1,6 @@
-from django.contrib import admin
+# from django.contrib import admin
 
-from leaves.models import Leaves
+# from leaves.models import Leaves
 
-# Register your models here.
-admin.site.register(Leaves)
+# # Register your models here.
+# admin.site.register(Leaves)

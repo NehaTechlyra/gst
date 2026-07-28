@@ -1,6 +1,6 @@
-from django.contrib import admin
+# from django.contrib import admin
 
-from allowances.models import Allowances
+# from allowances.models import Allowances
 
-# Register your models here.
-admin.site.register(Allowances)
+# # Register your models here.
+# admin.site.register(Allowances)

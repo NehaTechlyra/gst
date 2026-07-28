@@ -1,6 +1,6 @@
-from django.contrib import admin
+# from django.contrib import admin
 
-# Register your models here.
-from.models import ChartOfAccounts
+# # Register your models here.
+# from.models import ChartOfAccounts
 
-admin.site.register(ChartOfAccounts)
+# admin.site.register(ChartOfAccounts)
