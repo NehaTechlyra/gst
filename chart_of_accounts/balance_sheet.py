@@ -329,6 +329,20 @@ def generate_balance_sheet(as_of_date=None, from_date=None):
     )
 
     net_profit_loss = income_total - expenses_total
+    # Fold unclosed net P&L into Equity as "Retained Earnings" so the sheet
+    # balances while the fiscal year is still open (before close_books runs).
+    if abs(net_profit_loss) > 0.01:
+        equity_total += net_profit_loss
+        retained_earnings_entry = {
+            'id': 0,
+            'code': '',
+            'name': 'Retained Earnings',
+            'balance': net_profit_loss,
+            'level': 0,
+            'children': [],
+            'has_children': False
+        }
+        equity_hierarchy.append(retained_earnings_entry)
     total_liabilities_and_equity = liabilities_total + equity_total
     difference = assets_total - total_liabilities_and_equity
     abs_difference = abs(difference)
