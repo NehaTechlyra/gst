@@ -623,20 +623,21 @@ def generate_profit_loss(from_date=None, to_date=None, fy_start_date=None):
     # CHANGE #4: Use get_account_balance_excl_closing() for COGS display amount.
     # This gives the real COGS figure for the period, not zeroed out by closing.
     # =========================================================================
-    cogs_account = ChartOfAccounts.objects.filter(
-        name__iexact='Cost of Goods Sold', status=True
-    ).first()
     cogs_amount = Decimal('0.00')
+    for expense_account in expenses_hierarchy:
+        if 'Indirect' not in expense_account.get('name', ''):
+            cogs_amount += Decimal(str(expense_account.get('balance', 0)))
+    cogs_amount = abs(cogs_amount)
+
+    expenses_hierarchy_cumulative, _ = (
+        build_account_hierarchy(expense_parent, to_date, None, exclude_closing=True)
+        if expense_parent else ([], 0)
+    )
     cogs_cumulative = Decimal('0.00')
-
-    if cogs_account:
-        # CHANGE #4: exclude closing entries for the displayed COGS figure
-        cogs_balance = get_account_balance_excl_closing(cogs_account, to_date, hierarchy_from)
-        cogs_amount = abs(Decimal(str(cogs_balance)))
-
-        # For formula fallback: also get cumulative real COGS (excl closing)
-        cogs_balance_cumulative = get_account_balance_excl_closing(cogs_account, to_date, None)
-        cogs_cumulative = abs(Decimal(str(cogs_balance_cumulative)))
+    for expense_account in expenses_hierarchy_cumulative:
+        if 'Indirect' not in expense_account.get('name', ''):
+            cogs_cumulative += Decimal(str(expense_account.get('balance', 0)))
+    cogs_cumulative = abs(cogs_cumulative)
 
     # =========================================================================
     # STOCK ADJUSTMENTS
@@ -688,11 +689,9 @@ def generate_profit_loss(from_date=None, to_date=None, fy_start_date=None):
     # Closing entry debits Sales to zero it out — exclude that entry.
     # =========================================================================
     sales_total = Decimal('0.00')
-    sales_account = ChartOfAccounts.objects.filter(name__iexact='Sales', status=True).first()
-    if sales_account:
-        # CHANGE #5: exclude closing entries so Sales shows correctly for closed FYs
-        sales_balance = get_account_balance_excl_closing(sales_account, to_date, hierarchy_from)
-        sales_total = Decimal(str(sales_balance))
+    for income_account in income_hierarchy:
+        if 'Indirect' not in income_account.get('name', ''):
+            sales_total += Decimal(str(income_account.get('balance', 0)))
 
     # ===== NON-OPERATING INCOME =====
     non_operating_income_total = Decimal('0.00')
