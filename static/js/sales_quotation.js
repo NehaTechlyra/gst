@@ -119,6 +119,73 @@ function getBaseCurrencySymbol() {
   );
 }
 
+function ensureBaseCurrencyVisibilityStyles() {
+  if (document.getElementById('base-currency-visibility-styles')) return;
+  const style = document.createElement('style');
+  style.id = 'base-currency-visibility-styles';
+  style.textContent = [
+    '.lyra-hide-base-currency .base-price,',
+    '.lyra-hide-base-currency .base-currency-column {',
+    '  display: none !important;',
+    '}'
+  ].join('\n');
+  document.head.appendChild(style);
+}
+
+function getSelectedDocumentCurrencyCode() {
+  const docSel = document.getElementById('document_currency');
+  if (!docSel) return '';
+  const selected = docSel.options && docSel.selectedIndex >= 0 ? docSel.options[docSel.selectedIndex] : null;
+  return String(
+    (selected && selected.dataset && selected.dataset.code) ||
+    (selected && selected.getAttribute('data-code')) ||
+    (selected && selected.textContent) ||
+    ''
+  ).trim().split(/\s+/)[0].toUpperCase();
+}
+
+function getBaseCurrencyCode() {
+  const summary = document.getElementById('base-transaction-summary');
+  const docSel = document.getElementById('document_currency');
+  return String(
+    (summary && summary.dataset && summary.dataset.baseCode) ||
+    (docSel && docSel.dataset && docSel.dataset.baseCode) ||
+    (document.querySelector('.base-currency-code') || {}).textContent ||
+    ''
+  ).trim().split(/\s+/)[0].toUpperCase();
+}
+
+function shouldHideBaseCurrencyUi() {
+  const docCode = getSelectedDocumentCurrencyCode();
+  const baseCode = getBaseCurrencyCode();
+  const fxInput = document.getElementById('fx_rate_to_base');
+  const fxRate = fxInput ? parseFloat(fxInput.value) : NaN;
+  if (docCode && baseCode) return docCode === baseCode;
+  return Number.isFinite(fxRate) && Math.abs(fxRate - 1) < 0.000001;
+}
+
+function markBaseCurrencyTableHeaders() {
+  $('table').each(function () {
+    const $table = $(this);
+    if (!$table.find('.base-price').length) return;
+    $table.find('thead th').each(function () {
+      const label = $(this).text().replace(/\s+/g, ' ').trim().toLowerCase();
+      if (label === 'base currency price' || label.indexOf('price (base') !== -1 || label.indexOf('amount (base') !== -1) {
+        $(this).addClass('base-currency-column');
+      }
+    });
+  });
+}
+
+function updateBaseCurrencyVisibility() {
+  ensureBaseCurrencyVisibilityStyles();
+  markBaseCurrencyTableHeaders();
+  const hideBase = shouldHideBaseCurrencyUi();
+  document.body.classList.toggle('lyra-hide-base-currency', hideBase);
+  $('#exchange_rate_container, #exchange_rate_date_container, #base_currency_transaction_section, #base-transaction-summary')
+    .toggle(!hideBase);
+}
+
 function formatBaseCurrencyAmount(value) {
   const numeric = Number(value || 0);
   return getBaseCurrencySymbol() + ' ' + numeric.toFixed(2);
@@ -247,6 +314,7 @@ function bindDocumentCurrencyChange() {
     this.dataset.userSelected = '1';
     rebuildCurrencySymbolMap();
     updateFlatDiscountSymbols();
+    updateBaseCurrencyVisibility();
     calculateTotals();
 
     // Dynamically fetch and update the exchange rate for the newly selected currency
@@ -1794,6 +1862,7 @@ document.addEventListener("DOMContentLoaded", function () {
   updateFlatDiscountSymbols();
   bindDocumentCurrencyChange();
   syncDocumentCurrencyMirror();
+  updateBaseCurrencyVisibility();
 
   // Recalculate document-currency prices from stored company/base prices when FX changes
   function refreshPricesFromBase() {
@@ -1881,6 +1950,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // Bind FX input changes (if present in the DOM)
   $('#fx_rate_to_base').on('input change', function () {
+    updateBaseCurrencyVisibility();
     refreshPricesFromBase();
   });
 
@@ -2373,6 +2443,7 @@ document.addEventListener("DOMContentLoaded", function () {
 // Re-price existing rows when FX rate changes
 $(document).on('input change', '#fx_rate_to_base', function () {
   try {
+    updateBaseCurrencyVisibility();
     let fx = parseFloat($(this).val()) || 1;
     $('#items-table tbody tr').each(function () {
       let $row = $(this);

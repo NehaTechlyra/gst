@@ -123,6 +123,72 @@ function getBaseCurrencySymbol() {
   );
 }
 
+function ensureBaseCurrencyVisibilityStyles() {
+  if (document.getElementById('base-currency-visibility-styles')) return;
+  const style = document.createElement('style');
+  style.id = 'base-currency-visibility-styles';
+  style.textContent = [
+    '.lyra-hide-base-currency .base-price,',
+    '.lyra-hide-base-currency .base-currency-column {',
+    '  display: none !important;',
+    '}'
+  ].join('\n');
+  document.head.appendChild(style);
+}
+
+function getSelectedDocumentCurrencyCode() {
+  const docSel = document.getElementById('document_currency');
+  if (!docSel) return '';
+  const selected = docSel.options && docSel.selectedIndex >= 0 ? docSel.options[docSel.selectedIndex] : null;
+  return String(
+    (selected && selected.dataset && selected.dataset.code) ||
+    (selected && selected.getAttribute('data-code')) ||
+    (selected && selected.textContent) ||
+    ''
+  ).trim().split(/\s+/)[0].toUpperCase();
+}
+
+function getBaseCurrencyCode() {
+  const summary = document.getElementById('base-transaction-summary');
+  const docSel = document.getElementById('document_currency');
+  return String(
+    (summary && summary.dataset && summary.dataset.baseCode) ||
+    (docSel && docSel.dataset && docSel.dataset.baseCode) ||
+    (document.querySelector('.base-currency-code') || {}).textContent ||
+    ''
+  ).trim().split(/\s+/)[0].toUpperCase();
+}
+
+function shouldHideBaseCurrencyUi() {
+  const docCode = getSelectedDocumentCurrencyCode();
+  const baseCode = getBaseCurrencyCode();
+  const fxRate = parseFloat($('#fx_rate_to_base').val());
+  if (docCode && baseCode) return docCode === baseCode;
+  return Number.isFinite(fxRate) && Math.abs(fxRate - 1) < 0.000001;
+}
+
+function markBaseCurrencyTableHeaders() {
+  $('table').each(function () {
+    const $table = $(this);
+    if (!$table.find('.base-price').length) return;
+    $table.find('thead th').each(function () {
+      const label = $(this).text().replace(/\s+/g, ' ').trim().toLowerCase();
+      if (label === 'base currency price' || label.indexOf('price (base') !== -1 || label.indexOf('amount (base') !== -1) {
+        $(this).addClass('base-currency-column');
+      }
+    });
+  });
+}
+
+function updateBaseCurrencyVisibility() {
+  ensureBaseCurrencyVisibilityStyles();
+  markBaseCurrencyTableHeaders();
+  const hideBase = shouldHideBaseCurrencyUi();
+  document.body.classList.toggle('lyra-hide-base-currency', hideBase);
+  $('#exchange_rate_container, #exchange_rate_date_container, #base_currency_transaction_section, #base-transaction-summary')
+    .toggle(!hideBase);
+}
+
 function updateFlatDiscountSymbols() {
   const symbol = getDocumentCurrencySymbol();
   document.querySelectorAll('.discount-type option[value="flat"], select.rupee-sign option[value="flat"]').forEach(function (option) {
@@ -154,6 +220,7 @@ function refreshCurrencyUi() {
   if (docSel && mirror) {
     mirror.value = docSel.value || '';
   }
+  updateBaseCurrencyVisibility();
   try { calculateTotals(); } catch (e) { }
 }
 
@@ -453,11 +520,8 @@ function updateExchangeRate(vendorId, currencyId, date, opts = {}) {
 
         // Update UI based on currency
         const baseCode = $('#exchange_rate_container .base-currency-code').first().text();
-        if (data.currency_code === baseCode) {
-          $('#exchange_rate_container, #exchange_rate_date_container, #base_currency_transaction_section').hide();
-        } else {
-          $('#exchange_rate_container, #exchange_rate_date_container, #base_currency_transaction_section').show();
-        }
+        updateBaseCurrencyVisibility();
+
 
         // Update symbols
         if (data.currency_symbol) {
@@ -522,6 +586,7 @@ $(document).on('change', '#document_currency', function (e) {
 });
 
 $(document).on('input change', '#fx_rate_to_base', function () {
+  updateBaseCurrencyVisibility();
   refreshPricesFromBase();
 });
 
