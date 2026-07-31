@@ -2906,6 +2906,162 @@ $(document).ready(function () {
   });
 });
 
+//Barcode scanning of items 
+
+function getCompanyPrefixedUrl(path) {
+  var parts = window.location.pathname.split('/');
+  var first = parts[1] || '';
+  var modules = ['sales', 'purchase', 'inventory', 'PayTerms', 'Items', 'customer', 'vendor', 'user', 'crm', 'hr', 'masters'];
+  var prefix = modules.includes(first.toLowerCase()) ? '' : '/' + first;
+  return prefix + path;
+}
+
+function normalizeSalesItemForSelect(rawItem) {
+  var barcodeId = rawItem.b_id || '';
+  return {
+    id: String(rawItem.id) + '_' + barcodeId,
+    text: rawItem.name + (rawItem.unit ? ' ' + rawItem.unit : ''),
+    description: rawItem.sell_desc,
+    price: rawItem.sl_price,
+    gstinclude: rawItem.gstinclude,
+    o_price: rawItem.o_price,
+    uom: rawItem.unit,
+    tax_id: rawItem.tax_id,
+    tax_name: rawItem.tax_name,
+    tax_rate: rawItem.tax_rate,
+    tax_pref: rawItem.tax_pref,
+    barcode: rawItem.barcode,
+    b_id: barcodeId
+  };
+}
+
+function setBarcodeStatus(message, type) {
+  var status = document.getElementById('invoice-barcode-status');
+  if (!status) return;
+  status.textContent = message || '';
+  status.style.color = type === 'error' ? '#b42318' : '#198754';
+}
+
+function getActiveInvoiceRows() {
+  return $('#items-table tbody tr').filter(function () {
+    var deleteCheckbox = this.querySelector('input[type="checkbox"][name$="-DELETE"]');
+    return this.style.display !== 'none' && !(deleteCheckbox && deleteCheckbox.checked);
+  });
+}
+
+function findEmptyInvoiceRow() {
+  return getActiveInvoiceRows().filter(function () {
+    return !($(this).find('.item_select').val() || '').toString().trim();
+  }).first();
+}
+
+function ensureInvoiceItemRow() {
+  var $row = findEmptyInvoiceRow();
+  if ($row.length) return $row;
+  $('#add-item-btn').trigger('click');
+  return $('#items-table tbody tr:last');
+}
+
+function incrementExistingScannedRow(selectValue) {
+  var matched = null;
+  getActiveInvoiceRows().each(function () {
+    var $row = $(this);
+    if (($row.find('.item_select').val() || '').toString() === selectValue) {
+      matched = $row;
+      return false;
+    }
+  });
+
+  if (!matched) return false;
+
+  var $qty = matched.find('.qty');
+  var currentQty = parseFloat($qty.val()) || 0;
+  $qty.val((currentQty + 1).toFixed(2).replace(/\.00$/, ''));
+  updateRowAmount(matched);
+  calculateTotals();
+  return true;
+}
+
+function applyScannedItem(rawItem, scannedCode) {
+  var item = normalizeSalesItemForSelect(rawItem);
+
+  if (incrementExistingScannedRow(item.id)) {
+    setBarcodeStatus('Added 1 more: ' + item.text, 'success');
+    return;
+  }
+
+  var $row = ensureInvoiceItemRow();
+  var $select = $row.find('.item_select');
+  if (!$select.hasClass('select2-hidden-accessible')) {
+    initItemSelect($select);
+  }
+
+  var option = new Option(item.text, item.id, true, true);
+  $(option).data(item);
+  $select.append(option).val(item.id).trigger('change');
+  $select.trigger({
+    type: 'select2:select',
+    params: { data: item }
+  });
+
+  setBarcodeStatus('Added: ' + item.text, 'success');
+}
+
+function scanInvoiceBarcode() {
+  var input = document.getElementById('invoice-barcode-scan');
+  if (!input) return;
+  var barcode = (input.value || '').trim();
+  if (!barcode) {
+    setBarcodeStatus('Scan a barcode first.', 'error');
+    input.focus();
+    return;
+  }
+
+  setBarcodeStatus('Searching...', 'success');
+  $.ajax({
+    url: getCompanyPrefixedUrl('/sales/get_item_sales/'),
+    dataType: 'json',
+    data: { q: barcode },
+    success: function (items) {
+      var exactMatch = (items || []).find(function (item) {
+        return String(item.barcode || '').trim() === barcode;
+      });
+      if (!exactMatch) {
+        setBarcodeStatus('No active sales item found for barcode ' + barcode + '.', 'error');
+        input.select();
+        return;
+      }
+
+      applyScannedItem(exactMatch, barcode);
+      input.value = '';
+      input.focus();
+    },
+    error: function () {
+      setBarcodeStatus('Could not search barcode. Please try again.', 'error');
+      input.select();
+    }
+  });
+}
+
+$(document).on('keydown', '#invoice-barcode-scan', function (e) {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    scanInvoiceBarcode();
+  }
+});
+
+$(document).on('click', '#invoice-barcode-add', function () {
+  scanInvoiceBarcode();
+});
+
+$(function () {
+  var scanInput = document.getElementById('invoice-barcode-scan');
+  if (scanInput) {
+    setTimeout(function () { scanInput.focus(); }, 150);
+  }
+});
+//
+
 // Allow manual HSN update via the small link/button
 $(document).on('click', '.open-hsn-btn', function (e) {
   e.preventDefault();

@@ -984,6 +984,7 @@ def get_item_sales(request):
             barcode_obj = Barcode.objects.filter(barcode=query, item_id=h.id).first()
             if barcode_obj:
                 barcode_id = barcode_obj.id
+                barcode = barcode_obj.barcode
                 barcode_str = barcode_obj.barcode
             else:
                 # fallback to main barcode of the item
