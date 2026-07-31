@@ -68,6 +68,7 @@ logger = logging.getLogger(__name__)
 # ============================================================================
 
 COMPANY_CODE_REGEX = re.compile(r'^/([A-Z0-9-]+)/')
+ADMIN_PATH_REGEX = re.compile(r'^/(?:[A-Z0-9-]+/)?admin(?:/|$)')
 
 EXEMPT_PATHS = [
     '/admin/',
@@ -119,7 +120,12 @@ def get_allowed_auth_urls():
 
 def is_exempt_path(path):
     """Check if path is in exempt paths (admin, static, media, auth)."""
-    return any(path.startswith(exempt) for exempt in EXEMPT_PATHS)
+    return is_admin_path(path) or any(path.startswith(exempt) for exempt in EXEMPT_PATHS)
+
+
+def is_admin_path(path):
+    """Check if path is a plain or company-code-prefixed Django admin URL."""
+    return bool(ADMIN_PATH_REGEX.match(path or ''))
 
 
 def is_license_exempt_path(path):
@@ -256,6 +262,9 @@ class LoginRequiredMiddleware:
         allowed_urls = get_allowed_auth_urls()
         # Paths that should be allowed for unauthenticated users (exact or prefix)
         allowed_paths = ['/Signup/', '/signup/', '/password-reset/', '/reset/', '/login/', '/<str:company_code>/login/']
+
+        if is_static_or_media_path(request.path) or is_admin_path(request.path):
+            return self.get_response(request)
         
         # Allow company setup paths (with company code prefix)
         if is_company_setup_path(request.path):
@@ -313,7 +322,7 @@ class SiteBlockMiddleware:
 
         # Always allow static/media and admin paths
         path = request.path
-        if is_static_or_media_path(path) or path.startswith('/admin/'):
+        if is_static_or_media_path(path) or is_admin_path(path):
             logger.debug('SiteBlockMiddleware: allowed static/media/admin path: %s', path)
             return self.get_response(request)
 
@@ -363,7 +372,7 @@ class ModulePermissionMiddleware(MiddlewareMixin):
             return None
 
         # Allow static/media/admin and auth paths
-        if is_static_or_media_path(path) or path.startswith('/admin/'):
+        if is_static_or_media_path(path) or is_admin_path(path):
             return None
 
         if path in get_allowed_auth_urls():
@@ -1279,7 +1288,7 @@ class TrialExpirationMiddleware:
             return False
         
         # Allow static/media/admin paths
-        if is_static_or_media_path(path) or path.startswith('/admin/'):
+        if is_static_or_media_path(path) or is_admin_path(path):
             return False
         
         # Allow auth paths

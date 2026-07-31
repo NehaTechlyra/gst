@@ -1,5 +1,5 @@
-from django.contrib import admin
+# from django.contrib import admin
 
-from UserReq.models import Requisition
+# from UserReq.models import Requisition
 
-admin.site.register(Requisition)
+# admin.site.register(Requisition)

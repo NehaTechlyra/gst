@@ -621,6 +621,7 @@ EXEMPT_PREFIXES = (
 # fragment exempt — paths that MAY be prefixed with a company code
 # Checked with:  any(fragment in request.path for fragment in EXEMPT_FRAGMENTS)
 EXEMPT_FRAGMENTS = (
+    '/admin/',
     'license/restricted',
     'activate-license',
     'user/profile',

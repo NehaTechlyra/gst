@@ -77,6 +77,7 @@ _EXEMPT_SECOND_SEGMENTS = {
 
 # Matches /ABC1UHZ7L1LZ/anything
 _COMPANY_CODE_RE = re.compile(r'^/([A-Z0-9][A-Z0-9\-]{2,})/([^/]*)')
+_ADMIN_PATH_RE = re.compile(r'^/(?:[A-Z0-9-]+/)?admin(?:/|$)')
 
 # Cache: company_code → db_name string  ('' = not found/not created yet)
 _DB_NAME_CACHE: dict = {}
@@ -94,7 +95,7 @@ _SENTINEL_TABLE = 'sales_salesquotation'
 # ---------------------------------------------------------------------------
 
 def _is_always_allowed(path: str) -> bool:
-    return any(path.startswith(p) for p in _ALWAYS_ALLOW_PREFIXES)
+    return bool(_ADMIN_PATH_RE.match(path or '')) or any(path.startswith(p) for p in _ALWAYS_ALLOW_PREFIXES)
 
 
 def _get_db_name(company_code: str):
