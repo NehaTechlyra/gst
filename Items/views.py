@@ -30,7 +30,7 @@ from .models import HSNCode,Uom,SACCode,Barcode, Uom, Uom_name
 from Tax.models import Tax, TaxGroup
 from unit.models import Unit
 from brand.models import Brand
-from category.models import Category
+from category.models import Category, Subcategory
 from category.forms import CategoryForm
 from type.models import Type
 from type.forms import TypeForm
@@ -374,6 +374,13 @@ def _get_posted_item_lookup_context(request):
         if category_obj:
             category_text = category_obj.category_name
 
+    subcategory_id = request.POST.get('subcategory') or ''
+    subcategory_text = ''
+    if subcategory_id:
+        subcategory_obj = Subcategory.objects.filter(id=subcategory_id, status=True).select_related('category').first()
+        if subcategory_obj:
+            subcategory_text = subcategory_obj.subcategory_name
+
     item_type_id = request.POST.get('item_type') or ''
     item_type_text = ''
     if item_type_id:
@@ -384,9 +391,33 @@ def _get_posted_item_lookup_context(request):
     return {
         'category_id': category_id,
         'category_text': category_text,
+        'subcategory_id': subcategory_id,
+        'subcategory_text': subcategory_text,
         'item_type_id': item_type_id,
         'item_type_text': item_type_text,
     }
+
+
+def _validate_item_lookup_selection(post_data):
+    category_id = (post_data.get('category') or '').strip()
+    subcategory_id = (post_data.get('subcategory') or '').strip()
+    item_type_id = (post_data.get('item_type') or '').strip()
+
+    if subcategory_id:
+        subcategory = Subcategory.objects.filter(id=subcategory_id, status=True).first()
+        if not subcategory:
+            return "Please select a valid Subcategory."
+        if category_id and str(subcategory.category_id) != str(category_id):
+            return "Selected Subcategory does not belong to the selected Category."
+
+    if item_type_id:
+        item_type = Type.objects.filter(id=item_type_id, status=True).first()
+        if not item_type:
+            return "Please select a valid Type."
+        if subcategory_id and str(item_type.subcategory_id or '') != str(subcategory_id):
+            return "Selected Type does not belong to the selected Subcategory."
+
+    return None
 
 def _preserve_post_data_for_error_rendering(request):
     """
@@ -1189,6 +1220,20 @@ def add_item(request):
         form = ItemForm(post_data)
 
         if form.is_valid():
+            lookup_error = _validate_item_lookup_selection(post_data)
+            if lookup_error:
+                messages.error(request, lookup_error)
+                context = _build_add_item_context(
+                    request,
+                    form,
+                    units,
+                    vendors,
+                    hsn,
+                    warehouses,
+                    company_country,
+                )
+                return render(request, 'add_item.html', context)
+
             tax_error = _validate_item_tax_selection(post_data, company_country, company_tax_type)
             if tax_error:
                 messages.error(request, tax_error)
@@ -1684,10 +1729,15 @@ def item_edit(request, pk):
 
         form = ItemForm(post_data, instance=item)
         if form.is_valid():
+            lookup_error = _validate_item_lookup_selection(post_data)
+            if lookup_error:
+                messages.error(request, lookup_error)
+                return redirect_with_company(request, 'item_edit', pk=pk)
+
             tax_error = _validate_item_tax_selection(post_data, company_country, company_tax_type)
             if tax_error:
                 messages.error(request, tax_error)
-                return redirect_with_company('item_edit', pk=pk)
+                return redirect_with_company(request, 'item_edit', pk=pk)
             # ✅ by adarsh lock CHECK PERIOD LOCK BEFORE EDITING
             from datetime import date
             from django.core.exceptions import PermissionDenied
@@ -1734,12 +1784,17 @@ def item_edit(request, pk):
                     if category_obj:
                         category_text = f"{category_obj.category_name}"
 
+                subcategory_id = None
+                subcategory_text = ''
                 item_type_id = item.item_type_id
                 item_type_text = ''
                 if item_type_id:
-                    item_type_obj = Type.objects.filter(id=item_type_id, status=True).first()
+                    item_type_obj = Type.objects.filter(id=item_type_id, status=True).select_related('subcategory').first()
                     if item_type_obj:
                         item_type_text = f"{item_type_obj.type_name}"
+                        if item_type_obj.subcategory:
+                            subcategory_id = item_type_obj.subcategory_id
+                            subcategory_text = f"{item_type_obj.subcategory.subcategory_name}"
                 
                 vendor_id = item.preferred_vendor_id
                 vendor_text = ''
@@ -1782,6 +1837,8 @@ def item_edit(request, pk):
                     'brand_text': brand_text,
                     'category_id': category_id,
                     'category_text': category_text,
+                    'subcategory_id': subcategory_id,
+                    'subcategory_text': subcategory_text,
                     'item_type_id': item_type_id,
                     'item_type_text': item_type_text,
                     'is_edit': True,
@@ -2083,6 +2140,8 @@ def item_edit(request, pk):
     brand_text = ''
     category_id = item.category_id
     category_text = ''
+    subcategory_id = None
+    subcategory_text = ''
     item_type_id = item.item_type_id
     item_type_text = ''
     main_barcode_id = item.main_barcode_id  # assuming item.unit stores the unit ID (bigint)
@@ -2118,9 +2177,12 @@ def item_edit(request, pk):
         if category_obj:
             category_text = f"{category_obj.category_name} "
     if item_type_id:
-        item_type_obj = Type.objects.filter(id=item_type_id, status=True).first()
+        item_type_obj = Type.objects.filter(id=item_type_id, status=True).select_related('subcategory').first()
         if item_type_obj:
             item_type_text = f"{item_type_obj.type_name} "
+            if item_type_obj.subcategory:
+                subcategory_id = item_type_obj.subcategory_id
+                subcategory_text = f"{item_type_obj.subcategory.subcategory_name} "
     # if warehouse_id:
     #     warehouse_obj = Warehouse.objects.filter(id=warehouse_id).first()
     #     if warehouse_obj:
@@ -2154,6 +2216,8 @@ def item_edit(request, pk):
         'brand_text': brand_text,
         'category_id': category_id,
         'category_text': category_text,
+        'subcategory_id': subcategory_id,
+        'subcategory_text': subcategory_text,
         'item_type_id': item_type_id,
         'item_type_text': item_type_text,
         # 'warehouse_id': warehouse_id,
@@ -2687,19 +2751,51 @@ def brand_search(request):
 
 def category_search(request):
     query = request.GET.get('q', '')
-    results = []
+    categories = Category.objects.filter(status=True)
     if query:
-        categories = Category.objects.filter(category_name__icontains=query, status=True)[:50]
-        results = [{"id": c.id, "name": c.category_name} for c in categories]
+        categories = categories.filter(category_name__icontains=query)
+    results = [{"id": c.id, "name": c.category_name} for c in categories.order_by('category_name')[:50]]
+    return JsonResponse(results, safe=False)
+
+
+def subcategory_search(request):
+    query = request.GET.get('q', '')
+    category_id = request.GET.get('category_id') or ''
+    if not category_id:
+        return JsonResponse([], safe=False)
+    subcategories = Subcategory.objects.filter(status=True, category__status=True).select_related('category')
+    subcategories = subcategories.filter(category_id=category_id)
+    if query:
+        subcategories = subcategories.filter(subcategory_name__icontains=query)
+    results = [
+        {
+            "id": subcat.id,
+            "name": subcat.subcategory_name,
+            "category_id": subcat.category_id,
+            "category_name": subcat.category.category_name if subcat.category else "",
+        }
+        for subcat in subcategories.order_by('subcategory_name')[:50]
+    ]
     return JsonResponse(results, safe=False)
 
 
 def item_type_search(request):
     query = request.GET.get('q', '')
-    results = []
+    subcategory_id = request.GET.get('subcategory_id') or ''
+    if not subcategory_id:
+        return JsonResponse([], safe=False)
+    types = Type.objects.filter(status=True).select_related('subcategory')
+    types = types.filter(subcategory_id=subcategory_id)
     if query:
-        types = Type.objects.filter(type_name__icontains=query, status=True)[:50]
-        results = [{"id": t.id, "name": t.type_name} for t in types]
+        types = types.filter(type_name__icontains=query)
+    results = [
+        {
+            "id": t.id,
+            "name": t.type_name,
+            "subcategory_id": t.subcategory_id,
+        }
+        for t in types.order_by('type_name')[:50]
+    ]
     return JsonResponse(results, safe=False)
 
 
@@ -2717,7 +2813,11 @@ def create_category_ajax(request):
 
 
 def create_item_type_ajax(request):
-    form = TypeForm(request.POST)
+    initial = {}
+    subcategory_id = request.GET.get('subcategory_id') or request.POST.get('subcategory') or ''
+    if subcategory_id:
+        initial['subcategory'] = subcategory_id
+    form = TypeForm(request.POST or None, initial=initial)
     context = {'item_type_form': form}
     return render(request, 'add_item_types.html', context)
 
@@ -2757,7 +2857,12 @@ def add_item_type(request):
             item_type.created_by = request.user
             item_type.updated_by = request.user
             item_type.save()
-            return JsonResponse({'success': True, 'id': item_type.id, 'name': item_type.type_name})
+            return JsonResponse({
+                'success': True,
+                'id': item_type.id,
+                'name': item_type.type_name,
+                'subcategory_id': item_type.subcategory_id,
+            })
         return JsonResponse({'success': False, 'errors': form.errors}, status=400)
     return JsonResponse({'success': False, 'errors': {'__all__': ['Invalid method']}}, status=405)
 

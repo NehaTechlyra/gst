@@ -15,6 +15,7 @@
       <div>
     {% if request.user.is_superuser or can_create_categories or can_edit_categories or can_create_items or can_edit_items %}
     <a href="{% url 'category_add' %}" class="btn btn-success">+ Add New Category</a>
+    <a href="{% url 'subcategory_list' %}" class="btn btn-outline-secondary ms-2">Subcategories</a>
     {% endif %}
       </div>
       <div class="d-flex align-items-center gap-2">

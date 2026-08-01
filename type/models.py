@@ -4,6 +4,12 @@ from django.conf import settings
 
 class Type(models.Model):
     type_name = models.CharField(max_length=150, blank=True, null=True)
+    subcategory = models.ForeignKey(
+        'category.Subcategory',
+        on_delete=models.PROTECT,
+        related_name='types',
+        verbose_name='Subcategory',
+    )
     status = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

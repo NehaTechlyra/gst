@@ -18,6 +18,7 @@ urlpatterns = [
     path('unit/', views.search_unit, name='search_unit'),
     path('brand/', views.brand_search, name='brand_search'),
     path('category/', views.category_search, name='category_search'),
+    path('subcategory/', views.subcategory_search, name='subcategory_search'),
     path('item-type/', views.item_type_search, name='item_type_search'),
     path('warehouse/', views.warehouse_search, name='warehouse_search'),
     path('vendor/', views.vendor_search, name='vendor_search'),

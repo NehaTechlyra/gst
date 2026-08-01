@@ -344,7 +344,7 @@ $(document).ready(function() {
     $('#category_select').select2({
       placeholder: '',
       allowClear: true,
-      minimumInputLength: 1,
+      minimumInputLength: 0,
       ajax: {
         url: "{% company_path '/Items/category/' %}",
         dataType: 'json',
@@ -368,18 +368,47 @@ $(document).ready(function() {
       }
     });
 
+    let lastSubcategorySearchTerm = '';
+    $('#subcategory_select').select2({
+      placeholder: '',
+      allowClear: true,
+      minimumInputLength: 0,
+      ajax: {
+        url: "{% company_path '/Items/subcategory/' %}",
+        dataType: 'json',
+        delay: 250,
+        data: function(params) {
+          lastSubcategorySearchTerm = params.term;
+          return {
+            q: params.term,
+            category_id: $('#category_select').val() || ''
+          };
+        },
+        processResults: function(data) {
+          let results = data.map(function(item) {
+            return { id: item.id, text: item.name, category_id: item.category_id };
+          });
+          return { results: results };
+        },
+        cache: true
+      }
+    });
+
     let lastItemTypeSearchTerm = '';
     $('#item_type_select').select2({
       placeholder: '',
       allowClear: true,
-      minimumInputLength: 1,
+      minimumInputLength: 0,
       ajax: {
         url: "{% company_path '/Items/item-type/' %}",
         dataType: 'json',
         delay: 250,
         data: function(params) {
           lastItemTypeSearchTerm = params.term;
-          return { q: params.term };
+          return {
+            q: params.term,
+            subcategory_id: $('#subcategory_select').val() || ''
+          };
         },
         processResults: function(data) {
           let results = data.map(function(item) {
@@ -394,6 +423,15 @@ $(document).ready(function() {
         },
         cache: true
       }
+    });
+
+    $('#category_select').on('change', function() {
+      $('#subcategory_select').val(null).trigger('change');
+      $('#item_type_select').val(null).trigger('change');
+    });
+
+    $('#subcategory_select').on('change', function() {
+      $('#item_type_select').val(null).trigger('change');
     });
 
      //warehouse
@@ -496,11 +534,18 @@ $(document).ready(function() {
       }
     });
 
+    $('#subcategory_select').on('select2:selecting', function(e) {
+      var data = e.params.args.data;
+      if (data.isNew) {
+        e.preventDefault();
+      }
+    });
+
     $('#item_type_select').on('select2:selecting', function(e) {
       var data = (e.params && e.params.args && e.params.args.data) ? e.params.args.data : e.params.data;
       if (data && data.isNew) {
         e.preventDefault();
-        $.get("{% company_path '/Items/item_type_createform/' %}", function(formHtml) {
+        $.get("{% company_path '/Items/item_type_createform/' %}", { subcategory_id: $('#subcategory_select').val() || '' }, function(formHtml) {
           $('#itemTypeCreateModal .modal-body').html(formHtml);
           $('#itemTypeCreateModal').modal('show');
           $('#itemTypeCreateModal').find('input[name=\"type_name\"]').val(lastItemTypeSearchTerm);
@@ -1245,8 +1290,15 @@ $(document).on('submit', '#itemTypeCreateForm', function(e) {
             {% endif %}
          </select>
       </div>
-    </div>
-    <div class="row mb-2">
+      <div class="col-md-4">
+        <label for="subcategory" class="form-label">Subcategory</label>
+        <select class="form-select" name="subcategory" id="subcategory_select" style="width: 100%;">
+            <option value="">Choose...</option>
+            {% if subcategory_id and subcategory_text %}
+            <option value="{{ subcategory_id }}" selected="selected">{{ subcategory_text }}</option>
+            {% endif %}
+         </select>
+      </div>
       <div class="col-md-4">
         <label for="item_type" class="form-label">Type</label>
         <select class="form-select" name="item_type" id="item_type_select" style="width: 100%;">
@@ -1256,6 +1308,8 @@ $(document).on('submit', '#itemTypeCreateForm', function(e) {
             {% endif %}
          </select>
       </div>
+    </div>
+    <div class="row mb-2">
       <div class="col-md-4">
         <label for="brcd" class="form-label">Barcode<span class="text-danger">*</span></label>
          <input type="text" class="form-control" name="brcd" id="brcd" value="{% if brcd_value %}{{ brcd_value }}{% elif form.data.brcd %}{{ form.data.brcd }}{% elif item.barcode %}{{ item.barcode }}{% endif %}" required data-original-main-barcode="{% if brcd_value %}{{ brcd_value }}{% elif form.data.brcd %}{{ form.data.brcd }}{% elif item.barcode %}{{ item.barcode }}{% endif %}">

@@ -12,10 +12,14 @@ import csv
 
 def type_list(request):
     search_query = request.GET.get('q', '')
-    types = Type.objects.filter(status=True)
+    types = Type.objects.filter(status=True).select_related('subcategory', 'subcategory__category')
 
     if search_query:
-        types = types.filter(Q(type_name__icontains=search_query))
+        types = types.filter(
+            Q(type_name__icontains=search_query) |
+            Q(subcategory__subcategory_name__icontains=search_query) |
+            Q(subcategory__category__category_name__icontains=search_query)
+        )
 
     types = types.order_by('id')
 
@@ -23,10 +27,12 @@ def type_list(request):
         response = HttpResponse(content_type="text/csv")
         response["Content-Disposition"] = 'attachment; filename="types.csv"'
         writer = csv.writer(response)
-        writer.writerow(["Type Name"])
+        writer.writerow(["Type Name", "Subcategory", "Category"])
         for t in types:
             writer.writerow([
                 t.type_name or "",
+                t.subcategory.subcategory_name if t.subcategory else "",
+                t.subcategory.category.category_name if t.subcategory and t.subcategory.category else "",
             ])
         return response
 
