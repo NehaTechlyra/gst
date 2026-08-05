@@ -1,5 +1,5 @@
 """
-Company Model with 15-Day Trial System
+Company Model with 30-Day Trial System
 Integrated with existing LicenseKey model from company_settings
 
 DUAL DB SYNC: All trial fields and contact person fields are synced
@@ -174,7 +174,7 @@ class Company(models.Model):
     trial_expires_at = models.DateTimeField(
         null=True,
         blank=True,
-        help_text="When does the trial expire? (trial_started_at + 15 days)"
+        help_text="When does the trial expire? (trial_started_at + 30 days)"
     )
 
     trial_reminder_sent = models.BooleanField(
@@ -451,13 +451,13 @@ class Company(models.Model):
     def start_trial(self):
         """
         Called at signup (immediately after activate_trial).
-        Starts the 15-day countdown from signup date.
+        Starts the 30-day countdown from signup date.
         Has an internal guard so it never overwrites an existing start date.
         Saves to BOTH master DB and company DB.
         """
         if not self.trial_started_at:
             self.trial_started_at = datetime.now()
-            self.trial_expires_at = self.trial_started_at + timedelta(days=15)
+            self.trial_expires_at = self.trial_started_at + timedelta(days=30)
 
             fields = ['trial_started_at', 'trial_expires_at']
 
