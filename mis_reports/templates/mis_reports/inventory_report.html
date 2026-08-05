@@ -1,0 +1,200 @@
+{% extends 'website/index.html' %}
+{% load static %}
+
+{% block page_title %}Inventory MIS Report{% endblock page_title %}
+
+{% block content %}
+<div class="container-fluid py-4">
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <div>
+      <h1 class="h3 mb-1">Inventory MIS Report</h1>
+      <p class="text-muted mb-0">Inventory and stock analysis across warehouses, categories, and movement.</p>
+    </div>
+    <div>
+      {% if can_export %}
+      <a class="btn btn-sm btn-outline-secondary" href="?{{ export_query_string }}">Reload</a>
+      <a class="btn btn-sm btn-primary" href="{% if company_code %}{% url 'mis_inventory_report_export_csv' company_code=company_code %}{% else %}{% url 'mis_inventory_report_export_csv' %}{% endif %}?{{ export_query_string }}">Export CSV</a>
+      {% endif %}
+    </div>
+  </div>
+
+  {% include 'mis_reports/_filters.html' %}
+
+  <div class="card border-0 shadow-sm mb-3">
+    <div class="card-body">
+      <h2 class="h6">Warehouse Stock Summary</h2>
+      <div class="mb-3">
+        <canvas id="warehouseStockChart" height="120"></canvas>
+      </div>
+        <div class="col-md-3">
+          <div class="p-3 bg-light rounded">
+            <div class="text-muted small">Stock Value</div>
+            <div class="h4">₹{{ report.stock_value|floatformat:2 }}</div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="p-3 bg-light rounded">
+            <div class="text-muted small">Low Stock Items</div>
+            <div class="h4">{{ report.low_stock_items|length }}</div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="p-3 bg-light rounded">
+            <div class="text-muted small">Out of Stock Items</div>
+            <div class="h4">{{ report.out_of_stock_items|length }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-lg-6">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <h2 class="h6">Fast Moving Items</h2>
+          <div class="table-responsive">
+            <table class="table table-sm">
+              <thead>
+                <tr>
+                  <th>Item</th>
+                  <th>Quantity Sold</th>
+                  <th>Stock Qty</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for item in report.fast_moving_items %}
+                <tr>
+                  <td>{{ item.item_name }}</td>
+                  <td>{{ item.quantity_sold|floatformat:2 }}</td>
+                  <td>{{ item.total_quantity|floatformat:2 }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="3" class="text-muted">No fast moving items found.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-6">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <h2 class="h6">Slow Moving Items</h2>
+          <div class="table-responsive">
+            <table class="table table-sm">
+              <thead>
+                <tr>
+                  <th>Item</th>
+                  <th>Quantity Sold</th>
+                  <th>Stock Qty</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for item in report.slow_moving_items %}
+                <tr>
+                  <td>{{ item.item_name }}</td>
+                  <td>{{ item.quantity_sold|floatformat:2 }}</td>
+                  <td>{{ item.total_quantity|floatformat:2 }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="3" class="text-muted">No slow moving items found.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3 mt-3">
+    <div class="col-lg-6">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <h2 class="h6">Warehouse Stock Summary</h2>
+          <div class="table-responsive">
+            <table class="table table-sm">
+              <thead>
+                <tr>
+                  <th>Warehouse</th>
+                  <th>Total Quantity</th>
+                  <th>Stock Value</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for warehouse in report.warehouse_summary %}
+                <tr>
+                  <td>{{ warehouse.warehouse_name }}</td>
+                  <td>{{ warehouse.total_quantity|floatformat:2 }}</td>
+                  <td>₹{{ warehouse.stock_value|floatformat:2 }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="3" class="text-muted">No warehouse stock data available.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-6">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <h2 class="h6">Category Stock Summary</h2>
+          <div class="table-responsive">
+            <table class="table table-sm">
+              <thead>
+                <tr>
+                  <th>Category</th>
+                  <th>Total Quantity</th>
+                  <th>Stock Value</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for category in report.category_summary %}
+                <tr>
+                  <td>{{ category.category_name }}</td>
+                  <td>{{ category.total_quantity|floatformat:2 }}</td>
+                  <td>₹{{ category.stock_value|floatformat:2 }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="3" class="text-muted">No category stock data available.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock content %}
+
+{% block scripts %}
+<script>
+(function(){
+  const labels = [
+    {% for w in report.warehouse_summary %}
+      "{{ w.warehouse_name }}"{% if not forloop.last %}, {% endif %}
+    {% endfor %}
+  ];
+  const data = [
+    {% for w in report.warehouse_summary %}
+      {{ w.stock_value|default:0 }}{% if not forloop.last %}, {% endif %}
+    {% endfor %}
+  ];
+  const el = document.getElementById('warehouseStockChart');
+  if (el && labels.length){
+    new Chart(el.getContext('2d'), {
+      type: 'bar',
+      data: { labels: labels, datasets: [{ label: 'Stock Value', data: data, backgroundColor: 'rgba(153,102,255,0.2)', borderColor: 'rgba(153,102,255,1)' }] },
+      options: { responsive: true, maintainAspectRatio: false }
+    });
+  }
+})();
+</script>
+{% endblock scripts %}

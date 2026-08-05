@@ -1,0 +1,162 @@
+{% extends 'website/index.html' %}
+{% load static %}
+
+{% block page_title %}Purchase MIS Report{% endblock page_title %}
+
+{% block content %}
+<div class="container-fluid py-4">
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <div>
+      <h1 class="h3 mb-1">Purchase MIS Report</h1>
+      <p class="text-muted mb-0">High-level purchase reporting with vendor, item, and trend analysis.</p>
+    </div>
+    <div>
+      {% if can_export %}
+      <a class="btn btn-sm btn-outline-secondary" href="?{{ export_query_string }}">Reload</a>
+      <a class="btn btn-sm btn-primary" href="{% if company_code %}{% url 'mis_purchase_report_export_csv' company_code=company_code %}{% else %}{% url 'mis_purchase_report_export_csv' %}{% endif %}?{{ export_query_string }}">Export CSV</a>
+      {% endif %}
+    </div>
+  </div>
+
+  {% include 'mis_reports/_filters.html' %}
+
+  <div class="card border-0 shadow-sm mb-3">
+    <div class="card-body">
+      <div class="row gy-3">
+        <div class="col-md-3">
+          <div class="p-3 bg-light rounded">
+            <div class="text-muted small">Total Purchases</div>
+            <div class="h4">₹{{ report.total_purchases|floatformat:2 }}</div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="p-3 bg-light rounded">
+            <div class="text-muted small">Purchase Count</div>
+            <div class="h4">{{ report.purchase_count }}</div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="p-3 bg-light rounded">
+            <div class="text-muted small">Outstanding Purchases</div>
+            <div class="h4">₹{{ report.outstanding_purchases|floatformat:2 }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-lg-6">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <h2 class="h6">Top Vendors</h2>
+          <div class="table-responsive">
+            <table class="table table-sm">
+              <thead>
+                <tr>
+                  <th>Vendor</th>
+                  <th>Bills</th>
+                  <th>Total Purchases</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for vendor in report.top_vendors %}
+                <tr>
+                  <td>{{ vendor.vendor_name }}</td>
+                  <td>{{ vendor.bill_count }}</td>
+                  <td>₹{{ vendor.total_purchases|floatformat:2 }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="3" class="text-muted">No vendors found for this period.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-6">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <h2 class="h6">Top Purchased Items</h2>
+          <div class="table-responsive">
+            <table class="table table-sm">
+              <thead>
+                <tr>
+                  <th>Item</th>
+                  <th>Quantity</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for item in report.top_items %}
+                <tr>
+                  <td>{{ item.item_name }}</td>
+                  <td>{{ item.quantity_purchased|floatformat:2 }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="2" class="text-muted">No purchased items found for this period.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card border-0 shadow-sm mt-3">
+    <div class="card-body">
+      <h2 class="h6">Monthly Purchase Trend</h2>
+      <div class="mb-3">
+        <canvas id="purchaseTrendChart" height="120"></canvas>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-sm">
+          <thead>
+            <tr>
+              <th>Month</th>
+              <th>Total Purchases</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for trend in report.monthly_trend %}
+            <tr>
+              <td>{{ trend.month }}</td>
+              <td>₹{{ trend.total_purchases|floatformat:2 }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="2" class="text-muted">No purchase trend data available.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock content %}
+
+{% block scripts %}
+<script>
+(function(){
+  const labels = [
+    {% for t in report.monthly_trend %}
+      "{{ t.month }}"{% if not forloop.last %}, {% endif %}
+    {% endfor %}
+  ];
+  const data = [
+    {% for t in report.monthly_trend %}
+      {{ t.total_purchases|default:0 }}{% if not forloop.last %}, {% endif %}
+    {% endfor %}
+  ];
+  const el = document.getElementById('purchaseTrendChart');
+  if (el && labels.length){
+    new Chart(el.getContext('2d'), {
+      type: 'bar',
+      data: { labels: labels, datasets: [{ label: 'Total Purchases', data: data, backgroundColor: 'rgba(255,99,132,0.2)', borderColor: 'rgba(255,99,132,1)' }] },
+      options: { responsive: true, maintainAspectRatio: false }
+    });
+  }
+})();
+</script>
+{% endblock scripts %}

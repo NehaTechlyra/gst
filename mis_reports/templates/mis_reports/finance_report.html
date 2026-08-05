@@ -1,0 +1,236 @@
+{% extends 'website/index.html' %}
+{% load static %}
+
+{% block page_title %}Finance MIS Report{% endblock page_title %}
+
+{% block content %}
+<div class="container-fluid py-4">
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <div>
+      <h1 class="h3 mb-1">Finance MIS Report</h1>
+      <p class="text-muted mb-0">Key finance metrics with profit, cash, receivables, payables, and account group summaries.</p>
+    </div>
+    <div>
+      {% if can_export %}
+      <a class="btn btn-sm btn-outline-secondary" href="?{{ export_query_string }}">Reload</a>
+      <a class="btn btn-sm btn-primary" href="{% if company_code %}{% url 'mis_finance_report_export_csv' company_code=company_code %}{% else %}{% url 'mis_finance_report_export_csv' %}{% endif %}?{{ export_query_string }}">Export CSV</a>
+      {% endif %}
+    </div>
+  </div>
+
+  {% include 'mis_reports/_filters.html' %}
+
+  <div class="card border-0 shadow-sm mb-3">
+    <div class="card-body">
+      <div class="row gy-3">
+        <div class="col-md-3">
+          <div class="p-3 bg-light rounded">
+            <div class="text-muted small">Total Income</div>
+            <div class="h4">₹{{ report.total_income|floatformat:2 }}</div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="p-3 bg-light rounded">
+            <div class="text-muted small">Total Expenses</div>
+            <div class="h4">₹{{ report.total_expenses|floatformat:2 }}</div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="p-3 bg-light rounded">
+            <div class="text-muted small">Net Profit / Loss</div>
+            <div class="h4">₹{{ report.net_profit_loss|floatformat:2 }}</div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="p-3 bg-light rounded">
+            <div class="text-muted small">Receivables</div>
+            <div class="h4">₹{{ report.receivables_balance|floatformat:2 }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-lg-6">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <h2 class="h6">Cash Summary</h2>
+          <div class="table-responsive">
+            <table class="table table-sm">
+              <tbody>
+                <tr>
+                  <td>Opening Cash</td>
+                  <td>₹{{ report.cash_summary.opening_cash|floatformat:2 }}</td>
+                </tr>
+                <tr>
+                  <td>Closing Cash</td>
+                  <td>₹{{ report.cash_summary.closing_cash|floatformat:2 }}</td>
+                </tr>
+                <tr>
+                  <td>Net Cash Change</td>
+                  <td>₹{{ report.cash_summary.net_change|floatformat:2 }}</td>
+                </tr>
+                <tr>
+                  <td>Payables</td>
+                  <td>₹{{ report.payables_balance|floatformat:2 }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-6">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <h2 class="h6">Stock & Inventory</h2>
+          <div class="table-responsive">
+            <table class="table table-sm">
+              <tbody>
+                <tr>
+                  <td>Opening Stock</td>
+                  <td>₹{{ report.opening_stock|floatformat:2 }}</td>
+                </tr>
+                <tr>
+                  <td>Closing Stock</td>
+                  <td>₹{{ report.closing_stock|floatformat:2 }}</td>
+                </tr>
+                <tr>
+                  <td>Stock Adjustments</td>
+                  <td>₹{{ report.stock_adjustments|floatformat:2 }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3 mt-3">
+    <div class="col-lg-6">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+            <h2 class="h6">Monthly Profit Trend</h2>
+            <div class="mb-3">
+              <canvas id="financeProfitChart" height="120"></canvas>
+            </div>
+          <div class="table-responsive">
+            <table class="table table-sm">
+              <thead>
+                <tr>
+                  <th>Month</th>
+                  <th>Sales</th>
+                  <th>Purchases</th>
+                  <th>Profit</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for row in report.monthly_profit_trend %}
+                <tr>
+                  <td>{{ row.month }}</td>
+                  <td>₹{{ row.sales|floatformat:2 }}</td>
+                  <td>₹{{ row.purchases|floatformat:2 }}</td>
+                  <td>₹{{ row.profit|floatformat:2 }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="4" class="text-muted">No monthly profit trend data available.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-6">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <h2 class="h6">Account Group Summaries</h2>
+          <div class="table-responsive mb-3">
+            <table class="table table-sm">
+              <thead>
+                <tr>
+                  <th>Income Group</th>
+                  <th>Balance</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for group in report.income_groups %}
+                <tr>
+                  <td>{{ group.name }}</td>
+                  <td>₹{{ group.balance|floatformat:2 }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="2" class="text-muted">No income groups available.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          <div class="table-responsive">
+            <table class="table table-sm">
+              <thead>
+                <tr>
+                  <th>Expense Group</th>
+                  <th>Balance</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for group in report.expense_groups %}
+                <tr>
+                  <td>{{ group.name }}</td>
+                  <td>₹{{ group.balance|floatformat:2 }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="2" class="text-muted">No expense groups available.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock content %}
+
+{% block scripts %}
+<script>
+(function(){
+  const labels = [
+    {% for r in report.monthly_profit_trend %}
+      "{{ r.month }}"{% if not forloop.last %}, {% endif %}
+    {% endfor %}
+  ];
+  const sales = [
+    {% for r in report.monthly_profit_trend %}
+      {{ r.sales|default:0 }}{% if not forloop.last %}, {% endif %}
+    {% endfor %}
+  ];
+  const purchases = [
+    {% for r in report.monthly_profit_trend %}
+      {{ r.purchases|default:0 }}{% if not forloop.last %}, {% endif %}
+    {% endfor %}
+  ];
+  const profit = [
+    {% for r in report.monthly_profit_trend %}
+      {{ r.profit|default:0 }}{% if not forloop.last %}, {% endif %}
+    {% endfor %}
+  ];
+  const el = document.getElementById('financeProfitChart');
+  if (el && labels.length){
+    new Chart(el.getContext('2d'), {
+      type: 'line',
+      data: { labels: labels, datasets: [
+        { label: 'Sales', data: sales, borderColor: 'rgba(75,192,192,1)', backgroundColor: 'rgba(75,192,192,0.2)', tension:0.2 },
+        { label: 'Purchases', data: purchases, borderColor: 'rgba(255,159,64,1)', backgroundColor: 'rgba(255,159,64,0.2)', tension:0.2 },
+        { label: 'Profit', data: profit, borderColor: 'rgba(54,162,235,1)', backgroundColor: 'rgba(54,162,235,0.1)', tension:0.2 }
+      ] },
+      options: { responsive: true, maintainAspectRatio: false }
+    });
+  }
+})();
+</script>
+{% endblock scripts %}

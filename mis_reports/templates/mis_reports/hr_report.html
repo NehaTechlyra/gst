@@ -1,0 +1,100 @@
+{% extends 'website/index.html' %}
+{% load static %}
+
+{% block page_title %}HR MIS Report{% endblock page_title %}
+
+{% block content %}
+<div class="container-fluid py-4">
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <div>
+      <h1 class="h3 mb-1">HR MIS Report</h1>
+      <p class="text-muted mb-0">Period: {{ period }}</p>
+    </div>
+    <div>
+      {% if can_export %}
+        <a href="{% url 'mis_hr_report_export_csv' company_code %}?{{ export_query_string }}&export=1" class="btn btn-sm btn-outline-secondary">Export CSV</a>
+      {% endif %}
+    </div>
+  </div>
+
+  {% include 'mis_reports/_filters.html' %}
+
+  <div class="row g-3 mb-3">
+    <div class="col-md-6">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body">
+          <h5 class="mb-2">Employees</h5>
+          <ul class="mb-0">
+            <li>Total employees: {{ report.total_employees }}</li>
+            <li>Active: {{ report.active_employees }}</li>
+            <li>Inactive: {{ report.inactive_employees }}</li>
+            <li>Distinct leave types: {{ report.leave_type_count }}</li>
+            <li>Employees with leave associations: {{ report.employees_with_leaves }}</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-6">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body">
+          <h5 class="mb-2">Department Summary</h5>
+          <div class="mb-3">
+            <canvas id="hrDepartmentChart" height="120"></canvas>
+          </div>
+          <ul class="mb-0">
+            {% for d in report.department_counts %}
+              <li>{{ d.department }}: {{ d.count }}</li>
+            {% empty %}
+              <li>No data</li>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card border-0 shadow-sm">
+    <div class="card-body">
+      <h5>Designation Summary</h5>
+      <div class="table-responsive">
+        <table class="table table-sm table-striped">
+          <thead><tr><th>Designation</th><th>Count</th></tr></thead>
+          <tbody>
+            {% for d in report.designation_counts %}
+            <tr><td>{{ d.designation }}</td><td>{{ d.count }}</td></tr>
+            {% empty %}
+            <tr><td colspan="2">No data</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock content %}
+
+{% block scripts %}
+<script>
+(function(){
+  const labels = [
+    {% for d in report.department_counts %}
+      "{{ d.department }}"{% if not forloop.last %}, {% endif %}
+    {% endfor %}
+  ];
+  const data = [
+    {% for d in report.department_counts %}
+      {{ d.count|default:0 }}{% if not forloop.last %}, {% endif %}
+    {% endfor %}
+  ];
+  const el = document.getElementById('hrDepartmentChart');
+  if (el && labels.length){
+    new Chart(el.getContext('2d'), {
+      type: 'bar',
+      data: { labels: labels, datasets: [{ label: 'Employees by Department', data: data, backgroundColor: 'rgba(54,162,235,0.2)', borderColor: 'rgba(54,162,235,1)' }] },
+      options: { responsive: true, maintainAspectRatio: false }
+    });
+  }
+})();
+</script>
+{% endblock scripts %}

@@ -65,6 +65,7 @@ INSTALLED_APPS = [
     'allowances',
     'journal',
     'expenses',
+    'mis_reports',
 ]
 INSTALLED_APPS += ['django_countries']
 MIDDLEWARE = [

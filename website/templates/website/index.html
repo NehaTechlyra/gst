@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+3<!DOCTYPE html>
 <html lang="en">
 
 <head>
@@ -817,6 +817,50 @@
                     {% endif %}
                     {% if request.user.is_superuser or 'Reports Cash Flow' in visible_modules %}
                     <li><a href="{% url 'cash_flow' %}" class="{% if request.resolver_match.url_name == 'cash_flow' %}active-link{% endif %}">Cash Flow</a></li>
+                    {% endif %}
+                </ul>
+            </li>
+            {% endwith %}
+            {% endif %}
+
+            {% if request.user.is_superuser or can_view_mis_dashboard or can_view_mis_sales or can_view_mis_purchase or can_view_mis_inventory or can_view_mis_finance or can_view_mis_crm or can_view_mis_hr or can_view_mis_expense or can_export_mis_reports %}
+            {% with active_urls="mis_reports_dashboard mis_sales_report mis_purchase_report mis_inventory_report" %}
+            <li class="{% if request.resolver_match.url_name in active_urls.split %}showMenu{% endif %}">
+                <div class="icon-link">
+                    <a class="{% if request.resolver_match.url_name in active_urls.split %}active-link{% endif %}">
+                        <i class='bx bx-pie-chart-alt-2'></i>
+                        <span class="link_name">MIS Reports</span>
+                    </a>
+                    <i class='bx bxs-chevron-down arrow'></i>
+                </div>
+                <ul class="sub-menu">
+                    <li><a class="link_name">MIS Reports</a></li>
+                    {% if request.user.is_superuser or can_view_mis_dashboard %}
+                    <li><a href="{% if company_code %}{% url 'mis_reports_dashboard' company_code=company_code %}{% else %}{% url 'mis_reports_dashboard' %}{% endif %}" class="{% if request.resolver_match.url_name == 'mis_reports_dashboard' %}active-link{% endif %}">Dashboard</a></li>
+                    {% endif %}
+                    {% if request.user.is_superuser or can_view_mis_sales %}
+                    <li><a href="{% if company_code %}{% url 'mis_sales_report' company_code=company_code %}{% else %}{% url 'mis_sales_report' %}{% endif %}" class="{% if request.resolver_match.url_name == 'mis_sales_report' %}active-link{% endif %}">Sales</a></li>
+                    {% endif %}
+                    {% if request.user.is_superuser or can_view_mis_purchase %}
+                    <li><a href="{% if company_code %}{% url 'mis_purchase_report' company_code=company_code %}{% else %}{% url 'mis_purchase_report' %}{% endif %}" class="{% if request.resolver_match.url_name == 'mis_purchase_report' %}active-link{% endif %}">Purchase</a></li>
+                    {% endif %}
+                    {% if request.user.is_superuser or can_view_mis_inventory %}
+                    <li><a href="{% if company_code %}{% url 'mis_inventory_report' company_code=company_code %}{% else %}{% url 'mis_inventory_report' %}{% endif %}" class="{% if request.resolver_match.url_name == 'mis_inventory_report' %}active-link{% endif %}">Inventory</a></li>
+                    {% endif %}
+                    {% if request.user.is_superuser or can_view_mis_finance %}
+                    <li><a href="{% if company_code %}{% url 'mis_finance_report' company_code=company_code %}{% else %}{% url 'mis_finance_report' %}{% endif %}" class="{% if request.resolver_match.url_name == 'mis_finance_report' %}active-link{% endif %}">Finance</a></li>
+                    {% endif %}
+                    {% if request.user.is_superuser or can_view_mis_crm %}
+                    <li><a href="{% if company_code %}{% url 'mis_crm_report' company_code=company_code %}{% else %}{% url 'mis_crm_report' %}{% endif %}" class="{% if request.resolver_match.url_name == 'mis_crm_report' %}active-link{% endif %}">CRM</a></li>
+                    {% endif %}
+                    {% if request.user.is_superuser or can_view_mis_hr %}
+                    <li><a href="{% if company_code %}{% url 'mis_hr_report' company_code=company_code %}{% else %}{% url 'mis_hr_report' %}{% endif %}" class="{% if request.resolver_match.url_name == 'mis_hr_report' %}active-link{% endif %}">HR</a></li>
+                    {% endif %}
+                    {% if request.user.is_superuser or can_view_mis_expense %}
+                    <li><a href="{% if company_code %}{% url 'mis_expense_report' company_code=company_code %}{% else %}{% url 'mis_expense_report' %}{% endif %}" class="{% if request.resolver_match.url_name == 'mis_expense_report' %}active-link{% endif %}">Expenses</a></li>
+                    {% endif %}
+                    {% if request.user.is_superuser or can_export_mis_reports %}
+                    <li><a href="#">Export</a></li>
                     {% endif %}
                 </ul>
             </li>

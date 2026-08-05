@@ -1,0 +1,128 @@
+{% extends 'website/index.html' %}
+{% load static %}
+
+{% block page_title %}Expense MIS Report{% endblock page_title %}
+
+{% block content %}
+<div class="container-fluid py-4">
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <div>
+      <h1 class="h3 mb-1">Expense MIS Report</h1>
+      <p class="text-muted mb-0">Period: {{ period }}</p>
+    </div>
+    <div>
+      {% if can_export %}
+        <a href="{% url 'mis_expense_report_export_csv' company_code %}?{{ export_query_string }}&export=1" class="btn btn-sm btn-outline-secondary">Export CSV</a>
+      {% endif %}
+    </div>
+  </div>
+
+  {% include 'mis_reports/_filters.html' %}
+
+  <div class="row g-3 mb-3">
+    <div class="col-md-4">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body">
+          <h5 class="mb-2">Total Expenses</h5>
+          <p class="h4 mb-0">{{ report.total_expenses }}</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-8">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body">
+          <h5 class="mb-2">Top Expenses</h5>
+          <ul class="mb-0">
+    </div>
+
+    <div class="row g-3">
+      <div class="col-md-12">
+        <div class="card border-0 shadow-sm">
+          <div class="card-body">
+            <h5>Expense Chart</h5>
+            <!-- Placeholder for the expense chart -->
+            <div id="expense-chart"></div>
+          </div>
+        </div>
+      </div>
+            {% for e in report.highest_expenses %}
+              <li>{{ e.date }} - {{ e.vendor }} : {{ e.amount }}</li>
+            {% empty %}
+              <li>No expenses</li>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-md-6">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body">
+          <h5>Category-wise Expenses</h5>
+          <ul class="mb-0">
+            {% for c in report.category_wise %}
+              <li>{{ c.category }}: {{ c.total }}</li>
+            {% empty %}
+              <li>No data</li>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-6">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body">
+          <h5>Monthly Trend</h5>
+          <ul class="mb-0">
+            {% for m in report.monthly_trend %}
+              <li>{{ m.month }}: {{ m.total }}</li>
+            {% empty %}
+              <li>No data</li>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card border-0 shadow-sm mt-3">
+    <div class="card-body">
+      <h5>Approval Summary</h5>
+      <p>Approved: {{ report.approved_count }} &nbsp; Pending: {{ report.pending_count }}</p>
+    </div>
+  </div>
+</div>
+{% endblock content %}
+
+{% block scripts %}
+<script>
+(function(){
+  const labels = [
+    {% for m in report.monthly_trend %}
+      "{{ m.month }}"{% if not forloop.last %}, {% endif %}
+    {% endfor %}
+  ];
+  const data = [
+    {% for m in report.monthly_trend %}
+      {{ m.total|default:0 }}{% if not forloop.last %}, {% endif %}
+    {% endfor %}
+  ];
+  const el = document.getElementById('expense-chart');
+  if (el && labels.length){
+    // create a canvas inside placeholder
+    const canvas = document.createElement('canvas');
+    canvas.height = 120;
+    el.appendChild(canvas);
+    new Chart(canvas.getContext('2d'), {
+      type: 'line',
+      data: { labels: labels, datasets: [{ label: 'Expenses', data: data, backgroundColor: 'rgba(255,206,86,0.2)', borderColor: 'rgba(255,206,86,1)', tension:0.2, fill:true }] },
+      options: { responsive: true, maintainAspectRatio: false }
+    });
+  }
+})();
+</script>
+{% endblock scripts %}
