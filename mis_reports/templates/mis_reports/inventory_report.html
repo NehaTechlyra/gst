@@ -1,13 +1,17 @@
 {% extends 'website/index.html' %}
 {% load static %}
 
+{% block exstyle %}
+{% include 'mis_reports/_report_styles.html' %}
+{% endblock exstyle %}
+
 {% block page_title %}Inventory MIS Report{% endblock page_title %}
 
 {% block content %}
 <div class="container-fluid py-4">
   <div class="d-flex align-items-center justify-content-between mb-3">
     <div>
-      <h1 class="h3 mb-1">Inventory MIS Report</h1>
+      {% comment %} <h1 class="h3 mb-1">Inventory MIS Report</h1> {% endcomment %}
       <p class="text-muted mb-0">Inventory and stock analysis across warehouses, categories, and movement.</p>
     </div>
     <div>
@@ -20,28 +24,29 @@
 
   {% include 'mis_reports/_filters.html' %}
 
-  <div class="card border-0 shadow-sm mb-3">
+  <div class="card mis-report-card border-0 shadow-sm mb-3">
     <div class="card-body">
-      <h2 class="h6">Warehouse Stock Summary</h2>
+      <h2 class="h6 mis-report-label">Inventory snapshot</h2>
       <div class="mb-3">
-        <canvas id="warehouseStockChart" height="120"></canvas>
+        <canvas id="warehouseStockChart" height="140"></canvas>
       </div>
+      <div class="row gy-3">
         <div class="col-md-3">
-          <div class="p-3 bg-light rounded">
-            <div class="text-muted small">Stock Value</div>
-            <div class="h4">₹{{ report.stock_value|floatformat:2 }}</div>
+          <div class="p-3 bg-light rounded mis-report-key-metric">
+            <div class="mis-report-label">Stock Value</div>
+            <div class="mis-report-value">₹{{ report.stock_value|floatformat:2 }}</div>
           </div>
         </div>
         <div class="col-md-3">
-          <div class="p-3 bg-light rounded">
-            <div class="text-muted small">Low Stock Items</div>
-            <div class="h4">{{ report.low_stock_items|length }}</div>
+          <div class="p-3 bg-light rounded mis-report-key-metric">
+            <div class="mis-report-label">Low Stock Items</div>
+            <div class="mis-report-value">{{ report.low_stock_items|length }}</div>
           </div>
         </div>
         <div class="col-md-3">
-          <div class="p-3 bg-light rounded">
-            <div class="text-muted small">Out of Stock Items</div>
-            <div class="h4">{{ report.out_of_stock_items|length }}</div>
+          <div class="p-3 bg-light rounded mis-report-key-metric">
+            <div class="mis-report-label">Out of Stock Items</div>
+            <div class="mis-report-value">{{ report.out_of_stock_items|length }}</div>
           </div>
         </div>
       </div>
@@ -50,11 +55,11 @@
 
   <div class="row g-3">
     <div class="col-lg-6">
-      <div class="card border-0 shadow-sm h-100">
+      <div class="card mis-report-card border-0 shadow-sm h-100">
         <div class="card-body">
-          <h2 class="h6">Fast Moving Items</h2>
-          <div class="table-responsive">
-            <table class="table table-sm">
+          <h2 class="h6 mis-report-label">Fast Moving Items</h2>
+          <div class="table-responsive mis-report-table">
+            <table class="table table-sm align-middle">
               <thead>
                 <tr>
                   <th>Item</th>
@@ -80,11 +85,11 @@
     </div>
 
     <div class="col-lg-6">
-      <div class="card border-0 shadow-sm h-100">
+      <div class="card mis-report-card border-0 shadow-sm h-100">
         <div class="card-body">
-          <h2 class="h6">Slow Moving Items</h2>
-          <div class="table-responsive">
-            <table class="table table-sm">
+          <h2 class="h6 mis-report-label">Slow Moving Items</h2>
+          <div class="table-responsive mis-report-table">
+            <table class="table table-sm align-middle">
               <thead>
                 <tr>
                   <th>Item</th>
@@ -112,11 +117,11 @@
 
   <div class="row g-3 mt-3">
     <div class="col-lg-6">
-      <div class="card border-0 shadow-sm h-100">
+      <div class="card mis-report-card border-0 shadow-sm h-100">
         <div class="card-body">
-          <h2 class="h6">Warehouse Stock Summary</h2>
-          <div class="table-responsive">
-            <table class="table table-sm">
+          <h2 class="h6 mis-report-label">Warehouse Stock Summary</h2>
+          <div class="table-responsive mis-report-table">
+            <table class="table table-sm align-middle">
               <thead>
                 <tr>
                   <th>Warehouse</th>
@@ -142,11 +147,11 @@
     </div>
 
     <div class="col-lg-6">
-      <div class="card border-0 shadow-sm h-100">
+      <div class="card mis-report-card border-0 shadow-sm h-100">
         <div class="card-body">
-          <h2 class="h6">Category Stock Summary</h2>
-          <div class="table-responsive">
-            <table class="table table-sm">
+          <h2 class="h6 mis-report-label">Category Stock Summary</h2>
+          <div class="table-responsive mis-report-table">
+            <table class="table table-sm align-middle">
               <thead>
                 <tr>
                   <th>Category</th>

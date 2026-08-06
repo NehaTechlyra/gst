@@ -1,23 +1,27 @@
 {% extends 'website/index.html' %}
 {% load static %}
 
+{% block exstyle %}
+{% include 'mis_reports/_report_styles.html' %}
+{% endblock exstyle %}
+
 {% block page_title %}MIS Reports{% endblock page_title %}
 
 {% block content %}
 <div class="container-fluid py-4">
-  <div class="d-flex align-items-center justify-content-between mb-3">
+  {% comment %} <div class="d-flex align-items-center justify-content-between mb-3">
     <div>
       <h1 class="h3 mb-1">MIS Reports</h1>
       <p class="text-muted mb-0">Management reporting dashboard will be built here in upcoming phases.</p>
     </div>
-  </div>
+  </div> {% endcomment %}
 
-  <div class="card border-0 shadow-sm mb-3">
+  <div class="card mis-report-card border-0 shadow-sm mb-3">
     <div class="card-body">
-      <h2 class="h5 mb-2">Shared filter state</h2>
+      {% comment %} <h2 class="h5 mb-2 mis-report-label">Shared filter state</h2>
       <p class="text-muted mb-3">
         This phase adds reusable date-range helpers for the MIS dashboard. The filter state is parsed from the request and preserved for export links.
-      </p>
+      </p> {% endcomment %}
       <form method="get" class="row g-2 align-items-end">
         <div class="col-md-3">
           <label class="form-label small">Period</label>
@@ -49,12 +53,12 @@
   <div class="row g-3 mb-3">
     {% for card in summary_cards %}
     <div class="col-xl-3 col-md-6">
-      <div class="card border-0 shadow-sm h-100">
+      <div class="card mis-summary-card border-0 shadow-sm h-100">
         <div class="card-body">
           <div class="d-flex justify-content-between align-items-start">
             <div>
-              <div class="text-muted small">{{ card.title }}</div>
-              <div class="h4 mb-1">{{ card.value }}</div>
+              <div class="mis-report-label">{{ card.title }}</div>
+              <div class="mis-report-value mb-1">{{ card.value }}</div>
             </div>
           </div>
           <p class="text-muted small mb-0 mt-2">{{ card.description }}</p>

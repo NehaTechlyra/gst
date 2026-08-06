@@ -1,13 +1,17 @@
 {% extends 'website/index.html' %}
 {% load static %}
 
+{% block exstyle %}
+{% include 'mis_reports/_report_styles.html' %}
+{% endblock exstyle %}
+
 {% block page_title %}Sales MIS Report{% endblock page_title %}
 
 {% block content %}
 <div class="container-fluid py-4">
   <div class="d-flex align-items-center justify-content-between mb-3">
     <div>
-      <h1 class="h3 mb-1">Sales MIS Report</h1>
+      {% comment %} <h1 class="h3 mb-1">Sales MIS Report</h1> {% endcomment %}
       <p class="text-muted mb-0">High-level sales reporting with customer, item, and trend analysis.</p>
     </div>
     <div>
@@ -20,31 +24,31 @@
 
   {% include 'mis_reports/_filters.html' %}
 
-  <div class="card border-0 shadow-sm mb-3">
+  <div class="card mis-report-card border-0 shadow-sm mb-3">
     <div class="card-body">
       <div class="row gy-3">
         <div class="col-md-3">
-          <div class="p-3 bg-light rounded">
-            <div class="text-muted small">Total Sales</div>
-            <div class="h4">₹{{ report.total_sales|floatformat:2 }}</div>
+          <div class="p-3 bg-light rounded mis-report-key-metric">
+            <div class="mis-report-label">Total Sales</div>
+            <div class="mis-report-value">₹{{ report.total_sales|floatformat:2 }}</div>
           </div>
         </div>
         <div class="col-md-3">
-          <div class="p-3 bg-light rounded">
-            <div class="text-muted small">Invoice Count</div>
-            <div class="h4">{{ report.invoice_count }}</div>
+          <div class="p-3 bg-light rounded mis-report-key-metric">
+            <div class="mis-report-label">Invoice Count</div>
+            <div class="mis-report-value">{{ report.invoice_count }}</div>
           </div>
         </div>
         <div class="col-md-3">
-          <div class="p-3 bg-light rounded">
-            <div class="text-muted small">Quotation Count</div>
-            <div class="h4">{{ report.quotation_count }}</div>
+          <div class="p-3 bg-light rounded mis-report-key-metric">
+            <div class="mis-report-label">Quotation Count</div>
+            <div class="mis-report-value">{{ report.quotation_count }}</div>
           </div>
         </div>
         <div class="col-md-3">
-          <div class="p-3 bg-light rounded">
-            <div class="text-muted small">Outstanding Sales</div>
-            <div class="h4">₹{{ report.outstanding_sales|floatformat:2 }}</div>
+          <div class="p-3 bg-light rounded mis-report-key-metric">
+            <div class="mis-report-label">Outstanding Sales</div>
+            <div class="mis-report-value">₹{{ report.outstanding_sales|floatformat:2 }}</div>
           </div>
         </div>
       </div>
@@ -55,9 +59,9 @@
     <div class="col-lg-6">
       <div class="card border-0 shadow-sm h-100">
         <div class="card-body">
-          <h2 class="h6">Top Customers</h2>
-          <div class="table-responsive">
-            <table class="table table-sm">
+          <h2 class="h6 mis-report-label">Top Customers</h2>
+          <div class="table-responsive mis-report-table">
+            <table class="table table-sm align-middle">
               <thead>
                 <tr>
                   <th>Customer</th>
@@ -85,9 +89,9 @@
     <div class="col-lg-6">
       <div class="card border-0 shadow-sm h-100">
         <div class="card-body">
-          <h2 class="h6">Top Selling Items</h2>
-          <div class="table-responsive">
-            <table class="table table-sm">
+          <h2 class="h6 mis-report-label">Top Selling Items</h2>
+          <div class="table-responsive mis-report-table">
+            <table class="table table-sm align-middle">
               <thead>
                 <tr>
                   <th>Item</th>
@@ -113,12 +117,12 @@
 
   <div class="card border-0 shadow-sm mt-3">
     <div class="card-body">
-      <h2 class="h6">Monthly Sales Trend</h2>
+      <h2 class="h6 mis-report-label">Monthly Sales Trend</h2>
       <div class="mb-3">
         <canvas id="salesTrendChart" height="120"></canvas>
       </div>
-      <div class="table-responsive">
-        <table class="table table-sm">
+      <div class="table-responsive mis-report-table">
+        <table class="table table-sm align-middle">
           <thead>
             <tr>
               <th>Month</th>

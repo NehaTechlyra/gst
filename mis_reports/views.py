@@ -324,9 +324,13 @@ def _build_purchase_report(start_date=None, end_date=None):
                 'bill_count': row['bill_count'],
             })
 
-        item_rows = BillItem.objects.filter(bill__in=bills).values(
-            'product__name',
-        ).annotate(
+        bill_items = BillItem.objects.select_related('product').all()
+        if start_date:
+            bill_items = bill_items.filter(bill__date__gte=start_date)
+        if end_date:
+            bill_items = bill_items.filter(bill__date__lte=end_date)
+
+        item_rows = bill_items.values('product__name').annotate(
             quantity_purchased=Coalesce(Sum('quantity'), Decimal('0.00')),
         ).order_by('-quantity_purchased')[:10]
 

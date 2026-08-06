@@ -1,13 +1,16 @@
 {% extends 'website/index.html' %}
 {% load static %}
 
+{% block exstyle %}
+{% include 'mis_reports/_report_styles.html' %}
+{% endblock exstyle %}
 {% block page_title %}Purchase MIS Report{% endblock page_title %}
 
 {% block content %}
 <div class="container-fluid py-4">
   <div class="d-flex align-items-center justify-content-between mb-3">
     <div>
-      <h1 class="h3 mb-1">Purchase MIS Report</h1>
+      {% comment %} <h1 class="h3 mb-1">Purchase MIS Report</h1> {% endcomment %}
       <p class="text-muted mb-0">High-level purchase reporting with vendor, item, and trend analysis.</p>
     </div>
     <div>
@@ -20,25 +23,25 @@
 
   {% include 'mis_reports/_filters.html' %}
 
-  <div class="card border-0 shadow-sm mb-3">
+  <div class="card mis-report-card border-0 shadow-sm mb-3">
     <div class="card-body">
       <div class="row gy-3">
         <div class="col-md-3">
-          <div class="p-3 bg-light rounded">
-            <div class="text-muted small">Total Purchases</div>
-            <div class="h4">₹{{ report.total_purchases|floatformat:2 }}</div>
+          <div class="p-3 bg-light rounded mis-report-key-metric">
+            <div class="mis-report-label">Total Purchases</div>
+            <div class="mis-report-value">₹{{ report.total_purchases|floatformat:2 }}</div>
           </div>
         </div>
         <div class="col-md-3">
-          <div class="p-3 bg-light rounded">
-            <div class="text-muted small">Purchase Count</div>
-            <div class="h4">{{ report.purchase_count }}</div>
+          <div class="p-3 bg-light rounded mis-report-key-metric">
+            <div class="mis-report-label">Purchase Count</div>
+            <div class="mis-report-value">{{ report.purchase_count }}</div>
           </div>
         </div>
         <div class="col-md-3">
-          <div class="p-3 bg-light rounded">
-            <div class="text-muted small">Outstanding Purchases</div>
-            <div class="h4">₹{{ report.outstanding_purchases|floatformat:2 }}</div>
+          <div class="p-3 bg-light rounded mis-report-key-metric">
+            <div class="mis-report-label">Outstanding Purchases</div>
+            <div class="mis-report-value">₹{{ report.outstanding_purchases|floatformat:2 }}</div>
           </div>
         </div>
       </div>
