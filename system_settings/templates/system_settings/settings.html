@@ -2150,7 +2150,7 @@ label[for="backup-enabled"] {
                 <a class="side-nav-link" data-other-index="4">
                     <span class="icon-group"><i class="bi bi-box-seam"></i> Stock Management</span>
                 </a>
-                
+                <a class="side-nav-link" data-other-index="5">
                     <span class="icon-group"><i class="bi bi-three-dots"></i> Other</span>
                 </a>
             </div>
@@ -2518,7 +2518,7 @@ label[for="backup-enabled"] {
 
                 <!-- BACKUP PANEL -->
                 <!-- OTHER PANEL -->
-                <div class="template-group" data-other-step="4">
+                <div class="template-group" data-other-step="5">
                     <h1 class="template-section-title">Other</h1>
 
                     <form method="POST" action="{% url 'prefix_update' %}" id="other-settings-form">
@@ -2539,7 +2539,7 @@ label[for="backup-enabled"] {
                                 <div class="col-md-12 mb-3">
                                     <div class="form-check form-switch">
                                         <input class="form-check-input prefix-input" type="checkbox" role="switch" id="other-show-base-summary" name="show_base_transaction_summary" {% if show_base_transaction_summary %}checked{% endif %} disabled>
-                                        <label class="form-check-label" for="other-show-base-summary">Show base transaction summary — Controls visibility of the block with id="base-transaction-summary" on relevant pages.</label>
+                                        <label class="form-check-label" for="other-show-base-summary">Show base transaction summary — Controls visibility of the block "Base Currency Transaction" on relevant pages.</label>
                                     </div>
                                 </div>
                             </div>

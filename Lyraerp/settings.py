@@ -251,8 +251,8 @@ STOCK_MANAGEMENT_ON_DELIVERY = True
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'lyraerp-indian2',
-        'USER': 'root',
+        'NAME': 'lyramasterdb',
+        'USER': 'lyrafour-user',
         'PASSWORD': 'Tiger#2024',
         'HOST': 'localhost',
         'PORT': '3306',
