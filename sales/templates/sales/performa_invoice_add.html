@@ -1532,6 +1532,7 @@ document.addEventListener('DOMContentLoaded', function() {
       </div>
     </div>
 
+    {% if show_base_transaction_summary %}
     <!-- ===== BASE CURRENCY TRANSACTION - RESTYLED TO MATCH TOTALS SECTION ===== -->
     <div class="totals-section" id="base-transaction-summary"
          data-base-symbol="{{ company_base_currency_symbol|default:"₹" }}"
@@ -1604,6 +1605,7 @@ document.addEventListener('DOMContentLoaded', function() {
       </div>
 
     </div>
+    {% endif %}
     <!-- ===== END BASE CURRENCY TRANSACTION ===== -->
 
     <div class="notes-box">

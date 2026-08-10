@@ -1700,6 +1700,7 @@ def purchase_order_add(request):
                 # ✅ Fetch TDS and TCS for quotation_edit template
         'tds_tax_master_items': TdsMaster.objects.filter(company=company, is_active=True),
         'tcs_tax_master_items': TcsMaster.objects.filter(company=company, is_active=True),
+        'show_base_transaction_summary': bool(getattr(company, 'show_base_transaction_summary', True)),
     })
 
 
@@ -2869,6 +2870,7 @@ def purchase_order_edit(request, pk):
                 'company_tax_type': _get_purchase_company_tax_type(request),
                 'debug_post_keys': list(post_data.keys()) if isinstance(post_data, dict) or hasattr(post_data, 'keys') else [],
                 'debug_post': debug_post_map,
+                'show_base_transaction_summary': bool(getattr(_get_company_for_request(request), 'show_base_transaction_summary', True)),
             }
             try:
                 company = _get_company_for_request(request)
@@ -3933,6 +3935,7 @@ def bill_add(request):
         # ✅ Fetch TDS and TCS for quotation_edit template
         'tds_tax_master_items': TdsMaster.objects.filter(company=company, is_active=True),
         'tcs_tax_master_items': TcsMaster.objects.filter(company=company, is_active=True),
+        'show_base_transaction_summary': bool(getattr(company, 'show_base_transaction_summary', True)),
         
     })
 
@@ -5182,6 +5185,7 @@ def bill_edit(request, pk):
                 # ✅ Fetch TDS and TCS for quotation_edit template
         'tds_tax_master_items': TdsMaster.objects.filter(company=company, is_active=True),
         'tcs_tax_master_items': TcsMaster.objects.filter(company=company, is_active=True),
+        'show_base_transaction_summary': bool(getattr(company, 'show_base_transaction_summary', True)),
     }
     try:
         company = _get_company_for_request(request)

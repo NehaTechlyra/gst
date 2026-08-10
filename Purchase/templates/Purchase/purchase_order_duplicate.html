@@ -1709,6 +1709,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
       </div>
     </div>
+    {% if show_base_transaction_summary %}
     <!-- ===== BASE CURRENCY TRANSACTION - RESTYLED TO MATCH TOTALS SECTION ===== -->
     <div class="totals-section" id="base-transaction-summary"
          data-base-symbol="{{ company_base_currency_symbol|default:"&#x20B9;" }}"
@@ -1735,6 +1736,7 @@ document.addEventListener('DOMContentLoaded', function() {
         </span>
         <span id="base-transaction-arrow" style="color:#7d7cad; font-size:0.9em;">▲</span>
       </div>
+    {% endif %}
 
       <!-- Collapsible body -->
       <div id="base-transaction-body">

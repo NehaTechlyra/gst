@@ -325,8 +325,10 @@ def settings_page(request):
     try:
         current_company = Company.objects.using(db_alias).first()
         auto_load_cash_customer = bool(getattr(current_company, 'auto_load_cash_customer', False)) if current_company else False
+        show_base_transaction_summary = bool(getattr(current_company, 'show_base_transaction_summary', True)) if current_company else True
     except Exception:
         auto_load_cash_customer = False
+        show_base_transaction_summary = True
 
     # --------------------------------------------------------
     # 8️⃣ BACKUP SETTINGS
@@ -536,6 +538,7 @@ def settings_page(request):
         "can_view_other": can_view_other(request.user),
         "can_edit_other": can_edit_other(request.user),
         "auto_load_cash_customer": auto_load_cash_customer,
+        "show_base_transaction_summary": show_base_transaction_summary,
     }
 
     # --------------------------------------------------------
@@ -1401,6 +1404,14 @@ def prefix_update(request):
                 company_obj.save(using=db_alias, update_fields=['auto_load_cash_customer'])
         except Exception:
             # Non-fatal: continue even if saving this flag fails
+            pass
+        try:
+            show_summary = request.POST.get('show_base_transaction_summary') == 'on'
+            company_obj = Company.objects.using(db_alias).first()
+            if company_obj is not None:
+                company_obj.show_base_transaction_summary = show_summary
+                company_obj.save(using=db_alias, update_fields=['show_base_transaction_summary'])
+        except Exception:
             pass
 
         messages.success(request, 'Prefixes updated successfully.')

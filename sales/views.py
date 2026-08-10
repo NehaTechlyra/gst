@@ -427,6 +427,7 @@ def quotation_add(request):
         'company_base_currency_code': base_currency_code,
         'tds_tax_master_items': tds_tax_master_items,
         'tcs_tax_master_items': tcs_tax_master_items,
+        'show_base_transaction_summary': bool(getattr(resolved_company, 'show_base_transaction_summary', True)),
     })
 
 #updt by neha on 6-02-26 for listing companies
@@ -5566,6 +5567,7 @@ def quotation_edit(request, pk):
         #  ¢‚¬„¢ƒÆ’¢‚‚¢ƒÆ’†€™ƒ¢¢€š¬‚¦ƒÆ’‚¢ƒ¢¢‚¬Å¡‚¬ƒ€¦¢‚¬Å“š‚¢ƒÆ’‚¢ƒ¢¢€š¬…¡ƒ€š‚¬ƒÆ’¢‚‚¦ Fetch TDS and TCS for quotation_edit template
         'tds_tax_master_items': TdsMaster.objects.filter(company=company, is_active=True),
         'tcs_tax_master_items': TcsMaster.objects.filter(company=company, is_active=True),
+        'show_base_transaction_summary': bool(getattr(_get_company_for_request(request), 'show_base_transaction_summary', True)),
     }
     
     return render(request, 'sales/quotation_duplicate.html', context)
@@ -6482,6 +6484,7 @@ def order_add(request):
         'company_base_currency_code': company_base_currency_code,
         'tds_tax_master_items': tds_tax_master_items,
         'tcs_tax_master_items': tcs_tax_master_items,
+        'show_base_transaction_summary': bool(getattr(_get_company_for_request(request), 'show_base_transaction_summary', True)),
     })
 
 def _extract_line_items(post_data, prd_brcd_map):
@@ -8104,6 +8107,7 @@ def order_edit(request, pk):
         #  ¢‚¬„¢ƒÆ’¢‚‚¢ƒÆ’†€™ƒ¢¢€š¬‚¦ƒÆ’‚¢ƒ¢¢‚¬Å¡‚¬ƒ€¦¢‚¬Å“š‚¢ƒÆ’‚¢ƒ¢¢€š¬…¡ƒ€š‚¬ƒÆ’¢‚‚¦ Fetch TDS and TCS for order_edit template
         'tds_tax_master_items': TdsMaster.objects.filter(company=_get_company_for_request(request), is_active=True),
         'tcs_tax_master_items': TcsMaster.objects.filter(company=_get_company_for_request(request), is_active=True),
+        'show_base_transaction_summary': bool(getattr(_get_company_for_request(request), 'show_base_transaction_summary', True)),
     }
     if readonly:
         for form in sales_formset.forms:
@@ -10470,6 +10474,7 @@ def inv_add(request):
         'company_base_currency_code': base_currency_code,
         'tds_tax_master_items': tds_tax_master_items,
         'tcs_tax_master_items': tcs_tax_master_items,
+        'show_base_transaction_summary': bool(getattr(company, 'show_base_transaction_summary', True)),
     })
 
 
@@ -18575,6 +18580,7 @@ def performa_inv_add(request):
         'fx_rate_date': None,
         'tds_tax_master_items': tds_tax_master_items,
         'tcs_tax_master_items': tcs_tax_master_items,
+        'show_base_transaction_summary': bool(getattr(company, 'show_base_transaction_summary', True)),
     })
 
 

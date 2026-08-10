@@ -2536,6 +2536,12 @@ label[for="backup-enabled"] {
                                         <label class="form-check-label" for="other-auto-load-cash">Automatically load Cash Customer — When enabled, new sales quotations, orders and invoices will default to the Cash Customer.</label>
                                     </div>
                                 </div>
+                                <div class="col-md-12 mb-3">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input prefix-input" type="checkbox" role="switch" id="other-show-base-summary" name="show_base_transaction_summary" {% if show_base_transaction_summary %}checked{% endif %} disabled>
+                                        <label class="form-check-label" for="other-show-base-summary">Show base transaction summary — Controls visibility of the block with id="base-transaction-summary" on relevant pages.</label>
+                                    </div>
+                                </div>
                             </div>
 
                             <div class="d-flex gap-2 mt-2">

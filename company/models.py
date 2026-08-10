@@ -124,6 +124,11 @@ class Company(models.Model):
         help_text="Automatically select the Cash Customer when creating new sales quotations, orders, invoices, or performa invoices.",
     )
 
+    show_base_transaction_summary = models.BooleanField(
+        default=True,
+        help_text="If enabled, show the base transaction summary block (div#base-transaction-summary) in relevant pages.",
+    )
+
     # ============================================================================
     # SETUP TRACKING
     # ============================================================================

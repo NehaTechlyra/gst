@@ -1671,6 +1671,7 @@ document.addEventListener('DOMContentLoaded', function() {
       </div>
     </div>
 
+    {% if show_base_transaction_summary %}
     <!-- BASE CURRENCY TRANSACTION SUMMARY -->
     <div class="totals-section" id="base-transaction-summary"
          data-base-symbol="{{ company_base_currency_symbol|default:'&#x20B9;' }}"
@@ -1738,6 +1739,7 @@ document.addEventListener('DOMContentLoaded', function() {
         </div>
       </div>
     </div>
+    {% endif %}
 
     <div class="notes-box">
       <label for="notes">Notes</label>
