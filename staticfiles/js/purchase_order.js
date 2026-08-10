@@ -9,6 +9,48 @@ let lastvendorSearchTerm = '';
 let lastpurchasepersonSearchTerm = '';
 let lastItemSearchTerm = '';
 
+
+
+function initializeLocationSelectsIn(root) {
+  function runInit() {
+    if (window.LyraLocationSelects) {
+      window.LyraLocationSelects.init(root || document);
+    }
+  }
+
+  if (window.LyraLocationSelects) {
+    runInit();
+    return;
+  }
+
+  if (window.__lyraLocationSelectsLoading) {
+    document.addEventListener('lyra:location-selects-ready', runInit, { once: true });
+    return;
+  }
+
+  window.__lyraLocationSelectsLoading = true;
+  document.addEventListener('lyra:location-selects-ready', runInit, { once: true });
+  var script = document.createElement('script');
+  script.src = '/static/js/location_selects.js';
+  script.onload = function () {
+    window.__lyraLocationSelectsLoading = false;
+    document.dispatchEvent(new Event('lyra:location-selects-ready'));
+  };
+  script.onerror = function () {
+    window.__lyraLocationSelectsLoading = false;
+    console.warn('Could not load location_selects.js');
+  };
+  document.head.appendChild(script);
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', function () {
+    initializeLocationSelectsIn(document);
+  });
+} else {
+  initializeLocationSelectsIn(document);
+}
+
 const DEFAULT_CURRENCY_SYMBOL = '₹';
 const currencySymbolMap = new Map();
 let currencySymbolMapReady = false;
@@ -81,6 +123,72 @@ function getBaseCurrencySymbol() {
   );
 }
 
+function ensureBaseCurrencyVisibilityStyles() {
+  if (document.getElementById('base-currency-visibility-styles')) return;
+  const style = document.createElement('style');
+  style.id = 'base-currency-visibility-styles';
+  style.textContent = [
+    '.lyra-hide-base-currency .base-price,',
+    '.lyra-hide-base-currency .base-currency-column {',
+    '  display: none !important;',
+    '}'
+  ].join('\n');
+  document.head.appendChild(style);
+}
+
+function getSelectedDocumentCurrencyCode() {
+  const docSel = document.getElementById('document_currency');
+  if (!docSel) return '';
+  const selected = docSel.options && docSel.selectedIndex >= 0 ? docSel.options[docSel.selectedIndex] : null;
+  return String(
+    (selected && selected.dataset && selected.dataset.code) ||
+    (selected && selected.getAttribute('data-code')) ||
+    (selected && selected.textContent) ||
+    ''
+  ).trim().split(/\s+/)[0].toUpperCase();
+}
+
+function getBaseCurrencyCode() {
+  const summary = document.getElementById('base-transaction-summary');
+  const docSel = document.getElementById('document_currency');
+  return String(
+    (summary && summary.dataset && summary.dataset.baseCode) ||
+    (docSel && docSel.dataset && docSel.dataset.baseCode) ||
+    (document.querySelector('.base-currency-code') || {}).textContent ||
+    ''
+  ).trim().split(/\s+/)[0].toUpperCase();
+}
+
+function shouldHideBaseCurrencyUi() {
+  const docCode = getSelectedDocumentCurrencyCode();
+  const baseCode = getBaseCurrencyCode();
+  const fxRate = parseFloat($('#fx_rate_to_base').val());
+  if (docCode && baseCode) return docCode === baseCode;
+  return Number.isFinite(fxRate) && Math.abs(fxRate - 1) < 0.000001;
+}
+
+function markBaseCurrencyTableHeaders() {
+  $('table').each(function () {
+    const $table = $(this);
+    if (!$table.find('.base-price').length) return;
+    $table.find('thead th').each(function () {
+      const label = $(this).text().replace(/\s+/g, ' ').trim().toLowerCase();
+      if (label === 'base currency price' || label.indexOf('price (base') !== -1 || label.indexOf('amount (base') !== -1) {
+        $(this).addClass('base-currency-column');
+      }
+    });
+  });
+}
+
+function updateBaseCurrencyVisibility() {
+  ensureBaseCurrencyVisibilityStyles();
+  markBaseCurrencyTableHeaders();
+  const hideBase = shouldHideBaseCurrencyUi();
+  document.body.classList.toggle('lyra-hide-base-currency', hideBase);
+  $('#exchange_rate_container, #exchange_rate_date_container, #base_currency_transaction_section, #base-transaction-summary')
+    .toggle(!hideBase);
+}
+
 function updateFlatDiscountSymbols() {
   const symbol = getDocumentCurrencySymbol();
   document.querySelectorAll('.discount-type option[value="flat"], select.rupee-sign option[value="flat"]').forEach(function (option) {
@@ -112,6 +220,7 @@ function refreshCurrencyUi() {
   if (docSel && mirror) {
     mirror.value = docSel.value || '';
   }
+  updateBaseCurrencyVisibility();
   try { calculateTotals(); } catch (e) { }
 }
 
@@ -411,11 +520,8 @@ function updateExchangeRate(vendorId, currencyId, date, opts = {}) {
 
         // Update UI based on currency
         const baseCode = $('#exchange_rate_container .base-currency-code').first().text();
-        if (data.currency_code === baseCode) {
-          $('#exchange_rate_container, #exchange_rate_date_container, #base_currency_transaction_section').hide();
-        } else {
-          $('#exchange_rate_container, #exchange_rate_date_container, #base_currency_transaction_section').show();
-        }
+        updateBaseCurrencyVisibility();
+
 
         // Update symbols
         if (data.currency_symbol) {
@@ -480,6 +586,7 @@ $(document).on('change', '#document_currency', function (e) {
 });
 
 $(document).on('input change', '#fx_rate_to_base', function () {
+  updateBaseCurrencyVisibility();
   refreshPricesFromBase();
 });
 
@@ -1609,12 +1716,7 @@ function updateRowAmount($row) {
   let price = parseFloat($row.find('.price').val()) || 0;
   console.log("price" + price);
 
-  let gstval = $row.find('.gstinclude').val();
-  let opriceval = parseFloat($row.find('.o_price').val()) || 0;
   let taxPref = $row.data('tax-pref') || '';
-
-
-  console.log("gst included:" + gstval);
 
 
   // let baseAmount = qty * price;
@@ -1629,7 +1731,8 @@ function updateRowAmount($row) {
 
   let discount = parseFloat($row.find('.item-discount').val()) || 0;
   let discountType = $row.find('.discount-type').val(); // 'flat' or 'percent'
-  let baseAmount = qty * price;
+  let baseAmount = getDocumentTaxableLineAmount($row, qty, price, taxRate);
+  let grossAmount = getDocumentGrossLineAmount($row, qty, price, baseAmount, taxRate);
 
   // // Apply discount based on type
   //   let discountedAmount;
@@ -1653,8 +1756,9 @@ function updateRowAmount($row) {
   let taxAmount = discountedAmount * (taxRate / 100);
   console.log("taxAmount" + taxAmount);
 
-  //NEW: Amount column shows ONLY discounted amount (no tax)
-  let displayAmount = discountedAmount;
+  let displayAmount = isGstIncludedRow($row)
+    ? applyLineDiscount(grossAmount, discount, discountType)
+    : discountedAmount;
 
   // let  finalAmount;
   // if(gstval == 'true')
@@ -1701,11 +1805,54 @@ function isGstIncludedValue(rawValue) {
   return normalized === 'true' || normalized === '1' || normalized === 'yes';
 }
 
+function isGstIncludedRow($row) {
+  return isGstIncludedValue($row.find('.gstinclude').val());
+}
+
+function getDocumentTaxableUnitPrice($row, visiblePrice, taxRate) {
+  if (!isGstIncludedRow($row)) return visiblePrice;
+
+  const fxRate = parseFloat($('#fx_rate_to_base').val()) || 1;
+  const oPriceBase = parseFloat($row.data('o_price_base'));
+  if (Number.isFinite(oPriceBase) && oPriceBase > 0 && fxRate > 0) {
+    return oPriceBase / fxRate;
+  }
+
+  const postedOPrice = parseFloat($row.find('.o_price').val());
+  if (Number.isFinite(postedOPrice) && postedOPrice > 0 && fxRate > 0) {
+    return postedOPrice / fxRate;
+  }
+
+  if (taxRate > 0) {
+    return visiblePrice / (1 + (taxRate / 100));
+  }
+  return visiblePrice;
+}
+
+function getDocumentTaxableLineAmount($row, qty, visiblePrice, taxRate) {
+  return qty * getDocumentTaxableUnitPrice($row, visiblePrice, taxRate);
+}
+
+function getDocumentGrossLineAmount($row, qty, visiblePrice, taxableLineAmount, taxRate) {
+  if (isGstIncludedRow($row)) {
+    const fxRate = parseFloat($('#fx_rate_to_base').val()) || 1;
+    const priceBase = parseFloat($row.data('price_base'));
+    if (Number.isFinite(priceBase) && priceBase > 0 && fxRate > 0) {
+      return qty * (priceBase / fxRate);
+    }
+    return qty * visiblePrice;
+  }
+  return taxableLineAmount + (taxableLineAmount * (taxRate || 0) / 100);
+}
+
 function getStoredBaseLineAmount($row, qty, documentLineAmount) {
   const fxRate = parseFloat($('#fx_rate_to_base').val()) || 1;
   const priceBase = parseFloat($row.data('price_base'));
   const oPriceBase = parseFloat($row.data('o_price_base'));
 
+  if (isGstIncludedRow($row) && Number.isFinite(oPriceBase) && oPriceBase > 0) {
+    return qty * oPriceBase;
+  }
   if (Number.isFinite(priceBase) && priceBase > 0) {
     return qty * priceBase;
   }
@@ -1757,7 +1904,23 @@ function calculateTotals() {
     //     discountedAmount = baseAmount - discount;
     // }
     // if (discountedAmount < 0) discountedAmount = 0;
+    var taxRate = 0;
+    if (taxPref !== 'non_taxable' && taxPref !== 'non_taxable') {
+      let $taxSelect = $row.find(".tax-select");
+      if ($taxSelect.length) {
+        let selected = $taxSelect.find(":selected");
+        if (selected.length) {
+          taxRate = parseFloat($(selected).data("rate")) || 0;
+        }
+      }
+    }
+    baseAmount = getDocumentTaxableLineAmount($row, qty, price, taxRate);
+    let grossAmount = getDocumentGrossLineAmount($row, qty, price, baseAmount, taxRate);
+    storedBaseAmount = getStoredBaseLineAmount($row, qty, baseAmount);
     let discountedAmount = applyLineDiscount(baseAmount, discount, discountType);
+    let displayAmount = isGstIncludedRow($row)
+      ? applyLineDiscount(grossAmount, discount, discountType)
+      : discountedAmount;
     let baseDiscountInput = discountType === 'percent' ? discount : (discount * fxRate);
     let baseDiscountedAmount = applyLineDiscount(storedBaseAmount, baseDiscountInput, discountType);
 
@@ -1772,7 +1935,7 @@ function calculateTotals() {
     // let $taxSelect = $(row).find(".tax-select");
     // let taxRate = 0;
     // Calculate tax
-    let taxRate = 0;
+    taxRate = taxRate || 0;
     let taxAmount = 0;
 
     if (taxPref !== 'non_taxable' && taxPref !== 'non_taxable') {
@@ -1814,7 +1977,7 @@ function calculateTotals() {
 
     // Update row amount cell - show only discounted amount (no tax)
     const rowSymbol = getDocumentCurrencySymbol();
-    row.querySelector(".amount").innerText = rowSymbol + ' ' + discountedAmount.toFixed(2);
+    row.querySelector(".amount").innerText = rowSymbol + ' ' + displayAmount.toFixed(2);
     // subtotal += discountedAmount;
     // totalTax += taxAmount;
   });
@@ -1876,8 +2039,26 @@ function calculateTotals() {
   let TotalDiscount = grandDiscountValue + totalDiscount;
   $('#discount-amount').text(symbol + ' ' + TotalDiscount.toFixed(2));
 
-  document.getElementById("grand-total").innerText = symbol + ' ' + grandTotal.toFixed(2);
-  document.getElementById('grandTotal').value = grandTotal.toFixed(2);
+  syncTdsTcsDefinitionState();
+  const tdsTcsType = document.querySelector('input[name="tds_tcs_type"]:checked')?.value || 'tds';
+  const tdsTcsRate = parseFloat(document.getElementById('tds_tcs_rate')?.value) || 0;
+  let tdsTcsAmount = 0;
+  if (tdsTcsRate > 0) {
+    tdsTcsAmount = grandTotal * tdsTcsRate / 100;
+  }
+  const tdsTcsSignedAmount = tdsTcsType === 'tds' ? -tdsTcsAmount : tdsTcsAmount;
+  let finalGrandTotalWithTdsTcs = grandTotal + tdsTcsSignedAmount;
+  if (finalGrandTotalWithTdsTcs < 0) finalGrandTotalWithTdsTcs = 0;
+
+  if (document.getElementById('tds-tcs-amount')) {
+    const sign = tdsTcsType === 'tds' ? '-' : '+';
+    document.getElementById('tds-tcs-amount').innerText = symbol + ' ' + sign + tdsTcsAmount.toFixed(2);
+  }
+  if (document.getElementById('tds_tcs_amount')) {
+    document.getElementById('tds_tcs_amount').value = tdsTcsAmount.toFixed(2);
+  }
+  document.getElementById('grand-total').innerText = symbol + ' ' + finalGrandTotalWithTdsTcs.toFixed(2);
+  document.getElementById('grandTotal').value = finalGrandTotalWithTdsTcs.toFixed(2);
 
   // Multi-currency calculation for base summary
   const baseSymbol = getBaseCurrencySymbol();
@@ -1890,6 +2071,10 @@ function calculateTotals() {
   }
   if (baseGrandDiscountValue > baseTotalBeforeDiscount) baseGrandDiscountValue = baseTotalBeforeDiscount;
   const baseTotal = baseTotalBeforeDiscount - baseGrandDiscountValue;
+  const baseTdsTcsAmount = tdsTcsRate > 0 ? (baseTotal * tdsTcsRate / 100) : 0;
+  const baseTdsTcsSignedAmount = tdsTcsType === 'tds' ? -baseTdsTcsAmount : baseTdsTcsAmount;
+  let baseGrandTotal = baseTotal + baseTdsTcsSignedAmount;
+  if (baseGrandTotal < 0) baseGrandTotal = 0;
   const baseTotalDiscount = baseItemDiscount + baseGrandDiscountValue;
 
   const baseSubtotalEl = document.getElementById('base-subtotal');
@@ -1897,6 +2082,8 @@ function calculateTotals() {
   const baseSgstEl = document.getElementById('base-tax-sgst');
   const baseVatEl = document.getElementById('base-tax-vat');
   const baseTotalDiscountEl = document.getElementById('base-total-discount');
+  const baseTdsTcsAmountEl = document.getElementById('base-tds-tcs-amount');
+  const baseTdsTcsLabelEl = document.getElementById('base-tds-tcs-label');
   const baseGrandTotalEl = document.getElementById('base-grand-total');
 
   const formatBase = (val) => baseSymbol + ' ' + (Number.isFinite(val) ? val : 0).toFixed(2);
@@ -1906,7 +2093,9 @@ function calculateTotals() {
   if (baseSgstEl) baseSgstEl.innerText = formatBase(baseTax / 2);
   if (baseVatEl) baseVatEl.innerText = formatBase(baseTax);
   if (baseTotalDiscountEl) baseTotalDiscountEl.innerText = formatBase(baseTotalDiscount);
-  if (baseGrandTotalEl) baseGrandTotalEl.innerText = formatBase(baseTotal);
+  if (baseTdsTcsLabelEl) baseTdsTcsLabelEl.innerText = tdsTcsType === 'tds' ? 'TDS Amount' : 'TCS Amount';
+  if (baseTdsTcsAmountEl) baseTdsTcsAmountEl.innerText = formatBase(baseTdsTcsAmount);
+  if (baseGrandTotalEl) baseGrandTotalEl.innerText = formatBase(baseGrandTotal);
 
 }
 
@@ -1914,11 +2103,125 @@ function calculateTotals() {
 // --- On qty or price change ---
 $('#items-table').on('input change', '.qty, .price, .item-discount, .discount-type', function () {
   let $row = $(this).closest('tr');
+
+  // When user edits visible document-currency price, update stored base price and hidden input
+  if ($(this).hasClass('price')) {
+    const docPrice = parseFloat($row.find('.price').val()) || 0;
+    const fx = parseFloat($('#fx_rate_to_base').val()) || 1;
+    const priceBase = docPrice * fx;
+    $row.data('price_base', priceBase);
+    $row.data('o_price_base', priceBase);
+    $row.find('.o_price').val(priceBase.toFixed(4));
+    try { setBasePriceDisplay($row, priceBase); } catch (e) { }
+  }
+
   updateRowAmount($row);
   calculateTotals();
 });
 
 $('#grand-discount, #grand-discount-type').on('input change', calculateTotals);
+
+function syncTdsTcsDefinitionState() {
+  const selectedType = document.querySelector('input[name="tds_tcs_type"]:checked')?.value || 'tds';
+  const tdsSelect = document.getElementById('tds_definition_select');
+  const tcsSelect = document.getElementById('tcs_definition_select');
+  const tdsManage = document.getElementById('tds_manage_button');
+  const tcsManage = document.getElementById('tcs_manage_button');
+  const tdsAdd = document.getElementById('tds_add_button');
+  const tcsAdd = document.getElementById('tcs_add_button');
+  const hiddenRate = document.getElementById('tds_tcs_rate');
+  const hiddenId = document.getElementById('tds_tcs_definition_id');
+
+  if (tdsSelect) {
+    tdsSelect.style.display = selectedType === 'tds' ? 'inline-block' : 'none';
+  }
+  if (tcsSelect) {
+    tcsSelect.style.display = selectedType === 'tcs' ? 'inline-block' : 'none';
+  }
+  if (tdsManage) {
+    tdsManage.style.display = selectedType === 'tds' ? 'inline-flex' : 'none';
+  }
+  if (tcsManage) {
+    tcsManage.style.display = selectedType === 'tcs' ? 'inline-flex' : 'none';
+  }
+  if (tdsAdd) {
+    tdsAdd.style.display = selectedType === 'tds' ? 'inline-flex' : 'none';
+  }
+  if (tcsAdd) {
+    tcsAdd.style.display = selectedType === 'tcs' ? 'inline-flex' : 'none';
+  }
+
+  let selectedOption = null;
+  let selectedValue = '';
+  
+  if (selectedType === 'tds' && tdsSelect) {
+    selectedValue = tdsSelect.value;
+    selectedOption = tdsSelect.options[tdsSelect.selectedIndex];
+  } else if (selectedType === 'tcs' && tcsSelect) {
+    selectedValue = tcsSelect.value;
+    selectedOption = tcsSelect.options[tcsSelect.selectedIndex];
+  }
+
+  // ✅ FIXED: Properly extract rate and ID from selected option
+  let rate = 0;
+  let taxId = selectedValue || '';
+  
+  if (selectedOption && selectedOption.value) {
+    // Try to get data-rate attribute first
+    if (selectedOption.dataset && selectedOption.dataset.rate) {
+      rate = parseFloat(selectedOption.dataset.rate) || 0;
+    }
+    // If we still don't have a rate, try to parse from text (fallback)
+    if (rate === 0 && selectedOption.text) {
+      const match = selectedOption.text.match(/\(([0-9.]+)%\)/);
+      if (match && match[1]) {
+        rate = parseFloat(match[1]) || 0;
+      }
+    }
+  }
+
+  // Debug logging
+  console.debug('syncTdsTcsDefinitionState - Type:', selectedType, 'Value:', selectedValue, 'Rate:', rate, 'Option:', selectedOption);
+
+  if (hiddenRate) {
+    hiddenRate.value = Number.isFinite(rate) ? rate : 0;
+  }
+  if (hiddenId) {
+    hiddenId.value = taxId;
+  }
+}
+
+// ✅ FIXED: Expose function globally so inline scripts can call it
+window.syncTdsTcsDefinitionState = syncTdsTcsDefinitionState;
+
+$(document).on('change', 'input[name="tds_tcs_type"], #tds_definition_select, #tcs_definition_select', function () {
+  syncTdsTcsDefinitionState();
+  calculateTotals();
+});
+
+// ✅ FIXED: Add Select2 event listeners for TDS/TCS selects (Select2 doesn't trigger 'change' event)
+$('#tds_definition_select').on('select2:select select2:clear', function () {
+  syncTdsTcsDefinitionState();
+  calculateTotals();
+});
+
+$('#tcs_definition_select').on('select2:select select2:clear', function () {
+  syncTdsTcsDefinitionState();
+  calculateTotals();
+});
+
+document.addEventListener('submit', function (e) {
+  if (!e.target || e.target.tagName !== 'FORM') {
+    return;
+  }
+  if (e.target.id === 'bill-form' || e.target.id === 'purchase-order-form' || e.target.closest('#bill-form') || e.target.closest('#purchase-order-form')) {
+    try {
+      syncTdsTcsDefinitionState();
+    } catch (err) {
+      console.warn('Failed to sync TDS/TCS before submit', err);
+    }
+  }
+});
 
 document.querySelectorAll('input[type="number"]').forEach(input => {
   input.addEventListener('focus', function () {
@@ -1927,6 +2230,14 @@ document.querySelectorAll('input[type="number"]').forEach(input => {
 });
 
 document.addEventListener("DOMContentLoaded", function () {
+  // ✅ FIXED: Initialize TDS/TCS state on page load (important for editing existing bills)
+  try {
+    syncTdsTcsDefinitionState();
+    calculateTotals();
+  } catch (err) {
+    console.warn('Failed to initialize TDS/TCS state on page load', err);
+  }
+
   // restoreFormData();
 
 
@@ -2594,6 +2905,162 @@ $(document).ready(function () {
     calculateTotals();
   });
 });
+
+//Barcode scanning of items 
+
+function getCompanyPrefixedUrl(path) {
+  var parts = window.location.pathname.split('/');
+  var first = parts[1] || '';
+  var modules = ['sales', 'purchase', 'inventory', 'PayTerms', 'Items', 'customer', 'vendor', 'user', 'crm', 'hr', 'masters'];
+  var prefix = modules.includes(first.toLowerCase()) ? '' : '/' + first;
+  return prefix + path;
+}
+
+function normalizeSalesItemForSelect(rawItem) {
+  var barcodeId = rawItem.b_id || '';
+  return {
+    id: String(rawItem.id) + '_' + barcodeId,
+    text: rawItem.name + (rawItem.unit ? ' ' + rawItem.unit : ''),
+    description: rawItem.sell_desc,
+    price: rawItem.sl_price,
+    gstinclude: rawItem.gstinclude,
+    o_price: rawItem.o_price,
+    uom: rawItem.unit,
+    tax_id: rawItem.tax_id,
+    tax_name: rawItem.tax_name,
+    tax_rate: rawItem.tax_rate,
+    tax_pref: rawItem.tax_pref,
+    barcode: rawItem.barcode,
+    b_id: barcodeId
+  };
+}
+
+function setBarcodeStatus(message, type) {
+  var status = document.getElementById('invoice-barcode-status');
+  if (!status) return;
+  status.textContent = message || '';
+  status.style.color = type === 'error' ? '#b42318' : '#198754';
+}
+
+function getActiveInvoiceRows() {
+  return $('#items-table tbody tr').filter(function () {
+    var deleteCheckbox = this.querySelector('input[type="checkbox"][name$="-DELETE"]');
+    return this.style.display !== 'none' && !(deleteCheckbox && deleteCheckbox.checked);
+  });
+}
+
+function findEmptyInvoiceRow() {
+  return getActiveInvoiceRows().filter(function () {
+    return !($(this).find('.item_select').val() || '').toString().trim();
+  }).first();
+}
+
+function ensureInvoiceItemRow() {
+  var $row = findEmptyInvoiceRow();
+  if ($row.length) return $row;
+  $('#add-item-btn').trigger('click');
+  return $('#items-table tbody tr:last');
+}
+
+function incrementExistingScannedRow(selectValue) {
+  var matched = null;
+  getActiveInvoiceRows().each(function () {
+    var $row = $(this);
+    if (($row.find('.item_select').val() || '').toString() === selectValue) {
+      matched = $row;
+      return false;
+    }
+  });
+
+  if (!matched) return false;
+
+  var $qty = matched.find('.qty');
+  var currentQty = parseFloat($qty.val()) || 0;
+  $qty.val((currentQty + 1).toFixed(2).replace(/\.00$/, ''));
+  updateRowAmount(matched);
+  calculateTotals();
+  return true;
+}
+
+function applyScannedItem(rawItem, scannedCode) {
+  var item = normalizeSalesItemForSelect(rawItem);
+
+  if (incrementExistingScannedRow(item.id)) {
+    setBarcodeStatus('Added 1 more: ' + item.text, 'success');
+    return;
+  }
+
+  var $row = ensureInvoiceItemRow();
+  var $select = $row.find('.item_select');
+  if (!$select.hasClass('select2-hidden-accessible')) {
+    initItemSelect($select);
+  }
+
+  var option = new Option(item.text, item.id, true, true);
+  $(option).data(item);
+  $select.append(option).val(item.id).trigger('change');
+  $select.trigger({
+    type: 'select2:select',
+    params: { data: item }
+  });
+
+  setBarcodeStatus('Added: ' + item.text, 'success');
+}
+
+function scanInvoiceBarcode() {
+  var input = document.getElementById('invoice-barcode-scan');
+  if (!input) return;
+  var barcode = (input.value || '').trim();
+  if (!barcode) {
+    setBarcodeStatus('Scan a barcode first.', 'error');
+    input.focus();
+    return;
+  }
+
+  setBarcodeStatus('Searching...', 'success');
+  $.ajax({
+    url: getCompanyPrefixedUrl('/sales/get_item_sales/'),
+    dataType: 'json',
+    data: { q: barcode },
+    success: function (items) {
+      var exactMatch = (items || []).find(function (item) {
+        return String(item.barcode || '').trim() === barcode;
+      });
+      if (!exactMatch) {
+        setBarcodeStatus('No active sales item found for barcode ' + barcode + '.', 'error');
+        input.select();
+        return;
+      }
+
+      applyScannedItem(exactMatch, barcode);
+      input.value = '';
+      input.focus();
+    },
+    error: function () {
+      setBarcodeStatus('Could not search barcode. Please try again.', 'error');
+      input.select();
+    }
+  });
+}
+
+$(document).on('keydown', '#invoice-barcode-scan', function (e) {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    scanInvoiceBarcode();
+  }
+});
+
+$(document).on('click', '#invoice-barcode-add', function () {
+  scanInvoiceBarcode();
+});
+
+$(function () {
+  var scanInput = document.getElementById('invoice-barcode-scan');
+  if (scanInput) {
+    setTimeout(function () { scanInput.focus(); }, 150);
+  }
+});
+//
 
 // Allow manual HSN update via the small link/button
 $(document).on('click', '.open-hsn-btn', function (e) {
@@ -3782,3 +4249,4 @@ $(document).ready(function () {
     refreshPricesFromBase();
   }, 1000);
 });
+
