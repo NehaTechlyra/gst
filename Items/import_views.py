@@ -271,6 +271,7 @@ def import_items_step3(request, company_code):
     rows      = request.session.get("imp_rows")
     mapping   = request.session.get("imp_mapping")
     duplicate = request.session.get("imp_duplicate", "skip")
+    company_db = getattr(request, 'company_db', 'default')
 
     if not (headers and rows is not None and mapping is not None):
         return redirect("import_items_step1", company_code=company_code)
@@ -343,25 +344,25 @@ def import_items_step3(request, company_code):
             """
             val = str(raw_val or "").strip()
             if not val:
-                default_unit = Unit.objects.filter(unit_name__iexact="pcs", status=True).first()
+                default_unit = Unit.objects.using(company_db).filter(unit_name__iexact="pcs", status=True).first()
                 if not default_unit:
-                    default_unit = Unit.objects.filter(unit_name__iexact="pcs").first()
+                    default_unit = Unit.objects.using(company_db).filter(unit_name__iexact="pcs").first()
                 if default_unit:
                     return str(default_unit.id)
-                default_unit = Unit.objects.create(unit_name="pcs", status=True)
+                default_unit = Unit.objects.using(company_db).create(unit_name="pcs", status=True)
                 created_units.add(default_unit.unit_name)
                 return str(default_unit.id)
 
             if val.isdigit():
                 return val
 
-            unit_obj = Unit.objects.filter(unit_name__iexact=val, status=True).first()
+            unit_obj = Unit.objects.using(company_db).filter(unit_name__iexact=val, status=True).first()
             if not unit_obj:
-                unit_obj = Unit.objects.filter(unit_name__iexact=val).first()
+                unit_obj = Unit.objects.using(company_db).filter(unit_name__iexact=val).first()
             if unit_obj:
                 return str(unit_obj.id)
 
-            unit_obj = Unit.objects.create(unit_name=val, status=True)
+            unit_obj = Unit.objects.using(company_db).create(unit_name=val, status=True)
             created_units.add(unit_obj.unit_name)
             return str(unit_obj.id)
 
@@ -376,13 +377,13 @@ def import_items_step3(request, company_code):
                 return None
 
             if val.isdigit():
-                brand_obj = Brand.objects.filter(id=int(val)).first()
+                brand_obj = Brand.objects.using(company_db).filter(id=int(val)).first()
                 if brand_obj:
                     return brand_obj
 
-            brand_obj = Brand.objects.filter(brand_name__iexact=val, status=True).first()
+            brand_obj = Brand.objects.using(company_db).filter(brand_name__iexact=val, status=True).first()
             if not brand_obj:
-                brand_obj = Brand.objects.filter(brand_name__iexact=val).first()
+                brand_obj = Brand.objects.using(company_db).filter(brand_name__iexact=val).first()
             if brand_obj:
                 return brand_obj
 
@@ -390,7 +391,7 @@ def import_items_step3(request, company_code):
             if request.user.is_authenticated:
                 create_kwargs["created_by"] = request.user
                 create_kwargs["updated_by"] = request.user
-            brand_obj = Brand.objects.create(**create_kwargs)
+            brand_obj = Brand.objects.using(company_db).create(**create_kwargs)
             created_brands.add(brand_obj.brand_name)
             print(f"Created new brand: {brand_obj.brand_name} (id: {brand_obj.id})")
             return brand_obj
@@ -406,13 +407,13 @@ def import_items_step3(request, company_code):
                 return None
 
             if val.isdigit():
-                category_obj = Category.objects.filter(id=int(val)).first()
+                category_obj = Category.objects.using(company_db).filter(id=int(val)).first()
                 if category_obj:
                     return category_obj
 
-            category_obj = Category.objects.filter(category_name__iexact=val, status=True).first()
+            category_obj = Category.objects.using(company_db).filter(category_name__iexact=val, status=True).first()
             if not category_obj:
-                category_obj = Category.objects.filter(category_name__iexact=val).first()
+                category_obj = Category.objects.using(company_db).filter(category_name__iexact=val).first()
             if category_obj:
                 return category_obj
 
@@ -420,7 +421,7 @@ def import_items_step3(request, company_code):
             if request.user.is_authenticated:
                 create_kwargs["created_by"] = request.user
                 create_kwargs["updated_by"] = request.user
-            category_obj = Category.objects.create(**create_kwargs)
+            category_obj = Category.objects.using(company_db).create(**create_kwargs)
             created_categories.add(category_obj.category_name)
             print(f"Created new category: {category_obj.category_name} (id: {category_obj.id})")
             return category_obj
@@ -436,13 +437,13 @@ def import_items_step3(request, company_code):
                 return None
 
             if val.isdigit():
-                type_obj = Type.objects.filter(id=int(val)).first()
+                type_obj = Type.objects.using(company_db).filter(id=int(val)).first()
                 if type_obj:
                     return type_obj
 
-            type_obj = Type.objects.filter(type_name__iexact=val, status=True).first()
+            type_obj = Type.objects.using(company_db).filter(type_name__iexact=val, status=True).first()
             if not type_obj:
-                type_obj = Type.objects.filter(type_name__iexact=val).first()
+                type_obj = Type.objects.using(company_db).filter(type_name__iexact=val).first()
             if type_obj:
                 return type_obj
 
@@ -450,7 +451,7 @@ def import_items_step3(request, company_code):
             if request.user.is_authenticated:
                 create_kwargs["created_by"] = request.user
                 create_kwargs["updated_by"] = request.user
-            type_obj = Type.objects.create(**create_kwargs)
+            type_obj = Type.objects.using(company_db).create(**create_kwargs)
             created_types.add(type_obj.type_name)
             print(f"Created new type: {type_obj.type_name} (id: {type_obj.id})")
             return type_obj
@@ -467,14 +468,14 @@ def import_items_step3(request, company_code):
                 return None
 
             if val.isdigit():
-                vendor_obj = Vendor.objects.filter(id=int(val)).first()
+                vendor_obj = Vendor.objects.using(company_db).filter(id=int(val)).first()
                 if vendor_obj:
                     return vendor_obj
             print("preferred vendor lookup fallback for:", val)
             # Try common name fields — adjust field names to match your Vendor model
             vendor_obj = (
-                Vendor.objects.filter(email__iexact=val).first()
-                or Vendor.objects.filter(vendor_code__iexact=val).first()
+                Vendor.objects.using(company_db).filter(email__iexact=val).first()
+                or Vendor.objects.using(company_db).filter(vendor_code__iexact=val).first()
             )
             if vendor_obj:
                 return vendor_obj
@@ -482,7 +483,7 @@ def import_items_step3(request, company_code):
             nonlocal vendor_display_map
             if vendor_display_map is None:
                 vendor_display_map = {}
-                for candidate in Vendor.objects.all():
+                for candidate in Vendor.objects.using(company_db).all():
                     display_name = str(candidate).strip().lower()
                     if display_name:
                         vendor_display_map.setdefault(display_name, candidate)
@@ -506,7 +507,7 @@ def import_items_step3(request, company_code):
                 return None
 
             # Try exact name match first
-            obj = TaxGroup.objects.filter(group_name__iexact=val).first()
+            obj = TaxGroup.objects.using(company_db).filter(group_name__iexact=val).first()
             if obj:
                 return obj
 
@@ -514,7 +515,7 @@ def import_items_step3(request, company_code):
             try:
                 rate = Decimal(val)
                 # Match TaxGroups that contain at least one Tax with this rate
-                obj = TaxGroup.objects.filter(taxes__rate=rate).distinct().first()
+                obj = TaxGroup.objects.using(company_db).filter(taxes__rate=rate).distinct().first()
                 if obj:
                     return obj
             except InvalidOperation:
@@ -534,14 +535,14 @@ def import_items_step3(request, company_code):
                 return None
 
             # Try exact name match first
-            obj = Tax.objects.filter(taxname__iexact=val).first()
+            obj = Tax.objects.using(company_db).filter(taxname__iexact=val).first()
             if obj:
                 return obj
 
             # Try matching by rate
             try:
                 rate = Decimal(val)
-                obj = Tax.objects.filter(rate=rate).first()
+                obj = Tax.objects.using(company_db).filter(rate=rate).first()
                 if obj:
                     return obj
             except InvalidOperation:
@@ -560,13 +561,13 @@ def import_items_step3(request, company_code):
             if not val:
                 return None
             if val.isdigit():
-                obj = Barcode.objects.filter(id=int(val)).first()
+                obj = Barcode.objects.using(company_db).filter(id=int(val)).first()
                 if obj:
                     return obj
             return (
-                Barcode.objects.filter(barcode__iexact=val).first()
-                or Barcode.objects.filter(code__iexact=val).first()
-                or Barcode.objects.filter(barcode_number__iexact=val).first()
+                Barcode.objects.using(company_db).filter(barcode__iexact=val).first()
+                or Barcode.objects.using(company_db).filter(code__iexact=val).first()
+                or Barcode.objects.using(company_db).filter(barcode_number__iexact=val).first()
             )
 
 
@@ -587,7 +588,7 @@ def import_items_step3(request, company_code):
                 intra_obj  = to_taxgroup_obj(m.get("intra_tax", ""))
                 inter_obj  = to_tax_obj(m.get("inter_tax_group", ""))
                 barcode_obj = to_barcode_obj(m.get("barcode", ""))
-                exists = Item.objects.filter(name__iexact=name).first()
+                exists = Item.objects.using(company_db).filter(name__iexact=name).first()
                 existing_preferred_vendor = exists.preferred_vendor if exists else None
 
                 if exists and duplicate == "skip":
@@ -692,7 +693,7 @@ def import_items_step3(request, company_code):
                 if not exists:
                     obj.id = None  # ensure clean insert
 
-                obj.save()
+                obj.save(using=company_db)
 
                 if exists:
                     updated_count += 1

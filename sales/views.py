@@ -447,6 +447,7 @@ def customer_detail_ajax(request, pk):
             'name': c.payment_terms.name if c.payment_terms else '',
             'days': c.payment_terms.days if c.payment_terms else None,
         } if c.payment_terms_id else None,
+        'is_cash_customer': (getattr(c, 'customer_code', '') or '').strip().upper() == 'CASH',
     }
     print("shipping data:",shipping)
 

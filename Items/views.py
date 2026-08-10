@@ -1335,11 +1335,11 @@ def add_item(request):
                 
                 try:
                     op_rate_decimal = Decimal(str(op_rate))
-                    if op_rate_decimal <= 0:
+                    if op_rate_decimal < 0:
                         messages.error(
                             request,
                             f"❌ INVALID: Opening Stock Rate\n\n"
-                            f"Opening Stock Rate must be greater than 0.\n"
+                            f"Opening Stock Rate must be a positive number.\n"
                             f"You entered: {op_rate}"
                         )
                         context = _build_add_item_context(
