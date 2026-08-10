@@ -111,6 +111,11 @@ class Company(models.Model):
         help_text="When enabled, scheduled fetches will populate ExchangeRate rows from configured feeds",
     )
 
+    auto_load_cash_customer = models.BooleanField(
+        default=False,
+        help_text="Automatically select the Cash Customer when creating new sales quotations, orders, invoices, or performa invoices.",
+    )
+
     # ============================================================================
     # SETUP TRACKING
     # ============================================================================

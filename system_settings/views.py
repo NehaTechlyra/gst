@@ -321,6 +321,12 @@ def settings_page(request):
     sales_invoice_prefix = InvoicePrefix.objects.using(db_alias).first()
     purchase_order_prefix = PurchaseOrderPrefix.objects.using(db_alias).first()
     purchase_bill_prefix = BillPrefix.objects.using(db_alias).first()
+    # Load company-specific flags (tenant DB)
+    try:
+        current_company = Company.objects.using(db_alias).first()
+        auto_load_cash_customer = bool(getattr(current_company, 'auto_load_cash_customer', False)) if current_company else False
+    except Exception:
+        auto_load_cash_customer = False
 
     # --------------------------------------------------------
     # 8️⃣ BACKUP SETTINGS
@@ -505,6 +511,7 @@ def settings_page(request):
         "can_create_period_lock": can_create_period_lock(request.user),
         "can_view_other": can_view_other(request.user),
         "can_edit_other": can_edit_other(request.user),
+        "auto_load_cash_customer": auto_load_cash_customer,
     }
 
     # --------------------------------------------------------
@@ -1360,6 +1367,17 @@ def prefix_update(request):
         set_prefix(InvoicePrefix,        'sales_invoice_prefix')
         set_prefix(PurchaseOrderPrefix,  'purchase_order_prefix')
         set_prefix(BillPrefix,           'purchase_bill_prefix')
+
+        # Save company-level boolean for auto-loading cash customer
+        try:
+            auto_load = request.POST.get('auto_load_cash_customer') == 'on'
+            company_obj = Company.objects.using(db_alias).first()
+            if company_obj is not None:
+                company_obj.auto_load_cash_customer = auto_load
+                company_obj.save(using=db_alias, update_fields=['auto_load_cash_customer'])
+        except Exception:
+            # Non-fatal: continue even if saving this flag fails
+            pass
 
         messages.success(request, 'Prefixes updated successfully.')
         settings_url = get_company_redirect_url(request, 'settings_page')
