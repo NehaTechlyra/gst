@@ -6,6 +6,7 @@ from django.contrib.auth import get_user_model
 
 from django.db import IntegrityError
 from django.db.models.signals import post_save
+from django.db.models import Q
 from user.models import User
 from sales.models import SalesPerson
 
@@ -62,19 +63,84 @@ def sync_delete_to_master(sender, instance, using=None, **kwargs):
 
 @receiver(post_save, sender=User)
 def create_salesperson_for_user(sender, instance, created, **kwargs):
+    """Ensure a SalesPerson exists for every newly created User.
+
+    - Runs only on created users.
+    - Uses the same DB as the User instance when possible (multi-db/tenant-aware).
+    - If a matching SalesPerson already exists (by email or exact name), update its contact fields.
+    - Logs failures but does not interrupt user creation.
+    """
     if not created:
         return
 
-    # from crm.models import SalesPerson
-
-    logger.info(f"[SIGNAL FIRED] Creating SalesPerson for user {instance.usr_name}")
-
+    logger.info("[SIGNAL FIRED] Creating/updating SalesPerson for user %s", getattr(instance, 'usr_name', None))
     try:
-        sp = SalesPerson.objects.using(instance._state.db or 'default').create(
-            name=instance.usr_fname or instance.usr_name,
-            email=instance.usr_mail,
-            phone=instance.usr_phn,
-        )
-        logger.info(f"[SALESPERSON CREATED] id={sp.pk} on db={instance._state.db}")
-    except Exception as e:
-        logger.exception(f"[SALESPERSON CREATE FAILED] for user {instance.usr_name}: {e}")
+        db_alias = getattr(getattr(instance, '_state', None), 'db', None) or 'default'
+
+        # Build matching criteria: prefer email, fall back to full name/username
+        email = (getattr(instance, 'usr_mail', None) or '').strip() or None
+        name_candidates = []
+        try:
+            fname = getattr(instance, 'usr_fname', None) or ''
+            lname = getattr(instance, 'usr_lname', None) or getattr(instance, 'usr_lname', None) or getattr(instance, 'usr_name', '')
+            full = ' '.join([p for p in (fname, lname) if p]).strip()
+        except Exception:
+            full = getattr(instance, 'usr_name', '') or ''
+        if full:
+            name_candidates.append(full)
+        username = getattr(instance, 'usr_name', None) or getattr(instance, 'username', None)
+        if username and username not in name_candidates:
+            name_candidates.append(username)
+
+        # Try to find existing SalesPerson by email or name in the same DB
+        sp = None
+        if email:
+            sp = SalesPerson.objects.using(db_alias).filter(email__iexact=email).first()
+
+        if not sp and name_candidates:
+            # exact name match (case-insensitive)
+            q = Q()
+            for n in name_candidates:
+                q |= Q(name__iexact=n)
+            sp = SalesPerson.objects.using(db_alias).filter(q).first()
+
+        # Create or update
+        if sp:
+            changed = False
+            # update email/phone if missing or different
+            if email and (not getattr(sp, 'email', None) or sp.email.lower() != email.lower()):
+                sp.email = email
+                changed = True
+            phone = getattr(instance, 'usr_phn', None) or getattr(instance, 'phone', None)
+            if phone and (not getattr(sp, 'phone', None) or str(sp.phone).strip() != str(phone).strip()):
+                sp.phone = phone
+                changed = True
+            if changed:
+                try:
+                    sp.save(using=db_alias)
+                    logger.info("[SALESPERSON UPDATED] id=%s on db=%s", sp.pk, db_alias)
+                except Exception:
+                    logger.exception("Failed to update SalesPerson for user %s", getattr(instance, 'usr_name', None))
+        else:
+            # create new SalesPerson
+            try:
+                SalesPerson.objects.using(db_alias).create(
+                    name=full or (username or ''),
+                    email=email,
+                    phone=(getattr(instance, 'usr_phn', None) or getattr(instance, 'phone', None) or None),
+                )
+                logger.info("[SALESPERSON CREATED] for user %s on db=%s", getattr(instance, 'usr_name', None), db_alias)
+            except IntegrityError:
+                # Unique constraint on email or similar — try without email to avoid crash
+                try:
+                    SalesPerson.objects.using(db_alias).create(
+                        name=full or (username or ''),
+                        phone=(getattr(instance, 'usr_phn', None) or getattr(instance, 'phone', None) or None),
+                    )
+                    logger.info("[SALESPERSON CREATED (no-email)] for user %s on db=%s", getattr(instance, 'usr_name', None), db_alias)
+                except Exception:
+                    logger.exception("[SALESPERSON CREATE FAILED after IntegrityError] for user %s", getattr(instance, 'usr_name', None))
+            except Exception:
+                logger.exception("[SALESPERSON CREATE FAILED] for user %s", getattr(instance, 'usr_name', None))
+    except Exception:
+        logger.exception("Unexpected error while creating/updating SalesPerson for user %s", getattr(instance, 'usr_name', None))
