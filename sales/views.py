@@ -83,6 +83,44 @@ from django.contrib import messages
 logger = logging.getLogger(__name__)
 
 
+def _get_current_salesperson(request):
+    """Return a SalesPerson instance matching the current logged-in user, if any.
+
+    Try matching by email first, then by common fullname/username fallbacks.
+    """
+    try:
+        if not getattr(request, 'user', None):
+            return None
+        db_alias = getattr(request, 'company_db', 'default')
+        # try common email attributes
+        user_email = getattr(request.user, 'email', None) or getattr(request.user, 'usr_mail', None)
+        if user_email:
+            sp = SalesPerson.objects.using(db_alias).filter(email__iexact=(user_email or '')).first()
+            if sp:
+                return sp
+
+        # try full name / username fallbacks
+        full_name = ''
+        try:
+            if callable(getattr(request.user, 'get_full_name', None)):
+                full_name = request.user.get_full_name() or ''
+        except Exception:
+            full_name = ''
+
+        if not full_name:
+            full_name = ' '.join(filter(None, [getattr(request.user, 'first_name', ''), getattr(request.user, 'last_name', '')])).strip()
+        if not full_name:
+            full_name = getattr(request.user, 'username', None) or getattr(request.user, 'usr_name', None) or ''
+
+        if full_name:
+            sp = SalesPerson.objects.using(db_alias).filter(name__iexact=full_name).first()
+            if sp:
+                return sp
+    except Exception:
+        logger.debug('Failed to resolve current SalesPerson for user', exc_info=True)
+    return None
+
+
 def _post_tds_tcs_journal_line(journal, document, using, sequence, posting_role):
     tds_tcs_type = str(getattr(document, 'tds_tcs_type', '') or '').strip().lower()
     if tds_tcs_type not in ('tds', 'tcs'):
@@ -382,9 +420,17 @@ def quotation_add(request):
         cash_customer = None
         if auto_load:
             cash_customer = Customer.objects.using(db_alias).filter(customer_code__iexact='CASH').first()
-        quotation_form = SalesQuotationForm(company=company, initial={'customer': cash_customer.pk if cash_customer else None})
+        sp = _get_current_salesperson(request)
+        initial = {'customer': cash_customer.pk if cash_customer else None}
+        if sp:
+            initial['sales_person'] = sp.pk
+        quotation_form = SalesQuotationForm(company=company, initial=initial)
     except Exception:
-        quotation_form = SalesQuotationForm(company=company)
+        sp = _get_current_salesperson(request)
+        initial = {}
+        if sp:
+            initial['sales_person'] = sp.pk
+        quotation_form = SalesQuotationForm(company=company, initial=initial if initial else None)
     ItemFormSet = modelformset_factory(Item, form=ItemForm, extra=0)
     item_formset = ItemFormSet(queryset=Item.objects.none())
     # Create a formset for SalesQuotationItem if you plan multiple items
@@ -5423,7 +5469,11 @@ def quotation_edit(request, pk):
     else:
         existing_items_qs = SalesQuotationItem.objects.filter(Sales_quotation=quote)
         sales_formset = SalesQuotationItemFormSet(queryset=existing_items_qs)
-        quotation_form = SalesQuotationForm(instance=quote, company=company)
+        sp = _get_current_salesperson(request)
+        if not getattr(quote, 'sales_person', None) and sp:
+            quotation_form = SalesQuotationForm(instance=quote, company=company, initial={'sales_person': sp.pk})
+        else:
+            quotation_form = SalesQuotationForm(instance=quote, company=company)
         # #print("existing_items_qs:", existing_items_qs)
         item_display_list = []
 
@@ -6441,9 +6491,17 @@ def order_add(request):
         cash_customer = None
         if auto_load:
             cash_customer = Customer.objects.using(db_alias).filter(customer_code__iexact='CASH').first()
-        order_form = SalesOrderForm(initial={'customer': cash_customer.pk if cash_customer else None})
+        sp = _get_current_salesperson(request)
+        initial = {'customer': cash_customer.pk if cash_customer else None}
+        if sp:
+            initial['sales_person'] = sp.pk
+        order_form = SalesOrderForm(initial=initial)
     except Exception:
-        order_form = SalesOrderForm()
+        sp = _get_current_salesperson(request)
+        initial = {}
+        if sp:
+            initial['sales_person'] = sp.pk
+        order_form = SalesOrderForm(initial=initial if initial else None)
     ItemFormSet = modelformset_factory(Item, form=ItemForm, extra=0)
     item_formset = ItemFormSet(queryset=Item.objects.none())
     # Create a formset for SalesQuotationItem if you plan multiple items
@@ -7957,7 +8015,11 @@ def order_edit(request, pk):
     else:
         existing_items_qs = SalesOrderItem.objects.filter(sales_order=order)
         sales_formset = SalesOrderItemFormSet(queryset=existing_items_qs)
-        order_form = SalesOrderForm(instance=order)
+        sp = _get_current_salesperson(request)
+        if not getattr(order, 'sales_person', None) and sp:
+            order_form = SalesOrderForm(instance=order, initial={'sales_person': sp.pk})
+        else:
+            order_form = SalesOrderForm(instance=order)
         # #print("existing_items_qs:", existing_items_qs)
         item_display_list = []
 
@@ -10434,9 +10496,17 @@ def inv_add(request):
         cash_customer = None
         if auto_load:
             cash_customer = Customer.objects.using(db_alias).filter(customer_code__iexact='CASH').first()
-        invoice_form = SalesInvoiceForm(initial={'customer': cash_customer.pk if cash_customer else None})
+        sp = _get_current_salesperson(request)
+        initial = {'customer': cash_customer.pk if cash_customer else None}
+        if sp:
+            initial['sales_person'] = sp.pk
+        invoice_form = SalesInvoiceForm(initial=initial)
     except Exception:
-        invoice_form = SalesInvoiceForm()
+        sp = _get_current_salesperson(request)
+        initial = {}
+        if sp:
+            initial['sales_person'] = sp.pk
+        invoice_form = SalesInvoiceForm(initial=initial if initial else None)
     ItemFormSet = modelformset_factory(Item, form=ItemForm, extra=0)
     item_formset = ItemFormSet(queryset=Item.objects.none())
     # Create a formset for SalesQuotationItem if you plan multiple items
@@ -11627,7 +11697,11 @@ def invoice_edit(request, pk):
     else:
         existing_items_qs = SalesInvoiceItem.objects.filter(sales_inv=invoice)
         sales_formset = SalesInvoiceItemFormSet(queryset=existing_items_qs)
-        invoice_form = SalesInvoiceForm(instance=invoice)
+        sp = _get_current_salesperson(request)
+        if not getattr(invoice, 'sales_person', None) and sp:
+            invoice_form = SalesInvoiceForm(instance=invoice, initial={'sales_person': sp.pk})
+        else:
+            invoice_form = SalesInvoiceForm(instance=invoice)
         company_country = _get_current_company_country(request)
         company_is_india = _is_indian_company_country(company_country)
         # #print("existing_items_qs:", existing_items_qs)
@@ -18540,9 +18614,17 @@ def performa_inv_add(request):
         cash_customer = None
         if auto_load:
             cash_customer = Customer.objects.using(db_alias).filter(customer_code__iexact='CASH').first()
-        invoice_form = PerformaInvoiceForm(initial={'customer': cash_customer.pk if cash_customer else None})
+        sp = _get_current_salesperson(request)
+        initial = {'customer': cash_customer.pk if cash_customer else None}
+        if sp:
+            initial['sales_person'] = sp.pk
+        invoice_form = PerformaInvoiceForm(initial=initial)
     except Exception:
-        invoice_form = PerformaInvoiceForm()
+        sp = _get_current_salesperson(request)
+        initial = {}
+        if sp:
+            initial['sales_person'] = sp.pk
+        invoice_form = PerformaInvoiceForm(initial=initial if initial else None)
     ItemFormSet = modelformset_factory(Item, form=ItemForm, extra=0)
     item_formset = ItemFormSet(queryset=Item.objects.none())
     PerformaInvoiceItemFormSet = formset_factory(PerformaInvoiceItemForm, extra=1)
@@ -18595,7 +18677,11 @@ def performa_invoice_edit(request, pk):
         return redirect_with_company('performa_inv_list')
 
     invoice = get_object_or_404(PerformaInvoice, pk=pk)
-    invoice_form = PerformaInvoiceForm(instance=invoice)
+    sp = _get_current_salesperson(request)
+    if not getattr(invoice, 'sales_person', None) and sp:
+        invoice_form = PerformaInvoiceForm(instance=invoice, initial={'sales_person': sp.pk})
+    else:
+        invoice_form = PerformaInvoiceForm(instance=invoice)
     ItemFormSet = modelformset_factory(Item, form=ItemForm, extra=0)
     item_formset = ItemFormSet(queryset=Item.objects.none())
     PerformaInvoiceItemFormSet = modelformset_factory(
