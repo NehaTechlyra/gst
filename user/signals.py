@@ -4,6 +4,11 @@ from django.dispatch import receiver
 from django.apps import apps
 from django.contrib.auth import get_user_model
 
+from django.db import IntegrityError
+from django.db.models.signals import post_save
+from user.models import User
+from sales.models import SalesPerson
+
 logger = logging.getLogger(__name__)
 
 
@@ -52,3 +57,24 @@ def sync_delete_to_master(sender, instance, using=None, **kwargs):
         logger.info("Synced deletion of user '%s' from %s to master DB", instance.usr_name, using_db)
     except Exception as exc:
         logger.exception("Error syncing user deletion to master DB: %s", exc)
+
+
+
+@receiver(post_save, sender=User)
+def create_salesperson_for_user(sender, instance, created, **kwargs):
+    if not created:
+        return
+
+    # from crm.models import SalesPerson
+
+    logger.info(f"[SIGNAL FIRED] Creating SalesPerson for user {instance.usr_name}")
+
+    try:
+        sp = SalesPerson.objects.using(instance._state.db or 'default').create(
+            name=instance.usr_fname or instance.usr_name,
+            email=instance.usr_mail,
+            phone=instance.usr_phn,
+        )
+        logger.info(f"[SALESPERSON CREATED] id={sp.pk} on db={instance._state.db}")
+    except Exception as e:
+        logger.exception(f"[SALESPERSON CREATE FAILED] for user {instance.usr_name}: {e}")
