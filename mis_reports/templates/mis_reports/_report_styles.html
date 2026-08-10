@@ -1,0 +1,81 @@
+<style>
+/* MIS reports visual refinements */
+.mis-summary-card,
+.mis-report-card {
+  border-radius: 16px;
+  overflow: hidden;
+  transition: transform .18s ease, box-shadow .18s ease;
+}
+.form-label{
+    color: #5d6b8f;
+}
+h2{
+    color: #5d6b8f;
+}
+.mis-summary-card:hover,
+.mis-report-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 20px 40px rgba(15, 23, 42, 0.08);
+}
+.mis-summary-card .card-body,
+.mis-report-card .card-body {
+  padding: 1.25rem;
+}
+.mis-summary-card .mis-report-label,
+.mis-report-card .mis-report-label {
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #55588b;
+  margin-bottom: 0.55rem;
+}
+.mis-summary-card .mis-report-value,
+.mis-report-card .mis-report-value {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #1a1f34;
+}
+.mis-report-key-metric {
+  min-height: 110px;
+}
+.mis-report-key-metric .text-muted {
+  color: #6c757d !important;
+}
+.mis-report-table table {
+  border-collapse: separate;
+  border-spacing: 0 0.4rem;
+}
+.mis-report-table table thead th {
+  border-bottom: none;
+  background-color: transparent;
+  color: #5d6b8f;
+}
+.mis-report-table table tbody tr {
+  background-color: #ffffff;
+  border-radius: 0.65rem;
+}
+.mis-report-table table.table-hover tbody tr:hover {
+  background-color: rgba(13, 110, 253, 0.05);
+}
+.mis-report-header {
+  border-bottom: 1px solid #e9ecef;
+}
+.bg-primary-soft {
+  background-color: rgba(13, 110, 253, 0.08);
+}
+.bg-success-soft {
+  background-color: rgba(25, 135, 84, 0.08);
+}
+.bg-warning-soft {
+  background-color: rgba(255, 193, 7, 0.12);
+}
+.bg-danger-soft {
+  background-color: rgba(220, 53, 69, 0.08);
+}
+@media (max-width: 767px) {
+  .mis-summary-card .mis-report-value,
+  .mis-report-card .mis-report-value {
+    font-size: 1.5rem;
+  }
+}
+</style>

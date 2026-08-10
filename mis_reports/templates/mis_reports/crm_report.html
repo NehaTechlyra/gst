@@ -1,0 +1,100 @@
+{% extends 'website/index.html' %}
+{% load static %}
+
+{% block page_title %}CRM MIS Report{% endblock page_title %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <div>
+            <h1 class="h3 mb-1">CRM MIS Report</h1>
+            <p class="text-muted mb-0">Period: {{ period }}</p>
+        </div>
+        <div>
+            {% if can_export %}
+                <a href="{% url 'mis_crm_report_export_csv' company_code %}?{{ export_query_string }}&export=1" class="btn btn-sm btn-outline-secondary">Export CSV</a>
+            {% endif %}
+        </div>
+    </div>
+
+    {% include 'mis_reports/_filters.html' %}
+
+    <div class="row g-3 mb-3">
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <h5 class="mb-2">Summary</h5>
+                    <ul class="mb-0">
+                        <li>Leads: {{ report.lead_count }}</li>
+                        <li>Opportunities: {{ report.opportunity_count }}</li>
+                        <li>Won Deals: {{ report.won_deals }}</li>
+                        <li>Lost Deals: {{ report.lost_deals }}</li>
+                        <li>Conversion Rate: {{ report.conversion_rate|floatformat:2 }}%</li>
+                        <li>Pipeline Value: {{ report.pipeline_value }}</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <h5 class="mb-2">Follow-ups</h5>
+                    <ul class="mb-0">
+                        <li>Pending: {{ report.followups.pending }}</li>
+                        <li>Completed: {{ report.followups.completed }}</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm">
+        <div class="card-body">
+            <h5 class="mb-3">Source-wise Leads</h5>
+            <div class="mb-3">
+                <canvas id="crmPipelineChart" height="120"></canvas>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-sm table-striped">
+                    <thead>
+                        <tr><th>Source</th><th>Count</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for s in report.source_wise %}
+                        <tr><td>{{ s.source }}</td><td>{{ s.count }}</td></tr>
+                        {% empty %}
+                        <tr><td colspan="2">No data</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock content %}
+
+{% block scripts %}
+<script>
+(function(){
+    const labels = [
+        {% for s in report.source_wise %}
+            "{{ s.source }}"{% if not forloop.last %}, {% endif %}
+        {% endfor %}
+    ];
+    const data = [
+        {% for s in report.source_wise %}
+            {{ s.count|default:0 }}{% if not forloop.last %}, {% endif %}
+        {% endfor %}
+    ];
+    const el = document.getElementById('crmPipelineChart');
+    if (el && labels.length){
+        new Chart(el.getContext('2d'), {
+            type: 'bar',
+            data: { labels: labels, datasets: [{ label: 'Leads by Source', data: data, backgroundColor: 'rgba(75,192,192,0.2)', borderColor: 'rgba(75,192,192,1)' }] },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+    }
+})();
+</script>
+{% endblock scripts %}

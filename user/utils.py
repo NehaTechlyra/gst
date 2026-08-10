@@ -140,6 +140,26 @@ def _get_app_user_from_auth(user):
         return None
 
 
+def is_app_admin_user(user):
+    """Return True when the linked app user record is marked as an admin."""
+    try:
+        app_user = _get_app_user_from_auth(user)
+        return bool(app_user and getattr(app_user, 'is_admin', False))
+    except Exception:
+        return False
+
+
+def is_app_role_admin(user):
+    """Return True when the linked app user record has the Admin role."""
+    try:
+        app_user = _get_app_user_from_auth(user)
+        if not app_user or not getattr(app_user, 'usr_roleid', None):
+            return False
+        return getattr(app_user.usr_roleid, 'role_name', '').strip().lower() == 'admin'
+    except Exception:
+        return False
+
+
 def has_permission(user, module_name, permission_type):
     """
     Check if user has a specific permission for a module.

@@ -873,7 +873,7 @@
                                 </div>
                                 <div class="license-status">
                                     <span class="fw-bold">Trial Duration:</span>
-                                    <span id="summaryTrialDuration">15 Days</span>
+                                    <span id="summaryTrialDuration">30 Days</span>
                                 </div>
                                 <div class="license-status"
                                      style="background:#f0f4ff;padding:12px;border-radius:5px;margin-top:12px;">
@@ -1174,7 +1174,7 @@ document.getElementById('activateLicenseBtn').addEventListener('click', async fu
             document.getElementById('trialCard').style.display            = 'block';
             document.getElementById('licenseActivatedCard').style.display = 'none';
             document.getElementById('summaryOrgNameTrial').textContent    = registrationData.name || '-';
-            document.getElementById('summaryTrialDuration').textContent   = '15 Days';
+            document.getElementById('summaryTrialDuration').textContent   = '30 Days';
             _enterStep4WithMigration();
             return;
         }

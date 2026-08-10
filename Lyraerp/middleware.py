@@ -261,7 +261,7 @@ class LoginRequiredMiddleware:
         # Allow login, logout, signup, and static/media URLs without login
         allowed_urls = get_allowed_auth_urls()
         # Paths that should be allowed for unauthenticated users (exact or prefix)
-        allowed_paths = ['/Signup/', '/signup/', '/password-reset/', '/reset/', '/login/', '/<str:company_code>/login/']
+        allowed_paths = ['/Signup/', '/signup/', '/password-reset/', '/reset/', '/login/', '/mis-reports/', '/<str:company_code>/login/']
 
         if is_static_or_media_path(request.path) or is_admin_path(request.path):
             return self.get_response(request)
@@ -279,8 +279,12 @@ class LoginRequiredMiddleware:
 
             # ✅ FIX: Allow login paths with company code pattern (/<COMPANY_CODE>/login/)
             if not path_allowed and not request.path.startswith('/static/'):
-                company_code_login_match = re.match(r'^/[A-Z0-9-]+/login/?$', request.path)
+                company_code_login_match = re.match(r'^/[A-Za-z0-9-]+/login/?$', request.path)
                 if company_code_login_match:
+                    path_allowed = True
+
+                mis_reports_match = re.match(r'^/[A-Za-z0-9-]+/mis-reports/?$', request.path)
+                if mis_reports_match:
                     path_allowed = True
 
             if not path_allowed and not request.path.startswith('/static/'):
@@ -404,6 +408,11 @@ class ModulePermissionMiddleware(MiddlewareMixin):
 
         # Allow unrestricted access to the Currencies module (handled separately)
         if seg.lower() == 'currencies':
+            return None
+
+        # Allow the MIS Reports dashboard placeholder without requiring a specific
+        # module permission during Phase 1.
+        if seg.lower() == 'mis-reports' or seg.lower() == 'mis_reports':
             return None
         
         # Allow AJAX requests to bank module (for adding banks in company setup)

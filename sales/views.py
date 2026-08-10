@@ -374,7 +374,17 @@ def quotation_add(request):
     base_currency_code = (base_currency.code or '').strip() if base_currency else ''
 
     # Create form instance for SalesQuotation
-    quotation_form = SalesQuotationForm(company=company)
+    # If company setting enabled, preselect Cash customer
+    try:
+        db_alias = getattr(request, 'company_db', 'default')
+        resolved_company = _get_company_for_request(request)
+        auto_load = bool(getattr(resolved_company, 'auto_load_cash_customer', False)) if resolved_company else False
+        cash_customer = None
+        if auto_load:
+            cash_customer = Customer.objects.using(db_alias).filter(customer_code__iexact='CASH').first()
+        quotation_form = SalesQuotationForm(company=company, initial={'customer': cash_customer.pk if cash_customer else None})
+    except Exception:
+        quotation_form = SalesQuotationForm(company=company)
     ItemFormSet = modelformset_factory(Item, form=ItemForm, extra=0)
     item_formset = ItemFormSet(queryset=Item.objects.none())
     # Create a formset for SalesQuotationItem if you plan multiple items
@@ -543,6 +553,7 @@ def customer_detail_ajax(request, pk):
             'name': c.payment_terms.name if c.payment_terms else '',
             'days': c.payment_terms.days if c.payment_terms else None,
         } if c.payment_terms_id else None,
+        'is_cash_customer': (getattr(c, 'customer_code', '') or '').strip().upper() == 'CASH',
     }
     print("shipping data:",shipping)
 
@@ -6420,8 +6431,17 @@ def order_add(request):
         messages.error(request, 'You do not have permission to create Sales Orders.')
         return redirect_with_company('sales_order_list')
 
-    # Create form instance for SalesQuotation
-    order_form = SalesOrderForm()
+    # Create form instance for SalesOrder
+    try:
+        db_alias = getattr(request, 'company_db', 'default')
+        resolved_company = _get_company_for_request(request)
+        auto_load = bool(getattr(resolved_company, 'auto_load_cash_customer', False)) if resolved_company else False
+        cash_customer = None
+        if auto_load:
+            cash_customer = Customer.objects.using(db_alias).filter(customer_code__iexact='CASH').first()
+        order_form = SalesOrderForm(initial={'customer': cash_customer.pk if cash_customer else None})
+    except Exception:
+        order_form = SalesOrderForm()
     ItemFormSet = modelformset_factory(Item, form=ItemForm, extra=0)
     item_formset = ItemFormSet(queryset=Item.objects.none())
     # Create a formset for SalesQuotationItem if you plan multiple items
@@ -10402,8 +10422,17 @@ def inv_add(request):
         messages.error(request, 'You do not have permission to create Sales Invoices.')
         return redirect_with_company('sales_inv_list')
 
-    # Create form instance for SalesQuotation
-    invoice_form = SalesInvoiceForm()
+    # Create form instance for SalesInvoice
+    try:
+        db_alias = getattr(request, 'company_db', 'default')
+        resolved_company = _get_company_for_request(request)
+        auto_load = bool(getattr(resolved_company, 'auto_load_cash_customer', False)) if resolved_company else False
+        cash_customer = None
+        if auto_load:
+            cash_customer = Customer.objects.using(db_alias).filter(customer_code__iexact='CASH').first()
+        invoice_form = SalesInvoiceForm(initial={'customer': cash_customer.pk if cash_customer else None})
+    except Exception:
+        invoice_form = SalesInvoiceForm()
     ItemFormSet = modelformset_factory(Item, form=ItemForm, extra=0)
     item_formset = ItemFormSet(queryset=Item.objects.none())
     # Create a formset for SalesQuotationItem if you plan multiple items
@@ -18499,7 +18528,16 @@ def performa_inv_add(request):
         messages.error(request, 'You do not have permission to create Performa Invoices.')
         return redirect_with_company('performa_inv_list')
 
-    invoice_form = PerformaInvoiceForm()
+    try:
+        db_alias = getattr(request, 'company_db', 'default')
+        resolved_company = _get_company_for_request(request)
+        auto_load = bool(getattr(resolved_company, 'auto_load_cash_customer', False)) if resolved_company else False
+        cash_customer = None
+        if auto_load:
+            cash_customer = Customer.objects.using(db_alias).filter(customer_code__iexact='CASH').first()
+        invoice_form = PerformaInvoiceForm(initial={'customer': cash_customer.pk if cash_customer else None})
+    except Exception:
+        invoice_form = PerformaInvoiceForm()
     ItemFormSet = modelformset_factory(Item, form=ItemForm, extra=0)
     item_formset = ItemFormSet(queryset=Item.objects.none())
     PerformaInvoiceItemFormSet = formset_factory(PerformaInvoiceItemForm, extra=1)

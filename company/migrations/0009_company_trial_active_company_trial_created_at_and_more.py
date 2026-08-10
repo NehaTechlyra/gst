@@ -28,7 +28,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='company',
             name='trial_expires_at',
-            field=models.DateTimeField(blank=True, help_text='When does the trial expire? (trial_started_at + 15 days)', null=True),
+            field=models.DateTimeField(blank=True, help_text='When does the trial expire? (trial_started_at + 30 days)', null=True),
         ),
         migrations.AddField(
             model_name='company',

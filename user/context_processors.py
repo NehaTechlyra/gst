@@ -156,6 +156,29 @@ except ImportError:
     can_edit_reconciliation = lambda u: False
     can_delete_reconciliation = lambda u: False
 
+try:
+    from mis_reports.permissions import (
+        can_export as mis_can_export,
+        can_view_crm as mis_can_view_crm,
+        can_view_dashboard as mis_can_view_dashboard,
+        can_view_expense as mis_can_view_expense,
+        can_view_finance as mis_can_view_finance,
+        can_view_hr as mis_can_view_hr,
+        can_view_inventory as mis_can_view_inventory,
+        can_view_purchase as mis_can_view_purchase,
+        can_view_sales as mis_can_view_sales,
+    )
+except ImportError:
+    mis_can_export = lambda u: False
+    mis_can_view_crm = lambda u: False
+    mis_can_view_dashboard = lambda u: False
+    mis_can_view_expense = lambda u: False
+    mis_can_view_finance = lambda u: False
+    mis_can_view_hr = lambda u: False
+    mis_can_view_inventory = lambda u: False
+    mis_can_view_purchase = lambda u: False
+    mis_can_view_sales = lambda u: False
+
 def get_license_allowed_modules(request):
     """
     Get list of allowed modules from license
@@ -821,4 +844,15 @@ def _compute_permission_flags(user_permissions, user, visible_modules=None):
         'can_create_reconciliation': can_create_reconciliation(user),
         'can_edit_reconciliation': can_edit_reconciliation(user),
         'can_delete_reconciliation': can_delete_reconciliation(user),
+
+        # MIS flags
+        'can_view_mis_dashboard': mis_can_view_dashboard(user),
+        'can_view_mis_sales': mis_can_view_sales(user),
+        'can_view_mis_purchase': mis_can_view_purchase(user),
+        'can_view_mis_inventory': mis_can_view_inventory(user),
+        'can_view_mis_finance': mis_can_view_finance(user),
+        'can_view_mis_crm': mis_can_view_crm(user),
+        'can_view_mis_hr': mis_can_view_hr(user),
+        'can_view_mis_expense': mis_can_view_expense(user),
+        'can_export_mis_reports': mis_can_export(user),
     }

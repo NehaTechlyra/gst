@@ -3325,6 +3325,10 @@ document.addEventListener('DOMContentLoaded', function () {
       currentCustomerShippingData = null;
       return;
     }
+    if (data.is_cash_customer) {
+      clearVendor();
+      return;
+    }
     customerInfo.style.display = 'block';
     //  FIX: Check if we have saved shipping data from the quotation first
     const hasSavedShipping = window.hasSavedShippingData;

@@ -108,6 +108,7 @@ urlpatterns = [
     path('<str:company_code>/journal/', include('journal.urls')),
     path('<str:company_code>/crm/', include('crm.urls')),
     path('<str:company_code>/activity/', include('activity_log.urls')),
+    path('<str:company_code>/mis-reports/', include('mis_reports.urls')),
     path('<str:company_code>/pricelists/', include('pricelists.urls')),
 
 

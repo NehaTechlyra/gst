@@ -1,0 +1,80 @@
+{% extends 'website/index.html' %}
+{% load static %}
+
+{% block exstyle %}
+{% include 'mis_reports/_report_styles.html' %}
+{% endblock exstyle %}
+
+{% block page_title %}MIS Reports{% endblock page_title %}
+
+{% block content %}
+<div class="container-fluid py-4">
+  {% comment %} <div class="d-flex align-items-center justify-content-between mb-3">
+    <div>
+      <h1 class="h3 mb-1">MIS Reports</h1>
+      <p class="text-muted mb-0">Management reporting dashboard will be built here in upcoming phases.</p>
+    </div>
+  </div> {% endcomment %}
+
+  <div class="card mis-report-card border-0 shadow-sm mb-3">
+    <div class="card-body">
+      {% comment %} <h2 class="h5 mb-2 mis-report-label">Shared filter state</h2>
+      <p class="text-muted mb-3">
+        This phase adds reusable date-range helpers for the MIS dashboard. The filter state is parsed from the request and preserved for export links.
+      </p> {% endcomment %}
+      <form method="get" class="row g-2 align-items-end">
+        <div class="col-md-3">
+          <label class="form-label small">Period</label>
+          <select name="period" class="form-select form-select-sm">
+            <option value="today" {% if period == 'today' %}selected{% endif %}>Today</option>
+            <option value="this_week" {% if period == 'this_week' %}selected{% endif %}>This week</option>
+            <option value="this_month" {% if period == 'this_month' %}selected{% endif %}>This month</option>
+            <option value="this_quarter" {% if period == 'this_quarter' %}selected{% endif %}>This quarter</option>
+            <option value="this_financial_year" {% if period == 'this_financial_year' %}selected{% endif %}>This financial year</option>
+            <option value="custom" {% if period == 'custom' %}selected{% endif %}>Custom</option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label small">Start date</label>
+          <input type="date" name="start_date" class="form-control form-control-sm" value="{{ start_date|default_if_none:''|date:'Y-m-d' }}">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label small">End date</label>
+          <input type="date" name="end_date" class="form-control form-control-sm" value="{{ end_date|default_if_none:''|date:'Y-m-d' }}">
+        </div>
+        <div class="col-md-3">
+          <button type="submit" class="btn btn-sm btn-primary">Apply</button>
+          <a class="btn btn-sm btn-outline-secondary ms-2" href="?{{ export_query_string }}">Export</a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="row g-3 mb-3">
+    {% for card in summary_cards %}
+    <div class="col-xl-3 col-md-6">
+      <div class="card mis-summary-card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-start">
+            <div>
+              <div class="mis-report-label">{{ card.title }}</div>
+              <div class="mis-report-value mb-1">{{ card.value }}</div>
+            </div>
+          </div>
+          <p class="text-muted small mb-0 mt-2">{{ card.description }}</p>
+        </div>
+      </div>
+    </div>
+    {% empty %}
+    <div class="col-12">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body">
+          <h2 class="h5 mb-2">No MIS data available</h2>
+          <p class="text-muted mb-0">No summary values could be generated for the selected range.</p>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock content %}

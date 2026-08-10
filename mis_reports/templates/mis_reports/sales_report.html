@@ -1,0 +1,172 @@
+{% extends 'website/index.html' %}
+{% load static %}
+
+{% block exstyle %}
+{% include 'mis_reports/_report_styles.html' %}
+{% endblock exstyle %}
+
+{% block page_title %}Sales MIS Report{% endblock page_title %}
+
+{% block content %}
+<div class="container-fluid py-4">
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <div>
+      {% comment %} <h1 class="h3 mb-1">Sales MIS Report</h1> {% endcomment %}
+      <p class="text-muted mb-0">High-level sales reporting with customer, item, and trend analysis.</p>
+    </div>
+    <div>
+      {% if can_export %}
+      <a class="btn btn-sm btn-outline-secondary" href="?{{ export_query_string }}">Reload</a>
+      <a class="btn btn-sm btn-primary" href="{% if company_code %}{% url 'mis_sales_report_export_csv' company_code=company_code %}{% else %}{% url 'mis_sales_report_export_csv' %}{% endif %}?{{ export_query_string }}">Export CSV</a>
+      {% endif %}
+    </div>
+  </div>
+
+  {% include 'mis_reports/_filters.html' %}
+
+  <div class="card mis-report-card border-0 shadow-sm mb-3">
+    <div class="card-body">
+      <div class="row gy-3">
+        <div class="col-md-3">
+          <div class="p-3 bg-light rounded mis-report-key-metric">
+            <div class="mis-report-label">Total Sales</div>
+            <div class="mis-report-value">₹{{ report.total_sales|floatformat:2 }}</div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="p-3 bg-light rounded mis-report-key-metric">
+            <div class="mis-report-label">Invoice Count</div>
+            <div class="mis-report-value">{{ report.invoice_count }}</div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="p-3 bg-light rounded mis-report-key-metric">
+            <div class="mis-report-label">Quotation Count</div>
+            <div class="mis-report-value">{{ report.quotation_count }}</div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="p-3 bg-light rounded mis-report-key-metric">
+            <div class="mis-report-label">Outstanding Sales</div>
+            <div class="mis-report-value">₹{{ report.outstanding_sales|floatformat:2 }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-lg-6">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <h2 class="h6 mis-report-label">Top Customers</h2>
+          <div class="table-responsive mis-report-table">
+            <table class="table table-sm align-middle">
+              <thead>
+                <tr>
+                  <th>Customer</th>
+                  <th>Invoices</th>
+                  <th>Total Sales</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for customer in report.top_customers %}
+                <tr>
+                  <td>{{ customer.customer_name }}</td>
+                  <td>{{ customer.invoice_count }}</td>
+                  <td>₹{{ customer.total_sales|floatformat:2 }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="3" class="text-muted">No customers found for this period.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-6">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <h2 class="h6 mis-report-label">Top Selling Items</h2>
+          <div class="table-responsive mis-report-table">
+            <table class="table table-sm align-middle">
+              <thead>
+                <tr>
+                  <th>Item</th>
+                  <th>Quantity</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for item in report.top_items %}
+                <tr>
+                  <td>{{ item.item_name }}</td>
+                  <td>{{ item.quantity_sold|floatformat:2 }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="2" class="text-muted">No item sales found for this period.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card border-0 shadow-sm mt-3">
+    <div class="card-body">
+      <h2 class="h6 mis-report-label">Monthly Sales Trend</h2>
+      <div class="mb-3">
+        <canvas id="salesTrendChart" height="120"></canvas>
+      </div>
+      <div class="table-responsive mis-report-table">
+        <table class="table table-sm align-middle">
+          <thead>
+            <tr>
+              <th>Month</th>
+              <th>Total Sales</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for trend in report.monthly_trend %}
+            <tr>
+              <td>{{ trend.month }}</td>
+              <td>₹{{ trend.total_sales|floatformat:2 }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="2" class="text-muted">No sales trend data available.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock content %}
+
+{% block scripts %}
+<script>
+(function(){
+  const labels = [
+    {% for t in report.monthly_trend %}
+      "{{ t.month }}"{% if not forloop.last %}, {% endif %}
+    {% endfor %}
+  ];
+  const data = [
+    {% for t in report.monthly_trend %}
+      {{ t.total_sales|default:0 }}{% if not forloop.last %}, {% endif %}
+    {% endfor %}
+  ];
+  const el = document.getElementById('salesTrendChart');
+  if (el && labels.length){
+    new Chart(el.getContext('2d'), {
+      type: 'line',
+      data: { labels: labels, datasets: [{ label: 'Total Sales', data: data, backgroundColor: 'rgba(54,162,235,0.2)', borderColor: 'rgba(54,162,235,1)', tension: 0.3, fill: true }] },
+      options: { responsive: true, maintainAspectRatio: false }
+    });
+  }
+})();
+</script>
+{% endblock scripts %}
