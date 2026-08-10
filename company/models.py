@@ -111,6 +111,15 @@ class Company(models.Model):
         help_text="When enabled, scheduled fetches will populate ExchangeRate rows from configured feeds",
     )
 
+    # Per-company toggle: control whether stock is managed on delivery or on payment
+    stock_management_on_delivery = models.BooleanField(
+        default=True,
+        help_text=(
+            "When True: stock quantities are updated only when a Delivery is processed. "
+            "When False: stock quantities are updated when payment is recorded for purchase/sales."
+        ),
+    )
+
     # ============================================================================
     # SETUP TRACKING
     # ============================================================================

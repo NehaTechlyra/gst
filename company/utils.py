@@ -301,6 +301,38 @@ def confirm_with_generator(license_key, company_id, company_name,
         )
 
 
+def is_stock_management_on_delivery(request=None, company=None):
+    """
+    Resolve the effective STOCK_MANAGEMENT_ON_DELIVERY setting for a company.
+
+    Priority:
+      1. If `company` provided and has `stock_management_on_delivery` field, use it.
+      2. If `request` provided, try to resolve company by `request.company_id` or `request.company_code`.
+      3. Fall back to global Django setting `STOCK_MANAGEMENT_ON_DELIVERY`.
+    """
+    from django.conf import settings
+    try:
+        if company is not None:
+            return bool(getattr(company, 'stock_management_on_delivery', True))
+
+        if request is not None:
+            company_id = getattr(request, 'company_id', None)
+            company_code = getattr(request, 'company_code', None)
+            from company.models import Company
+            if company_id:
+                cmp = Company.objects.using('default').filter(pk=company_id).first()
+                if cmp is not None:
+                    return bool(getattr(cmp, 'stock_management_on_delivery', True))
+            if company_code:
+                cmp = Company.objects.using('default').filter(company_code=company_code).first()
+                if cmp is not None:
+                    return bool(getattr(cmp, 'stock_management_on_delivery', True))
+    except Exception:
+        logger.exception('Error resolving company stock management setting')
+
+    return getattr(settings, 'STOCK_MANAGEMENT_ON_DELIVERY', True)
+
+
 # ---------------------------------------------------------------------------
 # Date parsing helper  (shared by Phase 2 logic)
 # ---------------------------------------------------------------------------
@@ -312,6 +344,7 @@ def _parse_date(date_str):
     """
     if not date_str:
         return None
+
     try:
         return datetime.fromisoformat(date_str.replace('Z', '+00:00')).date()
     except (ValueError, AttributeError) as exc:

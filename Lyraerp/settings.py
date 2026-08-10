@@ -237,6 +237,11 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'Lyraerp.wsgi.application'
 
+# Stock management configuration
+# When True: stock quantities are updated only when a Delivery is processed.
+# When False: stock quantities are updated when payment is recorded for purchase/sales.
+STOCK_MANAGEMENT_ON_DELIVERY = True
+
 
 # ============================================================================
 # DATABASE CONFIGURATION
@@ -245,8 +250,8 @@ WSGI_APPLICATION = 'Lyraerp.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'lyramasterdb',
-        'USER': 'lyrafour-user',
+        'NAME': 'lyraerp-indian2',
+        'USER': 'root',
         'PASSWORD': 'Tiger#2024',
         'HOST': 'localhost',
         'PORT': '3306',

@@ -34,6 +34,7 @@ from Items.models import Item,Barcode,Uom
 from unit.models import Unit
 from django.utils.timezone import localdate
 from django.utils import timezone
+from company.utils import is_stock_management_on_delivery
 
 import datetime
 from datetime import date, timedelta
@@ -62,6 +63,7 @@ from django.contrib.auth.decorators import login_required
 from journal.models import JournalEntry, JournalLine
 import logging
 logger = logging.getLogger(__name__)
+from django.conf import settings
 
 
 def _post_tds_tcs_journal_line(journal, document, using, sequence):
@@ -7813,6 +7815,13 @@ def save_payment(request, pk=None):
                 bill.save()
                 
                 print(f"  ✓ Status: {old_status} → {bill.status} (Paid: {payment_currency_symbol}{new_total_paid:.2f}/{payment_currency_symbol}{bill.total_amount:.2f})")
+                # If stock management is configured to happen on payment instead
+                # of on delivery, update stock when the bill is fully paid.
+                try:
+                    if not is_stock_management_on_delivery(request=request) and bill.payment_status_id == 3:
+                        update_stock_from_bill(bill, request.user)
+                except Exception:
+                    logger.exception('Failed to update stock on payment for bill %s', getattr(bill, 'bill_number', None))
             
             print(f"\n✓ Created {allocations_created} allocation(s)")
             
@@ -11494,7 +11503,8 @@ class DeliveryNoteViewSet(viewsets.ModelViewSet):
             with transaction.atomic():
                 delivery_note.status = 'delivered'
                 delivery_note.save()
-                delivery_note.update_stock()
+                if is_stock_management_on_delivery(request=request) or delivery_note.bill.payment_status_id == 3:
+                    delivery_note.update_stock()
             
             serializer = self.get_serializer(delivery_note)
             return Response(serializer.data)
@@ -11785,8 +11795,8 @@ class DeliveryNoteCreateView(CreateView):
             
             print(f"Items created: {items_created}")
             
-            # Update stock if status is delivered
-            if self.object.status == 'delivered':
+            # Update stock if status is delivered and delivery-based stock management is enabled
+            if self.object.status == 'delivered' and is_stock_management_on_delivery(request=self.request):
                 print(f"Calling update_stock() for {self.object.delivery_note_number}")
                 self.object.update_stock()
                 print(f"Stock updated: {self.object.stock_updated}")
@@ -11947,8 +11957,8 @@ class DeliveryNoteUpdateView(UpdateView):
                 messages.error(self.request, 'Please select at least one item to deliver.')
                 return self.form_invalid(form)
             
-            # Update stock if status changed to delivered
-            if self.object.status == 'delivered' and old_status != 'delivered':
+            # Update stock if status changed to delivered and delivery-based stock management is enabled
+            if self.object.status == 'delivered' and old_status != 'delivered' and is_stock_management_on_delivery(request=self.request):
                 self.object.update_stock()
             
             messages.success(
@@ -12054,7 +12064,8 @@ def delivery_note_mark_delivered(request, pk):
                 with transaction.atomic():
                     delivery_note.status = 'delivered'
                     delivery_note.save()
-                    delivery_note.update_stock()
+                    if is_stock_management_on_delivery(request=request) or delivery_note.bill.payment_status_id == 3:
+                        delivery_note.update_stock()
                 
                 messages.success(
                     request,

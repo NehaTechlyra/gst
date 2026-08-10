@@ -12,6 +12,7 @@ class CompanyAdmin(admin.ModelAdmin):
         'phone',
         'status',
         'setup_complete',
+        'stock_management_on_delivery',
         'db_created',
         'trial_active',
         'is_trial_expired',
@@ -23,6 +24,7 @@ class CompanyAdmin(admin.ModelAdmin):
         'db_created',
         'trial_active',
         'is_trial_expired',
+        'stock_management_on_delivery',
         'country',
         'tax_type',
     )

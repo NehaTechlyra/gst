@@ -1017,6 +1017,7 @@ class SalesStockMovement(models.Model):
         ('sales_delivery_note_reversal', 'Sales Delivery Note Reversal'),
         ('sales_return', 'Sales Return'),
         ('sales_return_reversal', 'Sales Return Reversal'),
+        ('sales_invoice_payment', 'Sales Invoice Payment'),
     ]
     
     stock = models.ForeignKey('stock.Stock', related_name='sales_movements', on_delete=models.CASCADE)

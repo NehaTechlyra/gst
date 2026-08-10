@@ -1631,6 +1631,7 @@ label[for="backup-enabled"] {
                                             <strong>{{ module.name }}</strong>
                                             {% if module.is_core %}
                                                 <span class="badge bg-primary ms-2">Core</span>
+                                        
                                             {% endif %}
                                             {% if module.description %}
                                                 <br><small class="text-muted">{{ module.description }}</small>
@@ -2145,10 +2146,52 @@ label[for="backup-enabled"] {
                     <span class="icon-group"><i class="bi bi-file-earmark-check"></i> E-Way Bill</span>
                 </a>
                 {% endif %}
+                <a class="side-nav-link" data-other-index="4">
+                    <span class="icon-group"><i class="bi bi-box-seam"></i> Stock Management</span>
+                </a>
+                
             </div>
 
             <!-- Content -->
             <div class="template-content-wrapper">
+
+                <!-- STOCK MANAGEMENT PANEL -->
+                <div class="template-group" data-other-step="4">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h1 class="template-section-title">Stock Management</h1>
+                    </div>
+
+                    <div class="section-card">
+                        <p class="section-card-title" style="font-weight:600;">Per-company Stock Management</p>
+                        <p class="text-muted">Choose whether stock changes are applied on Delivery or on Payment for each company.</p>
+
+                        {% if company_list %}
+                            {% for it in company_list %}
+                                <div style="border:1px solid #eee; padding:12px; border-radius:6px; margin-bottom:10px; background:#fff;">
+                                    <div style="display:flex; justify-content:space-between; align-items:center; gap:12px;">
+                                        <div>
+                                            <strong>{{ it.company.name }}</strong>
+                                            <div style="font-size:.85rem; color:#666;">Code: {{ it.company.company_code }}</div>
+                                        </div>
+                                        <form method="POST" action="{% url 'settings_page' %}">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="active_tab" value="other_settings_tab">
+                                            <input type="hidden" name="stock_management_company_id" value="{{ it.company.id }}">
+                                            <label class="switch" style="margin-right:12px;">
+                                                <input type="checkbox" name="stock_management_on_delivery" {% if it.company.stock_management_on_delivery %}checked{% endif %}>
+                                                <span class="slider"></span>
+                                            </label>
+                                            <button class="btn btn-sm btn-primary" type="submit">Save</button>
+                                        </form>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        {% else %}
+                            <p class="text-muted">No companies available.</p>
+                        {% endif %}
+
+                    </div>
+                </div>
 
                 <!-- PREFIXES PANEL -->
                 <!-- PREFIXES PANEL -->

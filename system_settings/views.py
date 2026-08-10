@@ -438,6 +438,30 @@ def settings_page(request):
         active_sms_mode = request.POST.get("mode", "gsm")
 
     # --------------------------------------------------------
+    # Company-level settings update (per-company stock management toggle)
+    # Expect POST keys: `stock_management_company_id` and optional `stock_management_on_delivery`
+    # --------------------------------------------------------
+    try:
+        if request.method == "POST" and request.POST.get('stock_management_company_id'):
+            cid = request.POST.get('stock_management_company_id')
+            val = request.POST.get('stock_management_on_delivery') == 'on'
+            # Update master DB Company row
+            Company.objects.using('default').filter(pk=cid).update(stock_management_on_delivery=val)
+            # If company has company DB, also update that DB record
+            try:
+                comp = Company.objects.using('default').filter(pk=cid).first()
+                if comp and getattr(comp, 'db_name', None):
+                    Company.objects.using(comp.db_name).filter(pk=cid).update(stock_management_on_delivery=val)
+            except Exception:
+                logger.exception('Failed to update company DB stock setting for company id %s', cid)
+
+            messages.success(request, 'Company stock management setting updated.')
+            settings_url = get_company_redirect_url(request, 'settings_page')
+            return redirect(f"{settings_url}?tab=other_settings_tab")
+    except Exception:
+        logger.exception('Error processing company stock management POST')
+
+    # --------------------------------------------------------
     # 11️⃣ CONTEXT
     # --------------------------------------------------------
     context = {
