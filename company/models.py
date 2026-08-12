@@ -129,6 +129,17 @@ class Company(models.Model):
         help_text="If enabled, show the base transaction summary block (div#base-transaction-summary) in relevant pages.",
     )
 
+    PRINT_PAPER_SIZE_CHOICES = [
+        ("A4", "A4"),
+        ("POS", "POS / EPOS"),
+    ]
+    print_paper_size = models.CharField(
+        max_length=20,
+        choices=PRINT_PAPER_SIZE_CHOICES,
+        default="A4",
+        help_text="Preferred paper size for printing documents.",
+    )
+
     # ============================================================================
     # SETUP TRACKING
     # ============================================================================

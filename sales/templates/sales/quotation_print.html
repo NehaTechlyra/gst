@@ -7,7 +7,11 @@
 
   {% load static %}
   {% block exstyle %}
-  <link href="{% static 'style/print.css' %}" rel="stylesheet">
+  {% if company and company.print_paper_size == 'POS' %}
+    <link href="{% static 'style/print_pos.css' %}" rel="stylesheet">
+  {% else %}
+    <link href="{% static 'style/print.css' %}" rel="stylesheet">
+  {% endif %}
   {% endblock %}
 </head>
 
@@ -53,34 +57,47 @@
 
     <table class="meta-table">
       <tr>
-        <td class="meta-label">Quote No</td>
-        <td class="meta-value">: {{ q_no }}</td>
-        <td class="meta-label">Date</td>
-        <td class="meta-value">: {{ quote.date }}</td>
+        <td class="meta-pair">
+          <span class="meta-label">Quote No</span>
+          <span class="meta-value">{{ q_no }}</span>
+        </td>
+        <td class="meta-pair">
+          <span class="meta-label">Date</span>
+          <span class="meta-value">{{ quote.date }}</span>
+        </td>
       </tr>
+      {% if document_currency_code != company_base_currency_code %}
       <tr>
-        <td class="meta-label">Currency</td>
-        <td class="meta-value">: {% if quote.document_currency %}{{ quote.document_currency.code }}{% else %}—{% endif %}</td>
-        <td class="meta-label">FX Rate to Base</td>
-        <td class="meta-value">: {% if quote.fx_rate_to_base %}{{ quote.fx_rate_to_base }}{% else %}—{% endif %}</td>
+        <td class="meta-pair">
+          <span class="meta-label">Currency</span>
+          <span class="meta-value">{% if quote.document_currency %}{{ quote.document_currency.code }}{% else %}—{% endif %}</span>
+        </td>
+        <td class="meta-pair">
+          <span class="meta-label">FX Rate to Base</span>
+          <span class="meta-value">{% if quote.fx_rate_to_base %}{{ quote.fx_rate_to_base }}{% else %}—{% endif %}</span>
+        </td>
       </tr>
+      {% endif %}
       <tr>
-        <td class="meta-label">Place of Supply</td>
-        <td class="meta-value">: {{ quote.place_of_supply|default:"-" }}</td>
-        <td class="meta-label">Sales Person</td>
-        <td class="meta-value">
-          :
-          {% if quote.sales_person %}
-            {% if quote.sales_person.name and quote.sales_person.phone %}
-              {{ quote.sales_person.name }} ({{ quote.sales_person.phone }})
-            {% elif quote.sales_person.name %}
-              {{ quote.sales_person.name }}
+        <td class="meta-pair">
+          <span class="meta-label">Place of Supply</span>
+          <span class="meta-value">{{ quote.place_of_supply|default:"-" }}</span>
+        </td>
+        <td class="meta-pair">
+          <span class="meta-label">Sales Person</span>
+          <span class="meta-value">
+            {% if quote.sales_person %}
+              {% if quote.sales_person.name and quote.sales_person.phone %}
+                {{ quote.sales_person.name }} ({{ quote.sales_person.phone }})
+              {% elif quote.sales_person.name %}
+                {{ quote.sales_person.name }}
+              {% else %}
+                -
+              {% endif %}
             {% else %}
               -
             {% endif %}
-          {% else %}
-            -
-          {% endif %}
+          </span>
         </td>
       </tr>
     </table>

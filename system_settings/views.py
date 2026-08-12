@@ -469,6 +469,37 @@ def settings_page(request):
     except Exception:
         logger.exception('Error processing company stock management POST')
 
+    try:
+        if request.method == "POST" and request.POST.get('printer_paper_size') is not None:
+            paper_size = (request.POST.get('printer_paper_size') or 'A4').strip()
+            if paper_size not in dict(Company.PRINT_PAPER_SIZE_CHOICES):
+                paper_size = 'A4'
+
+            # Prefer company identified by request/company_code (URL or middleware)
+            company_obj = None
+            company_code = getattr(request, 'company_code', None)
+            if not company_code and hasattr(request, 'resolver_match'):
+                company_code = (request.resolver_match.kwargs or {}).get('company_code')
+
+            if company_code:
+                company_obj = Company.objects.using('default').filter(company_code=company_code).first()
+
+            # Fallback to companies_with_data or default first
+            if company_obj is None and companies_with_data:
+                company_obj = companies_with_data[0].company if hasattr(companies_with_data[0], 'company') else None
+
+            if company_obj is None:
+                company_obj = Company.objects.using('default').first()
+
+            if company_obj:
+                company_obj.print_paper_size = paper_size
+                company_obj.save(update_fields=['print_paper_size'])
+                messages.success(request, 'Printer paper size updated.')
+                settings_url = get_company_redirect_url(request, 'settings_page')
+                return redirect(f"{settings_url}?tab=other_settings_tab")
+    except Exception:
+        logger.exception('Error processing printer paper size POST')
+
     # --------------------------------------------------------
     # 11️⃣ CONTEXT
     # --------------------------------------------------------
@@ -1414,7 +1445,7 @@ def prefix_update(request):
         except Exception:
             pass
 
-        messages.success(request, 'Prefixes updated successfully.')
+        messages.success(request, 'Saved successfully.')
         settings_url = get_company_redirect_url(request, 'settings_page')
         return redirect(f"{settings_url}?tab={active_tab}")
 
