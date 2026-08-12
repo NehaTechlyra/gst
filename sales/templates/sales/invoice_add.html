@@ -886,10 +886,14 @@ document.addEventListener('DOMContentLoaded', function() {
               </select>
             </div>
             <div class="col-md-4 mb-3">
-              <label for="fx_rate_to_base">Exchange Rate to Base </label>
-              <input type="text" name="fx_rate_to_base" id="fx_rate_to_base" class="form-control" placeholder="e.g. 83.2500" value="{% if fx_rate_to_base %}{{ fx_rate_to_base }}{% endif %}">
-              <label for="fx_rate_date" style="margin-top:6px;">Exchange Rate Date </label>
-              <input type="date" name="fx_rate_date" id="fx_rate_date" class="form-control" value="{% if fx_rate_date %}{{ fx_rate_date|date:'Y-m-d' }}{% endif %}">
+              <div id="exchange_rate_container">
+                <label for="fx_rate_to_base">Exchange Rate to Base </label>
+                <input type="text" name="fx_rate_to_base" id="fx_rate_to_base" class="form-control" placeholder="e.g. 83.2500" value="{% if fx_rate_to_base %}{{ fx_rate_to_base }}{% endif %}">
+              </div>
+              <div id="exchange_rate_date_container" style="margin-top:6px;">
+                <label for="fx_rate_date">Exchange Rate Date </label>
+                <input type="date" name="fx_rate_date" id="fx_rate_date" class="form-control" value="{% if fx_rate_to_base %}{{ fx_rate_date|date:'Y-m-d' }}{% endif %}">
+              </div>
             </div>
             <div class="col-md-4 mb-3">
                 <label for="{{ invoice_form.sales_person.id_for_label }}">Sales Person </label>

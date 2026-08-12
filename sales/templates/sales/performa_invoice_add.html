@@ -1023,10 +1023,14 @@ document.addEventListener('DOMContentLoaded', function() {
               </select>
             </div>
             <div class="col-md-4 mb-3">
-              <label for="fx_rate_to_base">Exchange Rate to Base </label>
-              <input type="text" name="fx_rate_to_base" id="fx_rate_to_base" class="form-control" placeholder="e.g. 83.2500" value="{{ invoice.fx_rate_to_base|default:'' }}">
-              <label for="fx_rate_date" style="margin-top:6px;">Exchange Rate Date </label>
-              <input type="date" name="fx_rate_date" id="fx_rate_date" class="form-control" value="{% if invoice.fx_rate_date %}{{ invoice.fx_rate_date|date:'Y-m-d' }}{% endif %}">
+              <div id="exchange_rate_container">
+                <label for="fx_rate_to_base">Exchange Rate to Base </label>
+                <input type="text" name="fx_rate_to_base" id="fx_rate_to_base" class="form-control" placeholder="e.g. 83.2500" value="{{ invoice.fx_rate_to_base|default:'' }}">
+              </div>
+              <div id="exchange_rate_date_container" style="margin-top:6px;">
+                <label for="fx_rate_date">Exchange Rate Date </label>
+                <input type="date" name="fx_rate_date" id="fx_rate_date" class="form-control" value="{% if invoice.fx_rate_date %}{{ invoice.fx_rate_date|date:'Y-m-d' }}{% endif %}">
+              </div>
             </div>
         </div>
 

@@ -837,6 +837,26 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
             
         </div>
+
+        <script>
+        (function(){
+          var docSel = document.getElementById('document_currency');
+          var baseCode = '{{ company_base_currency_code|default:"" }}'.trim().toUpperCase();
+          function updateFxVisibility(){
+            try{
+              var sel = docSel && docSel.options && docSel.selectedIndex >=0 ? docSel.options[docSel.selectedIndex] : null;
+              var docCode = (sel && (sel.dataset && sel.dataset.code)) || (sel && sel.text) || '';
+              docCode = String(docCode).trim().split(/\s+/)[0].toUpperCase();
+              var hide = docCode && baseCode && docCode === baseCode;
+              var c = document.getElementById('exchange_rate_container');
+              var d = document.getElementById('exchange_rate_date_container');
+              if(c) c.style.display = hide ? 'none' : '';
+              if(d) d.style.display = hide ? 'none' : '';
+            }catch(e){/*ignore*/}
+          }
+          if(docSel){docSel.addEventListener('change', updateFxVisibility); updateFxVisibility();}
+        })();
+        </script>
         </div>
 
         <div class="row">
@@ -866,10 +886,14 @@ document.addEventListener('DOMContentLoaded', function() {
               </select>
             </div>
             <div class="col-md-4 mb-3">
-              <label for="fx_rate_to_base">Exchange Rate to Base </label>
-              <input type="text" name="fx_rate_to_base" id="fx_rate_to_base" class="form-control" placeholder="e.g. 83.2500">
-              <label for="fx_rate_date" style="margin-top:6px;">Exchange Rate Date </label>
-              <input type="date" name="fx_rate_date" id="fx_rate_date" class="form-control">
+              <div id="exchange_rate_container">
+                <label for="fx_rate_to_base">Exchange Rate to Base </label>
+                <input type="text" name="fx_rate_to_base" id="fx_rate_to_base" class="form-control" placeholder="e.g. 83.2500">
+              </div>
+              <div id="exchange_rate_date_container" style="margin-top:6px;">
+                <label for="fx_rate_date">Exchange Rate Date </label>
+                <input type="date" name="fx_rate_date" id="fx_rate_date" class="form-control">
+              </div>
             </div>
             <div class="col-md-4 mb-3">
                 <label for="pay-terms">Payment Terms</label>

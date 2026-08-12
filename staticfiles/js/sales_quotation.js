@@ -3195,6 +3195,8 @@ document.addEventListener('DOMContentLoaded', function () {
   if (window.forceDocumentCurrencyLocked) {
     setDocumentCurrencyLocked(true);
   }
+  // Ensure exchange-rate UI visibility matches current currency selection on load
+  try { updateBaseCurrencyVisibility(); } catch (e) { /* ignore if function missing */ }
   function qs(selector) { return document.querySelector(selector); }
   const select = qs('#id_customer') || qs('#customer_select') || qs('select[name="customer"]');
   const customerInfo = qs('#vendor-info');
