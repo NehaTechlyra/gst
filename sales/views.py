@@ -347,8 +347,9 @@ def update_stock_from_paid_invoice(inv, user, request):
             )
 
             if stock.quantity < remaining_qty:
-                raise ValidationError(
-                    f"Insufficient stock for {product.name}. Available: {stock.quantity}, Required: {remaining_qty}"
+                logger.warning(
+                    'Stock for %s going negative. Available: %s, Required: %s',
+                    product.name, stock.quantity, remaining_qty
                 )
 
             old_quantity = stock.quantity

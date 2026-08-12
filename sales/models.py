@@ -896,8 +896,8 @@ class SalesDeliveryNote(models.Model):
                     )
 
                     if stock.quantity < delivery_item.quantity_delivered:
-                        raise ValidationError(
-                            f"Insufficient stock for {product.name}. "
+                        print(
+                            f"WARNING: Stock for {product.name} going negative. "
                             f"Available: {stock.quantity}, Required: {delivery_item.quantity_delivered}"
                         )
 
