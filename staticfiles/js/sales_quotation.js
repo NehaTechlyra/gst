@@ -3326,9 +3326,10 @@ document.addEventListener('DOMContentLoaded', function () {
       return;
     }
     if (data.is_cash_customer) {
-      clearVendor();
-      return;
-    }
+      // Hide detailed customer info but allow currency autofill to proceed
+      if (customerInfo) customerInfo.style.display = 'none';
+      currentCustomerShippingData = null;
+    } else {
     customerInfo.style.display = 'block';
     //  FIX: Check if we have saved shipping data from the quotation first
     const hasSavedShipping = window.hasSavedShippingData;
