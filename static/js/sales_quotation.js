@@ -2689,11 +2689,66 @@ function normalizeSalesItemForSelect(rawItem) {
   };
 }
 
+function showBarcodeToast(message, type) {
+  var toastContainer = document.getElementById('barcode-toast-container');
+  if (!toastContainer) {
+    toastContainer = document.createElement('div');
+    toastContainer.id = 'barcode-toast-container';
+    toastContainer.style.position = 'fixed';
+    toastContainer.style.top = '20px';
+    toastContainer.style.right = '20px';
+    toastContainer.style.zIndex = '1080';
+    toastContainer.style.display = 'flex';
+    toastContainer.style.flexDirection = 'column';
+    toastContainer.style.gap = '10px';
+    toastContainer.style.pointerEvents = 'none';
+    document.body.appendChild(toastContainer);
+  }
+
+  var toastEl = document.createElement('div');
+  toastEl.setAttribute('role', 'alert');
+  toastEl.setAttribute('aria-live', 'assertive');
+  toastEl.setAttribute('aria-atomic', 'true');
+  toastEl.style.minWidth = '220px';
+  toastEl.style.maxWidth = '320px';
+  toastEl.style.padding = '10px 14px';
+  toastEl.style.borderRadius = '8px';
+  toastEl.style.color = '#fff';
+  toastEl.style.background = type === 'error' ? '#dc3545' : '#198754';
+  toastEl.style.boxShadow = '0 8px 25px rgba(0,0,0,0.18)';
+  toastEl.style.fontSize = '0.95rem';
+  toastEl.style.lineHeight = '1.4';
+  toastEl.style.opacity = '0';
+  toastEl.style.transform = 'translateY(-8px)';
+  toastEl.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
+  toastEl.textContent = message || '';
+
+  toastContainer.appendChild(toastEl);
+
+  requestAnimationFrame(function () {
+    toastEl.style.opacity = '1';
+    toastEl.style.transform = 'translateY(0)';
+  });
+
+  setTimeout(function () {
+    toastEl.style.opacity = '0';
+    toastEl.style.transform = 'translateY(-8px)';
+    setTimeout(function () {
+      if (toastEl.parentNode) toastEl.parentNode.removeChild(toastEl);
+    }, 220);
+  }, 2800);
+}
+
 function setBarcodeStatus(message, type) {
   var status = document.getElementById('invoice-barcode-status');
+  if (message && message !== 'Searching...') {
+    showBarcodeToast(message, type);
+  }
+
   if (!status) return;
   status.textContent = message || '';
   status.style.color = type === 'error' ? '#b42318' : '#198754';
+  status.style.display = message ? 'block' : 'none';
 }
 
 function getActiveInvoiceRows() {
@@ -2771,7 +2826,11 @@ function scanInvoiceBarcode() {
     return;
   }
 
-  setBarcodeStatus('Searching...', 'success');
+  if (document.getElementById('invoice-barcode-status')) {
+    document.getElementById('invoice-barcode-status').textContent = 'Searching...';
+    document.getElementById('invoice-barcode-status').style.display = 'block';
+    document.getElementById('invoice-barcode-status').style.color = '#198754';
+  }
   $.ajax({
     url: getCompanyPrefixedUrl('/sales/get_item_sales/'),
     dataType: 'json',

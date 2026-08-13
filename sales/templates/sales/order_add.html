@@ -1155,13 +1155,13 @@ document.addEventListener('DOMContentLoaded', function() {
       <div class="section-title" style="margin-top:30px;">Item Details<span class="text-danger"> *</span></div>
       {% comment %} <p>item.name: {{ item_formset.name }}</p>  {% endcomment %}
       <div class="barcode-scan-row" style="display:flex;align-items:flex-end;gap:10px;margin:12px 0 14px;max-width:520px;">
-        <div style="flex:1;">
+        <div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;">
           <label for="invoice-barcode-scan" style="font-weight:600;margin-bottom:4px;">Scan Barcode</label>
-          <input type="text" id="invoice-barcode-scan" class="form-control" autocomplete="off" placeholder="Scan or enter barcode">
+          <input type="text" id="invoice-barcode-scan" class="form-control" autocomplete="off" placeholder="Scan or enter barcode" style="margin-bottom:0;">
         </div>
-        <button type="button" id="invoice-barcode-add" class="add-item-btn" style="margin:0;white-space:nowrap;">Add</button>
+        <button type="button" id="invoice-barcode-add" class="add-item-btn" style="margin:0;white-space:nowrap;align-self:flex-end;display:flex;align-items:center;justify-content:center;height:33px;padding:0 18px;">Add</button>
       </div>
-      <div id="invoice-barcode-status" class="small" style="min-height:18px;margin-top:-8px;margin-bottom:8px;"></div>
+      {% comment %} <div id="invoice-barcode-status" class="small" style="min-height:18px;margin-top:-8px;margin-bottom:8px;"></div> {% endcomment %}
       <table class="items-table" id="items-table">
   <thead>
     <tr>
