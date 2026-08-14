@@ -1290,6 +1290,102 @@ function initTaxSelect($el) {
 
 }
 
+function getRowTaxRate($row) {
+  const taxPref = $row.data('tax-pref') || '';
+  if (taxPref === 'non_taxable') return 0;
+  const $selected = $row.find('.tax-select').find(':selected');
+  return $selected.length ? (parseFloat($selected.data('rate')) || 0) : 0;
+}
+
+function updateMrpPreview($row) {
+  const mrp = parseFloat($row.find('.mrp-input').val());
+  const $popover = $row.find('.mrp-popover');
+  if (!mrp || mrp <= 0) {
+    $popover.find('.mrp-preview-price').text('₹0.00');
+    $popover.find('.mrp-preview-gst').text('₹0.00');
+    return;
+  }
+  const taxRate = getRowTaxRate($row);
+  const price = mrp / (1 + taxRate / 100);
+  const gst = mrp - price;
+  $popover.find('.mrp-preview-price').text('₹' + price.toFixed(2));
+  $popover.find('.mrp-preview-gst').text('₹' + gst.toFixed(2) + ' (' + taxRate + '%)');
+}
+
+function applyMrp($row) {
+  const mrp = parseFloat($row.find('.mrp-input').val());
+  if (!mrp || mrp <= 0) return;
+
+  const taxRate = getRowTaxRate($row);
+  const price = mrp / (1 + taxRate / 100);
+
+  $row.find('.price').val(price.toFixed(2)).trigger('change');
+  $row.data('custom-mrp', mrp);
+
+  $row.find('.mrp-badge-text').text('MRP ₹' + mrp.toFixed(2));
+  $row.find('.mrp-badge').show();
+  $row.find('.mrp-toggle-btn').hide();
+  $row.find('.mrp-popover').hide();
+}
+
+function clearMrp($row) {
+  const masterPrice = $row.data('master_price');
+  if (masterPrice !== undefined && masterPrice !== null) {
+    $row.find('.price').val(parseFloat(masterPrice).toFixed(2)).trigger('change');
+  }
+  $row.removeData('custom-mrp');
+  $row.find('.mrp-input').val('');
+  $row.find('.mrp-badge').hide();
+  $row.find('.mrp-toggle-btn').show();
+}
+
+// Open popover
+$('#items-table').on('click', '.mrp-toggle-btn', function (e) {
+  e.preventDefault();
+  e.stopPropagation();
+  $('.mrp-popover').not($(this).siblings('.mrp-popover')).hide();
+  const $row = $(this).closest('tr');
+  $row.find('.mrp-popover').show();
+  $row.find('.mrp-input').trigger('focus');
+});
+
+// Live preview as user types
+$('#items-table').on('input', '.mrp-input', function () {
+  updateMrpPreview($(this).closest('tr'));
+});
+
+// Apply / Cancel / Clear
+$('#items-table').on('click', '.mrp-apply-btn', function (e) {
+  e.preventDefault();
+  applyMrp($(this).closest('tr'));
+});
+$('#items-table').on('click', '.mrp-cancel-btn', function (e) {
+  e.preventDefault();
+  $(this).closest('.mrp-popover').hide();
+});
+$('#items-table').on('click', '.mrp-clear-btn', function (e) {
+  e.preventDefault();
+  clearMrp($(this).closest('tr'));
+});
+
+// Close popover on outside click
+$(document).on('click', function (e) {
+  if (!$(e.target).closest('.mrp-panel').length) {
+    $('.mrp-popover').hide();
+  }
+});
+
+// Recompute if tax changes while popover is open/applied
+$('#items-table').on('select2:select change', '.tax-select', function () {
+  const $row = $(this).closest('tr');
+  updateMrpPreview($row);
+  if ($row.data('custom-mrp')) {
+    $row.find('.mrp-input').val($row.data('custom-mrp'));
+    applyMrp($row);
+  }
+});
+
+
 function hideSalesItemModal() {
   var modalEl = document.getElementById('addItemModal');
   if (!modalEl) return;
@@ -2204,7 +2300,31 @@ function restoreFormData() {
       </td>
       <td><input type="text" class="desc" name="items[${idx}][description]"></td>
       <td><input type="number" class="qty" name="form-${idx}-quantity" value="1" min="0.01" step="0.01"></td>
-      <td><input type="number" class="price" name="form-${idx}-price" min="0.01" step="0.01" value="0"></td>
+      <td class="price-cell">
+        <input type="number" class="price" name="form-${idx}-price" min="0.01" step="0.01" value="0">
+
+        <div class="mrp-panel">
+          <button type="button" class="mrp-toggle-btn"><i class="bi bi-calculator"></i> MRP</button>
+
+          <div class="mrp-badge" style="display:none;">
+            <span class="mrp-badge-text"></span>
+            <button type="button" class="mrp-clear-btn" title="Remove custom price"><i class="bi bi-x-circle"></i></button>
+          </div>
+
+          <div class="mrp-popover" style="display:none;">
+            <label class="mrp-popover-label">MRP (incl. GST)</label>
+            <input type="number" class="mrp-input form-control form-control-sm" placeholder="e.g. 300" min="0" step="0.01">
+            <div class="mrp-breakdown">
+              <div><span>Pre-GST Price</span><strong class="mrp-preview-price">₹0.00</strong></div>
+              <div><span>GST Amount</span><strong class="mrp-preview-gst">₹0.00</strong></div>
+            </div>
+            <div class="mrp-popover-actions">
+              <button type="button" class="btn btn-sm btn-link mrp-cancel-btn">Cancel</button>
+              <button type="button" class="btn btn-sm btn-primary mrp-apply-btn">Apply</button>
+            </div>
+          </div>
+        </div>
+      </td>
       <td class="base-price">
         <input type="text" class="form-control form-control-sm o_price_display" name="form-${idx}-o_price_display" value="" readonly>
       </td>
@@ -2363,7 +2483,31 @@ document.addEventListener("DOMContentLoaded", function () {
       </td>
       <td><input type="text" class="desc" name="items[${idx}][description]"></td>
       <td><input type="number" class="qty" name="form-${idx}-quantity" value="1" min="0.01" step="0.01"></td>
-      <td><input type="number" class="price" name="form-${idx}-price" min="0.01" step="0.01" value="0"></td>
+      <td class="price-cell">
+        <input type="number" class="price" name="form-${idx}-price" min="0.01" step="0.01" value="0">
+
+        <div class="mrp-panel">
+          <button type="button" class="mrp-toggle-btn"><i class="bi bi-calculator"></i> MRP</button>
+
+          <div class="mrp-badge" style="display:none;">
+            <span class="mrp-badge-text"></span>
+            <button type="button" class="mrp-clear-btn" title="Remove custom price"><i class="bi bi-x-circle"></i></button>
+          </div>
+
+          <div class="mrp-popover" style="display:none;">
+            <label class="mrp-popover-label">MRP (incl. GST)</label>
+            <input type="number" class="mrp-input form-control form-control-sm" placeholder="e.g. 300" min="0" step="0.01">
+            <div class="mrp-breakdown">
+              <div><span>Pre-GST Price</span><strong class="mrp-preview-price">₹0.00</strong></div>
+              <div><span>GST Amount</span><strong class="mrp-preview-gst">₹0.00</strong></div>
+            </div>
+            <div class="mrp-popover-actions">
+              <button type="button" class="btn btn-sm btn-link mrp-cancel-btn">Cancel</button>
+              <button type="button" class="btn btn-sm btn-primary mrp-apply-btn">Apply</button>
+            </div>
+          </div>
+        </div>
+      </td>
       <td class="base-price">
         <input type="text" class="form-control form-control-sm o_price_display" name="form-${idx}-o_price_display" value="" readonly>
       </td>
