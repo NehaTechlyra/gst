@@ -2328,7 +2328,6 @@ function restoreFormData() {
       <td class="base-price">
         <input type="text" class="form-control form-control-sm o_price_display" name="form-${idx}-o_price_display" value="" readonly>
       </td>
-      <td><select class="tax-select" name="form-${idx}-prd_tax"></select></td>
       <td style="display:flex;gap:2px;" class="discount-item">
               <input type="number" class="item-discount" name="form-${idx}-prd_disvalue" value="0" min="0" step="0.01">
         <select class="discount-type rupee-sign" name="form-${idx}-prd_distype">
@@ -2336,6 +2335,8 @@ function restoreFormData() {
           <option value="percent">%</option>
         </select>
       </td>
+      <td><select class="tax-select" name="form-${idx}-prd_tax"></select></td>
+
       <td style="display:none;"><input type="hidden" name="form-${idx}-gstinclude" class="gstinclude"></td>
       <td style="display:none;"><input type="hidden" name="form-${idx}-o_price" class="o_price"></td>
       <td class="amount">₹0.00</td>
@@ -2511,7 +2512,6 @@ document.addEventListener("DOMContentLoaded", function () {
       <td class="base-price">
         <input type="text" class="form-control form-control-sm o_price_display" name="form-${idx}-o_price_display" value="" readonly>
       </td>
-      <td><select class="tax-select" name="form-${idx}-prd_tax"></select></td>
       <td style="display:flex;gap:2px;" class="discount-item">
               <input type="number" class="item-discount" name="form-${idx}-prd_disvalue" value="0" min="0" step="0.01">
         <select class="discount-type rupee-sign" name="form-${idx}-prd_distype">
@@ -2519,6 +2519,8 @@ document.addEventListener("DOMContentLoaded", function () {
           <option value="percent">%</option>
         </select>
       </td>
+      <td><select class="tax-select" name="form-${idx}-prd_tax"></select></td>
+
       <td style="display:none;"><input type="hidden" name="form-${idx}-gstinclude" class="gstinclude"></td>
       <td style="display:none;"><input type="hidden" name="form-${idx}-o_price" class="o_price"></td>
       <td class="amount">₹0.00</td>

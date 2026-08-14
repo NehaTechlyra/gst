@@ -1307,7 +1307,6 @@ document.addEventListener('DOMContentLoaded', function() {
           <td class="base-price">
             <input type="text" class="form-control form-control-sm o_price_display" name="{{ form.prefix }}-o_price_display" value="{% if form.o_price.value %}{{ form.o_price.value|floatformat:2 }}{% endif %}" readonly>
           </td>
-          <td>{{ form.prd_tax }}</td>
           {% comment %} <td>
   <select name="{{ form.prd_tax.name }}" class="tax-select">
     {% if form.instance.prd_tax %}
@@ -1325,6 +1324,7 @@ document.addEventListener('DOMContentLoaded', function() {
 </td>  {% endcomment %}
 
           <td class="discount-item"><div style="display:flex;align-items:center; gap:4px;">{{ form.prd_disvalue }}{{ form.prd_distype }}</div></td>
+          <td>{{ form.prd_tax }}</td>
           <td style="display:none;">
             <input type="hidden" name="{{ form.prefix }}-gstinclude" class="gstinclude" value="{{ form.gstinclude.value|default:'false' }}">
           </td>
