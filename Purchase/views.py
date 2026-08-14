@@ -3224,6 +3224,7 @@ def generate_revised_order_number(original_order_number):
 
 @transaction.atomic
 def purchase_order_duplicate(request, pk):
+    print("purchase_order_duplicate called with pk:", pk)
     old_order = get_object_or_404(PurchaseOrder, pk=pk)
 
     # ------------------ PERMISSION CHECK ------------------

@@ -46,63 +46,14 @@
           {% endfor %}
           </div>
         <button type="submit" class="btn btn-primary">Save Account</button>
-        {% comment %} <a href="{% url 'accounts-list' %}" class="btn btn-outline-secondary ms-2">Cancel</a> {% endcomment %}
-        <button class="btn btn-outline-secondary ms-2" onclick="history.back()">Cancel</button>
+        <button type="button" class="btn btn-outline-secondary ms-2" onclick="window.location.href='{% url 'accounts-list' %}'">Cancel</button>
     </form> 
   </div>
 </div>
 <script>
-    
-   
-$(document).ready(function() {
-    const generate_code_url = "{% url 'generate-code-ajax' %}";
-    console.log("generate_code_url set to:", generate_code_url);
-    $('#id_type').change(function() {
-        var typeCode = $(this).val();
-        if (typeCode) {
-            $.ajax({
-                url: "{% url 'get_parents_for_type' %}",
-                data: {
-                    'type_code': typeCode
-                },
-                dataType: 'json',
-                success: function(data) {
-                    var options = '<option value="" selected>---------</option>';
-                    $.each(data.parents, function(index, parent) {
-                        options += `<option value="${parent.id}">${parent.name}</option>`;
-                    });
-                    $('#id_parent').html(options);
-
-                    // 🔹 Reinitialize Select2
-                    $('#id_parent').select2({
-                        placeholder: "Search or select parent",
-                        allowClear: true,
-                        width: '100%'
-                    });
-                }
-            });
-        } else {
-            $('#id_parent').html('<option value="" selected>---------</option>');
-        }
-    });
-
-    // Initialize at page load (in case it's already populated)
-    $('#id_parent').select2({
-        placeholder: "Search or select parent",
-        allowClear: true,
-        width: '100%'
-    });
-     // 🔹 Focus the search box automatically when dropdown opens
-    $(document).on('select2:open', () => {
-        document.querySelector('.select2-container--open .select2-search__field').focus();
-    });
-});
-
-
+    window.generate_code_url = "{% url 'generate-code-ajax' %}";
+    window.get_parents_url = "{% url 'get_parents_for_type' %}";
 </script>
 <script src="{% static 'js/chart_of_accounts.js' %}"></script>
-
-
-</script>
 
 {% endblock %}
