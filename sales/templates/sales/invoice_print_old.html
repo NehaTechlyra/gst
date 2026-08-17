@@ -7,11 +7,7 @@
 
   {% load static %}
   {% block exstyle %}
-  {% if company and company.print_paper_size == 'POS' %}
-    <link href="{% static 'style/print_pos.css' %}" rel="stylesheet">
-  {% else %}
-    <link href="{% static 'style/print.css' %}" rel="stylesheet">
-  {% endif %}
+  <link href="{% static 'style/print.css' %}" rel="stylesheet">
   {% endblock %}
 </head>
 <body>
@@ -53,41 +49,27 @@
         </td>
       </tr>
     </table>
-    {% if company and company.print_paper_size == 'POS' %}
-    <div class="header-down" style="width: 100%;">
-          <div class="heading">INVOICE</div>
-          
-</div>
- 
-  {% endif %}
     <table class="meta-table">
       <tr>
-        <td class="meta-pair">
-          <span class="meta-label">Invoice No</span>
-          <span class="meta-value">: {{ q_no }}</span>
-        </td>
-        <td class="meta-pair">
-          <span class="meta-label">Date</span>
-          <span class="meta-value">: {{ invoice.date }}</span>
-        </td>
+        <td class="meta-label">Invoice No</td>
+        <td class="meta-value">: {{ q_no }}</td>
+        <td class="meta-label">Date</td>
+        <td class="meta-value">: {{ invoice.date }}</td>
       </tr>
       <tr>
-        <td class="meta-pair">
-          <span class="meta-label">Place of Supply</span>
-          <span class="meta-value">: {{ invoice.place_of_supply|default:"-" }}</span>
-        </td>
-        <td class="meta-pair">
-          <span class="meta-label">Sales Person</span>
-          <span class="meta-value">
-            :
-            {% if invoice.sales_person %}
-              {% if invoice.sales_person.name and invoice.sales_person.phone %}
-                {{ invoice.sales_person.name }} ({{ invoice.sales_person.phone }})
-              {% elif invoice.sales_person.name %}
-                {{ invoice.sales_person.name }}
-              {% else %}
-                -
-              {% endif %}
+        <td class="meta-label">Place of Supply</td>
+        <td class="meta-value">: {{ invoice.place_of_supply|default:"-" }}</td>
+        <td class="meta-label">Sales Person</td>
+        <td class="meta-value">
+          :
+          {% if invoice.sales_person %}
+            {% if invoice.sales_person.name and invoice.sales_person.phone %}
+              {{ invoice.sales_person.name }} ({{ invoice.sales_person.phone }})
+            {% elif invoice.sales_person.name %}
+              {{ invoice.sales_person.name }}
+            {% else %}
+              -
+            {% endif %}
           {% else %}
             -
           {% endif %}

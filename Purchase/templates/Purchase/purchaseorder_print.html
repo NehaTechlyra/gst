@@ -5,8 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Purchase Order</title>
   {% load static %}
-  {% block exstyle %}
-  <link href="{% static 'style/print.css' %}" rel="stylesheet">
+    {% block exstyle %}
+  {% if company and company.print_paper_size == 'POS' %}
+    <link href="{% static 'style/print_pos.css' %}" rel="stylesheet">
+  {% else %}
+    <link href="{% static 'style/print.css' %}" rel="stylesheet">
+  {% endif %}
   {% endblock %}
 </head>
 
@@ -43,23 +47,37 @@
           </div>
         </td>
         <td class="header-right" style="width: 35%;">
-          <div class="order-badge">ORDER</div>
+          <div class="order-badge">PURCHASE ORDER</div>
         </td>
       </tr>
     </table>
-
+ {% if company and company.print_paper_size == 'POS' %}
+    <div class="header-down" style="width: 100%;">
+          <div class="heading">PURCHASE ORDER</div>
+          
+</div>
+ 
+  {% endif %}
     <table class="meta-table">
       <tr>
-        <td class="meta-label">Order No</td>
-        <td class="meta-value">: {{ o_no }}</td>
-        <td class="meta-label">Date</td>
-        <td class="meta-value">: {{ order.date }}</td>
+        <td class="meta-pair">
+          <span class="meta-label">Order No</span>
+          <span class="meta-value">: {{ o_no }}</span>
+        </td>
+        <td class="meta-pair">
+          <span class="meta-label">Date</span>
+          <span class="meta-value">: {{ order.date }}</span>
+        </td>
       </tr>
       <tr>
-        <td class="meta-label">Place of Supply</td>
-        <td class="meta-value">: {{ order.place_of_supply|default:"-" }}</td>
-        <td class="meta-label">Payment Terms</td>
-        <td class="meta-value">: {{ payment_term_display|default:"-" }}</td>
+        <td class="meta-pair">
+          <span class="meta-label">Place of Supply</span>
+          <span class="meta-value">: {{ order.place_of_supply|default:"-" }}</span> 
+        </td>
+        <td class="meta-pair">
+          <span class="meta-label">Payment Terms</span>
+          <span class="meta-value">: {{ payment_term_display|default:"-" }}</span>
+        </td>
       </tr>
     </table>
   </div>

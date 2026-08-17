@@ -7,7 +7,11 @@
 
   {% load static %}
   {% block exstyle %}
-  <link href="{% static 'style/print.css' %}" rel="stylesheet">
+  {% if company and company.print_paper_size == 'POS' %}
+    <link href="{% static 'style/print_pos.css' %}" rel="stylesheet">
+  {% else %}
+    <link href="{% static 'style/print.css' %}" rel="stylesheet">
+  {% endif %}
   {% endblock %}
 </head>
 
@@ -52,20 +56,40 @@
         </td>
       </tr>
     </table>
-
+{% if company and company.print_paper_size == 'POS' %}
+    <div class="header-down" style="width: 100%;">
+          <div class="heading">ORDER</div>
+          
+</div>
+ 
+  {% endif %}
     <table class="meta-table">
       <tr>
-        <td class="meta-label">Order No</td>
-        <td class="meta-value">: {{ o_no }}</td>
-        <td class="meta-label">Date</td>
-        <td class="meta-value">: {{ order.date }}</td>
+        <td class="meta-pair">
+          
+        <span class="meta-label">Order No</span>
+        <span class="meta-value">: {{ o_no }}</span>
+        </td>
+        <td class="meta-pair">
+          <span class="meta-label">Date</span>
+          <span class="meta-value">: {{ order.date }}</span>
+        </td>
       </tr>
       <tr>
-        <td class="meta-label">Place of Supply</td>
-        <td class="meta-value">: {{ order.place_of_supply|default:"-" }}</td>
-        <td class="meta-label">Sales Person</td>
-        <td class="meta-value">
-          :
+        <td class="meta-pair">
+          <span class="meta-label">Customer</span>
+          <span class="meta-value">: {% if order.customer %}{{ order.customer }}{% else %}-{% endif %}</span>
+        </td>
+        <td class="meta-pair">
+          <span class="meta-label">Place of Supply</span>
+          <span class="meta-value">: {{ order.place_of_supply|default:"-" }}</span>
+        </td>
+      </tr>
+      <tr>
+        <td class="meta-pair">
+          <span class="meta-label">Sales Person</span>
+          <span class="meta-value">
+            :
           {% if order.sales_person %}
             {% if order.sales_person.name and order.sales_person.phone %}
               {{ order.sales_person.name }} ({{ order.sales_person.phone }})

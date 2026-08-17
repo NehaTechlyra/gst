@@ -53,7 +53,15 @@
           
         </td>
       </tr>
+      
     </table>
+    {% if company and company.print_paper_size == 'POS' %}
+    <div class="header-down" style="width: 100%;">
+          <div class="heading">QUOTE</div>
+          
+</div>
+ 
+  {% endif %}
 
     <table class="meta-table">
       <tr>
