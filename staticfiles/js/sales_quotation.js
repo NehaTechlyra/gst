@@ -2689,11 +2689,66 @@ function normalizeSalesItemForSelect(rawItem) {
   };
 }
 
+function showBarcodeToast(message, type) {
+  var toastContainer = document.getElementById('barcode-toast-container');
+  if (!toastContainer) {
+    toastContainer = document.createElement('div');
+    toastContainer.id = 'barcode-toast-container';
+    toastContainer.style.position = 'fixed';
+    toastContainer.style.top = '20px';
+    toastContainer.style.right = '20px';
+    toastContainer.style.zIndex = '1080';
+    toastContainer.style.display = 'flex';
+    toastContainer.style.flexDirection = 'column';
+    toastContainer.style.gap = '10px';
+    toastContainer.style.pointerEvents = 'none';
+    document.body.appendChild(toastContainer);
+  }
+
+  var toastEl = document.createElement('div');
+  toastEl.setAttribute('role', 'alert');
+  toastEl.setAttribute('aria-live', 'assertive');
+  toastEl.setAttribute('aria-atomic', 'true');
+  toastEl.style.minWidth = '220px';
+  toastEl.style.maxWidth = '320px';
+  toastEl.style.padding = '10px 14px';
+  toastEl.style.borderRadius = '8px';
+  toastEl.style.color = '#fff';
+  toastEl.style.background = type === 'error' ? '#dc3545' : '#198754';
+  toastEl.style.boxShadow = '0 8px 25px rgba(0,0,0,0.18)';
+  toastEl.style.fontSize = '0.95rem';
+  toastEl.style.lineHeight = '1.4';
+  toastEl.style.opacity = '0';
+  toastEl.style.transform = 'translateY(-8px)';
+  toastEl.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
+  toastEl.textContent = message || '';
+
+  toastContainer.appendChild(toastEl);
+
+  requestAnimationFrame(function () {
+    toastEl.style.opacity = '1';
+    toastEl.style.transform = 'translateY(0)';
+  });
+
+  setTimeout(function () {
+    toastEl.style.opacity = '0';
+    toastEl.style.transform = 'translateY(-8px)';
+    setTimeout(function () {
+      if (toastEl.parentNode) toastEl.parentNode.removeChild(toastEl);
+    }, 220);
+  }, 2800);
+}
+
 function setBarcodeStatus(message, type) {
   var status = document.getElementById('invoice-barcode-status');
+  if (message && message !== 'Searching...') {
+    showBarcodeToast(message, type);
+  }
+
   if (!status) return;
   status.textContent = message || '';
   status.style.color = type === 'error' ? '#b42318' : '#198754';
+  status.style.display = message ? 'block' : 'none';
 }
 
 function getActiveInvoiceRows() {
@@ -2771,7 +2826,11 @@ function scanInvoiceBarcode() {
     return;
   }
 
-  setBarcodeStatus('Searching...', 'success');
+  if (document.getElementById('invoice-barcode-status')) {
+    document.getElementById('invoice-barcode-status').textContent = 'Searching...';
+    document.getElementById('invoice-barcode-status').style.display = 'block';
+    document.getElementById('invoice-barcode-status').style.color = '#198754';
+  }
   $.ajax({
     url: getCompanyPrefixedUrl('/sales/get_item_sales/'),
     dataType: 'json',
@@ -3332,109 +3391,110 @@ document.addEventListener('DOMContentLoaded', function () {
       if (customerInfo) customerInfo.style.display = 'none';
       currentCustomerShippingData = null;
     } else {
-    customerInfo.style.display = 'block';
-    //  FIX: Check if we have saved shipping data from the quotation first
-    const hasSavedShipping = window.hasSavedShippingData;
-    console.log('Has saved shipping from quotation:', hasSavedShipping);
+      customerInfo.style.display = 'block';
+      //  FIX: Check if we have saved shipping data from the quotation first
+      const hasSavedShipping = window.hasSavedShippingData;
+      console.log('Has saved shipping from quotation:', hasSavedShipping);
 
-    // Use saved shipping data if available, otherwise use customer's default.
-    // If customer shipping is empty, default shipping to billing details.
-    const savedShipping = normalizeShippingData(window.savedShippingData);
-    const customerShipping = normalizeShippingData(data.shipping);
-    if (hasSavedShipping && hasShippingDetails(savedShipping)) {
-      currentCustomerShippingData = savedShipping;
-      console.log('Using saved shipping from quotation:', currentCustomerShippingData);
-    } else if (hasShippingDetails(customerShipping)) {
-      currentCustomerShippingData = customerShipping;
-      console.log('Using customer default shipping:', currentCustomerShippingData);
-    } else {
-      currentCustomerShippingData = buildShippingFromBilling(data.billing || {});
-      console.log('Customer has no shipping, using billing as shipping:', currentCustomerShippingData);
-    }
-    console.log('Stored shipping data:', currentCustomerShippingData);
-    const b = data.billing || {};
-    currentBillingData = b;
-    billingName.innerText = b.name || '';
-    let addr = '';
-    if (b.address_line_1) addr += b.address_line_1 + ', ';
-    if (b.address_line_2) addr += b.address_line_2 + ', ';
-    if (b.city) addr += b.city + ', ';
-    if (b.postal_code) addr += b.postal_code + ', ';
-    if (b.country) addr += b.country;
-    billingAddress.innerText = addr.replace(/, $/, '');
-    billingContact.innerText = (b.email ? b.email + (b.phone ? ' | ' + b.phone : '') : (b.phone || ''));
-    billingGst.innerText = b.gst_number ? ('Tax Number: ' + b.gst_number) : '';
-    // Fill shipping info from customer data
-    const s = normalizeShippingData(currentCustomerShippingData);
-    const shipNameEl = document.getElementById('shipping-name');
-    const shipAddrEl = document.getElementById('shipping-address');
-    const shipContactEl = document.getElementById('shipping-contact');
-
-    if (shipNameEl) {
-      shipNameEl.innerText = s.name || '';
-    }
-
-    if (shipAddrEl) {
-      let shipLines = [];
-      if (s.shipping_address_line_1) shipLines.push(s.shipping_address_line_1);
-      if (s.shipping_address_line_2) shipLines.push(s.shipping_address_line_2);
-
-      let loc = '';
-      if (s.shipping_city) loc += s.shipping_city;
-      if (s.shipping_state) loc += (loc ? ', ' : '') + s.shipping_state;
-      if (s.shipping_postal_code) loc += (loc ? ', ' : '') + s.shipping_postal_code;
-      if (s.shipping_country) loc += (loc ? ', ' : '') + s.shipping_country;
-      if (loc) shipLines.push(loc);
-
-      // If no shipping data, show "New Address"
-      shipAddrEl.innerText = shipLines.length > 0 ? shipLines.join('\n') : 'New Address';
-    }
-    if (shipContactEl) {
-      shipContactEl.innerText = (s.email ? s.email + (s.phone ? ' | ' + s.phone : '') : (s.phone || ''));
-    }
-
-    // Also populate hidden shipping inputs for form submission
-    try {
-      document.getElementById('shipping_attention').value = s.name || '';
-      document.getElementById('shipping_email').value = s.email || '';
-      document.getElementById('shipping_phone').value = s.phone || '';
-      document.getElementById('shipping_country').value = s.shipping_country || '';
-      document.getElementById('shipping_address1').value = s.shipping_address_line_1 || '';
-      document.getElementById('shipping_address2').value = s.shipping_address_line_2 || '';
-      document.getElementById('shipping_city').value = s.shipping_city || '';
-      document.getElementById('shipping_state').value = s.shipping_state || '';
-      document.getElementById('shipping_postal_code').value = s.shipping_postal_code || '';
-    } catch (err) {
-      console.warn('Error setting shipping hidden inputs:', err);
-    }
-    applyCustomerPaymentTerms(data);
-    // GST treatment display removed; don't set gstTreatment here.
-    if (placeOfSupplyDiv) {
-      const savedPlaceField = document.querySelector('input[name="place_of_supply"]');
-      const savedVal = savedPlaceField ? (savedPlaceField.value || '').trim() : '';
-      const state = (savedVal || data.place_of_supply || '').toLowerCase();
-      console.log('Place of Supply - saved:', savedVal, 'from data:', data.place_of_supply, 'final state:', state);
-
-      // Find the properly cased state value from the states array
-      const states = [
-        'Andaman and Nicobar Islands', 'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar',
-        'Chandigarh', 'Chhattisgarh', 'Dadra and Nagar Haveli', 'Daman and Diu', 'Delhi',
-        'Goa', 'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jharkhand', 'Karnataka', 'Kerala',
-        'Ladakh', 'Lakshadweep', 'Madhya Pradesh', 'Maharashtra', 'Manipur', 'Meghalaya',
-        'Mizoram', 'Nagaland', 'Odisha', 'Puducherry', 'Punjab', 'Rajasthan', 'Sikkim',
-        'Tamil Nadu', 'Telangana', 'Tripura', 'Uttar Pradesh', 'Uttarakhand', 'West Bengal'
-      ];
-      const properCasedState = states.find(s => s.toLowerCase() === state) || (savedVal || data.place_of_supply || '');
-      placeOfSupplyDiv.innerText = properCasedState;
-
-      // Also update hidden field
-      const hiddenField = document.querySelector('input[name="place_of_supply"]');
-      if (hiddenField && properCasedState) {
-        hiddenField.value = properCasedState;
+      // Use saved shipping data if available, otherwise use customer's default.
+      // If customer shipping is empty, default shipping to billing details.
+      const savedShipping = normalizeShippingData(window.savedShippingData);
+      const customerShipping = normalizeShippingData(data.shipping);
+      if (hasSavedShipping && hasShippingDetails(savedShipping)) {
+        currentCustomerShippingData = savedShipping;
+        console.log('Using saved shipping from quotation:', currentCustomerShippingData);
+      } else if (hasShippingDetails(customerShipping)) {
+        currentCustomerShippingData = customerShipping;
+        console.log('Using customer default shipping:', currentCustomerShippingData);
+      } else {
+        currentCustomerShippingData = buildShippingFromBilling(data.billing || {});
+        console.log('Customer has no shipping, using billing as shipping:', currentCustomerShippingData);
       }
-    }
-    if (typeof window.renderCustomerCreditSummary === 'function') {
-      window.renderCustomerCreditSummary(data.credit || null);
+      console.log('Stored shipping data:', currentCustomerShippingData);
+      const b = data.billing || {};
+      currentBillingData = b;
+      billingName.innerText = b.name || '';
+      let addr = '';
+      if (b.address_line_1) addr += b.address_line_1 + ', ';
+      if (b.address_line_2) addr += b.address_line_2 + ', ';
+      if (b.city) addr += b.city + ', ';
+      if (b.postal_code) addr += b.postal_code + ', ';
+      if (b.country) addr += b.country;
+      billingAddress.innerText = addr.replace(/, $/, '');
+      billingContact.innerText = (b.email ? b.email + (b.phone ? ' | ' + b.phone : '') : (b.phone || ''));
+      billingGst.innerText = b.gst_number ? ('Tax Number: ' + b.gst_number) : '';
+      // Fill shipping info from customer data
+      const s = normalizeShippingData(currentCustomerShippingData);
+      const shipNameEl = document.getElementById('shipping-name');
+      const shipAddrEl = document.getElementById('shipping-address');
+      const shipContactEl = document.getElementById('shipping-contact');
+
+      if (shipNameEl) {
+        shipNameEl.innerText = s.name || '';
+      }
+
+      if (shipAddrEl) {
+        let shipLines = [];
+        if (s.shipping_address_line_1) shipLines.push(s.shipping_address_line_1);
+        if (s.shipping_address_line_2) shipLines.push(s.shipping_address_line_2);
+
+        let loc = '';
+        if (s.shipping_city) loc += s.shipping_city;
+        if (s.shipping_state) loc += (loc ? ', ' : '') + s.shipping_state;
+        if (s.shipping_postal_code) loc += (loc ? ', ' : '') + s.shipping_postal_code;
+        if (s.shipping_country) loc += (loc ? ', ' : '') + s.shipping_country;
+        if (loc) shipLines.push(loc);
+
+        // If no shipping data, show "New Address"
+        shipAddrEl.innerText = shipLines.length > 0 ? shipLines.join('\n') : 'New Address';
+      }
+      if (shipContactEl) {
+        shipContactEl.innerText = (s.email ? s.email + (s.phone ? ' | ' + s.phone : '') : (s.phone || ''));
+      }
+
+      // Also populate hidden shipping inputs for form submission
+      try {
+        document.getElementById('shipping_attention').value = s.name || '';
+        document.getElementById('shipping_email').value = s.email || '';
+        document.getElementById('shipping_phone').value = s.phone || '';
+        document.getElementById('shipping_country').value = s.shipping_country || '';
+        document.getElementById('shipping_address1').value = s.shipping_address_line_1 || '';
+        document.getElementById('shipping_address2').value = s.shipping_address_line_2 || '';
+        document.getElementById('shipping_city').value = s.shipping_city || '';
+        document.getElementById('shipping_state').value = s.shipping_state || '';
+        document.getElementById('shipping_postal_code').value = s.shipping_postal_code || '';
+      } catch (err) {
+        console.warn('Error setting shipping hidden inputs:', err);
+      }
+      applyCustomerPaymentTerms(data);
+      // GST treatment display removed; don't set gstTreatment here.
+      if (placeOfSupplyDiv) {
+        const savedPlaceField = document.querySelector('input[name="place_of_supply"]');
+        const savedVal = savedPlaceField ? (savedPlaceField.value || '').trim() : '';
+        const state = (savedVal || data.place_of_supply || '').toLowerCase();
+        console.log('Place of Supply - saved:', savedVal, 'from data:', data.place_of_supply, 'final state:', state);
+
+        // Find the properly cased state value from the states array
+        const states = [
+          'Andaman and Nicobar Islands', 'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar',
+          'Chandigarh', 'Chhattisgarh', 'Dadra and Nagar Haveli', 'Daman and Diu', 'Delhi',
+          'Goa', 'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jharkhand', 'Karnataka', 'Kerala',
+          'Ladakh', 'Lakshadweep', 'Madhya Pradesh', 'Maharashtra', 'Manipur', 'Meghalaya',
+          'Mizoram', 'Nagaland', 'Odisha', 'Puducherry', 'Punjab', 'Rajasthan', 'Sikkim',
+          'Tamil Nadu', 'Telangana', 'Tripura', 'Uttar Pradesh', 'Uttarakhand', 'West Bengal'
+        ];
+        const properCasedState = states.find(s => s.toLowerCase() === state) || (savedVal || data.place_of_supply || '');
+        placeOfSupplyDiv.innerText = properCasedState;
+
+        // Also update hidden field
+        const hiddenField = document.querySelector('input[name="place_of_supply"]');
+        if (hiddenField && properCasedState) {
+          hiddenField.value = properCasedState;
+        }
+      }
+      if (typeof window.renderCustomerCreditSummary === 'function') {
+        window.renderCustomerCreditSummary(data.credit || null);
+      }
     }
     // Auto-fill document currency and FX rate/date using currencies API
     try {
