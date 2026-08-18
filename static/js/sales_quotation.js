@@ -1697,12 +1697,15 @@ function calculateTotals() {
     }
     if (document.getElementById("tax-total-sgst")) {
       document.getElementById("tax-total-sgst").innerText = getDocumentCurrencySymbol() + ' ' + sgst.toFixed(2);
+      
     }
   } else {
     // Non-India: Show VAT as single total tax
     if (document.getElementById("tax-total-vat")) {
       document.getElementById("tax-total-vat").innerText = getDocumentCurrencySymbol() + ' ' + totalTax.toFixed(2);
+
     }
+
   }
   // $('#discount-amount').text(totalDiscount.toFixed(2));
 

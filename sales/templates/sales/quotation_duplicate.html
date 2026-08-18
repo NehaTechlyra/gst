@@ -1333,7 +1333,7 @@ document.addEventListener('DOMContentLoaded', function() {
           <td>{{ form.description }}</td>
           <td>{{ form.quantity }}</td>
           <td class="price-cell">
-            <input type="number" class="price" name="form-${idx}-price" min="0.01" step="0.01" value="0">
+            <input type="number" class="price" name="{{ form.prefix }}-price" min="0.01" step="0.01" value="{{ form.price.value|default:0 }}">
 
             <div class="mrp-panel">
               <button type="button" class="mrp-toggle-btn"><i class="bi bi-calculator"></i> MRP</button>
