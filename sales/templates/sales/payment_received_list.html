@@ -73,24 +73,28 @@
         <td>
           <!-- Action buttons -->
           <div class="payment-actions" style="margin-top: 5px;">
-                    {% if can_view_quotations %}
+                    {% if can_view_payments_received %}
                       {% if company_code %}
                         <a href="{% url 'payment_received_detail' company_code=company_code payment_id=payment.id %}" class="btn add-item-btn">View</a>
                       {% else %}
                         <a href="{% url 'payment_received_detail' payment_id=payment.id %}" class="btn add-item-btn">View</a>
                       {% endif %}
                     {% endif %}
-                    {% if can_edit_quotations %}
+                    {% if can_edit_payments_received %}
                       {% if company_code %}
                         <a href="{% url 'edit_payment_received' company_code=company_code payment_id=payment.id %}" class="btn add-item-btn">Edit</a>
                       {% else %}
                         <a href="{% url 'edit_payment_received' payment_id=payment.id %}" class="btn add-item-btn">Edit</a>
                       {% endif %}
                     {% endif %}
-              <!-- Delete button to trigger modal -->
-              <button class="btn btn-sm delete-btn" onclick="showDeletePrompt({{ payment.id }})" type="button">
-                <span class="bi bi-trash"></span>
-              </button>
+                    {% if can_delete_payments_received %}
+
+                      <!-- Delete button to trigger modal -->
+                      <button class="btn btn-sm delete-btn" onclick="showDeletePrompt({{ payment.id }})" type="button">
+                        <span class="bi bi-trash"></span>
+                      </button>
+                    {% endif %}
+
             </div>
           </div>
         </td>

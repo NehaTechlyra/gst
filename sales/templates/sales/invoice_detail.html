@@ -596,7 +596,7 @@ document.addEventListener('DOMContentLoaded', function() {
           <h5><i class="bi bi-lightning me-2"></i>Quick Actions</h5>
         </div>
         <div class="quick-actions-body">
-          {% if can_create_orders %}
+          {% if can_create_payments_received %}
           <!-- Record Payment -->
           <a class="btn btn-success w-100 {% if is_fully_paid %}disabled{% endif %}"
              {% if not is_fully_paid %}href="{% if company_code %}{% url 'payment_recieved_view' company_code invoice.pk %}{% else %}{% url 'payment_recieved_view' invoice.pk %}{% endif %}"{% endif %}>
