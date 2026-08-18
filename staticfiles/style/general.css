@@ -573,3 +573,36 @@ padding-top: 19px !important;
 .dots-dropdown-item.danger { color: #dc3545; }
 .dots-dropdown-item.danger i { color: #dc3545; }
 .dots-dropdown-item.danger:hover { background: #fff5f5; }
+
+
+
+.price-cell { position: relative; min-width: 150px; }
+.mrp-panel { margin-top: 6px; }
+
+.mrp-toggle-btn {
+  border: none; background: none; padding: 0;
+  font-size: 11.5px; color: #3a7bd5; font-weight: 500;
+  display: inline-flex; align-items: center; gap: 4px; cursor: pointer;
+}
+.mrp-toggle-btn:hover { text-decoration: underline; }
+
+.mrp-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: #eef4ff; border: 1px solid #cfe0ff; color: #2454a8;
+  border-radius: 12px; padding: 2px 8px; font-size: 11px; font-weight: 500;
+}
+.mrp-clear-btn {
+  border: none; background: none; padding: 0; color: #8a94a6;
+  display: flex; cursor: pointer; line-height: 1;
+}
+.mrp-clear-btn:hover { color: #b42318; }
+
+.mrp-popover {
+  position: absolute; z-index: 20; top: 100%; left: 0; margin-top: 4px;
+  width: 220px; background: #fff; border: 1px solid #dfe3e8;
+  border-radius: 8px; box-shadow: 0 4px 14px rgba(0,0,0,0.08); padding: 10px;
+}
+.mrp-popover-label { font-size: 11px; font-weight: 600; color: #555; margin-bottom: 4px; display: block; }
+.mrp-breakdown { margin-top: 8px; font-size: 12px; color: #444; }
+.mrp-breakdown div { display: flex; justify-content: space-between; padding: 2px 0; }
+.mrp-popover-actions { margin-top: 10px; display: flex; gap: 6px; justify-content: flex-end; }
