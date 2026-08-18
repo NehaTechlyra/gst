@@ -1,7 +1,8 @@
 from rest_framework import serializers
-from django.db import transaction
+from django.db import models, transaction
 
 from .models import DeliveryNote,DeliveryNoteItem,StockMovement
+from company.utils import is_stock_management_on_delivery
 
 class DeliveryNoteItemSerializer(serializers.ModelSerializer):
     product_name = serializers.CharField(source='bill_item.product.name', read_only=True)
@@ -72,6 +73,10 @@ class DeliveryNoteSerializer(serializers.ModelSerializer):
                   'status', 'stock_updated', 'items', 'stock_movements',
                   'created_at', 'updated_at']
         read_only_fields = ['delivery_note_number', 'stock_updated', 'created_at', 'updated_at']
+
+    def _is_delivery_stock_enabled(self):
+        request = self.context.get('request') if hasattr(self, 'context') else None
+        return is_stock_management_on_delivery(request=request)
     
     @transaction.atomic
     def create(self, validated_data):
@@ -81,8 +86,8 @@ class DeliveryNoteSerializer(serializers.ModelSerializer):
         for item_data in items_data:
             DeliveryNoteItem.objects.create(delivery_note=delivery_note, **item_data)
         
-        # Auto-update stock if status is 'delivered'
-        if delivery_note.status == 'delivered':
+        # Auto-update stock only when the company setting is delivery-based.
+        if delivery_note.status == 'delivered' and self._is_delivery_stock_enabled():
             delivery_note.update_stock()
         
         return delivery_note
@@ -111,7 +116,7 @@ class DeliveryNoteSerializer(serializers.ModelSerializer):
                 DeliveryNoteItem.objects.create(delivery_note=instance, **item_data)
         
         # Handle stock updates based on status change
-        if instance.status == 'delivered' and old_status != 'delivered':
+        if instance.status == 'delivered' and old_status != 'delivered' and self._is_delivery_stock_enabled():
             instance.update_stock()
         elif instance.status == 'cancelled' and old_status != 'cancelled':
             instance.reverse_stock()

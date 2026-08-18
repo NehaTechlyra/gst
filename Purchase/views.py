@@ -7813,10 +7813,10 @@ def save_payment(request, pk=None):
                 old_status = bill.status
                 if new_total_paid >= bill.total_amount:
                     bill.status = 'Closed'
-                    bill.payment_status_id='3'
+                    bill.payment_status_id = 3
                 elif new_total_paid > 0:
                     # bill.status = 'Partial'
-                    bill.payment_status_id='2'
+                    bill.payment_status_id = 2
                 bill.save()
                 
                 print(f"  ✓ Status: {old_status} → {bill.status} (Paid: {payment_currency_symbol}{new_total_paid:.2f}/{payment_currency_symbol}{bill.total_amount:.2f})")
@@ -7824,7 +7824,7 @@ def save_payment(request, pk=None):
                 # of on delivery, update stock when the bill is fully paid.
                 try:
                     if not is_stock_management_on_delivery(request=request) and bill.payment_status_id == 3:
-                        update_stock_from_bill(bill, request.user)
+                        update_stock_from_bill(bill, request.user, request)
                 except Exception:
                     logger.exception('Failed to update stock on payment for bill %s', getattr(bill, 'bill_number', None))
             
@@ -8542,7 +8542,16 @@ def update_payment(request, payment_id):
             
             # Update bill statuses for newly allocated bills
             for allocation_data in bill_allocations:
-                update_bill_status(allocation_data['bill'])
+                bill = allocation_data['bill']
+                update_bill_status(bill)
+                try:
+                    if not is_stock_management_on_delivery(request=request) and bill.payment_status_id == 3:
+                        update_stock_from_bill(bill, request.user, request)
+                except Exception:
+                    logger.exception(
+                        'Failed to update stock on payment update for bill %s',
+                        getattr(bill, 'bill_number', None),
+                    )
         
         else:
             # Pure advance payment (no bills selected)
@@ -9314,7 +9323,7 @@ def update_purchase_bill_status(request, bill_id):
             if new_status == 'Closed' and old_status != 'Closed':
                 # Update stock for all items in this bill
                 try:
-                    stock_updated = update_stock_from_bill(bill, request.user)
+                    stock_updated = update_stock_from_bill(bill, request.user, request)
                     if not stock_updated:
                         return JsonResponse({
                             'success': False,
@@ -9365,7 +9374,7 @@ def update_purchase_bill_status(request, bill_id):
 
 
 # fn created by sree on 08-01-26
-def update_stock_from_bill(bill, user):
+def _legacy_update_stock_from_bill(bill, user):
     """
     Update stock when bill is closed.
     Increases stock quantity for all items in the bill.
@@ -9442,6 +9451,150 @@ def update_stock_from_bill(bill, user):
             return False
     
     return True
+
+
+def _get_purchase_stock_db(bill=None, request=None):
+    if request is not None:
+        request_db = getattr(request, 'company_db', None)
+        if request_db:
+            return request_db
+
+    try:
+        bill_db = getattr(getattr(bill, '_state', None), 'db', None)
+        if bill_db:
+            return bill_db
+    except Exception:
+        pass
+
+    return 'default'
+
+
+def _get_purchase_stock_warehouse(bill, request=None):
+    db = _get_purchase_stock_db(bill=bill, request=request)
+
+    if getattr(bill, 'warehouse_id', None):
+        warehouse = Warehouse.objects.using(db).filter(pk=bill.warehouse_id).first()
+        if warehouse:
+            return warehouse
+
+    warehouse = Warehouse.objects.using(db).filter(is_default=True).first()
+    if warehouse:
+        return warehouse
+
+    return Warehouse.objects.using(db).first()
+
+
+def update_stock_from_bill(bill, user, request=None):
+    """
+    Update stock when a purchase bill is fully paid and stock is managed on payment.
+    Increases stock quantity for bill items that have not already been stocked.
+    """
+    if request is not None and is_stock_management_on_delivery(request=request):
+        return False
+
+    db = _get_purchase_stock_db(bill=bill, request=request)
+    warehouse = _get_purchase_stock_warehouse(bill, request=request)
+
+    if not warehouse:
+        logger.error("No warehouse found for bill %s", bill.id)
+        return False
+
+    updated = False
+    payment_stock_exists = StockMovement.objects.using(db).filter(
+        reference_type='purchase_bill_payment',
+        reference_id=bill.id,
+        movement_type='in',
+    ).exists()
+
+    if not payment_stock_exists:
+        delivered_notes = DeliveryNote.objects.using(db).filter(
+            bill_id=bill.id,
+            status='delivered',
+            stock_updated=False,
+        ).select_related('warehouse')
+
+        for delivery_note in delivered_notes:
+            try:
+                delivery_note.update_stock()
+                updated = True
+            except Exception:
+                logger.exception(
+                    "Failed to update stock from delivered Purchase DeliveryNote %s",
+                    getattr(delivery_note, 'delivery_note_number', None),
+                )
+
+    bill_quantities = defaultdict(Decimal)
+    products = {}
+
+    for bill_item in BillItem.objects.using(db).filter(bill_id=bill.id).select_related('product'):
+        product = bill_item.product
+        if not getattr(product, 'track_inventory', False):
+            continue
+
+        bill_quantities[product.id] += Decimal(bill_item.quantity or 0)
+        products[product.id] = product
+
+    with transaction.atomic():
+        for product_id, bill_quantity in bill_quantities.items():
+            product = products[product_id]
+            delivered_qty = DeliveryNoteItem.objects.using(db).filter(
+                bill_item__bill_id=bill.id,
+                bill_item__product_id=product_id,
+                delivery_note__status='delivered',
+                delivery_note__stock_updated=True,
+            ).aggregate(total=Sum('quantity_delivered'))['total'] or Decimal('0')
+
+            paid_stock_qty = StockMovement.objects.using(db).filter(
+                stock__item_id=product_id,
+                reference_type='purchase_bill_payment',
+                reference_id=bill.id,
+                movement_type='in',
+            ).aggregate(total=Sum('quantity'))['total'] or Decimal('0')
+
+            remaining_qty = bill_quantity - Decimal(delivered_qty or 0) - Decimal(paid_stock_qty or 0)
+            if remaining_qty <= 0:
+                continue
+
+            stock, created = Stock.objects.using(db).get_or_create(
+                item=product,
+                warehouse=warehouse,
+                batch_number=None,
+                serial_number=None,
+                defaults={
+                    'quantity': Decimal('0.00'),
+                    'opening_stock': Decimal('0.00'),
+                    'created_by': user,
+                },
+            )
+
+            old_quantity = stock.quantity
+            stock.quantity += remaining_qty
+            stock.updated_by = user
+            stock.save(using=db)
+
+            StockMovement.objects.using(db).create(
+                stock=stock,
+                movement_type='in',
+                quantity=remaining_qty,
+                reference_type='purchase_bill_payment',
+                reference_id=bill.id,
+                delivery_note=None,
+                notes=f"Stock in from Purchase Bill Payment {bill.bill_number}",
+                created_by=user,
+            )
+
+            logger.info(
+                "Stock updated for item %s from bill %s: %s -> %s (added %s)",
+                product.name,
+                bill.bill_number,
+                old_quantity,
+                stock.quantity,
+                remaining_qty,
+            )
+            updated = True
+
+    return updated
+
 
 # fn created by sree on 08-01-26
 def reverse_stock_from_bill(bill, user):
@@ -11508,7 +11661,7 @@ class DeliveryNoteViewSet(viewsets.ModelViewSet):
             with transaction.atomic():
                 delivery_note.status = 'delivered'
                 delivery_note.save()
-                if is_stock_management_on_delivery(request=request) or delivery_note.bill.payment_status_id == 3:
+                if is_stock_management_on_delivery(request=request):
                     delivery_note.update_stock()
             
             serializer = self.get_serializer(delivery_note)
@@ -12069,7 +12222,7 @@ def delivery_note_mark_delivered(request, pk):
                 with transaction.atomic():
                     delivery_note.status = 'delivered'
                     delivery_note.save()
-                    if is_stock_management_on_delivery(request=request) or delivery_note.bill.payment_status_id == 3:
+                    if is_stock_management_on_delivery(request=request):
                         delivery_note.update_stock()
                 
                 messages.success(

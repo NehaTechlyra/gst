@@ -884,19 +884,25 @@ class DeliveryNote(models.Model):
         """
         if self.status == 'delivered' and not self.stock_updated:
             with transaction.atomic():
-                warehouse = self.warehouse
+                db = self._state.db or 'default'
+                warehouse = Warehouse.objects.using(db).filter(pk=self.warehouse_id).first() or self.warehouse
                 
-                for delivery_item in self.items.all():
+                for delivery_item in DeliveryNoteItem.objects.using(db).filter(
+                    delivery_note_id=self.id
+                ).select_related('bill_item__product'):
                     product = delivery_item.bill_item.product
+
+                    if not getattr(product, 'track_inventory', False):
+                        continue
                     
                     # Get or create stock entry for this product in this warehouse
-                    stock, created = Stock.objects.get_or_create(
+                    stock, created = Stock.objects.using(db).get_or_create(
                         item=product,
                         warehouse=warehouse,
                         batch_number=None,
                         serial_number=None,
                         defaults={
-                            'quantity': 0,
+                            'quantity': Decimal('0.00'),
                             'status': True
                         }
                     )
@@ -904,12 +910,12 @@ class DeliveryNote(models.Model):
                     # Increase stock quantity
                     old_quantity = stock.quantity
                     stock.quantity += delivery_item.quantity_delivered
-                    stock.save()
+                    stock.save(using=db)
                     
                     print(f"Stock updated for {product.name}: {old_quantity} -> {stock.quantity}")
                     
                     # Create stock movement record
-                    StockMovement.objects.create(
+                    StockMovement.objects.using(db).create(
                         stock=stock,
                         movement_type='in',
                         quantity=delivery_item.quantity_delivered,
@@ -921,7 +927,7 @@ class DeliveryNote(models.Model):
                 
                 # Mark stock as updated
                 self.stock_updated = True
-                self.save(update_fields=['stock_updated'])
+                self.save(using=db, update_fields=['stock_updated'])
                 print(f"Delivery Note {self.delivery_note_number} - Stock updated successfully")
     
     def reverse_stock(self):
@@ -930,13 +936,19 @@ class DeliveryNote(models.Model):
         """
         if self.stock_updated and self.status == 'cancelled':
             with transaction.atomic():
-                warehouse = self.warehouse
+                db = self._state.db or 'default'
+                warehouse = Warehouse.objects.using(db).filter(pk=self.warehouse_id).first() or self.warehouse
                 
-                for delivery_item in self.items.all():
+                for delivery_item in DeliveryNoteItem.objects.using(db).filter(
+                    delivery_note_id=self.id
+                ).select_related('bill_item__product'):
                     product = delivery_item.bill_item.product
+
+                    if not getattr(product, 'track_inventory', False):
+                        continue
                     
                     try:
-                        stock = Stock.objects.get(
+                        stock = Stock.objects.using(db).get(
                             item=product,
                             warehouse=warehouse,
                             batch_number=None,
@@ -946,10 +958,10 @@ class DeliveryNote(models.Model):
                         # Decrease stock quantity
                         if stock.quantity >= delivery_item.quantity_delivered:
                             stock.quantity -= delivery_item.quantity_delivered
-                            stock.save()
+                            stock.save(using=db)
                             
                             # Create stock movement record for reversal
-                            StockMovement.objects.create(
+                            StockMovement.objects.using(db).create(
                                 stock=stock,
                                 movement_type='out',
                                 quantity=delivery_item.quantity_delivered,
@@ -970,7 +982,7 @@ class DeliveryNote(models.Model):
                 
                 # Mark stock as not updated
                 self.stock_updated = False
-                self.save(update_fields=['stock_updated'])
+                self.save(using=db, update_fields=['stock_updated'])
 
 
 class DeliveryNoteItem(models.Model):
@@ -1019,6 +1031,7 @@ class StockMovement(models.Model):
     REFERENCE_TYPE_CHOICES = [
         ('delivery_note', 'Delivery Note'),
         ('delivery_note_reversal', 'Delivery Note Reversal'),
+        ('purchase_bill_payment', 'Purchase Bill Payment'),
         ('purchase_return', 'Purchase Return'),
         ('sales_order', 'Sales Order'),
         ('adjustment', 'Manual Adjustment'),
