@@ -2171,14 +2171,14 @@ label[for="backup-enabled"] {
                         <h5 class="section-card-title">
                             <i class="bi bi-printer"></i> Printer Settings
                         </h5>
-                        <p class="text-muted">Set the default paper size for printouts.</p>
+                        <p class="text-muted">Set the default paper size for invoice printouts.</p>
 
                         <form method="POST" action="{% url 'settings_page' %}">
                             {% csrf_token %}
                             <input type="hidden" name="active_tab" value="other_settings_tab">
                             <div class="row">
                                 <div class="col-md-6 mb-3">
-                                    <label class="form-label">Paper Size</label>
+                                    <label class="form-label">Paper Size for Invoices</label>
                                     <select class="form-select" name="printer_paper_size">
                                         {% for value, label in company_list.0.company.PRINT_PAPER_SIZE_CHOICES %}
                                             <option value="{{ value }}" {% if company_list.0.company.print_paper_size == value %}selected{% endif %}>{{ label }}</option>

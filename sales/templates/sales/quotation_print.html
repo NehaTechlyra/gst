@@ -7,11 +7,9 @@
 
   {% load static %}
   {% block exstyle %}
-  {% if company and company.print_paper_size == 'POS' %}
-    <link href="{% static 'style/print_pos.css' %}" rel="stylesheet">
-  {% else %}
+
     <link href="{% static 'style/print.css' %}" rel="stylesheet">
-  {% endif %}
+
   {% endblock %}
 </head>
 
@@ -55,13 +53,7 @@
       </tr>
       
     </table>
-    {% if company and company.print_paper_size == 'POS' %}
-    <div class="header-down" style="width: 100%;">
-          <div class="heading">QUOTE</div>
-          
-</div>
- 
-  {% endif %}
+
 
     <table class="meta-table">
       <tr>

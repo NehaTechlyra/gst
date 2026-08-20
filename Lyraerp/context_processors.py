@@ -49,28 +49,39 @@ def company_context(request):
         'company_name': None,
         'company_id': None,
         'company': None,
+        'active_company': None,
     }
 
     if not request.user.is_authenticated:
         return context
 
-    # Get company code from request or session
+    # Get company code/id from request or session. Keep a dedicated
+    # active_company value for shared layout chrome so page-specific contexts
+    # can safely use "company" for document/print data.
     company_code = getattr(request, 'company_code', None) or request.session.get('company_code')
+    company_id = getattr(request, 'company_id', None) or request.session.get('company_id')
 
     if company_code:
         context['company_code'] = company_code
 
+    if company_id or company_code:
         try:
             from company.models import Company
 
-            company = Company.objects.using('default').filter(
-                company_code=company_code
-            ).first()
+            company = None
+            if company_id:
+                company = Company.objects.using('default').filter(id=company_id).first()
+            if company is None and company_code:
+                company = Company.objects.using('default').filter(
+                    company_code=company_code
+                ).first()
 
             if company:
+                context['company_code'] = company.company_code or company_code
                 context['company_name'] = company.name
                 context['company_id'] = company.id
                 context['company'] = company
+                context['active_company'] = company
 
         except Exception as e:
             logger.debug(f"[CONTEXT] Error getting company details: {e}")

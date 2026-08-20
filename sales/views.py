@@ -17475,21 +17475,25 @@ def _get_company_for_request(request):
         company_db = getattr(request, 'company_db', None) or request.session.get('company_db') if hasattr(request, 'session') else None
         company_code = getattr(request, 'company_code', None) or (request.session.get('company_code') if hasattr(request, 'session') else None)
 
-        # Prefer tenant DB when available
-        if company_db and company_db != 'default':
-            qs = Company.objects.using(company_db).filter(status=True)
-            if company_code:
-                obj = qs.filter(company_code=company_code).first()
-                if obj:
-                    return obj
-            obj = qs.first()
-            if obj:
-                return obj
-
-        # Fallback to master/default DB
+        # Prefer the master/default company record for display identity. Some
+        # tenant databases can have stale/mismatched Company rows, and this
+        # object is also used by the base sidebar as the company name.
         qs = Company.objects.using('default').filter(status=True)
         if company_code:
             obj = qs.filter(company_code=company_code).first()
+            if obj:
+                return obj
+
+        # Fall back to tenant DB only if master has no matching company code.
+        if company_db and company_db != 'default':
+            tenant_qs = Company.objects.using(company_db).filter(status=True)
+            if company_code:
+                obj = tenant_qs.filter(company_code=company_code).first()
+                if obj:
+                    return obj
+
+        if company_db and company_db != 'default':
+            obj = Company.objects.using(company_db).filter(status=True).first()
             if obj:
                 return obj
         return qs.first() or Company.objects.using('default').first()

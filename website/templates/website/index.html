@@ -513,7 +513,11 @@
             <i class='bx bx-menu' style="color: #55588b;cursor: pointer;"></i>
             <img src="{% static 'images/fav.png' %}" height="24" width="24" alt="Logo" style="margin-right: 30px; margin-top: -5px;">
             <span class="logo_name" style="color:#55588b; font-weight: bold; font-size: 18px;">
-                {% if company and company.legal_name %}
+                {% if active_company and active_company.legal_name %}
+                    {{ active_company.legal_name }}
+                {% elif active_company and active_company.name %}
+                    {{ active_company.name }}
+                {% elif company and company.legal_name %}
                     {{ company.legal_name }}
                 {% elif company and company.name %}
                     {{ company.name }}
