@@ -118,15 +118,17 @@
             {% else %}
               {{ order.customer.first_name }}{% if order.customer.last_name %} {{ order.customer.last_name }}{% endif %}<br>
             {% endif %}
-            {% if order.customer.address_line_1 %}{{ order.customer.address_line_1 }}<br>{% endif %}
-            {% if order.shipping_address1 or order.shipping_city %}
-              {{ order.shipping_state }}<br>
-            {% else %}
-              {% if order.customer.state %}{{ order.customer.state }}<br>{% endif %}
-            {% endif %}
-            {% if order.customer.country %}{{ order.customer.country }}<br>{% endif %}
-            {% if order.customer.gst_number %}
-              <span class="muted">GSTIN:</span> {{ order.customer.gst_number }}
+            {% if order.customer.customer_code != 'CASH' %}
+              {% if order.customer.address_line_1 %}{{ order.customer.address_line_1 }}<br>{% endif %}
+              {% if order.shipping_address1 or order.shipping_city %}
+                {{ order.shipping_state }}<br>
+              {% else %}
+                {% if order.customer.state %}{{ order.customer.state }}<br>{% endif %}
+              {% endif %}
+              {% if order.customer.country %}{{ order.customer.country }}<br>{% endif %}
+              {% if order.customer.gst_number %}
+                <span class="muted">GSTIN:</span> {{ order.customer.gst_number }}
+              {% endif %}
             {% endif %}
           {% else %}
             -

@@ -7,7 +7,11 @@
 
   {% load static %}
   {% block exstyle %}
-  <link href="{% static 'style/print.css' %}" rel="stylesheet">
+  {% if company and company.print_paper_size == 'POS' %}
+    <link href="{% static 'style/print_pos.css' %}" rel="stylesheet">
+  {% else %}
+    <link href="{% static 'style/print.css' %}" rel="stylesheet">
+  {% endif %}
   {% endblock %}
 </head>
 <body>
@@ -18,38 +22,71 @@
   <div class="header-wrap">
     <table class="header-top">
       <tr>
-        <td class="header-left" style="width:65%">
+        <td class="header-left" style="width: 65%;">
           {% comment %} #added by neha on 20-1-26 {% endcomment %}
-          <div class="company-name">{{ company.name }}</div>
+          {% if show_logo_in_print and company and company.logo %}
+          <div style="margin-bottom: 6px;">
+            <img src="{{ company.logo.url }}" alt="Company Logo" style="max-height: 52px; max-width: 220px;">
+          </div>
+          {% else %}
+          <div class="company-name">
+            {% if company and company.legal_name %}
+              {{ company.legal_name }}
+            {% elif company and company.name %}
+              {{ company.name }}
+            {% else %}
+              Company
+            {% endif %}
+          </div>
+          {% endif %}
           <div class="company-meta">
-            {{ company.address_line1 }}<br>
-            {{ company.address_line2 }}<br>
-            {{ company.city }}, {{ company.state }} - {{ company.postal_code }}
-            {{ company.email }}
+            {% if company %}
+              {{ company.address_line1 }}<br>
+              {{ company.address_line2 }}<br>
+              {{ company.city }}, {{ company.state }} - {{ company.postal_code }}
+              {{ company.email }}
+            {% endif %}
           </div>
         </td>
         <td class="header-right" style="width:35%">
-          <div class="invoice-badge">PERFORMA INVOICE</div>
+          <div class="order-badge">PERFORMA INVOICE</div>
         </td>
       </tr>
     </table>
+    {% if company and company.print_paper_size == 'POS' %}
+    <div class="header-down" style="width: 100%;">
+          <div class="heading">PERFORMA INVOICE</div>
+          
+</div>
+ 
+  {% endif %}
     <table class="meta-table">
       <tr>
-        <td class="meta-label">Performa Invoice No</td>
-        <td class="meta-value">: {{ q_no }}</td>
-        <td class="meta-label">Date</td>
-        <td class="meta-value">: {{ invoice.date }}</td>
+        <td class="meta-pair">
+        <span class="meta-label">Performa Invoice No</span>
+        <span class="meta-value">: {{ q_no }}</span>
+        </td>
+        <td class="meta-pair">
+        <span class="meta-label">Date</span>
+        <span class="meta-value">: {{ invoice.date }}</span>
+        </td>
       </tr>
       <tr>
-        <td class="meta-label">Document Currency</td>
-        <td class="meta-value">: {{ document_currency_code|default:company_base_currency_code }}</td>
-        <td class="meta-label">Place of Supply</td>
-        <td class="meta-value">: {{ invoice.place_of_supply|default:"-" }}</td>
+        <td class="meta-pair">
+        <span class="meta-label">Document Currency</span>
+        <span class="meta-value">: {{ document_currency_code|default:company_base_currency_code }}</span>
+        </td>
+        <td class="meta-pair">
+        <span class="meta-label">Place of Supply</span>
+        <span class="meta-value">: {{ invoice.place_of_supply|default:"-" }}</span>
+        </td>
       </tr>
       {% if invoice.document_currency and invoice.document_currency.code != company_base_currency_code %}
       <tr>
-        <td class="meta-label">Exchange Rate</td>
-        <td class="meta-value" colspan="3">: 1 {{ invoice.document_currency.code }} = {{ invoice.fx_rate_to_base|floatformat:4 }} {{ company_base_currency_code }} (As of {{ invoice.fx_rate_date|default:invoice.date }})</td>
+        <td class="meta-pair">
+        <span class="meta-label">Exchange Rate</span>
+        <span class="meta-value" colspan="3">: 1 {{ invoice.document_currency.code }} = {{ invoice.fx_rate_to_base|floatformat:4 }} {{ company_base_currency_code }} (As of {{ invoice.fx_rate_date|default:invoice.date }})</span>
+        </td>
       </tr>
       {% endif %}
     </table>
@@ -61,15 +98,21 @@
         <div class="addr-box">
           <div class="addr-title">Bill To</div>
           {% if invoice.customer %}
-            {{ invoice.customer.first_name }} {{ invoice.customer.last_name }}<br>
-            {% if invoice.customer.address_line_1 %}{{ invoice.customer.address_line_1 }}<br>{% endif %}
-            {% if invoice.shipping_address1 or invoice.shipping_city %}
-              {{ invoice.shipping_state }}<br>
+            {% if invoice.customer.customer_type == 'company' %}
+              {{ invoice.customer.company_name }}<br>
             {% else %}
-              {% if invoice.customer.state %}{{ invoice.customer.state }}<br>{% endif %}
+              {{ invoice.customer.first_name }}{% if invoice.customer.last_name %} {{ invoice.customer.last_name }}{% endif %}<br>
             {% endif %}
-            {% if invoice.customer.country %}{{ invoice.customer.country }}<br>{% endif %}
-            {% if invoice.customer.gst_number %}<span class="muted">GSTIN:</span> {{ invoice.customer.gst_number }}{% endif %}
+            {% if invoice.customer.customer_code != 'CASH' %}
+              {% if invoice.customer.address_line_1 %}{{ invoice.customer.address_line_1 }}<br>{% endif %}
+              {% if invoice.shipping_address1 or invoice.shipping_city %}
+                {{ invoice.shipping_state }}<br>
+              {% else %}
+                {% if invoice.customer.state %}{{ invoice.customer.state }}<br>{% endif %}
+              {% endif %}
+              {% if invoice.customer.country %}{{ invoice.customer.country }}<br>{% endif %}
+              {% if invoice.customer.gst_number %}<span class="muted">GSTIN:</span> {{ invoice.customer.gst_number }}{% endif %}
+            {% endif %}
           {% else %}-{% endif %}
         </div>
       </td>

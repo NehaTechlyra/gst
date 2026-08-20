@@ -123,15 +123,17 @@
             {% else %}
               {{ quote.customer.first_name }}{% if quote.customer.last_name %} {{ quote.customer.last_name }}{% endif %}<br>
             {% endif %}
-            {% if quote.customer.address_line_1 %}{{ quote.customer.address_line_1 }}<br>{% endif %}
-            {% if quote.shipping_address1 or quote.shipping_city %}
-              {{ quote.shipping_state }}<br>
-            {% else %}
-              {% if quote.customer.state %}{{ quote.customer.state }}<br>{% endif %}
-            {% endif %}
-            {% if quote.customer.country %}{{ quote.customer.country }}<br>{% endif %}
-            {% if quote.customer.gst_number %}
-              <span class="muted">GSTIN:</span> {{ quote.customer.gst_number }}
+            {% if quote.customer.customer_code != 'CASH' %}
+              {% if quote.customer.address_line_1 %}{{ quote.customer.address_line_1 }}<br>{% endif %}
+              {% if quote.shipping_address1 or quote.shipping_city %}
+                {{ quote.shipping_state }}<br>
+              {% else %}
+                {% if quote.customer.state %}{{ quote.customer.state }}<br>{% endif %}
+              {% endif %}
+              {% if quote.customer.country %}{{ quote.customer.country }}<br>{% endif %}
+              {% if quote.customer.gst_number %}
+                <span class="muted">GSTIN:</span> {{ quote.customer.gst_number }}
+              {% endif %}
             {% endif %}
           {% else %}
             -

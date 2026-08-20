@@ -107,14 +107,16 @@
             {% else %}
               {{ invoice.customer.first_name }}{% if invoice.customer.last_name %} {{ invoice.customer.last_name }}{% endif %}<br>
             {% endif %}
-            {% if invoice.customer.address_line_1 %}{{ invoice.customer.address_line_1 }}<br>{% endif %}
-            {% if invoice.shipping_address1 or invoice.shipping_city %}
-              {{ invoice.shipping_state }}<br>
-            {% else %}
-              {% if invoice.customer.state %}{{ invoice.customer.state }}<br>{% endif %}
+            {% if invoice.customer.customer_code != 'CASH' %}
+              {% if invoice.customer.address_line_1 %}{{ invoice.customer.address_line_1 }}<br>{% endif %}
+              {% if invoice.shipping_address1 or invoice.shipping_city %}
+                {{ invoice.shipping_state }}<br>
+              {% else %}
+                {% if invoice.customer.state %}{{ invoice.customer.state }}<br>{% endif %}
+              {% endif %}
+              {% if invoice.customer.country %}{{ invoice.customer.country }}<br>{% endif %}
+              {% if invoice.customer.gst_number %}<span class="muted">GSTIN:</span> {{ invoice.customer.gst_number }}{% endif %}
             {% endif %}
-            {% if invoice.customer.country %}{{ invoice.customer.country }}<br>{% endif %}
-            {% if invoice.customer.gst_number %}<span class="muted">GSTIN:</span> {{ invoice.customer.gst_number }}{% endif %}
           {% else %}-{% endif %}
         </div>
       </td>
