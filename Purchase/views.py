@@ -10539,9 +10539,9 @@ def build_porder_context(pk,request=None):
         tax_rate = Decimal(item.prd_tax or 0)
         tax_amount = (discounted * tax_rate) / Decimal('100') if tax_rate else Decimal('0.00')
 
-        line_total = discounted + tax_amount
+        line_total = discounted
 
-        subtotal_calc += line_total
+        subtotal_calc += discounted
         total_tax += tax_amount
         total_item_discount += discount_amount
 
@@ -11185,9 +11185,9 @@ def build_bill_context(pk, request=None):
         tax_rate = Decimal(item.prd_tax or 0)
         tax_amount = (discounted * tax_rate) / Decimal('100') if tax_rate else Decimal('0.00')
 
-        line_total = discounted + tax_amount
+        line_total = discounted
 
-        subtotal_calc += line_total
+        subtotal_calc += discounted
         total_tax += tax_amount
         total_item_discount += discount_amount
 
