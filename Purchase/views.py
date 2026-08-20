@@ -2487,7 +2487,7 @@ def purchaseorder_detail(request, pk):
         'tds_tcs_amount_base': tds_tcs_amount_base,
         
     }
-    return render(request, 'Purchase/PurchaseOrder_detail.html', context)
+    return render(request, 'Purchase/purchaseorder_detail.html', context)
 
 def purchase_order_list(request):
     # Permission: require view access to Purchase Order
