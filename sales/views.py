@@ -4878,7 +4878,7 @@ def generate_invoice_pdf_bytes(pk, request=None):
     pdf_subtotal = Decimal('0.00')
     for item in context.get('items_info', []):
         pdf_subtotal += Decimal(str(item.get('line_total', 0))) - Decimal(str(item.get('tax_amount', 0)))
-    
+
     totals_label_style = ParagraphStyle(
         'TotalLabel',
         parent=styles['Normal'],
@@ -10126,12 +10126,10 @@ def invoice_pdf_view(request, pk):
     elements.append(Spacer(1, 5*mm))
     
     # TOTALS - Professional styling
-    # Calculate correct subtotal (without tax) for PDF display
-    pdf_subtotal = Decimal('0.00')
-    for item in context.get('items_info', []):
-        line_key = 'line_total_base' if show_base_currency_only else 'line_total'
-        tax_key = 'tax_amount_base' if show_base_currency_only else 'tax_amount'
-        pdf_subtotal += Decimal(str(item.get(line_key, 0))) - Decimal(str(item.get(tax_key, 0)))
+    # line_total already excludes tax, so use the context subtotal directly.
+    pdf_subtotal = Decimal(str(
+        context.get('subtotal_calc_base' if show_base_currency_only else 'subtotal_calc', 0) or 0
+    ))
     
     totals_label_style = ParagraphStyle(
         'TotalLabel',
@@ -10143,12 +10141,6 @@ def invoice_pdf_view(request, pk):
     )
     
     # TOTALS - Professional styling with conditional VAT/CGST-SGST
-    # Calculate correct subtotal (without tax) for PDF display
-    pdf_subtotal = Decimal('0.00')
-    for item in context.get('items_info', []):
-        line_key = 'line_total_base' if show_base_currency_only else 'line_total'
-        tax_key = 'tax_amount_base' if show_base_currency_only else 'tax_amount'
-        pdf_subtotal += Decimal(str(item.get(line_key, 0))) - Decimal(str(item.get(tax_key, 0)))
     
     subtotal_base = context.get('subtotal_calc_base', 0)
     total_cgst_base = context.get('total_cgst_base', 0)
