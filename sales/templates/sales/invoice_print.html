@@ -140,7 +140,7 @@
         <th style="width:36%">Item &amp; Description</th>
         <th style="width:10%">HSN / SAC</th>
         <th style="width:7%" class="text-right">Qty</th>
-        <th style="width:11%" class="text-right">Rate</th>
+        <th style="width:11%" class="text-right">Rates</th>
         {% if company_tax_type|default:''|upper != 'NONE' %}
         {% if company_tax_type == 'GST' %}
           <th style="width:11%" class="text-right">CGST</th>
@@ -158,11 +158,11 @@
         <td>{{ item.product_name }}<br>{% if item.description %}<span class="muted">{{ item.description }}</span>{% endif %}</td>
         <td class="text-left">{% if item.hsn %}{{ item.hsn }}{% else %}-{% endif %}</td>
         <td class="text-right nowrap">{{ item.quantity }}</td>
-        <td class="text-right nowrap">{{ document_currency_symbol|default:"Rs." }} {{ item.price|floatformat:2 }}</td>
+        <td class="text-right nowrap">{% if show_base_currency_only %}{{ company_base_currency_symbol|default:"Rs." }} {{ item.price_base|floatformat:2 }}{% else %}{{ document_currency_symbol|default:"Rs." }} {{ item.price|floatformat:2 }}{% endif %}</td>
         {% if company_tax_type|default:''|upper != 'NONE' %}
         {% if company_tax_type == 'GST' %}
-          <td class="text-right">{{ item.cgst_rate|floatformat:2 }}%<br><span class="muted">{{ document_currency_symbol|default:"Rs." }} {{ item.cgst_amount|floatformat:2 }}</span></td>
-          <td class="text-right">{{ item.sgst_rate|floatformat:2 }}%<br><span class="muted">{{ document_currency_symbol|default:"Rs." }} {{ item.sgst_amount|floatformat:2 }}</span></td>
+          <td class="text-right">{{ item.cgst_rate|floatformat:2 }}%<br><span class="muted">{% if show_base_currency_only %}{{ company_base_currency_symbol|default:"Rs." }} {{ item.cgst_amount_base|floatformat:2 }}{% else %}{{ document_currency_symbol|default:"Rs." }} {{ item.cgst_amount|floatformat:2 }}{% endif %}</span></td>
+          <td class="text-right">{{ item.sgst_rate|floatformat:2 }}%<br><span class="muted">{% if show_base_currency_only %}{{ company_base_currency_symbol|default:"Rs." }} {{ item.sgst_amount_base|floatformat:2 }}{% else %}{{ document_currency_symbol|default:"Rs." }} {{ item.sgst_amount|floatformat:2 }}{% endif %}</span></td>
         {% else %}
           <td class="text-right">{{ item.tax_rate|floatformat:2 }}%<br><span class="muted">{{ item.tax_amount|floatformat:2 }}</span></td>
         {% endif %}
@@ -174,28 +174,28 @@
 
     <div class="summary-wrap">
     <table class="totals-table">
-      <tr><td class="totals-label">Sub Total</td><td class="totals-value">{{ document_currency_symbol|default:"Rs." }} {{ subtotal_calc|floatformat:2 }}</td></tr>
+      <tr><td class="totals-label">Sub Total</td><td class="totals-value">{% if show_base_currency_only %}{{ company_base_currency_symbol|default:"Rs." }} {{ subtotal_calc_base|floatformat:2 }}{% else %}{{ document_currency_symbol|default:"Rs." }} {{ subtotal_calc|floatformat:2 }}{% endif %}</td></tr>
       {% if company_tax_type|default:''|upper != 'NONE' %}
       {% if company_tax_type == 'GST' %}
-        <tr><td class="totals-label">CGST</td><td class="totals-value">{{ document_currency_symbol|default:"Rs." }} {{ total_cgst|floatformat:2 }}</td></tr>
-        <tr><td class="totals-label">SGST</td><td class="totals-value">{{ document_currency_symbol|default:"Rs." }} {{ total_sgst|floatformat:2 }}</td></tr>
+        <tr><td class="totals-label">CGST</td><td class="totals-value">{% if show_base_currency_only %}{{ company_base_currency_symbol|default:"Rs." }} {{ total_cgst_base|floatformat:2 }}{% else %}{{ document_currency_symbol|default:"Rs." }} {{ total_cgst|floatformat:2 }}{% endif %}</td></tr>
+        <tr><td class="totals-label">SGST</td><td class="totals-value">{% if show_base_currency_only %}{{ company_base_currency_symbol|default:"Rs." }} {{ total_sgst_base|floatformat:2 }}{% else %}{{ document_currency_symbol|default:"Rs." }} {{ total_sgst|floatformat:2 }}{% endif %}</td></tr>
       {% else %}
-        <tr><td class="totals-label">{% if company_tax_type|default:''|upper == 'VAT' or company_tax_type|default:''|upper == 'SALES' or company_tax_type|default:''|upper == 'TURNOVER' %}Tax{% else %}VAT{% endif %}</td><td class="totals-value">{{ document_currency_symbol|default:"Rs." }} {{ total_tax|floatformat:2 }}</td></tr>
+        <tr><td class="totals-label">{% if company_tax_type|default:''|upper == 'VAT' or company_tax_type|default:''|upper == 'SALES' or company_tax_type|default:''|upper == 'TURNOVER' %}Tax{% else %}VAT{% endif %}</td><td class="totals-value">{% if show_base_currency_only %}{{ company_base_currency_symbol|default:"Rs." }} {{ total_tax_base|floatformat:2 }}{% else %}{{ document_currency_symbol|default:"Rs." }} {{ total_tax|floatformat:2 }}{% endif %}</td></tr>
       {% endif %}
       {% endif %}
       {% if invoice.round_off %}
         <tr>
           <td class="totals-label">Round Off</td>
-          <td class="totals-value">{{ document_currency_symbol|default:"Rs." }} {{ invoice.round_off|floatformat:2 }}</td>
+          <td class="totals-value">{% if show_base_currency_only %}{{ company_base_currency_symbol|default:"Rs." }} {{ invoice.round_off|floatformat:2 }}{% else %}{{ document_currency_symbol|default:"Rs." }} {{ invoice.round_off|floatformat:2 }}{% endif %}</td>
         </tr>
       {% endif %}
       {% if company_tax_type|default:''|upper == 'TURNOVER' and turnover_tax_amount and turnover_tax_amount|floatformat:2 != '0.00' %}
         <tr>
           <td class="totals-label">Turnover Tax</td>
-          <td class="totals-value">{{ document_currency_symbol|default:"Rs." }} {{ turnover_tax_amount|floatformat:2 }}</td>
+          <td class="totals-value">{% if show_base_currency_only %}{{ company_base_currency_symbol|default:"Rs." }} {{ turnover_tax_amount_base|floatformat:2 }}{% else %}{{ document_currency_symbol|default:"Rs." }} {{ turnover_tax_amount|floatformat:2 }}{% endif %}</td>
         </tr>
       {% endif %}
-      <tr class="grand-row"><td class="totals-label">Grand Total</td><td class="totals-value">{{ document_currency_symbol|default:"Rs." }} {{ final_total|floatformat:2 }}</td></tr>
+      <tr class="grand-row"><td class="totals-label">Grand Total</td><td class="totals-value">{% if show_base_currency_only %}{{ company_base_currency_symbol|default:"Rs." }} {{ final_total_base|floatformat:2 }}{% else %}{{ document_currency_symbol|default:"Rs." }} {{ final_total|floatformat:2 }}{% endif %}</td></tr>
     </table>
   </div>
 

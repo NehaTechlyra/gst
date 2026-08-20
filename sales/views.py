@@ -9569,6 +9569,13 @@ def invoice_detail(request, pk):
     doc_currency = inv.document_currency
     doc_currency_symbol = (doc_currency.symbol or doc_currency.code or '').strip() if doc_currency else ''
     doc_currency_code = doc_currency.code if doc_currency else ''
+    show_base_currency_only = (
+        not doc_currency_code
+        or (
+            bool(base_currency_code)
+            and doc_currency_code.strip().upper() == base_currency_code.strip().upper()
+        )
+    )
 
     # FX rate from document currency to base (invoice.fx_rate_to_base)
     subtotal_calc_base = Decimal('0.00')
@@ -9686,6 +9693,7 @@ def invoice_detail(request, pk):
         'company_base_currency_code': base_currency_code,
         'document_currency_symbol': doc_currency_symbol,
         'document_currency_code': doc_currency_code,
+        'show_base_currency_only': show_base_currency_only,
         'fx_rate': fx_rate,
         'tds_tcs_type': tds_tcs_type,
         'tds_tcs_amount': tds_tcs_amount,
@@ -10016,6 +10024,9 @@ def invoice_pdf_view(request, pk):
     # Fetch currency symbols from context
     currency = context.get('document_currency_symbol') or ("₹" if font_registered else "Rs.")
     base_currency = context.get('company_base_currency_symbol') or ("₹" if font_registered else "Rs.")
+    show_base_currency_only = context.get('show_base_currency_only', False)
+    if show_base_currency_only:
+        currency = base_currency
     company_is_india = context.get('company_is_india', True)
     company_tax_type = context.get('company_tax_type', 'GST')
     # Conditional table headers based on country
@@ -10050,6 +10061,8 @@ def invoice_pdf_view(request, pk):
     for idx, item in enumerate(context.get('items_info', []), 1):
         tax_rate = Decimal(str(item.get('tax_rate', 0)))
         tax_amount = Decimal(str(item.get('tax_amount', 0)))
+        display_price = Decimal(str(item.get('price_base' if show_base_currency_only else 'price', 0)))
+        display_tax_amount = Decimal(str(item.get('tax_amount_base' if show_base_currency_only else 'tax_amount', 0)))
         
         base_price_str = ""
         tax_base_str = ""
@@ -10058,14 +10071,14 @@ def invoice_pdf_view(request, pk):
             # Split tax equally for India (CGST/SGST)
             cgst_rate = tax_rate / 2
             sgst_rate = tax_rate / 2
-            cgst_amount = tax_amount / 2
-            sgst_amount = tax_amount / 2
+            cgst_amount = display_tax_amount / 2
+            sgst_amount = display_tax_amount / 2
             items_data.append([
                 Paragraph(str(idx), value_style),
                 Paragraph(f"{item.get('product_name', '')}<br/><font size=6><i>{item.get('description', '')}</i></font>", value_style),
                 Paragraph(item.get('hsn', '-'), value_style),
                 Paragraph(str(item.get('quantity', '')), ParagraphStyle('Right', parent=styles['Normal'], fontSize=8, fontName=font_name, alignment=TA_RIGHT)),
-                Paragraph(f"{currency}\u00A0{item.get('price', 0):.2f}", amount_style),
+                Paragraph(f"{currency}\u00A0{display_price:.2f}", amount_style),
                 Paragraph(f"{cgst_rate:.2f}%<br/>{currency}\u00A0{float(cgst_amount):.2f}", amount_style),
                 Paragraph(f"{sgst_rate:.2f}%<br/>{currency}\u00A0{float(sgst_amount):.2f}", amount_style),
             ])
@@ -10076,7 +10089,7 @@ def invoice_pdf_view(request, pk):
                 Paragraph(f"{item.get('product_name', '')}<br/><font size=6><i>{item.get('description', '')}</i></font>", value_style),
                 Paragraph(item.get('hsn', '-'), value_style),
                 Paragraph(str(item.get('quantity', '')), ParagraphStyle('Right', parent=styles['Normal'], fontSize=8, fontName=font_name, alignment=TA_RIGHT)),
-                Paragraph(f"{currency}\u00A0{item.get('price', 0):.2f}", amount_style),
+                Paragraph(f"{currency}\u00A0{display_price:.2f}", amount_style),
                 Paragraph(f"{tax_rate:.2f}%", amount_style),
                
             ])
@@ -10086,7 +10099,7 @@ def invoice_pdf_view(request, pk):
                 Paragraph(f"{item.get('product_name', '')}<br/><font size=6><i>{item.get('description', '')}</i></font>", value_style),
                 Paragraph(item.get('hsn', '-'), value_style),
                 Paragraph(str(item.get('quantity', '')), ParagraphStyle('Right', parent=styles['Normal'], fontSize=8, fontName=font_name, alignment=TA_RIGHT)),
-                Paragraph(f"{currency}\u00A0{item.get('price', 0):.2f}", amount_style),
+                Paragraph(f"{currency}\u00A0{display_price:.2f}", amount_style),
                 
                
             ])
@@ -10115,7 +10128,9 @@ def invoice_pdf_view(request, pk):
     # Calculate correct subtotal (without tax) for PDF display
     pdf_subtotal = Decimal('0.00')
     for item in context.get('items_info', []):
-        pdf_subtotal += Decimal(str(item.get('line_total', 0))) - Decimal(str(item.get('tax_amount', 0)))
+        line_key = 'line_total_base' if show_base_currency_only else 'line_total'
+        tax_key = 'tax_amount_base' if show_base_currency_only else 'tax_amount'
+        pdf_subtotal += Decimal(str(item.get(line_key, 0))) - Decimal(str(item.get(tax_key, 0)))
     
     totals_label_style = ParagraphStyle(
         'TotalLabel',
@@ -10130,13 +10145,19 @@ def invoice_pdf_view(request, pk):
     # Calculate correct subtotal (without tax) for PDF display
     pdf_subtotal = Decimal('0.00')
     for item in context.get('items_info', []):
-        pdf_subtotal += Decimal(str(item.get('line_total', 0))) - Decimal(str(item.get('tax_amount', 0)))
+        line_key = 'line_total_base' if show_base_currency_only else 'line_total'
+        tax_key = 'tax_amount_base' if show_base_currency_only else 'tax_amount'
+        pdf_subtotal += Decimal(str(item.get(line_key, 0))) - Decimal(str(item.get(tax_key, 0)))
     
     subtotal_base = context.get('subtotal_calc_base', 0)
     total_cgst_base = context.get('total_cgst_base', 0)
     total_sgst_base = context.get('total_sgst_base', 0)
     total_tax_base = context.get('total_tax_base', 0)
     final_total_base = context.get('final_total_base', 0)
+    display_total_cgst = context.get('total_cgst_base' if show_base_currency_only else 'total_cgst', 0)
+    display_total_sgst = context.get('total_sgst_base' if show_base_currency_only else 'total_sgst', 0)
+    display_total_tax = context.get('total_tax_base' if show_base_currency_only else 'total_tax', 0)
+    display_final_total = context.get('final_total_base' if show_base_currency_only else 'final_total', 0)
 
     sub_base_str = ""
     cgst_base_str = ""
@@ -10156,13 +10177,13 @@ def invoice_pdf_view(request, pk):
     if company_tax_type == 'GST':
         totals_data = [
             [Paragraph("Sub Total", totals_label_style), Paragraph(f"{currency}\u00A0{float(pdf_subtotal):.2f}{sub_base_str}", amount_style)],
-            [Paragraph("CGST", totals_label_style), Paragraph(f"{currency}\u00A0{context.get('total_cgst', 0):.2f}{cgst_base_str}", amount_style)],
-            [Paragraph("SGST", totals_label_style), Paragraph(f"{currency}\u00A0{context.get('total_sgst', 0):.2f}{sgst_base_str}", amount_style)],
+            [Paragraph("CGST", totals_label_style), Paragraph(f"{currency}\u00A0{display_total_cgst:.2f}{cgst_base_str}", amount_style)],
+            [Paragraph("SGST", totals_label_style), Paragraph(f"{currency}\u00A0{display_total_sgst:.2f}{sgst_base_str}", amount_style)],
         ]
     elif company_tax_type in ('VAT', 'SALES','TURNOVER'):
         totals_data = [
             [Paragraph("Sub Total", totals_label_style), Paragraph(f"{currency}\u00A0{float(pdf_subtotal):.2f}{sub_base_str}", amount_style)],
-            [Paragraph("TAX", totals_label_style), Paragraph(f"{currency}\u00A0{context.get('total_tax', 0):.2f}{tax_base_str}", amount_style)],
+            [Paragraph("TAX", totals_label_style), Paragraph(f"{currency}\u00A0{display_total_tax:.2f}{tax_base_str}", amount_style)],
         ]
     elif company_tax_type == 'NONE':
         totals_data = [
@@ -10188,7 +10209,7 @@ def invoice_pdf_view(request, pk):
     )
     
     totals_data.append([Paragraph("<b>Grand Total</b>", ParagraphStyle('GrandTotalLabel', parent=styles['Normal'], fontSize=8, fontName='Helvetica-Bold', textColor=colors.HexColor('#000000'))), 
-                       Paragraph(f"<b>{currency}\u00A0{context.get('final_total', 0):.2f}</b>{final_base_str}", grand_total_style)])
+                       Paragraph(f"<b>{currency}\u00A0{display_final_total:.2f}</b>{final_base_str}", grand_total_style)])
     
     totals_table = Table(totals_data, colWidths=[371, 150])
     totals_table.setStyle(TableStyle([
@@ -10277,6 +10298,13 @@ def build_invoice_context(pk, request=None):
     doc_currency = inv.document_currency
     doc_currency_symbol = (doc_currency.symbol or doc_currency.code or '').strip() if doc_currency else ''
     doc_currency_code = doc_currency.code if doc_currency else ''
+    show_base_currency_only = (
+        not doc_currency_code
+        or (
+            bool(base_currency_code)
+            and doc_currency_code.strip().upper() == base_currency_code.strip().upper()
+        )
+    )
 
     fx_rate = Decimal(inv.fx_rate_to_base or Decimal('1'))
 
@@ -10402,6 +10430,7 @@ def build_invoice_context(pk, request=None):
         'company_base_currency_code': base_currency_code,
         'document_currency_symbol': doc_currency_symbol,
         'document_currency_code': doc_currency_code,
+        'show_base_currency_only': show_base_currency_only,
         'fx_rate': fx_rate,
         #added by neha on 20-1-26
         'company': company,
@@ -10409,6 +10438,7 @@ def build_invoice_context(pk, request=None):
         'company_is_india': company_is_india,
         'company_tax_type': company_tax_type,
     }
+    print("items_info",items_info)
     return context
 
 @require_POST
@@ -11327,14 +11357,18 @@ def invoice_edit(request, pk):
                             discount_type_selected = post_data.get(f'form-{index}-prd_distype', 'flat') or 'flat'
                             posted_o_price = Decimal(str(post_data.get(f'form-{index}-o_price', '0') or '0'))
                             existing_item = existing_items_before_save[index] if index < len(existing_items_before_save) else None
-                            if (
+                            if posted_o_price > Decimal('0.00'):
+                                o_price_value = posted_o_price
+                            elif (
                                 existing_item
                                 and existing_item.product_id == product.id
                                 and getattr(existing_item, 'o_price', None) not in (None, Decimal('0.00'))
                             ):
                                 o_price_value = Decimal(str(existing_item.o_price))
                             else:
-                                o_price_value = posted_o_price
+                                o_price_value = (
+                                    price * Decimal(str(invoice.fx_rate_to_base or 1))
+                                ).quantize(Decimal('0.000001'), rounding=ROUND_HALF_UP)
 
                             # Create item
                             item = SalesInvoiceItem.objects.create(
