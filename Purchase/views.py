@@ -10096,7 +10096,7 @@ def generate_porder_pdf_bytes(pk):
     # Calculate correct subtotal (without tax) for PDF display
     pdf_subtotal = Decimal('0.00')
     for item in context.get('items_info', []):
-        pdf_subtotal += Decimal(str(item.get('line_total', 0))) - Decimal(str(item.get('tax_amount', 0)))
+        pdf_subtotal += Decimal(str(item.get('line_total', 0)))
     
     totals_label_style = ParagraphStyle(
         'TotalLabel',
@@ -11043,7 +11043,7 @@ def generate_bill_pdf_bytes(pk, request=None):
     # Calculate correct subtotal (without tax) for PDF display
     pdf_subtotal = Decimal('0.00')
     for item in context.get('items_info', []):
-        pdf_subtotal += Decimal(str(item.get('line_total', 0))) - Decimal(str(item.get('tax_amount', 0)))
+        pdf_subtotal += Decimal(str(item.get('line_total', 0))) 
     
     totals_label_style = ParagraphStyle(
         'TotalLabel',
@@ -11230,7 +11230,7 @@ def build_bill_context(pk, request=None):
     if grand_discount > subtotal_calc:
         grand_discount = subtotal_calc
 
-    final_total = subtotal_calc - grand_discount
+    final_total = subtotal_calc - grand_discount + total_tax
     
     company_is_india = _is_indian_company_country(company.country.code if hasattr(company, 'country') and hasattr(company.country, 'code') else '')
 

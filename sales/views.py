@@ -4878,7 +4878,7 @@ def generate_invoice_pdf_bytes(pk, request=None):
     pdf_subtotal = Decimal('0.00')
     for item in context.get('items_info', []):
         pdf_subtotal += Decimal(str(item.get('line_total', 0))) - Decimal(str(item.get('tax_amount', 0)))
-
+    
     totals_label_style = ParagraphStyle(
         'TotalLabel',
         parent=styles['Normal'],
@@ -7687,9 +7687,8 @@ def build_order_context(pk, request=None):
         tax_rate = Decimal(item.prd_tax or 0)
         tax_amount = (discounted * tax_rate) / Decimal('100') if tax_rate else Decimal('0.00')
 
-        # — NEW: line_total is ONLY the discounted amount (no tax)
         line_total = discounted
-        # — NEW: Subtotal accumulates discounted amounts (before tax)
+
         subtotal_calc += discounted
         total_tax += tax_amount
         total_item_discount += discount_amount
@@ -10129,8 +10128,7 @@ def invoice_pdf_view(request, pk):
     # line_total already excludes tax, so use the context subtotal directly.
     pdf_subtotal = Decimal(str(
         context.get('subtotal_calc_base' if show_base_currency_only else 'subtotal_calc', 0) or 0
-    ))
-    
+    ))    
     totals_label_style = ParagraphStyle(
         'TotalLabel',
         parent=styles['Normal'],
@@ -10141,7 +10139,7 @@ def invoice_pdf_view(request, pk):
     )
     
     # TOTALS - Professional styling with conditional VAT/CGST-SGST
-    
+       
     subtotal_base = context.get('subtotal_calc_base', 0)
     total_cgst_base = context.get('total_cgst_base', 0)
     total_sgst_base = context.get('total_sgst_base', 0)
@@ -17468,24 +17466,21 @@ def _get_company_for_request(request):
         company_db = getattr(request, 'company_db', None) or request.session.get('company_db') if hasattr(request, 'session') else None
         company_code = getattr(request, 'company_code', None) or (request.session.get('company_code') if hasattr(request, 'session') else None)
 
-        # Prefer tenant DB when it contains the matching company. Some tenant
-        # databases can have stale/mismatched Company rows, so do not fall
-        # back to an arbitrary first row before checking the master company.
+        # Prefer tenant DB when available
         if company_db and company_db != 'default':
             qs = Company.objects.using(company_db).filter(status=True)
             if company_code:
                 obj = qs.filter(company_code=company_code).first()
                 if obj:
                     return obj
+            obj = qs.first()
+            if obj:
+                return obj
 
         # Fallback to master/default DB
         qs = Company.objects.using('default').filter(status=True)
         if company_code:
             obj = qs.filter(company_code=company_code).first()
-            if obj:
-                return obj
-        if company_db and company_db != 'default':
-            obj = Company.objects.using(company_db).filter(status=True).first()
             if obj:
                 return obj
         return qs.first() or Company.objects.using('default').first()
