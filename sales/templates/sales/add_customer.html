@@ -216,6 +216,20 @@
 
         <!-- Payment Terms removed from customer modal per request -->
     </div>
+
+    <div class="row">
+        <!-- Credit Limit -->
+        <div class="col-md-6 mb-3 field-wrapper" data-field-name="credit_limit">
+            <label for="{{ customer_form.credit_limit.id_for_label }}" class="form-label">
+                {{ customer_form.credit_limit.label }}
+            </label>
+            {{ customer_form.credit_limit|add_class:"form-control" }}
+            <small class="form-text text-muted">Leave blank for no credit limit.</small>
+            {% for error in customer_form.credit_limit.errors %}
+                <div class="text-danger small">{{ error }}</div>
+            {% endfor %}
+        </div>
+    </div>
     
 
     <div class="mt-3">

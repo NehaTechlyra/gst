@@ -740,6 +740,94 @@ def send_license_expired_job():
     logger.info(f"[SCHEDULER] JOB 4 DONE - {sent} sent, {skipped} skipped, {errors} errors")
 
 
+def delete_expired_trial_databases_job(dry_run=False):
+    """Delete tenant databases seven days after trial or license expiry."""
+    from company.models import Company
+    from company_settings.models import LicenseKey
+    from Lyraerp.utils.db_utils import delete_company_database, register_database
+    from django.utils import timezone
+
+    logger.info("[SCHEDULER] JOB 5 - Checking expired trial and license databases...")
+    deleted = 0
+    skipped = 0
+    errors = 0
+    now = timezone.now()
+
+    companies = Company.objects.using('default').filter(
+        db_created=True,
+        db_name__isnull=False,
+    )
+
+    for company in companies:
+        try:
+            register_database(company.db_name)
+            license_obj = LicenseKey.objects.using(company.db_name).filter(
+                company_id=company.pk,
+            ).first()
+
+            if license_obj and license_obj.expiry_date:
+                expiry_date = license_obj.expiry_date
+                expiry_type = 'license'
+            else:
+                expiry_date = company.trial_expires_at.date() if company.trial_expires_at else None
+                expiry_type = 'trial'
+
+            if not expiry_date or now.date() < expiry_date + timedelta(days=7):
+                skipped += 1
+                continue
+
+            has_valid_license = bool(
+                license_obj
+                and license_obj.is_active
+                and not license_obj.is_license_expired
+                and expiry_date >= now.date()
+            )
+            if has_valid_license:
+                skipped += 1
+                continue
+
+            if dry_run:
+                deleted += 1
+                logger.info(
+                    "[SCHEDULER] JOB 5 - Eligible (%s) '%s' (%s)",
+                    expiry_type,
+                    company.name,
+                    company.db_name,
+                )
+                continue
+
+            _close_registered_connection(company.db_name)
+            delete_company_database(company.db_name)
+            Company.objects.using('default').filter(pk=company.pk).update(
+                db_created=False,
+                db_name=None,
+            )
+            deleted += 1
+            logger.warning(
+                "[SCHEDULER] JOB 5 - Deleted trial database '%s' for '%s'",
+                company.db_name,
+                company.name,
+            )
+        except Exception as exc:
+            errors += 1
+            logger.error(
+                "[SCHEDULER] JOB 5 - Failed for '%s': %s",
+                company.name,
+                exc,
+                exc_info=True,
+            )
+        finally:
+            _close_registered_connection(company.db_name)
+
+    logger.info(
+        "[SCHEDULER] JOB 5 DONE - %s deleted, %s skipped, %s errors",
+        deleted,
+        skipped,
+        errors,
+    )
+    return {'deleted': deleted, 'skipped': skipped, 'errors': errors}
+
+
 def _run_all_jobs():
     logger.info("[SCHEDULER] Running all jobs...")
     send_trial_reminder_job()
@@ -747,6 +835,7 @@ def _run_all_jobs():
     send_trial_expired_job()
     mark_licenses_expired_job()  # Mark licenses as expired (set is_license_expired flag)
     send_license_expired_job()  # Send license expired emails
+    delete_expired_trial_databases_job()
     run_scheduled_backups_job()  # Run auto backup schedules updt by neha on 5-3-26
     logger.info("[SCHEDULER] All jobs completed")
 

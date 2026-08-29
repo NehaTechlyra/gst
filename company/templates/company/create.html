@@ -256,15 +256,6 @@
   box-shadow: 0 0 0 0.08rem rgba(220, 53, 69, 0.08);
 }
 
-input[name="credit_limit"],
-input[name="credit_limit"]:focus,
-input[name="credit_limit"]:active {
-  background-color: #fff !important;
-  border-color: #ced4da !important;
-  box-shadow: none !important;
-  outline: none !important;
-}
-
 /* Toast - EXACT from email template */
 #topcenter-toast {
   position: fixed;
@@ -597,11 +588,6 @@ input:checked + .slider:before {
                             <option value="{{ code }}" {% if code == selected_base_currency %}selected{% endif %}>{{ label }}</option>
                             {% endfor %}
                         </select>
-                    </div>
-                    <div class="col-md-6 mb-3">
-                        <label class="form-label">Credit Limit</label>
-                        <input type="number" name="credit_limit" class="form-control" min="0" step="0.01" value="{{ company.credit_limit|default:'' }}">
-                        <small class="text-muted">Leave blank for no invoice credit limit.</small>
                     </div>
                     <div class="col-md-6 mb-3">
                         <label class="form-label required">Fiscal Year Start</label>

@@ -76,15 +76,6 @@ class Company(models.Model):
     # admin should explicitly set the organisation base currency.
     base_currency = models.CharField(max_length=10, blank=True, null=True)
     fiscal_year_start = models.DateField(blank=True, null=True)
-    credit_limit = models.DecimalField(
-        max_digits=15,
-        decimal_places=2,
-        blank=True,
-        null=True,
-        validators=[MinValueValidator(0)],
-        help_text="Maximum allowed outstanding sales amount across customers"
-    )
-
     REPORT_BASIS_CHOICES = [
         ("accrual", "Accrual – Tax at Invoice Date"),
         ("cash", "Cash – Tax at Payment Receipt")

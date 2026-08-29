@@ -71,6 +71,14 @@ class Customer(models.Model):
         validators=[MinValueValidator(0)],
         help_text="Opening balance for the customer account"
     )
+    credit_limit = models.DecimalField(
+        max_digits=15,
+        decimal_places=2,
+        blank=True,
+        null=True,
+        validators=[MinValueValidator(0)],
+        help_text="Maximum allowed outstanding sales amount for this customer"
+    )
     #added by neha on 22-1-26
     gst_treatment = models.ForeignKey(
         GstTreatment,

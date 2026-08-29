@@ -50,7 +50,7 @@ class CustomerForm(forms.ModelForm):
             'exemption_reason',
             'currency',
             'payment_terms', 'address_line_1', 'address_line_2',
-            'city', 'state', 'postal_code', 'country', 'gst_number', 'opening_balance', 'is_vendor',
+            'city', 'state', 'postal_code', 'country', 'gst_number', 'opening_balance', 'credit_limit', 'is_vendor',
             'shipping_address_line_1', 'shipping_address_line_2', 'shipping_city', 
             'shipping_state', 'shipping_postal_code', 'shipping_country',
         ]
@@ -76,6 +76,7 @@ class CustomerForm(forms.ModelForm):
             # 'country': forms.Select(attrs={'class':'form-control select2','data-placeholder':'Select country','style':'width:100%'}),
             'country': forms.Select(attrs={'class': 'form-control select2'}),
             'opening_balance': forms.NumberInput(attrs={'class': 'form-control'}),
+            'credit_limit': forms.NumberInput(attrs={'class': 'form-control', 'min': '0', 'step': '0.01'}),
             'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'is_vendor': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'pan_number': forms.TextInput(attrs={'class': 'form-control'}),

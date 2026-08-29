@@ -1372,10 +1372,6 @@ label[for="backup-enabled"] {
                             <input type="text" name="base_currency" class="form-control" value="{% if it.has_base_currency %}{{ it.company.base_currency }}{% else %}{% endif %}" readonly>
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label class="form-label">Credit Limit</label>
-                            <input type="text" name="credit_limit" class="form-control" value="{{ it.company.credit_limit|default:'' }}" readonly>
-                        </div>
-                        <div class="col-md-6 mb-3">
                             <label class="form-label">Fiscal Year Start</label>
                             <input type="date" name="fiscal_year_start" class="form-control" value="{{ it.company.fiscal_year_start|date:'Y-m-d'|default:'' }}" readonly>
                         </div>

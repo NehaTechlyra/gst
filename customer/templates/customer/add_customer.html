@@ -354,6 +354,22 @@
         </div>
       {% endif %}
     {% endfor %}
+
+    <!-- Credit Limit -->
+    {% for field in form %}
+      {% if field.name == 'credit_limit' %}
+        <div class="col-md-6 mb-3">
+          <label for="{{ field.id_for_label }}" class="form-label">
+            {{ field.label }}
+          </label>
+          {{ field|add_class:"form-control" }}
+          <small class="form-text text-muted">Leave blank for no credit limit.</small>
+          {% for error in field.errors %}
+            <div class="text-danger small">{{ error }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endfor %}
   </div>
 </div>
 

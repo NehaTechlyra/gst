@@ -83,9 +83,6 @@ def company_create(request):
             company.tax_id = request.POST.get("tax_id")
             posted_base_currency = (request.POST.get("base_currency") or "").strip().upper()[:10]
             company.base_currency = posted_base_currency or base_currency_code_from_country(company.country)
-            # Company-level credit limit (renamed from global_credit_limit)
-            company.credit_limit = request.POST.get("credit_limit") or None
-
             fiscal_year = request.POST.get("fiscal_year_start")
             company.fiscal_year_start = fiscal_year if fiscal_year else None
 
@@ -127,7 +124,7 @@ def company_create(request):
                             'legal_name', 'company_id', 'address_line1', 'address_line2',
                             'city', 'state', 'country', 'postal_code', 'email', 'phone',
                             'fax', 'website', 'contact_person', 'contact_email', 'contact_phone',
-                            'tax_id', 'base_currency', 'credit_limit', 'fiscal_year_start', 'report_basis',
+                            'tax_id', 'base_currency', 'fiscal_year_start', 'report_basis',
                             'facebook', 'instagram', 'linkedin', 'additional_information',
                             'terms_and_conditions','show_logo_in_print_pdf', 'status', 'logo'
                         ]:
@@ -251,9 +248,6 @@ def company_update(request, pk):
             company.tax_id = request.POST.get("tax_id")
             posted_base_currency = (request.POST.get("base_currency") or "").strip().upper()[:10]
             company.base_currency = posted_base_currency or base_currency_code_from_country(company.country)
-            # Company-level credit limit (renamed from global_credit_limit)
-            company.credit_limit = request.POST.get("credit_limit") or None
-
             # Handle empty date field
             fiscal_year = request.POST.get("fiscal_year_start")
             company.fiscal_year_start = fiscal_year if fiscal_year else None
@@ -297,7 +291,7 @@ def company_update(request, pk):
                             'legal_name', 'company_id', 'address_line1', 'address_line2',
                             'city', 'state', 'country', 'postal_code', 'email', 'phone',
                             'fax', 'website', 'contact_person', 'contact_email', 'contact_phone',
-                            'tax_type','tax_id', 'base_currency', 'credit_limit', 'fiscal_year_start', 'report_basis',
+                            'tax_type','tax_id', 'base_currency', 'fiscal_year_start', 'report_basis',
                             'facebook', 'instagram', 'linkedin', 'additional_information',
                             'terms_and_conditions','show_logo_in_print_pdf', 'status', 'logo'
                         ]:

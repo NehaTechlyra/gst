@@ -724,13 +724,6 @@ def _calculate_tax_for_invoice_item(item, customer, company, tax_override=None):
     }
 
 
-def get_credit_limit():
-    company = Company.objects.order_by('id').first()
-    if not company or company.credit_limit in (None, ''):
-        return None
-    return _to_decimal(company.credit_limit)
-
-
 def get_customer_outstanding_amount(customer, exclude_invoice=None):
     if not customer:
         return Decimal('0.00')
@@ -754,7 +747,7 @@ def get_customer_outstanding_amount(customer, exclude_invoice=None):
 def get_customer_credit_snapshot(customer, invoice_amount=Decimal('0.00'), exclude_invoice=None):
     if not customer:
         return {
-            'credit_limit': str(get_credit_limit()) if get_credit_limit() is not None else None,
+            'credit_limit': None,
             'outstanding_amount': '0.00',
             'projected_outstanding': str(_to_decimal(invoice_amount).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)),
             'available_credit': None,
@@ -762,7 +755,9 @@ def get_customer_credit_snapshot(customer, invoice_amount=Decimal('0.00'), exclu
             'is_limit_exceeded': False,
             'exceeded_by': '0.00',
         }
-    credit_limit = get_credit_limit()
+    credit_limit = getattr(customer, 'credit_limit', None)
+    if credit_limit in (None, ''):
+        credit_limit = None
     outstanding = get_customer_outstanding_amount(customer, exclude_invoice=exclude_invoice)
     invoice_amount = _to_decimal(invoice_amount)
 
