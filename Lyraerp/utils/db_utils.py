@@ -128,6 +128,19 @@ def register_database(db_name):
     logger.info(f"[OK] Registered database: {db_name}")
 
 
+def database_exists(db_name):
+    """Return True when a physical tenant database/schema exists."""
+    if not db_name:
+        return False
+
+    with connections["default"].cursor() as cursor:
+        cursor.execute(
+            "SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = %s",
+            [db_name],
+        )
+        return cursor.fetchone() is not None
+
+
 def migrate_company_database(db_name):
     """
     Run migrations on company database.

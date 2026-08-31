@@ -219,6 +219,17 @@ class Company(models.Model):
         help_text="Flag: 1 = trial expired, 0 = trial active/not expired"
     )
 
+    deletion_warning_email_count = models.IntegerField(
+        default=0,
+        help_text="Number of deletion warning emails sent (0-3)"
+    )
+
+    deletion_warning_email_last_sent = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When was the last deletion warning email sent?"
+    )
+
     # ============================================================================
     # AUDIT
     # ============================================================================
@@ -609,6 +620,59 @@ class Company(models.Model):
         logger.info(
             f"[TRIAL] mark_trial_expired_email_sent saved to master DB for '{self.name}'"
         )
+
+        self._sync_fields_to_company_db(fields)
+
+    def should_send_deletion_warning_email(self):
+        """
+        Returns True if a deletion warning email should be sent.
+        Sends 3 times during the 7-day grace period before automatic deletion.
+        Spacing: roughly every 2-3 days (48-72 hours apart).
+        """
+        if self.deletion_warning_email_count >= 3:
+            return False
+
+        if not self.deletion_warning_email_last_sent:
+            return True
+
+        # Send next warning after 48 hours (2 days) have passed
+        hours_since_last = (
+            timezone.now() - self.deletion_warning_email_last_sent
+        ).total_seconds() / 3600
+
+        return hours_since_last >= 48
+
+    def mark_deletion_warning_email_sent(self):
+        """
+        Mark that a deletion warning email was sent.
+        Increments the count and records the timestamp.
+        Saves to BOTH master DB and company DB.
+        """
+        self.deletion_warning_email_count += 1
+        self.deletion_warning_email_last_sent = timezone.now()
+
+        fields = ['deletion_warning_email_count', 'deletion_warning_email_last_sent']
+
+        self.save(using='default', update_fields=fields)
+        logger.info(
+            f"[DELETION] mark_deletion_warning_email_sent saved to master DB for '{self.name}' "
+            f"(count: {self.deletion_warning_email_count})"
+        )
+
+        self._sync_fields_to_company_db(fields)
+
+    def reset_deletion_warning_emails(self):
+        """
+        Reset deletion warning email counter when license is renewed or trial is extended.
+        Saves to BOTH master DB and company DB.
+        """
+        self.deletion_warning_email_count = 0
+        self.deletion_warning_email_last_sent = None
+
+        fields = ['deletion_warning_email_count', 'deletion_warning_email_last_sent']
+
+        self.save(using='default', update_fields=fields)
+        logger.info(f"[DELETION] Deletion warning emails reset for '{self.name}'")
 
         self._sync_fields_to_company_db(fields)
 

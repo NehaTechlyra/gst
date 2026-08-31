@@ -245,3 +245,89 @@ def process_trial_reminders():
     )
     
     return summary
+
+
+def send_deletion_warning_email(company, expiry_date=None):
+    """
+    Send a deletion warning email when database will be deleted in 7 days.
+    Sent up to 3 times during the grace period.
+    
+    Args:
+        company: Company instance
+        expiry_date: Optional expiry date (if not provided, uses company.trial_expires_at)
+        
+    Returns:
+        bool: True if email sent successfully
+    """
+    try:
+        from django.utils import timezone
+        from datetime import timedelta
+        
+        # Use provided expiry_date or fall back to trial expiry
+        if expiry_date is None:
+            if company.trial_expires_at:
+                expiry_date = company.trial_expires_at
+            else:
+                logger.warning(f"Cannot determine expiry date for {company.name}")
+                return False
+        
+        # Calculate days remaining until deletion
+        if hasattr(expiry_date, 'date'):
+            expiry_only = expiry_date.date()
+        else:
+            expiry_only = expiry_date
+        
+        days_remaining = (expiry_only + timedelta(days=7) - timezone.now().date()).days
+        
+        if days_remaining < 0:
+            days_remaining = 0
+        
+        # Email context
+        context = {
+            'company_name': company.name,
+            'contact_person': company.contact_person or 'Customer',
+            'expiry_date': expiry_only.strftime('%B %d, %Y') if hasattr(expiry_only, 'strftime') else str(expiry_only),
+            'days_remaining': max(0, days_remaining),
+            'contact_email': 'lyraerp@techlyra.com',
+            'login_url': f"{settings.BASE_URL}/{company.company_code}/" if hasattr(settings, 'BASE_URL') else settings.SITE_URL,
+            'current_year': timezone.now().year,
+        }
+        
+        # Render email template
+        html_content = render_to_string('emails/deletion_warning.html', context)
+        text_content = strip_tags(html_content)
+        
+        # Create email
+        days_text = f"{context['days_remaining']} day{'s' if context['days_remaining'] != 1 else ''}"
+        subject = f'⚠️ Your Lyra ERP Database Will Be Deleted in {days_text}'
+        from_email = settings.DEFAULT_FROM_EMAIL
+        to_email = company.contact_email or company.email
+        
+        if not to_email:
+            logger.error(f"No email address for company {company.name}")
+            return False
+        
+        msg = EmailMultiAlternatives(
+            subject=subject,
+            body=text_content,
+            from_email=from_email,
+            to=[to_email]
+        )
+        msg.attach_alternative(html_content, "text/html")
+        
+        # Send email
+        msg.send()
+        
+        # Mark warning as sent
+        company.mark_deletion_warning_email_sent()
+        
+        logger.info(
+            f"✅ Deletion warning email sent to {company.name} ({to_email}) "
+            f"- Reminder {company.deletion_warning_email_count}/3"
+        )
+        return True
+        
+    except Exception as e:
+        logger.error(f"❌ Failed to send deletion warning email to {company.name}: {e}", exc_info=True)
+        return False
+

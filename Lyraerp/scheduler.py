@@ -467,6 +467,98 @@ def _close_registered_connection(db_alias):
         logger.debug(f"[SCHEDULER] Failed to close connection {db_alias}: {exc}")
 
 
+def _count_master_db_records(company_id):
+    """
+    Count related records in master database for a company.
+    
+    These records will be cascade-deleted when the Company is deleted.
+    
+    Args:
+        company_id: ID of the Company
+        
+    Returns:
+        Total count of related records
+    """
+    from django.db.models.deletion import CASCADE
+    from company.models import Company
+    
+    total = 0
+    using_db = 'default'
+    
+    for relation in Company._meta.related_objects:
+        if relation.on_delete is not CASCADE:
+            continue
+
+        try:
+            model = relation.related_model
+            if not _master_table_exists(model):
+                continue
+            lookup = f"{relation.field.name}_id"
+            count = model._base_manager.using(using_db).filter(**{lookup: company_id}).count()
+            if count > 0:
+                total += count
+        except Exception as e:
+            logger.warning(
+                "[SCHEDULER] Error counting %s.%s: %s",
+                relation.related_model._meta.app_label,
+                relation.related_model.__name__,
+                e,
+            )
+            continue
+    
+    return total
+
+
+def _master_table_exists(model):
+    """Return True if a related model's table exists in the master database."""
+    try:
+        return model._meta.db_table in connections['default'].introspection.table_names()
+    except Exception as exc:
+        logger.warning(
+            "[SCHEDULER] Could not inspect master table %s: %s",
+            model._meta.db_table,
+            exc,
+        )
+        return False
+
+
+def _delete_master_company_entry(company_id):
+    """
+    Delete a Company row from the master DB without querying tenant-only tables.
+
+    Django's normal cascade collector follows every model relation to Company, even
+    models whose tables only exist in tenant databases. In this project that can
+    make master cleanup fail with "table does not exist" after a tenant DB is gone.
+    """
+    from django.db.models.deletion import CASCADE, SET_NULL
+    from company.models import Company
+
+    for relation in Company._meta.related_objects:
+        model = relation.related_model
+        if not _master_table_exists(model):
+            continue
+
+        lookup = f"{relation.field.name}_id"
+        qs = model._base_manager.using('default').filter(**{lookup: company_id})
+
+        if relation.on_delete is CASCADE:
+            qs.delete()
+        elif relation.on_delete is SET_NULL and relation.field.null:
+            qs.update(**{relation.field.name: None})
+        elif qs.exists():
+            raise RuntimeError(
+                f"Cannot delete Company {company_id}; protected relation exists: "
+                f"{model._meta.label}.{relation.field.name}"
+            )
+
+    with connections['default'].cursor() as cursor:
+        cursor.execute(
+            f"DELETE FROM `{Company._meta.db_table}` WHERE `{Company._meta.pk.column}` = %s",
+            [company_id],
+        )
+        return cursor.rowcount
+
+
 def send_trial_reminder_job():
     from company.models import Company
     from Lyraerp.utils.email_utils import send_trial_reminder_email
@@ -740,15 +832,16 @@ def send_license_expired_job():
     logger.info(f"[SCHEDULER] JOB 4 DONE - {sent} sent, {skipped} skipped, {errors} errors")
 
 
-def delete_expired_trial_databases_job(dry_run=False):
-    """Delete tenant databases seven days after trial or license expiry."""
+def send_deletion_warning_emails_job():
+    """Send deletion warning emails for expired databases in grace period."""
     from company.models import Company
     from company_settings.models import LicenseKey
-    from Lyraerp.utils.db_utils import delete_company_database, register_database
+    from Lyraerp.utils.trial_utils import send_deletion_warning_email
+    from Lyraerp.utils.db_utils import register_database
     from django.utils import timezone
 
-    logger.info("[SCHEDULER] JOB 5 - Checking expired trial and license databases...")
-    deleted = 0
+    logger.info("[SCHEDULER] JOB 4.5 - Sending deletion warning emails...")
+    sent = 0
     skipped = 0
     errors = 0
     now = timezone.now()
@@ -760,6 +853,7 @@ def delete_expired_trial_databases_job(dry_run=False):
 
     for company in companies:
         try:
+            # Determine expiry date
             register_database(company.db_name)
             license_obj = LicenseKey.objects.using(company.db_name).filter(
                 company_id=company.pk,
@@ -767,9 +861,129 @@ def delete_expired_trial_databases_job(dry_run=False):
 
             if license_obj and license_obj.expiry_date:
                 expiry_date = license_obj.expiry_date
-                expiry_type = 'license'
+            elif company.trial_expires_at:
+                expiry_date = company.trial_expires_at.date() if hasattr(company.trial_expires_at, 'date') else company.trial_expires_at
             else:
+                skipped += 1
+                continue
+
+            # Check if in grace period (0-7 days after expiry)
+            if hasattr(expiry_date, 'date'):
+                expiry_only = expiry_date.date()
+            else:
+                expiry_only = expiry_date
+            
+            days_past_expiry = (now.date() - expiry_only).days
+            
+            # Send warning only during 7-day grace period
+            if days_past_expiry < 0 or days_past_expiry >= 7:
+                skipped += 1
+                _close_registered_connection(company.db_name)
+                continue
+
+            # Check if company has valid license
+            has_valid_license = bool(
+                license_obj
+                and license_obj.is_active
+                and not license_obj.is_license_expired
+                and (license_obj.expiry_date is None or license_obj.expiry_date >= now.date())
+            )
+            if has_valid_license:
+                skipped += 1
+                _close_registered_connection(company.db_name)
+                continue
+
+            # Check if we should send warning (max 3 times, every 48 hours)
+            if company.should_send_deletion_warning_email():
+                if send_deletion_warning_email(company, expiry_date=expiry_only):
+                    sent += 1
+                else:
+                    errors += 1
+            else:
+                skipped += 1
+
+            _close_registered_connection(company.db_name)
+
+        except Exception as exc:
+            errors += 1
+            logger.error(
+                "[SCHEDULER] JOB 4.5 - Failed for '%s': %s",
+                company.name,
+                exc,
+                exc_info=True,
+            )
+            _close_registered_connection(company.db_name)
+
+    logger.info(
+        "[SCHEDULER] JOB 4.5 DONE - %s sent, %s skipped, %s errors",
+        sent,
+        skipped,
+        errors,
+    )
+
+
+def delete_expired_trial_databases_job(dry_run=False, remove_company_entry=True):
+    """Delete tenant databases seven days after trial or license expiry.
+    
+    Args:
+        dry_run (bool): If True, only log eligible companies without deletion
+        remove_company_entry (bool): If True, completely delete Company entry from main DB
+                                     If False, only mark as deleted (db_created=False, db_name=None)
+    """
+    from company.models import Company
+    from company_settings.models import LicenseKey
+    from Lyraerp.utils.db_utils import (
+        database_exists,
+        delete_company_database,
+        register_database,
+    )
+    from django.db.models import Q
+    from django.utils import timezone
+
+    logger.info("[SCHEDULER] JOB 5 - Checking expired trial and license databases (remove_company_entry=%s)...", remove_company_entry)
+    deleted = 0
+    skipped = 0
+    errors = 0
+    now = timezone.now()
+
+    grace_cutoff = now - timedelta(days=7)
+    companies = Company.objects.using('default').filter(
+        Q(db_created=True, db_name__isnull=False)
+        | Q(db_name__isnull=True, trial_expires_at__lte=grace_cutoff)
+    )
+
+    for company in companies:
+        try:
+            company_name = company.name
+            company_db_name = company.db_name
+            company_pk = company.pk
+            tenant_db_exists = database_exists(company_db_name)
+            license_obj = None
+            
+            if tenant_db_exists:
+                register_database(company_db_name)
+                license_obj = LicenseKey.objects.using(company_db_name).filter(
+                    company_id=company.pk,
+                ).first()
+            else:
+                logger.warning(
+                    "[SCHEDULER] JOB 5 - Tenant database '%s' for '%s' is already missing; "
+                    "cleaning stale master Company entry",
+                    company_db_name,
+                    company_name,
+                )
+
+            if license_obj and license_obj.expiry_date:
+                expiry_date = license_obj.expiry_date
+                expiry_type = 'license'
+            elif company.trial_expires_at:
                 expiry_date = company.trial_expires_at.date() if company.trial_expires_at else None
+                expiry_type = 'trial'
+            elif not tenant_db_exists:
+                expiry_date = now.date() - timedelta(days=7)
+                expiry_type = 'missing database'
+            else:
+                expiry_date = None
                 expiry_type = 'trial'
 
             if not expiry_date or now.date() < expiry_date + timedelta(days=7):
@@ -791,23 +1005,82 @@ def delete_expired_trial_databases_job(dry_run=False):
                 logger.info(
                     "[SCHEDULER] JOB 5 - Eligible (%s) '%s' (%s)",
                     expiry_type,
-                    company.name,
-                    company.db_name,
+                    company_name,
+                    company_db_name,
                 )
                 continue
 
-            _close_registered_connection(company.db_name)
-            delete_company_database(company.db_name)
-            Company.objects.using('default').filter(pk=company.pk).update(
-                db_created=False,
-                db_name=None,
-            )
-            deleted += 1
-            logger.warning(
-                "[SCHEDULER] JOB 5 - Deleted trial database '%s' for '%s'",
-                company.db_name,
-                company.name,
-            )
+            # Delete the company database. DROP IF EXISTS also keeps retry cleanup safe.
+            if tenant_db_exists:
+                _close_registered_connection(company_db_name)
+                delete_company_database(company_db_name)
+            
+            # Remove or mark Company entry in main database
+            if remove_company_entry:
+                # ✓ COMPLETELY DELETE the Company entry from main database
+                # This cascade-deletes all related records (bank accounts, licenses, settings, etc.)
+                try:
+                    from django.db import transaction
+                    with transaction.atomic(using='default'):
+                        # Count related records before deletion
+                        related_count = _count_master_db_records(company_pk)
+                        
+                        deleted_rows = _delete_master_company_entry(company_pk)
+                        
+                        if deleted_rows:
+                            deleted += 1
+                            logger.warning(
+                                "[SCHEDULER] JOB 5 - Completely removed: company '%s' (%s) "
+                                "and %d related master database records after %s expiry",
+                                company_name,
+                                company_db_name,
+                                related_count,
+                                expiry_type,
+                            )
+                        else:
+                            skipped += 1
+                            logger.warning(
+                                "[SCHEDULER] JOB 5 - Company '%s' (%s) was already absent from master DB",
+                                company_name,
+                                company_db_name,
+                            )
+                except Exception as delete_exc:
+                    errors += 1
+                    logger.error(
+                        "[SCHEDULER] JOB 5 - Failed to remove Company entry for '%s': %s",
+                        company_name,
+                        delete_exc,
+                        exc_info=True,
+                    )
+            else:
+                # ✗ KEEP Company entry but mark as deleted
+                try:
+                    from django.db import transaction
+                    with transaction.atomic(using='default'):
+                        # Count related records
+                        related_count = _count_master_db_records(company_pk)
+                        
+                        Company.objects.using('default').filter(pk=company_pk).update(
+                            db_created=False,
+                            db_name=None,
+                        )
+                        deleted += 1
+                        logger.warning(
+                            "[SCHEDULER] JOB 5 - Deleted %s database '%s' for '%s' "
+                            "(Company entry archived with %d related records)",
+                            expiry_type,
+                            company_db_name,
+                            company_name,
+                            related_count,
+                        )
+                except Exception as update_exc:
+                    errors += 1
+                    logger.error(
+                        "[SCHEDULER] JOB 5 - Failed to update Company entry for '%s': %s",
+                        company_name,
+                        update_exc,
+                        exc_info=True,
+                    )
         except Exception as exc:
             errors += 1
             logger.error(
@@ -835,7 +1108,8 @@ def _run_all_jobs():
     send_trial_expired_job()
     mark_licenses_expired_job()  # Mark licenses as expired (set is_license_expired flag)
     send_license_expired_job()  # Send license expired emails
-    delete_expired_trial_databases_job()
+    send_deletion_warning_emails_job()  # Send deletion warning emails (3 times in 7-day grace period)
+    delete_expired_trial_databases_job()  # Delete expired databases after 7-day grace
     run_scheduled_backups_job()  # Run auto backup schedules updt by neha on 5-3-26
     logger.info("[SCHEDULER] All jobs completed")
 
@@ -982,10 +1256,10 @@ def _schedule_backup_poll(interval_seconds=60):
 def start():
     # Set your desired daily send time in UTC
     # UTC 04:00 = IST 09:30 (good morning send time for India)
-    # UTC 10:00 = IST 15:30
+    # UTC 06:30 = IST 12:00
     # Adjust as needed for your production timezone
-    HOUR = 9
-    MINUTE = 36
+    HOUR = 6
+    MINUTE = 45
 
     _schedule_next(HOUR, MINUTE)
     _schedule_backup_poll(60)
