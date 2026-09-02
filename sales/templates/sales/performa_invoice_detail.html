@@ -253,6 +253,11 @@
     font-family: var(--font-mono); font-weight: 500; color: var(--text-primary); text-align: right;
   }
 
+  .totals-table.same-currency th:nth-child(3),
+  .totals-table.same-currency td:nth-child(3) {
+    display: none;
+  }
+
   /* ─── Totals ─────────────────────────────────────────────────── */
   .totals-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
   .totals-table td { padding: 5px 8px; color: var(--text-secondary); }
@@ -809,14 +814,14 @@ document.addEventListener('DOMContentLoaded', function () {
       <h5>Items</h5>
     </div>
     <div class="card-body p-0" style="overflow-x: auto;">
-      <table class="items-table">
+      <table class="items-table{% if show_base_currency_only %} same-currency{% endif %}">
         <thead>
           <tr>
             <th>Item</th>
             <th>HSN</th>
             <th>Description</th>
             <th>Qty</th>
-            <th>Price {% if document_currency_symbol %}({{ document_currency_symbol }}){% endif %}</th>
+            <th>Price {% if show_base_currency_only %}(Base{% if company_base_currency_symbol %} {{ company_base_currency_symbol }}{% endif %}){% elif document_currency_symbol %}({{ document_currency_symbol }}){% endif %}</th>
             <th>Price (Base) {% if company_base_currency_symbol %}({{ company_base_currency_symbol }}){% endif %}</th>
             <th>Tax</th>
             <th>Discount</th>
