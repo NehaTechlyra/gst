@@ -2724,8 +2724,7 @@ def purchase_order_edit(request, pk):
             place_of_supply = request.POST.get('place_of_supply', '')
             if place_of_supply:
                 order_obj.place_of_supply = place_of_supply
-            
-            # Persist sales person selection if provided
+    
 
 
             order_obj._current_user = request.user
@@ -3002,17 +3001,7 @@ def purchase_order_edit(request, pk):
 
 
     all_items = Item.objects.all()
-    # return render(request, 'sales/order_duplicate.html', {
-    #     'order_form': order_form,
-    #     'sales_formset': sales_formset,
-    #     'all_items': all_items,
-    #     'today': localdate().isoformat(),
-    #     'q_no': order.order_number,
-    #     # 'item_display_list': item_display_list,
-    #     'order': order, 
-    #     'readonly': readonly,
-        
-    # })
+
     context = {
         'order_form': order_form,
         'purchase_formset': purchase_formset,
@@ -3096,12 +3085,14 @@ def generate_revised_order_number(original_order_number):
     new_order_number = f"{base_order}-R{new_rev_num}"
     return new_order_number
 
+# the real view to save purchase order edit
 # def purchase_order_duplicate(request, pk):
 #     original_order = get_object_or_404(PurchaseOrder, pk=pk)
 #     original_order_number = original_order.order_number
 #     # #print("original_order_number:", original_order_number)
 #     if request.method == "POST":
 #         post_data = request.POST.copy()  # make mutable copy
+#         db = getattr(request, 'company_db', 'default')
 #         prd_brcd_map = {}
 
 #         # Fix product IDs: if form-0-product contains 'id_barcode', keep only id part
@@ -3111,15 +3102,24 @@ def generate_revised_order_number(original_order_number):
 #                 value = post_data[key]
 #                 # #print(f"Key matched: {key} with value: '{value}'")
 #                 if value:
-#                     parts = value.split("_", 1)
-#                     post_data[key] = parts[0]  # Save only item id for product field
-#                     # #print("Updated post_data[key]:", post_data[key])
-#                     if len(parts) > 1:
-#                         # Map barcode corresponding to this form prefix
-#                         prefix = key.rsplit("-", 1)[0]  # e.g. 'form-0'
-#                         prd_brcd_map[prefix] = parts[1]
-#                         # #print("prd_brcd_map[prefix]:",prd_brcd_map[prefix])
+                    # parts = value.split("_", 1)
+                    # item_id = (parts[0] or '').strip()
+                    # # Only digits are valid Item PKs; anything else becomes empty.
+                    # if not item_id.isdigit():
+                    #     post_data[key] = ''
+                    #     continue
 
+                    # post_data[key] = item_id  # Save only item id for product field
+
+                    # if len(parts) > 1:
+                    #     # Map barcode corresponding to this form prefix (used for prd_brcd).
+                    #     barcode_part = (parts[1] or '').strip()
+                    #     if barcode_part:
+                    #         prefix = key.rsplit("-", 1)[0]  # e.g. 'form-0'
+                    #         prd_brcd_map[prefix] = barcode_part
+        # company_country = _get_current_company_country(request)
+        # company_is_india = _is_indian_company_country(company_country)
+        # post_data = _normalize_item_tax_tokens(post_data, company_is_india)
 
 #         total_amount = request.POST.get('grandTotal')
 #         vendor_id = request.POST.get('vendor')
@@ -3128,8 +3128,12 @@ def generate_revised_order_number(original_order_number):
 #         # order_number = generate_order_number()
 #         order_number = generate_revised_order_number(original_order_number)
 #         # #print("order_number:",order_number)
-#         discount_value = request.POST.get('grand-discount-value', 0)
-#         discount_type = request.POST.get('discount_type', 'percent') 
+        # try:
+        #     discount_raw = request.POST.get('grand-discount-value', '0').strip() or '0'
+        #     discount_value = Decimal(discount_raw).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+        # except (InvalidOperation, ValueError, TypeError):
+        #     discount_value = Decimal('0.00')
+        # discount_type = request.POST.get('discount_type', 'percent')
 
 #         if not vendor_id or not date:
 #             messages.error(request, "Vendor and order Date are required.")
@@ -3137,6 +3141,16 @@ def generate_revised_order_number(original_order_number):
 
 #         try:
 #             vendor = Vendor.objects.get(pk=vendor_id)
+            # Handle currency - use original quotation's currency or customer's default currency
+            # document_currency = original_order.document_currency
+            # fx_rate_to_base = original_order.fx_rate_to_base or Decimal('1.000000')
+            # fx_rate_date = original_order.fx_rate_date
+            
+            # if not document_currency and vendor.currency:
+            #     try:
+            #         document_currency = Currency.objects.get(code__iexact=vendor.currency)
+            #     except Currency.DoesNotExist:
+            #         pass
 
 #             order = PurchaseOrder.objects.create(
 #                 vendor=vendor,
@@ -3145,7 +3159,24 @@ def generate_revised_order_number(original_order_number):
 #                 total_amount=total_amount,
 #                 notes=notes,
 #                 discount_value=discount_value,
-#                 discount_type=discount_type,
+                # discount_type=discount_type,
+                # place_of_supply=request.POST.get('place_of_supply', ''),
+                # shipping_attention=request.POST.get('shipping_attention', ''),
+                # shipping_email=request.POST.get('shipping_email', ''),
+                # shipping_phone=request.POST.get('shipping_phone', ''),
+                # shipping_country=request.POST.get('shipping_country', ''),
+                # shipping_address1=request.POST.get('shipping_address1', ''),
+                # shipping_address2=request.POST.get('shipping_address2', ''),
+                # shipping_city=request.POST.get('shipping_city', ''),
+                # shipping_state=request.POST.get('shipping_state', ''),
+                # shipping_postal_code=request.POST.get('shipping_postal_code', ''),
+                # tds_tcs_type=request.POST.get('tds_tcs_type', original_quote.tds_tcs_type or 'tds'),
+                # tds_tcs_definition_id=_parse_positive_int(request.POST.get('tds_tcs_definition_id')),
+                # tds_tcs_rate=_parse_decimal(request.POST.get('tds_tcs_rate', '0')),
+                # tds_tcs_amount=_parse_decimal(request.POST.get('tds_tcs_amount', '0.00')),
+                # document_currency=document_currency,
+                # fx_rate_to_base=fx_rate_to_base,
+                # fx_rate_date=fx_rate_date,
                 
 #             )
 #             # Attach payment term if provided
@@ -3163,7 +3194,7 @@ def generate_revised_order_number(original_order_number):
 #             else:
 #                 logger.exception("IntegrityError while creating revised purchase order: %s", e)
 #                 messages.error(request, "An error occurred while saving the order.")
-#             return redirect('sales_order_list')
+#             return redirect('purchase_order_list')
 
 #         PurchaseOrderItemFormSet = modelformset_factory(
 #             PurchaseOrderItem, form=PurchaseOrderItemForm, extra=0, can_delete=True
@@ -3176,54 +3207,58 @@ def generate_revised_order_number(original_order_number):
 #             # accumulate totals for journal posting
 #             taxable_total = Decimal(0)
 #             tax_totals = {}  # map of taxtype -> Decimal amount (e.g., 'CGST'->amount)
+#             saved_any = False
 #             for index, item in enumerate(items):
 #                 #added for edit save
 #                 item.pk = None
                 
 #                 prefix = f"form-{index}"              # formset form key pattern
+                # Skip blank/invalid rows
+                # if not getattr(item, 'product_id', None):
+                #     continue
+                # saved_any = True
 #                 if prefix in prd_brcd_map:            # check if barcode was extracted
 #                     item.prd_brcd = prd_brcd_map[prefix]
 #                 # capture HSN code from the hidden input posted by template
 #                 item.hsn_code = post_data.get(f'{prefix}-hsn_code', '')
 #                 # capture HSN code from the hidden input posted by template
 #                 item.hsn_code = post_data.get(f'{prefix}-hsn_code', '')
+                # selected_tax = post_data.get(f'form-{index}-prd_tax', '')
+                # item.prd_tax, item.prd_taxgroup = _resolve_selected_tax(selected_tax)
+                # item.purchase_order = order          # set foreign key
+                # item.save()
+            # for deleted_item in formset.deleted_objects:
+            #     deleted_item.delete()
+#           if not saved_any:
+    #             order.delete()
+    #             messages.error(request, "Please add at least one valid item in the order.")
+    #             return redirect_with_company('purchase_order_list')
                 
-#                 tax_group_id = post_data.get(f'form-{index}-prd_tax', '').strip()
-#                 if tax_group_id:
-#                     tax_group = TaxGroup.objects.filter(id=tax_group_id).prefetch_related('taxes').first()
-#                     if tax_group:
-#                         total_rate = Decimal(sum(t.rate for t in tax_group.taxes.all()))
-#                         item.prd_tax = total_rate
-#                         item.prd_taxgroup = tax_group.group_name
-#                     else:
-#                         item.prd_tax = Decimal(0)
-#                         item.prd_taxgroup = None
-#                 else:
-#                     item.prd_tax = Decimal(0)
-#                     item.prd_taxgroup = None
-#                 item.purchase_order = order          # set foreign key
-#                 item.save()                
-#             for deleted_item in formset.deleted_objects:
-#                 deleted_item.delete()
 
-#             messages.success(request, "Purchase order created successfully!")
-#             # Redirect to order detail page after save
-#             try:
-#                 url = reverse('order_detail', args=[order.pk])
-#                 return redirect(url)
-#             except Exception:
-#                 return redirect('purchase_order_list')
-#         else:
-#             # #print("Formset errors:", formset.errors)
-#             # for form in formset:
-#             #     #print("Individual form errors:", form.errors)
-#             messages.error(request, "There are errors with the items in the order.")
-#             return redirect('purchase_order_list')
-#     else:
-#         return redirect('purchase_order_list')
+    #         messages.success(request, "Purchase Order created successfully!")
+    #         # Redirect to order detail page after save
+    #         try:
+    #             url = reverse('purchase_order_detail', args=[order.pk])
+    #             return redirect_with_company(url)
+    #         except Exception:
+    #             return redirect_with_company('purchase_order_list')
+    #     else:
+    #         # #print("Formset errors:", formset.errors)
+    #         # for form in formset:
+    #         #     #print("Individual form errors:", form.errors)
+    #         # Prevent half-created revised quotation header with total_amount=0
+    #         try:
+    #             order.delete()
+    #         except Exception:
+    #             logger.exception("Failed to delete PurchaseOrder (revision) after invalid formset")
+
+    #         messages.error(request, "There are errors with the items in the order.")
+    #         return redirect_with_company('purchase_order_list')
+    # else:
+    #     return redirect_with_company('purchase_order_list')
 
 @transaction.atomic
-def purchase_order_duplicate(request, pk):
+def duplicate_purchase_order(request, pk):
     print("purchase_order_duplicate called with pk:", pk)
     old_order = get_object_or_404(PurchaseOrder, pk=pk)
 
@@ -3507,6 +3542,175 @@ def purchase_order_duplicate(request, pk):
     messages.success(request, "Order edited successfully.")
     return redirect_with_company('purchase_order_list')
 
+
+
+#view to save edited purchase order
+@transaction.atomic
+def purchase_order_duplicate(request, pk):
+    old_order = get_object_or_404(PurchaseOrder, pk=pk)
+    order_number = old_order.order_number
+
+    if request.method != "POST":
+        return redirect_with_company('purchase_order_list')
+
+    # ---------- PERMISSION ----------
+    if not (request.user.is_superuser or can_create_purchase_orders(request.user)):
+        messages.error(request, "You do not have permission to create Orders.")
+        return redirect_with_company('purchase_order_list')
+
+    # ---------- DELETE OLD ORDER (FREE UNIQUE NUMBER) ----------
+    try:
+        PurchaseOrderItem.objects.filter(purchase_order=old_order).delete()
+        old_order.delete()
+    except Exception as e:
+        logger.exception("Error deleting old order: %s", e)
+        messages.error(request, "Unable to replace the existing order.")
+        return redirect_with_company('purchase_order_list')
+
+    # ---------- PREPARE POST ----------
+    post_data = request.POST.copy()
+    # ---------- REMOVE OLD FORM IDS ----------
+    for key in list(post_data.keys()):
+        if key.endswith('-id'):
+            del post_data[key]
+
+    prd_brcd_map = {}
+
+    for key in post_data:
+        if key.startswith("form-") and key.endswith("-product"):
+            value = post_data[key]
+            if value:
+                parts = value.split("_", 1)
+                post_data[key] = parts[0]
+                if len(parts) > 1:
+                    prd_brcd_map[key.rsplit("-", 1)[0]] = parts[1]
+    company_country = _get_purchase_company_country(request)
+    company_is_india = _is_indian_company_country(company_country)
+    post_data = _normalize_item_tax_tokens(post_data, company_is_india)
+    # ---------- HEADER ----------
+    vendor_id = post_data.get('vendor')
+    date = post_data.get('date')
+
+    if not vendor_id or not date:
+        messages.error(request, "Vendor and Date are required.")
+        return redirect_with_company('purchase_order_list')
+
+    vendor = get_object_or_404(Vendor, pk=vendor_id)
+   
+    try:
+        discount_raw = request.POST.get('grand-discount-value', '0').strip() or '0'
+        discount_value = Decimal(discount_raw).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+    except (InvalidOperation, ValueError, TypeError):
+        discount_value = Decimal('0.00')
+    discount_type = request.POST.get('discount_type', 'percent')
+
+
+
+    # ---------- CREATE NEW ORDER ----------
+    order = PurchaseOrder.objects.create(
+        vendor=vendor,
+        date=date,
+        order_number=order_number,
+        total_amount=0,
+        notes=post_data.get('notes', ''),
+        discount_value=discount_value,
+        discount_type=discount_type,
+        place_of_supply=request.POST.get('place_of_supply', ''),
+        shipping_attention=request.POST.get('shipping_attention', ''),
+        shipping_email=request.POST.get('shipping_email', ''),
+        shipping_phone=request.POST.get('shipping_phone', ''),
+        shipping_country=request.POST.get('shipping_country', ''),
+        shipping_address1=request.POST.get('shipping_address1', ''),
+        shipping_address2=request.POST.get('shipping_address2', ''),
+        shipping_city=request.POST.get('shipping_city', ''),
+        shipping_state=request.POST.get('shipping_state', ''),
+        shipping_postal_code=request.POST.get('shipping_postal_code', ''),
+        tds_tcs_type=request.POST.get('tds_tcs_type', old_order.tds_tcs_type or 'tds'),
+        tds_tcs_definition_id=_parse_positive_int(request.POST.get('tds_tcs_definition_id')),
+        tds_tcs_rate=_parse_decimal(request.POST.get('tds_tcs_rate', '0')),
+        tds_tcs_amount=_parse_decimal(request.POST.get('tds_tcs_amount', '0.00')),
+    )
+
+    pay_term_id = post_data.get('payment_term')
+    if pay_term_id:
+        order.payment_term = PayTerms.objects.filter(pk=pay_term_id).first()
+        order.save()
+
+    # ---------- ITEMS (FORMSET) ----------
+    PurchaseOrderItemFormSet = modelformset_factory(
+        PurchaseOrderItem, form=PurchaseOrderItemForm, extra=0, can_delete=True
+    )
+    formset = PurchaseOrderItemFormSet(post_data, queryset=PurchaseOrderItem.objects.none())
+
+    if not formset.is_valid():
+        logger.error("Formset errors: %s", formset.errors)
+        messages.error(request, "Item validation failed.")
+        order.delete()
+        return redirect_with_company('purchase_order_list')
+
+    calculated_total = Decimal('0.00')
+
+    for index, item in enumerate(formset.save(commit=False)):
+        if not getattr(item, 'product_id', None):
+            continue
+
+        prefix = f"form-{index}"
+
+        if prefix in prd_brcd_map:
+            item.prd_brcd = prd_brcd_map[prefix]
+
+        item.hsn_code = post_data.get(f'{prefix}-hsn_code', '')
+        selected_tax = post_data.get(f'{prefix}-prd_tax', '').strip()
+        item.prd_tax, item.prd_taxgroup = _resolve_selected_tax(selected_tax)
+        item.purchase_order = order
+        item.save()
+
+        qty = Decimal(item.quantity or 0)
+        price = Decimal(item.price or 0)
+        base = qty * price
+
+        disc = Decimal(item.prd_disvalue or 0)
+        if item.prd_distype == 'percent':
+            discounted = base - (base * disc / Decimal('100'))
+        else:
+            discounted = base - disc
+
+        discounted = max(discounted, Decimal('0'))
+        tax_amt = (discounted * item.prd_tax / Decimal('100')) if item.prd_tax else Decimal('0')
+
+        calculated_total += discounted + tax_amt
+
+    # ---------- GRAND DISCOUNT ----------
+    gd_val = Decimal(str(discount_value))
+    if discount_type == 'percent':
+        grand_discount = calculated_total * gd_val / Decimal('100')
+    else:
+        grand_discount = gd_val
+
+    grand_discount = min(grand_discount, calculated_total)
+    order.total_amount = calculated_total - grand_discount
+    order.discount_value = gd_val
+    order.discount_type = discount_type
+    order.save()
+
+    # Apply document currency and FX values
+    try:
+        company = _get_company_for_request(request)
+        from currencies.services import apply_purchase_order_fx, parse_currency_fx_from_post
+
+        doc_cur, rate_override, fx_date = parse_currency_fx_from_post(request.POST, company)
+        apply_purchase_order_fx(
+            order,
+            company,
+            document_currency=doc_cur,
+            fx_rate_to_base_override=rate_override,
+            fx_rate_date_override=fx_date,
+        )
+    except Exception:
+        logger.exception('Failed to apply FX to purchase order %s', order.pk)
+
+    messages.success(request, "Order edited successfully.")
+    return redirect_with_company('purchase_order_list')
     
 
 @require_POST

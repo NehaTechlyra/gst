@@ -41,6 +41,7 @@ urlpatterns = [
 
     path('purchase/purchase_order_edit/<int:pk>/', views.purchase_order_edit, name='purchase_order_edit'),
     path('purchase/order_duplicate/<int:pk>/', views.purchase_order_duplicate, name='purchase_order_duplicate'),
+    path('purchase/order/<int:pk>/duplicate/',views.duplicate_purchase_order,name='duplicate_purchase_order'),
     path('purchase/delete/<int:order_id>/', views.delete_purchase_order, name='delete_purchase_order'),
     path('purchase/order/<int:order_id>/convert-to-order/', views.convert_purchase_order_to_bill, name='convert_purchase_order_to_bill'),
     path('purchase/order/<int:order_id>/update-status/', views.update_purchase_order_status, name='update_purchase_order_status'),

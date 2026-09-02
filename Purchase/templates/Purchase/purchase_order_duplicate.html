@@ -1127,7 +1127,8 @@ document.addEventListener('DOMContentLoaded', function() {
   <div class="container mt-4">
     
     <!-- <form> -->
-    <form id="purchaseorder-form" class="purchase-edit-form" method="POST" action="{% if company_code %}{% url 'purchase_order_duplicate' company_code order.pk %}{% else %}{% url 'purchase_order_duplicate' order.pk %}{% endif %}">
+    {% comment %} <form id="purchaseorder-form" class="purchase-edit-form" method="POST" action="{% if company_code %}{% url 'purchase_order_duplicate' company_code order.pk %}{% else %}{% url 'purchase_order_duplicate' order.pk %}{% endif %}"> {% endcomment %}
+        <form id="purchaseorder-form" class="purchase-edit-form" method="POST" action="{% url 'purchase_order_duplicate' order.pk %}">
     {% csrf_token %}
       {{ purchase_formset.management_form }}
         <input type="hidden" name="form-INITIAL_FORMS" value="0">

@@ -436,7 +436,7 @@ document.addEventListener('DOMContentLoaded', function() {
       </div>
 
       <!-- Duplicate -->
-      <a href="{% if company_code %}{% url 'purchase_order_duplicate' company_code order.pk %}{% else %}{% url 'purchase_order_duplicate' order.pk %}{% endif %}"
+      <a href="{% if company_code %}{% url 'duplicate_purchase_order' company_code order.pk %}{% else %}{% url 'duplicate_purchase_order' order.pk %}{% endif %}"
          class="btn btn-outline-secondary">
         <i class="bi bi-files me-1"></i> Duplicate
       </a>
@@ -760,6 +760,10 @@ document.addEventListener('DOMContentLoaded', function() {
       </div>
     </div>
   </div>
+
+
+  
+
 
   <!-- ── Status Change Modal ────────────────────────────────────── -->
   <div class="modal fade" id="confirmStatusModal" tabindex="-1" aria-labelledby="confirmStatusLabel" aria-hidden="true">
