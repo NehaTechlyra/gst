@@ -550,7 +550,7 @@ document.addEventListener('DOMContentLoaded', function() {
               {% if invoice.payment_status == 'Paid' %}pay-status-paid
               {% elif invoice.payment_status == 'Partial' %}pay-status-partial
               {% else %}pay-status-unpaid{% endif %}">
-              {{ invoice.payment_status }}
+             {{ invoice.payment_status }}
             </span>
           </div>
           <div class="info-row">

@@ -70,6 +70,15 @@
 .donut-wrap{display:flex;gap:20px;align-items:center;}
 .donut-wrap canvas{flex-shrink:0;}
 .legend-list{list-style:none;flex:1;display:flex;flex-direction:column;gap:9px;}
+.invoice-status-option{cursor:pointer;}
+.invoice-status-option:hover,.invoice-status-option:focus{background:#f8fafc;border-radius:6px;outline:none;}
+.invoice-status-list{margin-top:16px;padding-top:12px;border-top:1px solid #e5e7eb;color:#374151;font-size:13px;}
+.invoice-status-list ul{margin:8px 0 0;padding-left:20px;}
+.invoice-status-list li{margin:4px 0;}
+.invoice-status-pagination{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:10px;}
+.invoice-status-pagination button{border:1px solid #d1d5db;border-radius:5px;background:#fff;color:#374151;padding:4px 9px;font-size:12px;cursor:pointer;}
+.invoice-status-pagination button:disabled{cursor:not-allowed;opacity:.45;}
+.invoice-status-page{color:#6b7280;font-size:12px;}
 .legend-item{display:flex;align-items:center;justify-content:space-between;font-size:.82rem;}
 .legend-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-right:9px;}
 .legend-lbl{display:flex;align-items:center;color:var(--t2);flex:1;font-weight:500;}
@@ -259,7 +268,7 @@
         </div>
 
         {# Invoice status donut #}
-        <div class="panel">
+        <div class="panel charts__invoice-status">
           <div class="panel-head">
             <div>
               <div class="panel-title"><i class="bi bi-pie-chart-fill"></i> Invoice Status</div>
@@ -269,15 +278,15 @@
           <div class="donut-wrap">
             <canvas id="invDonut" width="130" height="130" style="max-width:130px;max-height:130px;"></canvas>
             <ul class="legend-list">
-              <li class="legend-item">
+              <li class="legend-item invoice-status-option" data-status="Paid" role="button" tabindex="0">
                 <span class="legend-lbl"><span class="legend-dot" style="background:#059669;"></span>Paid</span>
                 <span class="legend-val" style="color:#059669;">{{ paid_invoices|default:"0" }}</span>
               </li>
-              <li class="legend-item">
-                <span class="legend-lbl"><span class="legend-dot" style="background:#0284c7;"></span>Open</span>
-                <span class="legend-val" style="color:#0284c7;">{{ open_invoices|default:"0" }}</span>
+              <li class="legend-item invoice-status-option" data-status="Not Paid" role="button" tabindex="0">
+                <span class="legend-lbl"><span class="legend-dot" style="background:#0284c7;"></span>Not Paid</span>
+                <span class="legend-val" style="color:#0284c7;">{{ notpaid_invoices|default:"0" }}</span>
               </li>
-              <li class="legend-item">
+              <li class="legend-item invoice-status-option" data-status="Overdue" role="button" tabindex="0">
                 <span class="legend-lbl"><span class="legend-dot" style="background:#dc2626;"></span>Overdue</span>
                 <span class="legend-val" style="color:#dc2626;">{{ overdue_invoices|default:"0" }}</span>
               </li>
@@ -288,6 +297,7 @@
               </li>
             </ul>
           </div>
+          <div id="invoiceStatusList" class="invoice-status-list" aria-live="polite"></div>
         </div>
 
       </div>
@@ -329,8 +339,8 @@
             <span class="summary-val" style="color:#55588b;">{{ paid_invoices|default:"0" }}</span>
           </div>
           <div class="summary-row">
-            <span class="summary-lbl"><i class="bi bi-file-earmark-text" style="color:#d97706;"></i> Open Invoices</span>
-            <span class="summary-val" style="color:#d97706;">{{ open_invoices|default:"0" }}</span>
+            <span class="summary-lbl"><i class="bi bi-file-earmark-text" style="color:#d97706;"></i> Not Paid Invoices</span>
+            <span class="summary-val" style="color:#d97706;">{{ notpaid_invoices|default:"0" }}</span>
           </div>
         </div>
       </div>
@@ -527,6 +537,10 @@ var LYRA_ARRANGE_CONFIG = {
 </script>
 <script src="{% static 'js/dashboard_dragdrop.js' %}"></script>
 
+{{ paid_invoice_numbers|json_script:"paid-invoice-numbers" }}
+{{ notpaid_invoice_numbers|json_script:"notpaid-invoice-numbers" }}
+{{ overdue_invoice_numbers|json_script:"overdue-invoice-numbers" }}
+
 <script>
 Chart.defaults.color       = "#9ca3af";
 Chart.defaults.borderColor = "#e2e6f3";
@@ -584,16 +598,68 @@ Chart.defaults.font.family = "'Plus Jakarta Sans',sans-serif";
 /* ── Invoice status donut ── */
 (function(){
   var paid    = parseInt("{{ paid_invoices|default:0 }}")    || 0;
-  var open    = parseInt("{{ open_invoices|default:0 }}")    || 0;
+  var notpaid = parseInt("{{ notpaid_invoices|default:0 }}")    || 0;
   var overdue = parseInt("{{ overdue_invoices|default:0 }}") || 0;
-  var total   = paid + open + overdue;
+  var invoiceNumbers = {
+    "Paid": JSON.parse(document.getElementById("paid-invoice-numbers").textContent),
+    "Not Paid": JSON.parse(document.getElementById("notpaid-invoice-numbers").textContent),
+    "Overdue": JSON.parse(document.getElementById("overdue-invoice-numbers").textContent)
+  };
+  var total   = paid + notpaid + overdue;
   var ctx = document.getElementById("invDonut"); if(!ctx) return;
+  var selectedStatus = null;
+  var selectedPage = 1;
+  var pageSize = 5;
+
+  function renderInvoiceNumbers() {
+    var list = document.getElementById("invoiceStatusList");
+    var numbers = invoiceNumbers[selectedStatus] || [];
+    var totalPages = Math.max(1, Math.ceil(numbers.length / pageSize));
+    selectedPage = Math.min(selectedPage, totalPages);
+    var start = (selectedPage - 1) * pageSize;
+    var pageNumbers = numbers.slice(start, start + pageSize);
+    list.innerHTML = "<strong>" + selectedStatus + " invoices</strong>";
+    if (!numbers.length) {
+      list.innerHTML += "<div>No invoices found.</div>";
+      return;
+    }
+    var items = pageNumbers.map(function(number) {
+      var item = document.createElement("li");
+      item.textContent = number;
+      return item.outerHTML;
+    }).join("");
+    list.innerHTML += "<ul>" + items + "</ul>";
+
+    var pagination = document.createElement("div");
+    pagination.className = "invoice-status-pagination";
+    pagination.innerHTML = "<button type=\"button\" data-page-action=\"previous\">Previous</button>" +
+      "<span class=\"invoice-status-page\">Page " + selectedPage + " of " + totalPages + "</span>" +
+      "<button type=\"button\" data-page-action=\"next\">Next</button>";
+    pagination.querySelector('[data-page-action="previous"]').disabled = selectedPage === 1;
+    pagination.querySelector('[data-page-action="next"]').disabled = selectedPage === totalPages;
+    pagination.querySelector('[data-page-action="previous"]').addEventListener("click", function() {
+      selectedPage -= 1;
+      renderInvoiceNumbers();
+    });
+    pagination.querySelector('[data-page-action="next"]').addEventListener("click", function() {
+      selectedPage += 1;
+      renderInvoiceNumbers();
+    });
+    list.appendChild(pagination);
+  }
+
+  function showInvoiceNumbers(status) {
+    selectedStatus = status;
+    selectedPage = 1;
+    renderInvoiceNumbers();
+  }
+
   new Chart(ctx, {
     type: "doughnut",
     data: {
-      labels: ["Paid","Open","Overdue"],
+      labels: ["Paid","Not Paid","Overdue"],
       datasets:[{
-        data: total ? [paid,open,overdue] : [1,1,1],
+        data: total ? [paid,notpaid,overdue] : [1,1,1],
         backgroundColor: total ? ["#059669","#0284c7","#dc2626"] : ["#f3f4f6","#f3f4f6","#f3f4f6"],
         borderWidth:2, borderColor:"#ffffff", hoverOffset:5,
       }]
@@ -601,8 +667,21 @@ Chart.defaults.font.family = "'Plus Jakarta Sans',sans-serif";
     options:{
       cutout:"72%",
       plugins:{legend:{display:false},tooltip:{backgroundColor:"#fff",titleColor:"#111827",bodyColor:"#6b7280",borderColor:"#e2e6f3",borderWidth:1}},
+      onClick:function(event, elements){
+        if (elements.length) showInvoiceNumbers(this.data.labels[elements[0].index]);
+      },
       animation:{duration:900}
     }
+  });
+
+  document.querySelectorAll(".invoice-status-option").forEach(function(option) {
+    option.addEventListener("click", function() { showInvoiceNumbers(option.dataset.status); });
+    option.addEventListener("keydown", function(event) {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        showInvoiceNumbers(option.dataset.status);
+      }
+    });
   });
 })();
 

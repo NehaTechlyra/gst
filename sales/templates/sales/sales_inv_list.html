@@ -48,6 +48,7 @@
             <th>Sales Person</th>
             <th>Date</th>
             <th>Status</th>
+            <th>Payment Status</th>
             <th>Total Amount</th>
             <th>Actions</th>
         </tr>
@@ -78,6 +79,7 @@
             <td>{{ inv.sales_person.name }}</td>
             <td>{{ inv.date }}</td>
             <td>{{ inv.status }}</td>
+            <td>{{ inv.payment_status }}</td>
             <td>
               {% if inv.document_currency and inv.document_currency.symbol %}
                 {{ inv.document_currency.symbol }} {{ inv.total_amount|floatformat:2 }}

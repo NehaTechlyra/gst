@@ -328,6 +328,7 @@ class SalesInvoice(models.Model):
     payment_status = models.ForeignKey(
         PaymentStatus,
         on_delete=models.PROTECT,
+        default=1,
         null=True,
         blank=True,
     )

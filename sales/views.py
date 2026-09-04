@@ -38,6 +38,7 @@ from django.db.models import OuterRef, Subquery, F
 from django.db import transaction
 from django.utils import timezone
 import re
+from datetime import date
 from company.utils import is_stock_management_on_delivery
 from django.conf import settings
 from collections import defaultdict
@@ -1326,33 +1327,69 @@ def sales_dashboard(request):
     can_delivery = getattr(request.user, 'is_superuser', False) or can_view_delivery(request.user)
     can_returns = getattr(request.user, 'is_superuser', False) or can_view_returns(request.user)
  
+    invoice_count = notpaid_invoices = paid_invoices = overdue_invoices = 0
+    total_revenue = total_collected = total_outstanding = overdue_amount = 0
+    recent_invoices = []
     try:
         from sales.models import SalesInvoice
-        all_inv = SalesInvoice.objects.using(company_db).all()
-        invoice_count    = all_inv.count()
-        paid_invoices    = all_inv.filter(payment_status='paid').count()
-        open_invoices    = all_inv.filter(payment_status='unpaid').count()
-        overdue_invoices = all_inv.filter(
-            payment_status='unpaid', due_date__lt=today
-        ).count()
- 
-        agg = all_inv.aggregate(
-            rev=Sum('total_amount'),
-            collected=Sum('amount_paid'),
+        all_inv = SalesInvoice.objects.using(company_db).select_related(
+            'payment_status', 'payment_term', 'customer'
+        ).all()
+        invoice_records = list(all_inv)
+        invoice_numbers = [invoice.inv_number for invoice in invoice_records]
+        invoice_bases = {
+            re.sub(r'-R\d+$', '', invoice_number or '')
+            for invoice_number in invoice_numbers
+        }
+        invoice_count    = len(invoice_bases)
+        paid_invoices = sum(
+            1 for invoice in invoice_records
+            if getattr(getattr(invoice, 'payment_status', None), 'name', '').strip().lower() == 'paid'
         )
-        total_revenue     = agg['rev']      or 0
-        total_collected   = agg['collected'] or 0
+        notpaid_invoices = sum(
+            1 for invoice in invoice_records
+            if getattr(getattr(invoice, 'payment_status', None), 'name', '').strip().lower()
+            in {'not paid', 'partially paid'}
+        )
+
+        overdue_records = []
+        for invoice in invoice_records:
+            payment_status = getattr(getattr(invoice, 'payment_status', None), 'name', '').strip().lower()
+            payment_term = getattr(invoice, 'payment_term', None)
+            payment_days = int(payment_term.days or 0) if payment_term else None
+            print(f"Invoice {invoice.inv_number}: payment_status={payment_status}, payment_days={payment_days}")
+            due_date = (
+                invoice.date + timezone.timedelta(days=payment_days)
+                if invoice.date and payment_days is not None
+                else None
+            )
+            if payment_status in {'not paid', 'partially paid'} and due_date and due_date < today:
+                overdue_records.append(invoice)
+        print(f"Overdue records : overdue_records={overdue_records}")
+        overdue_invoices = len(overdue_records)
+
+        paid_invoice_numbers = [
+            invoice.inv_number for invoice in invoice_records
+            if getattr(getattr(invoice, 'payment_status', None), 'name', '').strip().lower() == 'paid'
+        ]
+        notpaid_invoice_numbers = [
+            invoice.inv_number for invoice in invoice_records
+            if getattr(getattr(invoice, 'payment_status', None), 'name', '').strip().lower()
+            in {'not paid', 'partially paid'}
+        ]
+        overdue_invoice_numbers = [invoice.inv_number for invoice in overdue_records]
+ 
+        total_revenue = sum((invoice.total_amount or 0) for invoice in invoice_records)
+        total_collected = InvPaymentAllocation.objects.using(company_db).filter(
+            inv__in=invoice_records
+        ).aggregate(collected=Sum('amount'))['collected'] or 0
         total_outstanding = float(total_revenue) - float(total_collected)
  
-        overdue_amount = all_inv.filter(
-            payment_status='unpaid', due_date__lt=today
-        ).aggregate(s=Sum('total_amount'))['s'] or 0
+        overdue_amount = sum((invoice.total_amount or 0) for invoice in overdue_records)
  
-        recent_invoices = all_inv.select_related('customer').order_by('-date')[:8]
+        recent_invoices = sorted(invoice_records, key=lambda invoice: invoice.date or today, reverse=True)[:8]
     except Exception:
-        invoice_count = open_invoices = paid_invoices = overdue_invoices = 0
-        total_revenue = total_collected = total_outstanding = overdue_amount = 0
-        recent_invoices = []
+        logger.exception('Failed to build Sales Dashboard invoice metrics')
  
     try:
         from sales.models import SalesOrder
@@ -1368,17 +1405,17 @@ def sales_dashboard(request):
         quotation_count = 0
  
     try:
-        from sales.models import PaymentReceived
-        payment_count = PaymentReceived.objects.using(company_db).count()
+        from sales.models import InvPayment
+        payment_count = InvPayment.objects.using(company_db).count()
     except Exception:
         payment_count = 0
- 
+    
     try:
-        from sales.models import DeliveryNote
-        delivery_count = DeliveryNote.objects.using(company_db).count()
+        from sales.models import SalesDeliveryNote
+        delivery_count = SalesDeliveryNote.objects.using(company_db).count()
     except Exception:
         delivery_count = 0
- 
+    
     try:
         from sales.models import SalesReturn
         return_count = SalesReturn.objects.using(company_db).count()
@@ -1425,6 +1462,7 @@ def sales_dashboard(request):
             chart_data.append(float(month_total))
     except Exception:
         chart_labels, chart_data = [], []
+    
  
     return render(request, 'sales/sales_dashboard.html', {
         # KPI counts
@@ -1436,8 +1474,11 @@ def sales_dashboard(request):
         'return_count':     return_count,
         # Invoice status
         'paid_invoices':    paid_invoices,
-        'open_invoices':    open_invoices,
+        'notpaid_invoices':    notpaid_invoices,
         'overdue_invoices': overdue_invoices,
+        'paid_invoice_numbers': paid_invoice_numbers,
+        'notpaid_invoice_numbers': notpaid_invoice_numbers,
+        'overdue_invoice_numbers': overdue_invoice_numbers,
         # Revenue
         'total_revenue':     total_revenue,
         'total_collected':   total_collected,
