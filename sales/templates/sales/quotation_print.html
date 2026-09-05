@@ -6,6 +6,7 @@
   <title>Quotation</title>
 
   {% load static %}
+  {% load currency_tags %}
   {% block exstyle %}
 
     <link href="{% static 'style/print.css' %}" rel="stylesheet">
@@ -180,21 +181,21 @@
           {% if item.hsn %}{{ item.hsn }}{% else %}-{% endif %}
         </td>
         <td class="text-right nowrap">{{ item.quantity }}</td>
-        <td class="text-right nowrap">{{ document_currency_symbol|default:"Rs." }} {{ item.price|floatformat:2 }}</td>
+        <td class="text-right nowrap">{{ document_currency_symbol|default:"Rs." }} {{ item.price|currency_amount:document_currency }}</td>
         {% if company_tax_type|default:''|upper != 'NONE' %}
         {% if company_tax_type == 'GST' %}
           <td class="text-right">
             {{ item.cgst_rate|floatformat:2 }}%<br>
-            <span class="muted">{{ document_currency_symbol|default:"Rs." }} {{ item.cgst_amount|floatformat:2 }}</span>
+            <span class="muted">{{ document_currency_symbol|default:"Rs." }} {{ item.cgst_amount|currency_amount:document_currency }}</span>
           </td>
           <td class="text-right">
             {{ item.sgst_rate|floatformat:2 }}%<br>
-            <span class="muted">{{ document_currency_symbol|default:"Rs." }} {{ item.sgst_amount|floatformat:2 }}</span>
+            <span class="muted">{{ document_currency_symbol|default:"Rs." }} {{ item.sgst_amount|currency_amount:document_currency }}</span>
           </td>
         {% else %}
           <td class="text-right">
             {{ item.tax_rate|floatformat:2 }}%<br>
-            <span class="muted">{{ document_currency_symbol|default:"Rs." }} {{ item.tax_amount|floatformat:2 }}</span>
+            <span class="muted">{{ document_currency_symbol|default:"Rs." }} {{ item.tax_amount|currency_amount:document_currency }}</span>
           </td>
         {% endif %}
         {% endif %}
@@ -208,40 +209,40 @@
     <table class="totals-table">
       <tr>
         <td class="totals-label">Sub Total</td>
-        <td class="totals-value">{{ document_currency_symbol|default:"Rs." }} {{ subtotal_calc|floatformat:2 }}</td>
+        <td class="totals-value">{{ document_currency_symbol|default:"Rs." }} {{ subtotal_calc|currency_amount:document_currency }}</td>
       </tr>
       {% if company_tax_type|default:''|upper != 'NONE' %}
       {% if company_tax_type == 'GST' %}
         <tr>
           <td class="totals-label">CGST</td>
-          <td class="totals-value">{{ document_currency_symbol|default:"Rs." }} {{ total_cgst|floatformat:2 }}</td>
+          <td class="totals-value">{{ document_currency_symbol|default:"Rs." }} {{ total_cgst|currency_amount:document_currency }}</td>
         </tr>
         <tr>
           <td class="totals-label">SGST</td>
-          <td class="totals-value">{{ document_currency_symbol|default:"Rs." }} {{ total_sgst|floatformat:2 }}</td>
+          <td class="totals-value">{{ document_currency_symbol|default:"Rs." }} {{ total_sgst|currency_amount:document_currency }}</td>
         </tr>
       {% else %}
         <tr>
           <td class="totals-label">{% if company_tax_type|default:''|upper == 'VAT' or company_tax_type|default:''|upper == 'SALES' or company_tax_type|default:''|upper == 'TURNOVER' %}Tax{% else %}VAT{% endif %}</td>
-          <td class="totals-value">{{ document_currency_symbol|default:"Rs." }} {{ total_tax|floatformat:2 }}</td>
+          <td class="totals-value">{{ document_currency_symbol|default:"Rs." }} {{ total_tax|currency_amount:document_currency }}</td>
         </tr>
       {% endif %}
       {% endif %}
-      {% if quote.round_off %}
+      {% if quote.round_off != None %}
         <tr>
         <td class="totals-label">Round Off</td>
-        <td class="totals-value">{{ document_currency_symbol|default:"Rs." }} {{ quote.round_off|floatformat:2 }}</td>
+        <td class="totals-value">{{ document_currency_symbol|default:"Rs." }} {{ quote.round_off|currency_amount:document_currency }}</td>
       </tr>
       {% endif %}
       {% if company_tax_type|default:''|upper == 'TURNOVER' and turnover_tax_amount and turnover_tax_amount|floatformat:2 != '0.00' %}
         <tr>
           <td class="totals-label">Turnover Tax</td>
-          <td class="totals-value">{{ document_currency_symbol|default:"Rs." }} {{ turnover_tax_amount|floatformat:2 }}</td>
+          <td class="totals-value">{{ document_currency_symbol|default:"Rs." }} {{ turnover_tax_amount|currency_amount:document_currency }}</td>
         </tr>
       {% endif %}
       <tr class="grand-row">
         <td class="totals-label">Grand Total</td>
-        <td class="totals-value">{{ document_currency_symbol|default:"Rs." }} {{ final_total|floatformat:2 }}</td>
+        <td class="totals-value">{{ document_currency_symbol|default:"Rs." }} {{ final_total|currency_amount:document_currency }}</td>
       </tr>
     </table>
   </div>

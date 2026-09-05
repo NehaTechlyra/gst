@@ -239,7 +239,7 @@ document.addEventListener('DOMContentLoaded', function() {
   console.log('=== SHIPPING SETUP COMPLETE ===');
 });
 </script>
-<script src="{% static 'js/sales_quotation.js' %}"></script>
+<script src="{% static 'js/sales_quotation.js' %}?v=20260904-rounding"></script>
 <script src="{% static 'js/cancel_confirm.js' %}"></script>
 
 <script>
@@ -247,6 +247,8 @@ document.addEventListener('DOMContentLoaded', function() {
 const COMPANY_IS_INDIA = {{ company_is_india|lower|default:"false" }};
 const COMPANY_TAX_TYPE = String("{{ company_tax_type|default:'' }}").trim().toUpperCase();
 window.COMPANY_TAX_TYPE = COMPANY_TAX_TYPE;
+window.SALES_ROUNDING_METHOD = "{{ sales_rounding_method|default:'none'|escapejs }}";
+window.SALES_ROUNDING_INCREMENT = parseFloat("{{ sales_rounding_increment|default:'0'|escapejs }}") || 0;
 const salesCompanyPrefix = (function() {
   const parts = window.location.pathname.split('/');
   const first = parts[1] || '';
@@ -1404,6 +1406,10 @@ document.addEventListener('DOMContentLoaded', function() {
         <span>Total Discount</span>
         <strong id="discount-amount" class="amount">₹0.00</strong>
       </div>
+      <div class="totals-row">
+        <span>Round Off</span>
+        <strong id="round-off-amount" class="amount">{{ company_base_currency_symbol|default:"&#x20B9;" }}{{ invoice.round_off|default:0|floatformat:2 }}</strong>
+      </div>
       <div class="totals-row" style="align-items:center; gap:1rem;">
           <label style="display:flex; align-items:center; gap:0.35rem; white-space: nowrap;">
             <input type="radio" name="tds_tcs_type" style="margin-bottom: 0px;" value="tds" {% if tds_tcs_type|default:'tds' == 'tds' %}checked{% endif %}>
@@ -1754,6 +1760,7 @@ document.addEventListener('DOMContentLoaded', function() {
         <span style="font-size:1.2em; font-weight:600;">{% if company_tax_type|default:''|upper == 'TURNOVER' %}Final Total{% else %}Total{% endif %}</span>
         <strong style="font-size:1.18em; color:#5a5c8a;" id="grand-total" class="amount">₹0.00</strong>
         <input style="font-size:1.18em; color:#5a5c8a;" type="hidden" class="amount" name="grandTotal" id="grandTotal" value="0.00">
+        <input type="hidden" name="unroundedGrandTotal" id="unroundedGrandTotal" value="0.00">
 
       </div>
     </div>

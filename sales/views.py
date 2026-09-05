@@ -187,6 +187,7 @@ from .permissions import (
     can_view_eway_bill, can_create_eway_bill, can_edit_eway_bill, can_delete_eway_bill,
 )
 from .cogs_utils import create_cogs_transfer
+from .rounding import apply_sales_rounding
 #added on 20-1-26 neha
 from xml.sax.saxutils import escape
 def safe(value):
@@ -2303,6 +2304,8 @@ def quotation_detail(request, pk):
         'company_base_currency_code': base_currency_code,
         'document_currency_symbol': doc_currency_symbol,
         'document_currency_code': doc_currency_code,
+        'document_currency': doc_currency,
+        'base_currency': base_currency,
         'fx_rate': fx_rate,
         'fx_rate_to_base': fx_rate,
 
@@ -3407,6 +3410,8 @@ def build_quotation_context(pk, request=None):
         'fx_rate': fx_rate,
         'document_currency_symbol': doc_currency_symbol,
         'document_currency_code': doc_currency_code,
+        'document_currency': doc_currency,
+        'base_currency': base_currency,
         'company_base_currency_symbol': company_base_currency_symbol,
         'company_base_currency_code': company_base_currency_code,
         #added by neha on 20-1-26
@@ -6555,6 +6560,7 @@ def order_add(request):
         company_currencies = []
         company_base_currency_symbol = '₹'
         company_base_currency_code = ''
+        base_cur = None
 
     # Pass both to the template
     resolved_company = _get_company_for_request(request)
@@ -6577,6 +6583,7 @@ def order_add(request):
         'company_currencies': company_currencies,
         'company_base_currency_symbol': company_base_currency_symbol,
         'company_base_currency_code': company_base_currency_code,
+        'base_currency': base_cur,
         'tds_tax_master_items': tds_tax_master_items,
         'tcs_tax_master_items': tcs_tax_master_items,
         'show_base_transaction_summary': bool(getattr(_get_company_for_request(request), 'show_base_transaction_summary', True)),
@@ -7129,6 +7136,8 @@ def order_detail(request, pk):
         'company_tax_type': company_tax_type,
         'document_currency_symbol': doc_currency_symbol,
         'document_currency_code': doc_currency_code,
+        'document_currency': doc_currency,
+        'base_currency': base_cur,
         'fx_rate_to_base': fx_rate,
         'fx_rate': fx_rate,
         'total_amount_base': order.total_amount_base,
@@ -7820,6 +7829,8 @@ def build_order_context(pk, request=None):
         'company_base_currency_code': base_currency_code,
         'document_currency_symbol': doc_currency_symbol,
         'document_currency_code': doc_currency_code,
+        'document_currency': doc_currency,
+        'base_currency': base_currency,
         'fx_rate': fx_rate,
         'company': company,
         'show_logo_in_print': bool(getattr(company, 'show_logo_in_print_pdf', False)) if company else False,
@@ -9729,6 +9740,8 @@ def invoice_detail(request, pk):
         'company_base_currency_code': base_currency_code,
         'document_currency_symbol': doc_currency_symbol,
         'document_currency_code': doc_currency_code,
+        'document_currency': doc_currency,
+        'base_currency': base_currency,
         'show_base_currency_only': show_base_currency_only,
         'fx_rate': fx_rate,
         'tds_tcs_type': tds_tcs_type,
@@ -10457,6 +10470,8 @@ def build_invoice_context(pk, request=None):
         'company_base_currency_code': base_currency_code,
         'document_currency_symbol': doc_currency_symbol,
         'document_currency_code': doc_currency_code,
+        'document_currency': doc_currency,
+        'base_currency': base_currency,
         'show_base_currency_only': show_base_currency_only,
         'fx_rate': fx_rate,
         #added by neha on 20-1-26
@@ -10600,9 +10615,12 @@ def inv_add(request):
         'company_currencies': company_currencies,
         'company_base_currency_symbol': base_currency_symbol,
         'company_base_currency_code': base_currency_code,
+        'base_currency': base_currency,
         'tds_tax_master_items': tds_tax_master_items,
         'tcs_tax_master_items': tcs_tax_master_items,
         'show_base_transaction_summary': bool(getattr(company, 'show_base_transaction_summary', True)),
+        'sales_rounding_method': getattr(company, 'sales_rounding_method', 'none'),
+        'sales_rounding_increment': getattr(company, 'sales_rounding_increment', 0),
     })
 
 
@@ -10684,7 +10702,7 @@ def save_salesinvoice(request):
         company_is_india = _is_indian_company_country(company_country)
         post_data = _normalize_item_tax_tokens(post_data, company_is_india)
 
-        raw_total = request.POST.get('grandTotal')
+        raw_total = request.POST.get('unroundedGrandTotal') or request.POST.get('grandTotal')
         try:
             total_amount = (
                 Decimal(str(raw_total).strip())
@@ -10693,6 +10711,8 @@ def save_salesinvoice(request):
             )
         except Exception:
             total_amount = Decimal('0')
+        rounding_company = _get_company_for_request(request)
+        total_amount, rounding_adjustment = apply_sales_rounding(total_amount, rounding_company)
         customer_id = request.POST.get('customer')
         date = request.POST.get('date')
         sales_person_id = request.POST.get('sales_person')
@@ -10744,6 +10764,7 @@ def save_salesinvoice(request):
                 # New invoice should start as Open.
                 status='Open',
                 total_amount=total_amount,
+                round_off=rounding_adjustment,
                 fx_rate_to_base=Decimal('1.000000'),
                 notes=notes,
                 discount_value=discount_value,
@@ -10934,7 +10955,16 @@ def save_salesinvoice(request):
             invoice.discount_value,
             invoice.discount_type,
         )
-        invoice.save(update_fields=['total_amount_base'])
+        invoice.total_amount_base = (
+            Decimal(invoice.total_amount_base or 0)
+            + (rounding_adjustment * Decimal(invoice.fx_rate_to_base or 1))
+        ).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+        invoice.round_off = rounding_adjustment
+        SalesInvoice.objects.using(company_db).filter(pk=invoice.pk).update(
+            total_amount_base=invoice.total_amount_base,
+            round_off=rounding_adjustment,
+        )
+        invoice.refresh_from_db(using=company_db)
 
         # Create Journal Entry for this invoice.
         # Posting pattern:
@@ -11275,7 +11305,13 @@ def invoice_edit(request, pk):
                         prefix = key.rsplit("-", 1)[0]
                         prd_brcd_map[prefix] = parts[1]
         
-        total_amount = request.POST.get('grandTotal')
+        total_amount = request.POST.get('unroundedGrandTotal') or request.POST.get('grandTotal')
+        try:
+            total_amount = Decimal(str(total_amount).strip()) if total_amount not in (None, '') else Decimal('0.00')
+        except Exception:
+            total_amount = Decimal('0.00')
+        rounding_company = _get_company_for_request(request)
+        total_amount, rounding_adjustment = apply_sales_rounding(total_amount, rounding_company)
         date = request.POST.get('date')
         notes = request.POST.get('notes', '')
         try:
@@ -11305,6 +11341,7 @@ def invoice_edit(request, pk):
                 # Update invoice header
                 invoice.date = date
                 invoice.total_amount = total_amount
+                invoice.round_off = rounding_adjustment
                 invoice.notes = notes
                 invoice.discount_value = discount_value
                 invoice.discount_type = discount_type
@@ -11492,9 +11529,17 @@ def invoice_edit(request, pk):
                     invoice.discount_value,
                     invoice.discount_type,
                 )
+                invoice.total_amount_base = (
+                    Decimal(invoice.total_amount_base or 0)
+                    + (rounding_adjustment * Decimal(invoice.fx_rate_to_base or 1))
+                ).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
                 if (get_company_tax_type(using=db) or '').strip().upper() == 'TURNOVER':
                     invoice.total_amount_base = (Decimal(invoice.total_amount or 0) * Decimal(invoice.fx_rate_to_base or 1)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
-                invoice.save(update_fields=['total_amount_base'])
+                SalesInvoice.objects.using(db).filter(pk=invoice.pk).update(
+                    total_amount_base=invoice.total_amount_base,
+                    round_off=rounding_adjustment,
+                )
+                invoice.refresh_from_db(using=db)
                 
                 # === STEP 1: REVERSE OLD JOURNAL ENTRIES ===
                 from journal.models import JournalEntry, JournalLine
@@ -11922,6 +11967,8 @@ def invoice_edit(request, pk):
         # — Fetch TDS and TCS for invoice_edit template
         'tds_tax_master_items': TdsMaster.objects.filter(company=_get_company_for_request(request), is_active=True),
         'tcs_tax_master_items': TcsMaster.objects.filter(company=_get_company_for_request(request), is_active=True),
+        'sales_rounding_method': getattr(_get_company_for_request(request), 'sales_rounding_method', 'none'),
+        'sales_rounding_increment': getattr(_get_company_for_request(request), 'sales_rounding_increment', 0),
     }
     if readonly:
         for form in sales_formset.forms:
@@ -12541,10 +12588,18 @@ def invoice_journal(request, pk):
                 'credit': credit
             })
     
+    from currencies.services import get_base_currency
+    company = _get_company_for_request(request)
+    try:
+        base_currency = get_base_currency(company)
+    except Exception:
+        base_currency = None
+
     return render(request, 'sales/invoice_journal.html', {
         'invoice': invoice,
         'display_rows': display_rows,
         'display_total': total_debit,
+        'base_currency': base_currency,
     })
 
 
@@ -17751,6 +17806,8 @@ def build_performa_context(pk, request=None):
         'company_base_currency_code': base_currency_code,
         'document_currency_symbol': doc_currency_symbol,
         'document_currency_code': doc_currency_code,
+        'document_currency': doc_currency,
+        'base_currency': base_currency,
         'fx_rate': fx_rate,
         'tds_tcs_type': tds_tcs_type,
         'tds_tcs_amount': tds_tcs_amount,

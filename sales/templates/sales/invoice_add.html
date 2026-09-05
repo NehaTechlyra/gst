@@ -1,5 +1,6 @@
 {% extends "website/index.html" %}
 {% load static %}
+{% load currency_tags %}
 {% load widget_tweaks %}
 {% block exstyle %}
 <link href="{% static 'style/general.css' %}" rel="stylesheet">
@@ -16,7 +17,7 @@
 {% block page_title %}New Sales Invoice{% endblock page_title %}<!--add title-->
 {% block scripts %}
 
-<script src="{% static 'js/sales_quotation.js' %}?v={{ today|default:'20260518' }}"></script>
+<script src="{% static 'js/sales_quotation.js' %}?v=20260904-rounding"></script>
 <script src="{% static 'js/cancel_confirm.js' %}"></script>
 
 <script>
@@ -24,6 +25,8 @@
 const COMPANY_IS_INDIA = {{ company_is_india|lower }};
 const COMPANY_TAX_TYPE = String("{{ company_tax_type|default:'' }}").trim().toUpperCase();
 window.COMPANY_TAX_TYPE = COMPANY_TAX_TYPE;
+window.SALES_ROUNDING_METHOD = "{{ sales_rounding_method|default:'none'|escapejs }}";
+window.SALES_ROUNDING_INCREMENT = parseFloat("{{ sales_rounding_increment|default:'0'|escapejs }}") || 0;
 const salesCompanyPrefix = (function() {
   const parts = window.location.pathname.split('/');
   const first = parts[1] || '';
@@ -36,6 +39,36 @@ window.initialInvoiceFxDate = "{% if fx_rate_date %}{{ fx_rate_date|date:'Y-m-d'
 window.initialInvoiceId = "{% if invoice and invoice.pk %}{{ invoice.pk }}{% endif %}";
 window.isExistingInvoiceEdit = !!window.initialInvoiceId;
 window.preserveInitialInvoiceFx = !!(window.initialInvoiceCurrencyId || window.initialInvoiceFxRate || window.initialInvoiceFxDate);
+
+// ✅ Currency-aware decimal place helpers.
+// The #document_currency <select> carries data-base-decimal-places on the
+// element itself, and data-decimal-places on each <option> (including the
+// blank "Choose currency" option, which represents the base currency).
+// These read that data live, so they always reflect whichever currency is
+// currently selected instead of assuming 2 decimals everywhere.
+function getBaseCurrencyDecimals() {
+  var sel = document.getElementById('document_currency');
+  if (sel) {
+    var raw = sel.getAttribute('data-base-decimal-places');
+    var n = parseInt(raw, 10);
+    if (!isNaN(n) && n >= 0) return n;
+  }
+  return 2;
+}
+function getDocumentCurrencyDecimals() {
+  var sel = document.getElementById('document_currency');
+  if (sel && sel.selectedIndex >= 0) {
+    var opt = sel.options[sel.selectedIndex];
+    if (opt) {
+      var raw = opt.getAttribute('data-decimal-places');
+      var n = parseInt(raw, 10);
+      if (!isNaN(n) && n >= 0) return n;
+    }
+  }
+  return getBaseCurrencyDecimals();
+}
+window.getBaseCurrencyDecimals = getBaseCurrencyDecimals;
+window.getDocumentCurrencyDecimals = getDocumentCurrencyDecimals;
 </script>
 
 <script>
@@ -490,8 +523,8 @@ document.addEventListener('DOMContentLoaded', function() {
             const exactDocumentPrice = (fxRate && fxRate !== 1) ? (exactBasePrice / fxRate) : exactBasePrice;
             const applyCreatedItemPrice = function() {
               $targetRow.find('.gstinclude').val(completeItemData.gstinclude);
-              $targetRow.find('.o_price').val(exactBaseOPrice.toFixed(2));
-              $targetRow.find('.price').val(exactDocumentPrice.toFixed(2)).trigger('input');
+              $targetRow.find('.o_price').val(exactBaseOPrice.toFixed(getBaseCurrencyDecimals()));
+              $targetRow.find('.price').val(exactDocumentPrice.toFixed(getDocumentCurrencyDecimals())).trigger('input');
               $targetRow.find('.qty').val(1);
               $targetRow.data('price_base', exactBasePrice);
               $targetRow.data('o_price_base', exactBaseOPrice);
@@ -876,11 +909,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 class="form-control select2"
                 data-base-symbol="{{ company_base_currency_symbol|default:"₹"|escape }}"
                 data-base-code="{{ company_base_currency_code|default:""|escape }}"
+                data-base-decimal-places="{{ base_currency.decimal_places|default:2 }}"
               >
-                <option value="" data-symbol="{{ company_base_currency_symbol|default:"₹"|escape }}">Choose currency</option>
+                <option value="" data-symbol="{{ company_base_currency_symbol|default:"₹"|escape }}" data-decimal-places="{{ base_currency.decimal_places|default:2 }}">Choose currency</option>
                 {% for cur in company_currencies %}
                   {% with cur_symbol=cur.symbol|default:cur.code %}
-                    <option value="{{ cur.id }}" data-symbol="{{ cur_symbol|escape }}" {% if selected_currency_id and selected_currency_id == cur.id %}selected{% endif %}>{{ cur.code }}</option>
+                    <option value="{{ cur.id }}" data-symbol="{{ cur_symbol|escape }}" data-decimal-places="{{ cur.decimal_places|default:2 }}" {% if selected_currency_id and selected_currency_id == cur.id %}selected{% endif %}>{{ cur.code }}</option>
                   {% endwith %}
                 {% endfor %}
               </select>
@@ -1007,7 +1041,7 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
           </td>
           <td class="base-price">
-            <input type="text" class="form-control form-control-sm o_price_display" name="{{ form.prefix }}-o_price_display" value="{% if form.initial.o_price %}{{ form.initial.o_price|floatformat:2 }}{% else %}{% endif %}" readonly>
+            <input type="text" class="form-control form-control-sm o_price_display" name="{{ form.prefix }}-o_price_display" value="{% if form.initial.o_price %}{{ form.initial.o_price|currency_amount:base_currency }}{% else %}{% endif %}" readonly>
           </td>
           <td class="discount-item" ><div style="display:flex;align-items:center; gap:4px;">{{ form.prd_disvalue }}{{ form.prd_distype }}</div></td>
           <td>{{ form.prd_tax|add_class:"tax-select" }}</td>
@@ -1071,6 +1105,10 @@ document.addEventListener('DOMContentLoaded', function() {
       <div class="totals-row">
         <span>Total Discount</span>
         <strong id="discount-amount" class="amount">₹0.00</strong>
+      </div>
+      <div class="totals-row">
+        <span>Round Off</span>
+        <strong id="round-off-amount" class="amount">{{ company_base_currency_symbol|default:"&#x20B9;" }}0.00</strong>
       </div>
       <div class="totals-row" style="align-items:center; gap:1rem;">
           <label style="display:flex; align-items:center; gap:0.35rem; white-space: nowrap;">
@@ -1419,6 +1457,7 @@ document.addEventListener('DOMContentLoaded', function() {
         <span style="font-size:1.2em; font-weight:600;">{% if company_tax_type|default:''|upper == 'TURNOVER' %}Final Total{% else %}Total{% endif %}</span>
         <strong style="font-size:1.18em; color:#5a5c8a;" id="grand-total" class="amount">₹0.00</strong>
         <input style="font-size:1.18em; color:#5a5c8a;" type="hidden" class="amount" name="grandTotal" id="grandTotal" value="0.00">
+        <input type="hidden" name="unroundedGrandTotal" id="unroundedGrandTotal" value="0.00">
 
       </div>
     </div>
@@ -1811,7 +1850,8 @@ document.addEventListener('DOMContentLoaded', function () {
     summary.style.display = 'block';
     summary.style.background = exceeded ? '#fdeaea' : '#fff8e6';
     summary.style.borderColor = exceeded ? '#e5a4a4' : '#e9ecef';
-    text.textContent = `Credit Limit: Rs. ${limit.toFixed(2)} | Outstanding: Rs. ${outstanding.toFixed(2)} | This Invoice: Rs. ${invoiceAmount.toFixed(2)} | Projected: Rs. ${projected.toFixed(2)}${exceeded ? ` | Exceeded By: Rs. ${(projected - limit).toFixed(2)}` : ''}`;
+    const bDp = getBaseCurrencyDecimals();
+    text.textContent = `Credit Limit: Rs. ${limit.toFixed(bDp)} | Outstanding: Rs. ${outstanding.toFixed(bDp)} | This Invoice: Rs. ${invoiceAmount.toFixed(bDp)} | Projected: Rs. ${projected.toFixed(bDp)}${exceeded ? ` | Exceeded By: Rs. ${(projected - limit).toFixed(bDp)}` : ''}`;
   };
   window.refreshCustomerCreditSummary = function() {
     window.renderCustomerCreditSummary(window.customerCreditData);
@@ -1911,7 +1951,8 @@ $(document).ready(function() {
                     if (currSelect && currSelect.options[currSelect.selectedIndex]) {
                         currSym = currSelect.options[currSelect.selectedIndex].getAttribute('data-symbol') || '₹';
                     }
-                    $('#invoiceAmount').text(currSym + ' ' + parseFloat(response.total_amount).toFixed(2));
+                    var currDecimals = (typeof getDocumentCurrencyDecimals === 'function') ? getDocumentCurrencyDecimals() : 2;
+                    $('#invoiceAmount').text(currSym + ' ' + parseFloat(response.total_amount).toFixed(currDecimals));
                     
                     $saveBtn.prop('disabled', false).html(originalBtnText);
                     

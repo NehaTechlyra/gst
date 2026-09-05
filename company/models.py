@@ -120,6 +120,29 @@ class Company(models.Model):
         help_text="If enabled, show the base transaction summary block (div#base-transaction-summary) in relevant pages.",
     )
 
+    SALES_ROUNDING_CHOICES = [
+        ("none", "No Rounding"),
+        ("whole", "Nearest Whole Number"),
+        ("increment", "Nearest Incremental Value"),
+    ]
+    sales_rounding_method = models.CharField(
+        max_length=20,
+        choices=SALES_ROUNDING_CHOICES,
+        default="none",
+        help_text="Controls how sales transaction totals are rounded.",
+    )
+    sales_rounding_increment = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0,
+        validators=[MinValueValidator(0)],
+        help_text="Increment used when sales rounding method is nearest incremental value.",
+    )
+    show_sales_rounding_adjustment = models.BooleanField(
+        default=True,
+        help_text="If enabled, show the sales rounding adjustment line in transaction totals.",
+    )
+
     PRINT_PAPER_SIZE_CHOICES = [
         ("A4", "A4"),
         ("POS", "POS / EPOS"),

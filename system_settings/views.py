@@ -5,10 +5,12 @@ from django.urls import reverse
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_http_methods
+from django.views.decorators.cache import never_cache
 from django.db import transaction
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.conf import settings
 from datetime import datetime
+from decimal import Decimal, ROUND_HALF_UP
 import csv
 from collections import Counter
 
@@ -100,6 +102,7 @@ from sms_templates.permissions import (
     can_edit_sms_templates, can_delete_sms_templates
 )
 
+@never_cache
 def settings_page(request):
     """
     SETTINGS PAGE – Loads ALL configuration sections:
@@ -323,12 +326,28 @@ def settings_page(request):
     purchase_bill_prefix = BillPrefix.objects.using(db_alias).first()
     # Load company-specific flags (tenant DB)
     try:
-        current_company = Company.objects.using(db_alias).first()
+        current_company = None
+        if getattr(request, 'company_id', None):
+            current_company = Company.objects.using('default').filter(
+                pk=request.company_id,
+            ).first()
+        if current_company is None and getattr(request, 'company_code', None):
+            current_company = Company.objects.using('default').filter(
+                company_code=request.company_code,
+            ).first()
+        if current_company is None:
+            current_company = Company.objects.using('default').first()
         auto_load_cash_customer = bool(getattr(current_company, 'auto_load_cash_customer', False)) if current_company else False
         show_base_transaction_summary = bool(getattr(current_company, 'show_base_transaction_summary', True)) if current_company else True
+        sales_rounding_method = (getattr(current_company, 'sales_rounding_method', 'none') or 'none') if current_company else 'none'
+        sales_rounding_increment = getattr(current_company, 'sales_rounding_increment', 0) if current_company else 0
+        show_sales_rounding_adjustment = bool(getattr(current_company, 'show_sales_rounding_adjustment', True)) if current_company else True
     except Exception:
         auto_load_cash_customer = False
         show_base_transaction_summary = True
+        sales_rounding_method = 'none'
+        sales_rounding_increment = 0
+        show_sales_rounding_adjustment = True
 
     # --------------------------------------------------------
     # 8️⃣ BACKUP SETTINGS
@@ -1444,6 +1463,35 @@ def prefix_update(request):
                 company_obj.save(using=db_alias, update_fields=['show_base_transaction_summary'])
         except Exception:
             pass
+        try:
+            rounding_method = request.POST.get('sales_rounding_method', 'none').strip().lower()
+            if rounding_method not in {'none', 'whole', 'increment'}:
+                rounding_method = 'none'
+            rounding_increment = Decimal(request.POST.get('sales_rounding_increment', '0') or '0')
+            if rounding_increment < 0:
+                rounding_increment = Decimal('0')
+            show_rounding = request.POST.get('show_sales_rounding_adjustment') == 'on'
+            company_obj = Company.objects.using('default').filter(
+                company_code=getattr(request, 'company_code', None),
+            ).first()
+            if company_obj is None and getattr(request, 'company_id', None):
+                company_obj = Company.objects.using('default').filter(
+                    pk=request.company_id,
+                ).first()
+            if company_obj is None:
+                company_obj = Company.objects.using('default').first()
+
+            if company_obj is not None:
+                rounding_values = {
+                    'sales_rounding_method': rounding_method,
+                    'sales_rounding_increment': rounding_increment,
+                    'show_sales_rounding_adjustment': show_rounding,
+                }
+                Company.objects.using('default').filter(pk=company_obj.pk).update(**rounding_values)
+                if db_alias != 'default':
+                    Company.objects.using(db_alias).filter(pk=company_obj.pk).update(**rounding_values)
+        except (ArithmeticError, TypeError, ValueError):
+            messages.error(request, 'Invalid sales rounding settings.')
 
         messages.success(request, 'Saved successfully.')
         settings_url = get_company_redirect_url(request, 'settings_page')

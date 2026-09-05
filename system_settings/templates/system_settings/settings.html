@@ -2573,6 +2573,28 @@ label[for="backup-enabled"] {
                                         <label class="form-check-label" for="other-show-base-summary">Show base transaction summary — Controls visibility of the block "Base Currency Transaction" on relevant pages.</label>
                                     </div>
                                 </div>
+                                <div class="col-md-12 mb-3">
+                                    <h6 class="section-card-title"><i class="bi bi-calculator"></i> Rounding off in Sales Transactions</h6>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label" for="sales-rounding-method">Rounding off method</label>
+                                    <select class="form-select prefix-input" id="sales-rounding-method" name="sales_rounding_method" disabled>
+                                        <option value="none" {% if company_list.0.company.sales_rounding_method == 'none' %}selected{% endif %}>No Rounding</option>
+                                        <option value="whole" {% if company_list.0.company.sales_rounding_method == 'whole' %}selected{% endif %}>Round off the total to the nearest whole number</option>
+                                        <option value="increment" {% if company_list.0.company.sales_rounding_method == 'increment' %}selected{% endif %}>Round off the total to the nearest incremental value</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label" for="sales-rounding-increment">Incremental value</label>
+                                    <input class="form-control prefix-input" type="number" id="sales-rounding-increment" name="sales_rounding_increment" min="0" step="0.01" value="{{ company_list.0.company.sales_rounding_increment|default:'0.00' }}" disabled>
+                                    <small class="text-muted">Used only when the incremental value option is selected.</small>
+                                </div>
+                                <div class="col-md-12 mb-3">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input prefix-input" type="checkbox" role="switch" id="other-show-rounding" name="show_sales_rounding_adjustment" {% if company_list.0.company.show_sales_rounding_adjustment %}checked{% endif %} disabled>
+                                        <label class="form-check-label" for="other-show-rounding">Show sales rounding adjustment on transaction totals and printouts.</label>
+                                    </div>
+                                </div>
                             </div>
 
                             <div class="d-flex gap-2 mt-2">
@@ -3426,8 +3448,9 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    // Show first panel by default
-    showOtherStep(0);
+    // Preserve the requested panel after a settings form redirects back.
+    const activeSettingsTab = document.getElementById('other_settings_tab');
+    showOtherStep(activeSettingsTab && activeSettingsTab.classList.contains('active') ? 6 : 0);
 
     // If E-Way Bill was just saved (success message present), show E-Way Bill panel
     const messages = document.querySelectorAll('[role="alert"]');
@@ -3538,7 +3561,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function setEditing(on) {
         inputs.forEach(i => {
-            if (i.type === 'checkbox') i.disabled = !on;
+            if (i.type === 'checkbox' || i.tagName === 'SELECT') i.disabled = !on;
             else if (on) i.removeAttribute('readonly'); else i.setAttribute('readonly', 'readonly');
         });
         if (saveBtn) saveBtn.style.display = on ? '' : 'none';

@@ -1788,6 +1788,20 @@ function calculateTotals() {
   let finalGrandTotalWithTdsTcs = finalGrandTotal + tdsTcsSignedAmount;
   if (finalGrandTotalWithTdsTcs < 0) finalGrandTotalWithTdsTcs = 0;
 
+  const roundingMethod = String(window.SALES_ROUNDING_METHOD || 'none').toLowerCase();
+  const roundingIncrement = Number(window.SALES_ROUNDING_INCREMENT || 0);
+  const unroundedTotal = finalGrandTotalWithTdsTcs;
+  if (roundingMethod === 'whole') {
+    finalGrandTotalWithTdsTcs = Math.round(unroundedTotal);
+  } else if (roundingMethod === 'increment' && roundingIncrement > 0) {
+    finalGrandTotalWithTdsTcs = Math.round(unroundedTotal / roundingIncrement) * roundingIncrement;
+  }
+  const roundOffAmount = finalGrandTotalWithTdsTcs - unroundedTotal;
+  const unroundedTotalElement = document.getElementById('unroundedGrandTotal');
+  if (unroundedTotalElement) unroundedTotalElement.value = unroundedTotal.toFixed(2);
+  const roundOffElement = document.getElementById('round-off-amount');
+  if (roundOffElement) roundOffElement.innerText = getDocumentCurrencySymbol() + ' ' + roundOffAmount.toFixed(2);
+
   if (document.getElementById("grand-total")) document.getElementById("grand-total").innerText = getDocumentCurrencySymbol() + ' ' + finalGrandTotalWithTdsTcs.toFixed(2);
   document.getElementById('grandTotal').value = finalGrandTotalWithTdsTcs.toFixed(2);
   const baseSubtotalValue = subtotal * fxRateValue;
