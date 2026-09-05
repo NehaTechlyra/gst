@@ -1406,8 +1406,7 @@ document.addEventListener('DOMContentLoaded', function () {
           <label for="pay-terms">Payment Terms</label>
           <select id="pay-terms" name="payment_term" style="width:100%;">
             {% if bill.payment_term %}
-            <option value="{{ bill.payment_term.id }}" selected>{{ bill.payment_term.name }} ({{ bill.payment_term.days
-              }})</option>
+            <option value="{{ bill.payment_term.id }}" selected>{{ bill.payment_term.name }} ({{ bill.payment_term.days }})</option>
             {% endif %}
           </select>
         </div>
