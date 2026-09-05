@@ -1697,12 +1697,15 @@ function calculateTotals() {
     }
     if (document.getElementById("tax-total-sgst")) {
       document.getElementById("tax-total-sgst").innerText = getDocumentCurrencySymbol() + ' ' + sgst.toFixed(2);
+      
     }
   } else {
     // Non-India: Show VAT as single total tax
     if (document.getElementById("tax-total-vat")) {
       document.getElementById("tax-total-vat").innerText = getDocumentCurrencySymbol() + ' ' + totalTax.toFixed(2);
+
     }
+
   }
   // $('#discount-amount').text(totalDiscount.toFixed(2));
 
@@ -1784,6 +1787,20 @@ function calculateTotals() {
   const tdsTcsSignedAmount = tdsTcsType === 'tds' ? -tdsTcsAmount : tdsTcsAmount;
   let finalGrandTotalWithTdsTcs = finalGrandTotal + tdsTcsSignedAmount;
   if (finalGrandTotalWithTdsTcs < 0) finalGrandTotalWithTdsTcs = 0;
+
+  const roundingMethod = String(window.SALES_ROUNDING_METHOD || 'none').toLowerCase();
+  const roundingIncrement = Number(window.SALES_ROUNDING_INCREMENT || 0);
+  const unroundedTotal = finalGrandTotalWithTdsTcs;
+  if (roundingMethod === 'whole') {
+    finalGrandTotalWithTdsTcs = Math.round(unroundedTotal);
+  } else if (roundingMethod === 'increment' && roundingIncrement > 0) {
+    finalGrandTotalWithTdsTcs = Math.round(unroundedTotal / roundingIncrement) * roundingIncrement;
+  }
+  const roundOffAmount = finalGrandTotalWithTdsTcs - unroundedTotal;
+  const unroundedTotalElement = document.getElementById('unroundedGrandTotal');
+  if (unroundedTotalElement) unroundedTotalElement.value = unroundedTotal.toFixed(2);
+  const roundOffElement = document.getElementById('round-off-amount');
+  if (roundOffElement) roundOffElement.innerText = getDocumentCurrencySymbol() + ' ' + roundOffAmount.toFixed(2);
 
   if (document.getElementById("grand-total")) document.getElementById("grand-total").innerText = getDocumentCurrencySymbol() + ' ' + finalGrandTotalWithTdsTcs.toFixed(2);
   document.getElementById('grandTotal').value = finalGrandTotalWithTdsTcs.toFixed(2);
