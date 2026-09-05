@@ -115,7 +115,7 @@
                             {{ form.invoice_number|add_class:"form-control" }}
                         </div>
                         <div class="col-md-3">
-                            <label for="{{ form.customer.id_for_label }}" class="form-label">Customer</label>
+                            <label for="{{ form.customer.id_for_label }}" class="form-label required">Customer</label>
                             <div style="display:flex; gap:8px; align-items:center;">
                                 {{ form.customer|add_class:"form-select" }}
                                 <button type="button" class="btn btn-outline-secondary btn-add-customer inline-add"
@@ -128,7 +128,7 @@
                 <div class="form-section">
                     <div class="row">
                         <div class="col-md-3">
-                            <label for="{{ form.vendor.id_for_label }}" class="form-label">Vendor</label>
+                            <label for="{{ form.vendor.id_for_label }}" class="form-label required">Vendor</label>
                             <div style="display:flex; gap:8px; align-items:center;">
                                 {{ form.vendor|add_class:"form-select" }}
                                 <button type="button" class="btn btn-outline-secondary btn-add-vendor inline-add"
