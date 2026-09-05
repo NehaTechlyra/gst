@@ -11364,6 +11364,18 @@ def invoice_edit(request, pk):
                 invoice.tds_tcs_definition_id = _parse_positive_int(request.POST.get('tds_tcs_definition_id'))
                 invoice.tds_tcs_rate = _parse_decimal(request.POST.get('tds_tcs_rate', '0'))
                 invoice.tds_tcs_amount = _parse_decimal(request.POST.get('tds_tcs_amount', '0.00'))
+
+                # Update payment term if provided (was previously missing, causing
+                # the selected payment term to be silently dropped on invoice edit)
+                pay_term_id = (request.POST.get('payment_term') or '').strip()
+                if pay_term_id:
+                    try:
+                        invoice.payment_term = PayTerms.objects.get(pk=pay_term_id)
+                    except PayTerms.DoesNotExist:
+                        pass
+                else:
+                    invoice.payment_term = None
+
                 invoice._current_user = request.user
 
                 invoice._current_request = request
