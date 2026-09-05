@@ -69,6 +69,7 @@
             <th>Payment Terms</th>
             <th>Date</th>
             <th>Status</th>
+            <th>Payment Status</th>
             <th>Total Amount</th>
             <th>Actions</th>
         </tr>
@@ -103,6 +104,10 @@
                 <span class="badge bg-secondary">{{ po.status }}</span>
             </td>
             <td>{{ po.resolved_currency_symbol }} {{ po.total_amount }}</td>
+            <td>
+                <span class="badge bg-secondary">{{ po.payment_status }}</span>
+                
+            </td>
 
             <td>
                 {% comment %} <a href="{% url 'create_purchase_order' %}?po_id={{ po.id }}" class="btn btn-sm btn-primary">Edit</a> {% endcomment %}

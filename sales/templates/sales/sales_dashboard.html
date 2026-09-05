@@ -146,6 +146,8 @@
 @media(max-width:1200px){.kpi-grid{grid-template-columns:repeat(3,1fr);}.mod-grid{grid-template-columns:repeat(3,1fr);}}
 @media(max-width:960px){.kpi-grid,.mod-grid{grid-template-columns:repeat(2,1fr);}.two-col,.charts-row{grid-template-columns:1fr;}}
 @media(max-width:640px){.lyra-dash{padding:16px;}.kpi-grid,.mod-grid{grid-template-columns:repeat(2,1fr);}}
+
+
 </style>
 {% endblock exstyle %}
 
@@ -489,7 +491,7 @@
           {% for item in top_items %}
           <div class="funnel-item">
             <div class="funnel-lbl">
-              <span>{{ item.item__name|default:item.name|default:"—" }}</span>
+              <span>{{ item.product__name|default:item.product__name|default:"—" }}</span>
               <span class="funnel-n">{{ item.qty|default:"0" }} units</span>
             </div>
             <div class="funnel-track">
