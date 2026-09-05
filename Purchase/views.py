@@ -546,33 +546,65 @@ def purchase_dashboard(request):
         recent_pos = []
  
     # ── Bills ─────────────────────────────────────────────────────────────
+    from Purchase.models import Bill
+    bill_qs = Bill.objects.using(company_db).all()
+    bill_count = bill_qs.count()
+    paid_bill_numbers = []
+    pending_bill_numbers = []
+    overdue_bill_numbers = []
     try:
-        from Purchase.models import Bill
-        bill_qs      = Bill.objects.using(company_db).all()
-        bill_count   = bill_qs.count()
-        paid_bills   = bill_qs.filter(payment_status='paid').count()
-        pending_bills = bill_qs.filter(payment_status='unpaid').count()
-        overdue_bills = bill_qs.filter(
-            payment_status='unpaid', due_date__lt=today
+        bill_records = list(bill_qs.select_related('payment_status', 'payment_term', 'vendor'))
+        paid_bills = sum(
+            1 for bill in bill_records
+            if getattr(getattr(bill, 'payment_status', None), 'name', '').strip().lower() == 'paid'
+        )
+        pending_bills = bill_qs.filter(
+            Q(payment_status__isnull=True) | Q(payment_status__name='Not Paid')| Q(payment_status__name='Partially Paid')
         ).count()
+
+        overdue_records = []
+        for bill in bill_records:
+            payment_status = getattr(
+                getattr(bill, 'payment_status', None), 'name', ''
+            ).strip().lower()
+            payment_term = getattr(bill, 'payment_term', None)
+            payment_days = int(payment_term.days or 0) if payment_term else None
+            due_date = (
+                bill.date + timezone.timedelta(days=payment_days)
+                if bill.date and payment_days is not None
+                else None
+            )
+            if payment_status in {'', 'not paid', 'partially paid'} and due_date and due_date < today:
+                overdue_records.append(bill)
+
+        overdue_bills = len(overdue_records)
+        paid_bill_numbers = [
+            bill.bill_number for bill in bill_records
+            if getattr(getattr(bill, 'payment_status', None), 'name', '').strip().lower() == 'paid'
+        ]
+        pending_bill_numbers = [
+            bill.bill_number for bill in bill_records
+            if getattr(getattr(bill, 'payment_status', None), 'name', '').strip().lower()
+            in {'', 'not paid', 'partially paid'}
+        ]
+        overdue_bill_numbers = [bill.bill_number for bill in overdue_records]
  
         agg = bill_qs.aggregate(
             total=Sum('total_amount'),
-            paid_sum=Sum('amount_paid'),
         )
         total_payable    = agg['total']    or 0
-        total_paid       = agg['paid_sum'] or 0
+        total_paid = BillPaymentAllocation.objects.using(company_db).filter(
+            bill__in=bill_qs
+        ).aggregate(total=Sum('amount'))['total'] or 0
         total_outstanding = float(total_payable) - float(total_paid)
-        overdue_amount   = bill_qs.filter(
-            payment_status='unpaid', due_date__lt=today
-        ).aggregate(s=Sum('total_amount'))['s'] or 0
+        overdue_amount = sum((bill.total_amount or 0) for bill in overdue_records)
  
         recent_bills = bill_qs.select_related('vendor').order_by('-date')[:8]
     except Exception:
-        bill_count = paid_bills = pending_bills = overdue_bills = 0
+        paid_bills = pending_bills = overdue_bills = 0
         total_payable = total_paid = total_outstanding = overdue_amount = 0
         recent_bills = []
- 
+    print("bill count:", bill_count, "paid_bills:", paid_bills, "pending_bills:", pending_bills, "overdue_bills:", overdue_bills)
     # ── Vendors ───────────────────────────────────────────────────────────
     try:
         from Purchase.models import Vendor
@@ -590,8 +622,8 @@ def purchase_dashboard(request):
  
     # ── Payments made ─────────────────────────────────────────────────────
     try:
-        from Purchase.models import Payment
-        payment_count = Payment.objects.using(company_db).count()
+        from Purchase.models import BillPayment
+        payment_count = BillPayment.objects.using(company_db).count()
     except Exception:
         payment_count = 0
  
@@ -621,7 +653,7 @@ def purchase_dashboard(request):
         from Purchase.models import BillItem
         top_items = (
             BillItem.objects.using(company_db)
-            .values('item__name')
+            .values('product__name')
             .annotate(qty=Sum('quantity'))
             .order_by('-qty')[:6]
         )
@@ -661,6 +693,9 @@ def purchase_dashboard(request):
         'paid_bills':    paid_bills,
         'pending_bills': pending_bills,
         'overdue_bills': overdue_bills,
+        'paid_bill_numbers': paid_bill_numbers,
+        'pending_bill_numbers': pending_bill_numbers,
+        'overdue_bill_numbers': overdue_bill_numbers,
         # Payables
         'total_payable':     total_payable,
         'total_paid':        total_paid,

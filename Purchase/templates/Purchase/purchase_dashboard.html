@@ -74,6 +74,14 @@
 .legend-lbl{display:flex;align-items:center;color:var(--t2);flex:1;font-weight:500;}
 .legend-val{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:.82rem;color:var(--t1);}
 .legend-hr{border:none;border-top:1px solid var(--border);margin:3px 0;}
+.bill-status-option{cursor:pointer;}
+.bill-status-option:hover,.bill-status-option:focus{background:#f8fafc;border-radius:6px;outline:none;}
+.bill-status-list{margin-top:16px;padding-top:12px;border-top:1px solid #e5e7eb;color:#374151;font-size:13px;}
+.bill-status-list ul{margin:8px 0 0;padding-left:20px;}
+.bill-status-list li{margin:4px 0;}
+.bill-status-pagination{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:10px;}
+.bill-status-pagination button{border:1px solid #d1d5db;border-radius:5px;background:#fff;color:#374151;padding:4px 9px;font-size:12px;cursor:pointer;}
+.bill-status-pagination button:disabled{cursor:not-allowed;opacity:.45;}
 
 /* FUNNEL */
 .funnel-list{display:flex;flex-direction:column;gap:12px;}
@@ -259,7 +267,7 @@
         </div>
 
         {# Bill status donut #}
-        <div class="panel">
+        <div class="panel charts__bill-status">
           <div class="panel-head">
             <div>
               <div class="panel-title"><i class="bi bi-pie-chart-fill"></i> Bill Status</div>
@@ -269,15 +277,15 @@
           <div class="donut-wrap">
             <canvas id="billDonut" width="130" height="130" style="max-width:130px;max-height:130px;"></canvas>
             <ul class="legend-list">
-              <li class="legend-item">
+              <li class="legend-item bill-status-option" data-status="Paid" role="button" tabindex="0">
                 <span class="legend-lbl"><span class="legend-dot" style="background:#059669;"></span>Paid</span>
                 <span class="legend-val" style="color:#059669;">{{ paid_bills|default:"0" }}</span>
               </li>
-              <li class="legend-item">
+              <li class="legend-item bill-status-option" data-status="Pending" role="button" tabindex="0">
                 <span class="legend-lbl"><span class="legend-dot" style="background:#7c3aed;"></span>Pending</span>
                 <span class="legend-val" style="color:#7c3aed;">{{ pending_bills|default:"0" }}</span>
               </li>
-              <li class="legend-item">
+              <li class="legend-item bill-status-option" data-status="Overdue" role="button" tabindex="0">
                 <span class="legend-lbl"><span class="legend-dot" style="background:#dc2626;"></span>Overdue</span>
                 <span class="legend-val" style="color:#dc2626;">{{ overdue_bills|default:"0" }}</span>
               </li>
@@ -288,6 +296,7 @@
               </li>
             </ul>
           </div>
+          <div id="billStatusList" class="bill-status-list" aria-live="polite"></div>
         </div>
 
       </div>
@@ -530,7 +539,7 @@
           {% for item in top_items %}
           <div class="funnel-item">
             <div class="funnel-lbl">
-              <span>{{ item.item__name|default:item.name|default:"—" }}</span>
+              <span>{{ item.product__name|default:item.product__name|default:"—" }}</span>
               <span class="funnel-n">{{ item.qty|default:"0" }} units</span>
             </div>
             <div class="funnel-track">
@@ -580,6 +589,10 @@ var LYRA_ARRANGE_CONFIG = {
 </script>
 <script src="{% static 'js/dashboard_dragdrop.js' %}"></script>
 
+{{ paid_bill_numbers|json_script:"paid-bill-numbers" }}
+{{ pending_bill_numbers|json_script:"pending-bill-numbers" }}
+{{ overdue_bill_numbers|json_script:"overdue-bill-numbers" }}
+
 <script>
 Chart.defaults.color       = "#9ca3af";
 Chart.defaults.borderColor = "#e2e6f3";
@@ -628,8 +641,60 @@ Chart.defaults.font.family = "'Plus Jakarta Sans',sans-serif";
   var paid    = parseInt("{{ paid_bills|default:0 }}")    || 0;
   var pending = parseInt("{{ pending_bills|default:0 }}") || 0;
   var overdue = parseInt("{{ overdue_bills|default:0 }}") || 0;
+  var billNumbers = {
+    "Paid": JSON.parse(document.getElementById("paid-bill-numbers").textContent),
+    "Pending": JSON.parse(document.getElementById("pending-bill-numbers").textContent),
+    "Overdue": JSON.parse(document.getElementById("overdue-bill-numbers").textContent)
+  };
   var total   = paid + pending + overdue;
   var ctx = document.getElementById("billDonut"); if(!ctx) return;
+  var selectedStatus = null;
+  var selectedPage = 1;
+  var pageSize = 5;
+
+  function renderBillNumbers() {
+    var list = document.getElementById("billStatusList");
+    var numbers = billNumbers[selectedStatus] || [];
+    var totalPages = Math.max(1, Math.ceil(numbers.length / pageSize));
+    selectedPage = Math.min(selectedPage, totalPages);
+    var start = (selectedPage - 1) * pageSize;
+    var pageNumbers = numbers.slice(start, start + pageSize);
+    list.innerHTML = "<strong>" + selectedStatus + " bills</strong>";
+    if (!numbers.length) {
+      list.innerHTML += "<div>No bills found.</div>";
+      return;
+    }
+    var items = pageNumbers.map(function(number) {
+      var item = document.createElement("li");
+      item.textContent = number;
+      return item.outerHTML;
+    }).join("");
+    list.innerHTML += "<ul>" + items + "</ul>";
+
+    var pagination = document.createElement("div");
+    pagination.className = "bill-status-pagination";
+    pagination.innerHTML = "<button type=\"button\" data-page-action=\"previous\">Previous</button>" +
+      "<span>Page " + selectedPage + " of " + totalPages + "</span>" +
+      "<button type=\"button\" data-page-action=\"next\">Next</button>";
+    pagination.querySelector('[data-page-action="previous"]').disabled = selectedPage === 1;
+    pagination.querySelector('[data-page-action="next"]').disabled = selectedPage === totalPages;
+    pagination.querySelector('[data-page-action="previous"]').addEventListener("click", function() {
+      selectedPage -= 1;
+      renderBillNumbers();
+    });
+    pagination.querySelector('[data-page-action="next"]').addEventListener("click", function() {
+      selectedPage += 1;
+      renderBillNumbers();
+    });
+    list.appendChild(pagination);
+  }
+
+  function showBillNumbers(status) {
+    selectedStatus = status;
+    selectedPage = 1;
+    renderBillNumbers();
+  }
+
   new Chart(ctx,{
     type:"doughnut",
     data:{labels:["Paid","Pending","Overdue"],datasets:[{
@@ -638,7 +703,20 @@ Chart.defaults.font.family = "'Plus Jakarta Sans',sans-serif";
       borderWidth:2,borderColor:"#ffffff",hoverOffset:5}]},
     options:{cutout:"72%",
       plugins:{legend:{display:false},tooltip:{backgroundColor:"#fff",titleColor:"#111827",bodyColor:"#6b7280",borderColor:"#e2e6f3",borderWidth:1}},
+      onClick:function(event, elements){
+        if (elements.length) showBillNumbers(this.data.labels[elements[0].index]);
+      },
       animation:{duration:900}}
+  });
+
+  document.querySelectorAll(".bill-status-option").forEach(function(option) {
+    option.addEventListener("click", function() { showBillNumbers(option.dataset.status); });
+    option.addEventListener("keydown", function(event) {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        showBillNumbers(option.dataset.status);
+      }
+    });
   });
 })();
 

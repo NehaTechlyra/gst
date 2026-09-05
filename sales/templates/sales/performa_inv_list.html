@@ -61,7 +61,7 @@
         </td>
         <td>{{ inv.sales_person.name|default:'-' }}</td>
         <td>{{ inv.date }}</td>
-        <td>{{ inv.status }}</td>
+        <td><span class="badge bg-secondary">{{ inv.status }}</span></td>
         <td>{{ inv.document_currency.symbol }} {{ inv.total_amount|floatformat:2 }}</td>
         <td>
           <div class="sale-actions" style="margin-top: 5px;">

@@ -1438,13 +1438,13 @@ def sales_dashboard(request):
         from sales.models import SalesInvoiceItem
         top_items = (
             SalesInvoiceItem.objects.using(company_db)
-            .values('item__name')
+            .values('product__name')
             .annotate(qty=Sum('quantity'))
             .order_by('-qty')[:6]
         )
     except Exception:
         top_items = []
- 
+    print(f"Top items: {top_items}")
     chart_labels, chart_data = [], []
     try:
         for i in range(5, -1, -1):
