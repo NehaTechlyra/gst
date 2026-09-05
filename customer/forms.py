@@ -153,14 +153,14 @@ class CustomerForm(forms.ModelForm):
                     display_code = str(raw_val)
 
                 self.fields['currency'] = forms.CharField(
-                    required=False,
+                    required=True,
                     initial=(display_code or '').strip().upper(),
                     widget=forms.TextInput(attrs={'class': 'form-control', 'readonly': 'readonly'})
                 )
             else:
                 self.fields['currency'] = forms.ChoiceField(
                     choices=choices,
-                    required=False,
+                    required=True,
                     widget=forms.Select(attrs={'class': 'form-control select2'})
                 )
             if getattr(self, 'instance', None) and self.instance.pk and getattr(self.instance, 'currency', None):
@@ -186,6 +186,8 @@ class CustomerForm(forms.ModelForm):
         currency = (self.cleaned_data.get('currency') or '').strip().upper()
         if currency == NEW_CURRENCY_VALUE:
             raise forms.ValidationError('Please add the new currency first.')
+        if not currency:
+            raise forms.ValidationError('Currency is required.')
         return currency
         
     def clean(self):

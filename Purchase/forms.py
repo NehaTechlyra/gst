@@ -227,7 +227,7 @@ class VendorForm(forms.ModelForm):
                 choices += [(c.code, c.code) for c in cs]
             self.fields['currency'] = forms.ChoiceField(
                 choices=choices,
-                required=False,
+                required=True,
                 widget=forms.Select(attrs={'class': 'form-control select2'})
             )
             if getattr(self, 'instance', None) and self.instance.pk and getattr(self.instance, 'currency', None):
@@ -240,6 +240,8 @@ class VendorForm(forms.ModelForm):
         currency = (self.cleaned_data.get('currency') or '').strip().upper()
         if currency == NEW_CURRENCY_VALUE:
             raise forms.ValidationError('Please add the new currency first.')
+        if not currency:
+            raise forms.ValidationError('Currency is required.')
         return currency
         
     def clean(self):
