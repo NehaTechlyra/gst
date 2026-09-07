@@ -174,6 +174,7 @@
                     <small class="form-text text-muted" id="amount-help" style="display: none;">
                         You can enter any amount. Excess amount will be saved as advance payment.
                     </small>
+                    <div id="amount-error" class="error-message" style="display: none;"></div>
                 </div>
                 
                 <div class="form-group">
@@ -335,6 +336,26 @@
                         <button type="submit" class="btn btn-primary" id="modal-save-account">Save Account</button>
                     </div>
                 </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Partial Payment Confirmation Modal -->
+    <div class="modal fade" id="partialPaymentModal" tabindex="-1" aria-labelledby="partialPaymentLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="partialPaymentLabel">Confirm Partial Payment</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p id="partial-payment-amount-line" class="mb-2"></p>
+                    <p id="partial-payment-shortfall-line" class="mb-0 text-danger"></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="confirm-partial-payment-btn">Continue with Partial Payment</button>
+                </div>
             </div>
         </div>
     </div>
@@ -606,18 +627,76 @@ function updateTotalFromAllocations() {
 }
 
 // Form validation
+let partialPaymentConfirmed = false;
+
+function showPartialPaymentModal(paymentAmount, totalCashNeeded, shortfall, form) {
+    document.getElementById('partial-payment-amount-line').textContent =
+        `You're paying ${moneyWithSymbol(paymentAmount)} but ${moneyWithSymbol(totalCashNeeded)} is needed.`;
+    document.getElementById('partial-payment-shortfall-line').textContent =
+        `Shortfall: ${moneyWithSymbol(shortfall)}`;
+
+    const modalEl = document.getElementById('partialPaymentModal');
+    const modal = new bootstrap.Modal(modalEl);
+
+    const confirmBtn = document.getElementById('confirm-partial-payment-btn');
+    const onConfirm = function() {
+        partialPaymentConfirmed = true;
+        modal.hide();
+        confirmBtn.removeEventListener('click', onConfirm);
+        form.submit();
+    };
+    confirmBtn.addEventListener('click', onConfirm);
+
+    modal.show();
+}
+
+function showAmountError(message) {
+    const amountInput = document.getElementById('amount');
+    const errorDiv = document.getElementById('amount-error');
+
+    if (errorDiv) {
+        errorDiv.textContent = message;
+        errorDiv.style.display = 'block';
+    }
+    if (amountInput) {
+        amountInput.classList.add('is-invalid');
+        amountInput.style.borderColor = '#ef4444';
+        amountInput.focus();
+        amountInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+}
+
+function clearAmountError() {
+    const amountInput = document.getElementById('amount');
+    const errorDiv = document.getElementById('amount-error');
+
+    if (errorDiv) {
+        errorDiv.textContent = '';
+        errorDiv.style.display = 'none';
+    }
+    if (amountInput) {
+        amountInput.classList.remove('is-invalid');
+        amountInput.style.borderColor = '';
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     const form = document.querySelector('form');
+    const amountFieldForClear = document.getElementById('amount');
+    if (amountFieldForClear) {
+        amountFieldForClear.addEventListener('input', clearAmountError);
+    }
     
     if (form) {
         form.addEventListener('submit', function(e) {
             const paymentAmount = parseFloat(document.getElementById('amount').value) || 0;
             const checkboxes = document.querySelectorAll('.bill-checkbox:checked');
+            clearAmountError();
             
             if (checkboxes.length === 0) {
                 if (paymentAmount <= 0) {
                     e.preventDefault();
-                    alert('Please enter a payment amount greater than 0 for advance payment.');
+                    showAmountError('Please enter a payment amount greater than 0 for advance payment.');
                     return false;
                 }
                 return true;
@@ -642,21 +721,18 @@ document.addEventListener('DOMContentLoaded', function() {
             
             if (paymentAmount === 0 && totalCashNeeded > 0) {
                 e.preventDefault();
-                    alert(`Payment amount cannot be 0. You need at least ${moneyWithSymbol(totalCashNeeded)} to pay the selected bills.`);
+                showAmountError(`Payment amount cannot be 0. You need at least ${moneyWithSymbol(totalCashNeeded)} to pay the selected bills.`);
                 return false;
             }
             
-            if (paymentAmount < totalCashNeeded && paymentAmount > 0) {
+            if (paymentAmount < totalCashNeeded && paymentAmount > 0 && !partialPaymentConfirmed) {
                 const shortfall = totalCashNeeded - paymentAmount;
-                
-                let confirmMsg = `You're paying ${moneyWithSymbol(paymentAmount)} but ${moneyWithSymbol(totalCashNeeded)} is needed.\n\nShortfall: ${moneyWithSymbol(shortfall)}\n\nContinue with partial payment?`;
-                
-                if (!confirm(confirmMsg)) {
-                    e.preventDefault();
-                    return false;
-                }
+                e.preventDefault();
+                showPartialPaymentModal(paymentAmount, totalCashNeeded, shortfall, form);
+                return false;
             }
             
+            partialPaymentConfirmed = false;
             return true;
         });
     }
