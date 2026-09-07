@@ -1,14 +1,16 @@
 {% extends 'website/index.html' %}
 {% load static %}
-
+{% block exstyle %}
+{% include 'mis_reports/_report_styles.html' %}
+{% endblock exstyle %}
 {% block page_title %}Expense MIS Report{% endblock page_title %}
 
 {% block content %}
 <div class="container-fluid py-4">
   <div class="d-flex align-items-center justify-content-between mb-3">
     <div>
-      <h1 class="h3 mb-1">Expense MIS Report</h1>
-      <p class="text-muted mb-0">Period: {{ period }}</p>
+      {% comment %} <h1 class="h3 mb-1">Expense MIS Report</h1> {% endcomment %}
+      <p class="text-muted mb-0">Key expense metrics with total spending, category, vendor, and monthly expense summaries.</p>
     </div>
     <div>
       {% if can_export %}
@@ -23,33 +25,42 @@
     <div class="col-md-4">
       <div class="card border-0 shadow-sm">
         <div class="card-body">
-          <h5 class="mb-2">Total Expenses</h5>
-          <p class="h4 mb-0">{{ report.total_expenses }}</p>
+          
+            <h2 class="h5">Total Expenses</h2>
+            <table class="table table-sm">
+              <tbody>
+                <tr>
+                  <td>Total Expenses</td>
+                  <td>{{ report.total_expenses }}</td>
+                </tr>
+              </tbody>
+            </table>
         </div>
       </div>
     </div>
 
     <div class="col-md-8">
-      <div class="card border-0 shadow-sm">
+      {% comment %} <div class="card border-0 shadow-sm">
         <div class="card-body">
-          <h5 class="mb-2">Top Expenses</h5>
+          
+          <h2 class="h5">Top Expenses</h2>
           <ul class="mb-0">
-    </div>
+    </div> {% endcomment %}
 
     <div class="row g-3">
       <div class="col-md-12">
         <div class="card border-0 shadow-sm">
           <div class="card-body">
-            <h5>Expense Chart</h5>
+            <h2 class="h5">Expense Chart</h2>
             <!-- Placeholder for the expense chart -->
             <div id="expense-chart"></div>
           </div>
         </div>
       </div>
             {% for e in report.highest_expenses %}
-              <li>{{ e.date }} - {{ e.vendor }} : {{ e.amount }}</li>
+              <li style="color: #000;">{{ e.date }} - {{ e.vendor }} : {{ e.amount }}</li>
             {% empty %}
-              <li>No expenses</li>
+              <li  style="color: #000;">No expenses</li>
             {% endfor %}
           </ul>
         </div>
@@ -61,14 +72,20 @@
     <div class="col-md-6">
       <div class="card border-0 shadow-sm">
         <div class="card-body">
-          <h5>Category-wise Expenses</h5>
-          <ul class="mb-0">
+          
+          <h2 class="h5">Category-wise Expenses</h2>
+          <table class="table table-sm">
+              <tbody>
+                <tr>
             {% for c in report.category_wise %}
-              <li>{{ c.category }}: {{ c.total }}</li>
+              <td>{{ c.category }}</td>
+              <td>{{ c.total }}</td>
             {% empty %}
-              <li>No data</li>
+              <td>No data</td>
             {% endfor %}
-          </ul>
+          </tbody>
+          </table>
+          
         </div>
       </div>
     </div>
@@ -76,14 +93,20 @@
     <div class="col-md-6">
       <div class="card border-0 shadow-sm">
         <div class="card-body">
-          <h5>Monthly Trend</h5>
-          <ul class="mb-0">
-            {% for m in report.monthly_trend %}
-              <li>{{ m.month }}: {{ m.total }}</li>
-            {% empty %}
-              <li>No data</li>
-            {% endfor %}
-          </ul>
+          
+          <h2 class="h5">Monthly Trend</h2>
+          <table class="table table-sm">
+              <tbody>
+                <tr>
+                  {% for m in report.monthly_trend %}
+                    <td>{{ m.month }}</td>
+                    <td>{{ m.total }}</td>
+                  {% empty %}
+                    <td>No data</td>
+                  {% endfor %}
+                </tr>
+              </tbody>
+          </table>
         </div>
       </div>
     </div>
@@ -91,8 +114,19 @@
 
   <div class="card border-0 shadow-sm mt-3">
     <div class="card-body">
-      <h5>Approval Summary</h5>
-      <p>Approved: {{ report.approved_count }} &nbsp; Pending: {{ report.pending_count }}</p>
+      <h2 class="h5">Approval Summary</h2>
+      <table class="table table-sm">
+              <tbody>
+                <tr>
+                  <td>Approved</td>
+                  <td>{{ report.approved_count }}</td>
+                </tr>
+                <tr>
+                  <td>Pending</td>
+                  <td>{{ report.pending_count }}</td>
+                </tr>
+              </tbody>
+          </table>
     </div>
   </div>
 </div>

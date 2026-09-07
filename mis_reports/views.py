@@ -1,4 +1,6 @@
 import csv
+import logging
+import traceback
 from decimal import Decimal, InvalidOperation
 
 from django.contrib import messages
@@ -8,6 +10,7 @@ from django.http import HttpResponse
 from django.shortcuts import render
 
 from Lyraerp.utils.redirect_utils import redirect_with_company
+from Lyraerp.utils.thread_locals import get_current_db
 from .permissions import (
     can_export,
     can_view_finance,
@@ -19,6 +22,9 @@ from .permissions import (
     can_view_expense,
 )
 from .services import build_export_query_string, financial_year_bounds, parse_date_range_from_request, safe_date_filter
+
+
+logger = logging.getLogger(__name__)
 
 
 def _to_decimal(value):
@@ -212,7 +218,9 @@ def dashboard(request, company_code=None):
     })
 
 
-def _build_sales_report(start_date=None, end_date=None):
+def _build_sales_report(start_date=None, end_date=None, db_alias=None):
+    logger.info('Building sales MIS report: start_date=%s, end_date=%s', start_date, end_date)
+    db_alias = db_alias or get_current_db() or 'default'
     report = {
         'total_sales': Decimal('0.00'),
         'invoice_count': 0,
@@ -226,14 +234,16 @@ def _build_sales_report(start_date=None, end_date=None):
     try:
         from sales.models import InvPaymentAllocation, SalesInvoice, SalesInvoiceItem, SalesQuotation
 
-        invoices = safe_date_filter(SalesInvoice.objects.all(), 'date', start_date, end_date)
+        invoices = safe_date_filter(
+            SalesInvoice.objects.using(db_alias), 'date', start_date, end_date
+        )
         report['invoice_count'] = invoices.count()
         report['total_sales'] = invoices.aggregate(
             total=Coalesce(Sum('total_amount'), Decimal('0.00'))
         )['total'] or Decimal('0.00')
 
         report['quotation_count'] = safe_date_filter(
-            SalesQuotation.objects.all(), 'date', start_date, end_date
+            SalesQuotation.objects.using(db_alias), 'date', start_date, end_date
         ).count()
 
         customer_rows = invoices.filter(customer__isnull=False).values(
@@ -254,18 +264,20 @@ def _build_sales_report(start_date=None, end_date=None):
                 'invoice_count': row['invoice_count'],
             })
 
-        item_rows = SalesInvoiceItem.objects.filter(sales_inv__in=invoices).values(
+        item_rows = SalesInvoiceItem.objects.using(db_alias).filter(
+            sales_inv__in=invoices
+        ).values(
             'product__name',
         ).annotate(
-            quantity_sold=Coalesce(Sum('quantity'), Decimal('0.00')),
-        ).order_by('-quantity_sold')[:10]
+            qty=Sum('quantity'),
+        ).order_by('-qty')[:6]
 
         for row in item_rows:
+            item_name = row.get('product__name') or 'Unknown'
             report['top_items'].append({
-                'item_name': row.get('product__name') or 'Unknown',
-                'quantity_sold': row['quantity_sold'] or Decimal('0.00'),
+                'item_name': item_name,
+                'quantity_sold': row.get('qty') or Decimal('0.00'),
             })
-
         trend_rows = invoices.annotate(month=TruncMonth('date')).values('month').annotate(
             total_sales=Coalesce(Sum('total_amount'), Decimal('0.00'))
         ).order_by('month')
@@ -277,17 +289,23 @@ def _build_sales_report(start_date=None, end_date=None):
                 'total_sales': row['total_sales'] or Decimal('0.00'),
             })
 
-        paid_amount = InvPaymentAllocation.objects.filter(inv__in=invoices).aggregate(
+        paid_amount = InvPaymentAllocation.objects.using(db_alias).filter(
+            inv__in=invoices
+        ).aggregate(
             total=Coalesce(Sum('amount'), Decimal('0.00'))
         )['total'] or Decimal('0.00')
         report['outstanding_sales'] = max(report['total_sales'] - paid_amount, Decimal('0.00'))
     except Exception:
+        print('Failed to build sales MIS report:', flush=True)
+        traceback.print_exc()
+        logger.exception('Failed to build sales MIS report')
         pass
 
     return report
 
 
-def _build_purchase_report(start_date=None, end_date=None):
+def _build_purchase_report(start_date=None, end_date=None, db_alias=None):
+    db_alias = db_alias or get_current_db() or 'default'
     report = {
         'total_purchases': Decimal('0.00'),
         'purchase_count': 0,
@@ -300,7 +318,7 @@ def _build_purchase_report(start_date=None, end_date=None):
     try:
         from Purchase.models import Bill, BillItem, BillPaymentAllocation
 
-        bills = safe_date_filter(Bill.objects.all(), 'date', start_date, end_date)
+        bills = safe_date_filter(Bill.objects.using(db_alias), 'date', start_date, end_date)
         report['purchase_count'] = bills.count()
         report['total_purchases'] = bills.aggregate(
             total=Coalesce(Sum('total_amount'), Decimal('0.00'))
@@ -324,20 +342,18 @@ def _build_purchase_report(start_date=None, end_date=None):
                 'bill_count': row['bill_count'],
             })
 
-        bill_items = BillItem.objects.select_related('product').all()
-        if start_date:
-            bill_items = bill_items.filter(bill__date__gte=start_date)
-        if end_date:
-            bill_items = bill_items.filter(bill__date__lte=end_date)
-
-        item_rows = bill_items.values('product__name').annotate(
-            quantity_purchased=Coalesce(Sum('quantity'), Decimal('0.00')),
-        ).order_by('-quantity_purchased')[:10]
+        item_rows = BillItem.objects.using(db_alias).filter(
+            bill__in=bills
+        ).values(
+            'product__name',
+        ).annotate(
+            qty=Sum('quantity'),
+        ).order_by('-qty')[:6]
 
         for row in item_rows:
             report['top_items'].append({
                 'item_name': row.get('product__name') or 'Unknown',
-                'quantity_purchased': row['quantity_purchased'] or Decimal('0.00'),
+                'quantity_purchased': row.get('qty') or Decimal('0.00'),
             })
 
         trend_rows = bills.annotate(month=TruncMonth('date')).values('month').annotate(
@@ -351,7 +367,7 @@ def _build_purchase_report(start_date=None, end_date=None):
                 'total_purchases': row['total_purchases'] or Decimal('0.00'),
             })
 
-        paid_amount = BillPaymentAllocation.objects.filter(bill__in=bills).aggregate(
+        paid_amount = BillPaymentAllocation.objects.using(db_alias).filter(bill__in=bills).aggregate(
             total=Coalesce(Sum('amount'), Decimal('0.00'))
         )['total'] or Decimal('0.00')
         report['outstanding_purchases'] = max(report['total_purchases'] - paid_amount, Decimal('0.00'))
@@ -621,7 +637,9 @@ def sales_report(request, company_code=None):
         return redirect_with_company(request, 'mis_reports_dashboard')
 
     start_date, end_date, period = parse_date_range_from_request(request)
-    report_data = _build_sales_report(start_date, end_date)
+    report_data = _build_sales_report(
+        start_date, end_date, getattr(request, 'company_db', None)
+    )
     export_query_string = build_export_query_string({
         'period': period,
         'start_date': start_date.strftime('%Y-%m-%d') if start_date else '',
@@ -645,7 +663,9 @@ def sales_report_export_csv(request, company_code=None):
         return redirect_with_company(request, 'mis_reports_dashboard')
 
     start_date, end_date, period = parse_date_range_from_request(request)
-    report_data = _build_sales_report(start_date, end_date)
+    report_data = _build_sales_report(
+        start_date, end_date, getattr(request, 'company_db', None)
+    )
 
     response = HttpResponse(content_type='text/csv; charset=utf-8')
     response['Content-Disposition'] = 'attachment; filename="mis_sales_report.csv"'
@@ -689,7 +709,9 @@ def purchase_report(request, company_code=None):
         return redirect_with_company(request, 'mis_reports_dashboard')
 
     start_date, end_date, period = parse_date_range_from_request(request)
-    report_data = _build_purchase_report(start_date, end_date)
+    report_data = _build_purchase_report(
+        start_date, end_date, getattr(request, 'company_db', None)
+    )
     export_query_string = build_export_query_string({
         'period': period,
         'start_date': start_date.strftime('%Y-%m-%d') if start_date else '',
@@ -713,7 +735,9 @@ def purchase_report_export_csv(request, company_code=None):
         return redirect_with_company(request, 'mis_reports_dashboard')
 
     start_date, end_date, period = parse_date_range_from_request(request)
-    report_data = _build_purchase_report(start_date, end_date)
+    report_data = _build_purchase_report(
+        start_date, end_date, getattr(request, 'company_db', None)
+    )
 
     response = HttpResponse(content_type='text/csv; charset=utf-8')
     response['Content-Disposition'] = 'attachment; filename="mis_purchase_report.csv"'

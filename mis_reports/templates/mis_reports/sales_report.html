@@ -101,7 +101,7 @@
               <tbody>
                 {% for item in report.top_items %}
                 <tr>
-                  <td>{{ item.item_name }}</td>
+                  <td>{{ item.item_name|default:"Unknown" }}</td>
                   <td>{{ item.quantity_sold|floatformat:2 }}</td>
                 </tr>
                 {% empty %}

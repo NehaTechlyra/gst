@@ -1,14 +1,16 @@
 {% extends 'website/index.html' %}
 {% load static %}
-
+{% block exstyle %}
+{% include 'mis_reports/_report_styles.html' %}
+{% endblock exstyle %}
 {% block page_title %}CRM MIS Report{% endblock page_title %}
 
 {% block content %}
 <div class="container-fluid py-4">
     <div class="d-flex align-items-center justify-content-between mb-3">
         <div>
-            <h1 class="h3 mb-1">CRM MIS Report</h1>
-            <p class="text-muted mb-0">Period: {{ period }}</p>
+            {% comment %} <h1 class="h3 mb-1">CRM MIS Report</h1> {% endcomment %}
+            <p class="text-muted mb-0">Key CRM metrics with lead, opportunity, customer, and sales pipeline summaries.</p>
         </div>
         <div>
             {% if can_export %}
@@ -23,14 +25,31 @@
         <div class="col-md-6">
             <div class="card border-0 shadow-sm">
                 <div class="card-body">
-                    <h5 class="mb-2">Summary</h5>
-                    <ul class="mb-0">
-                        <li>Leads: {{ report.lead_count }}</li>
-                        <li>Opportunities: {{ report.opportunity_count }}</li>
-                        <li>Won Deals: {{ report.won_deals }}</li>
-                        <li>Lost Deals: {{ report.lost_deals }}</li>
-                        <li>Conversion Rate: {{ report.conversion_rate|floatformat:2 }}%</li>
-                        <li>Pipeline Value: {{ report.pipeline_value }}</li>
+                    <h2 class="h6">Summary</h2>
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <tbody>
+                                <tr>
+                                    <td>Leads: {{ report.lead_count }}</td>
+                                </tr>
+                                <tr>
+                                    <td>Opportunities: {{ report.opportunity_count }}</td>
+                                </tr>
+                                <tr>
+                                    <td>Won Deals: {{ report.won_deals }}</td>
+                                </tr>
+                                <tr>
+                                    <td>Lost Deals: {{ report.lost_deals }}</td>
+                                </tr>
+                                <tr>
+                                    <td>Conversion Rate: {{ report.conversion_rate|floatformat:2 }}%</td>
+                                </tr>
+                                <tr>
+                                    <td>Pipeline Value: {{ report.pipeline_value }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                     </ul>
                 </div>
             </div>
@@ -39,11 +58,19 @@
         <div class="col-md-6">
             <div class="card border-0 shadow-sm">
                 <div class="card-body">
-                    <h5 class="mb-2">Follow-ups</h5>
-                    <ul class="mb-0">
-                        <li>Pending: {{ report.followups.pending }}</li>
-                        <li>Completed: {{ report.followups.completed }}</li>
-                    </ul>
+                    <h2 class="h6">Follow-ups</h2>
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <tbody>
+                                <tr>
+                                    <td>Pending: {{ report.followups.pending }}</td>
+                                </tr>
+                                <tr>
+                                    <td>Completed: {{ report.followups.completed }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
@@ -51,7 +78,7 @@
 
     <div class="card border-0 shadow-sm">
         <div class="card-body">
-            <h5 class="mb-3">Source-wise Leads</h5>
+            <h2 class="h6">Source-wise Leads</h2>
             <div class="mb-3">
                 <canvas id="crmPipelineChart" height="120"></canvas>
             </div>

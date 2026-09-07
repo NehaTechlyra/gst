@@ -1,14 +1,17 @@
 {% extends 'website/index.html' %}
 {% load static %}
+{% block exstyle %}
+{% include 'mis_reports/_report_styles.html' %}
 
+{% endblock exstyle %}
 {% block page_title %}HR MIS Report{% endblock page_title %}
 
 {% block content %}
 <div class="container-fluid py-4">
   <div class="d-flex align-items-center justify-content-between mb-3">
     <div>
-      <h1 class="h3 mb-1">HR MIS Report</h1>
-      <p class="text-muted mb-0">Period: {{ period }}</p>
+      {% comment %} <h1 class="h3 mb-1">HR MIS Report</h1> {% endcomment %}
+      <p class="text-muted mb-0">Key HR metrics with employee, department, designation, and leave summaries.</p>
     </div>
     <div>
       {% if can_export %}
@@ -23,13 +26,33 @@
     <div class="col-md-6">
       <div class="card border-0 shadow-sm">
         <div class="card-body">
-          <h5 class="mb-2">Employees</h5>
-          <ul class="mb-0">
-            <li>Total employees: {{ report.total_employees }}</li>
-            <li>Active: {{ report.active_employees }}</li>
-            <li>Inactive: {{ report.inactive_employees }}</li>
-            <li>Distinct leave types: {{ report.leave_type_count }}</li>
-            <li>Employees with leave associations: {{ report.employees_with_leaves }}</li>
+          <h2 class="h6">Employees</h2>
+          <div class="table-responsive">
+            <table class="table table-sm">
+              <tbody>
+                <tr>
+                  <td>Total employees:</td>
+                  <td>{{ report.total_employees }}</td>
+                </tr>
+                <tr>
+                  <td>Active:</td>
+                  <td>{{ report.active_employees }}</td>
+                </tr>
+                <tr>
+                  <td>Inactive:</td>
+                  <td>{{ report.inactive_employees }}</td>
+                </tr>
+                <tr>
+                  <td>Distinct leave types:</td>
+                  <td>{{ report.leave_type_count }}</td>
+                </tr>
+                <tr>
+                  <td>Employees with leave associations:</td>
+                  <td>{{ report.employees_with_leaves }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
           </ul>
         </div>
       </div>
@@ -38,17 +61,23 @@
     <div class="col-md-6">
       <div class="card border-0 shadow-sm">
         <div class="card-body">
-          <h5 class="mb-2">Department Summary</h5>
+          <h2 class="h6">Department Summary</h2>
           <div class="mb-3">
             <canvas id="hrDepartmentChart" height="120"></canvas>
           </div>
-          <ul class="mb-0">
+         <div class="table-responsive">
+            <table class="table table-sm">
             {% for d in report.department_counts %}
-              <li>{{ d.department }}: {{ d.count }}</li>
+              <tr>
+                <td>{{ d.department }}</td>
+                <td>{{ d.count }}</td>
+              </tr>
             {% empty %}
-              <li>No data</li>
+              <tr>
+                <td colspan="2">No data</td>
+              </tr>
             {% endfor %}
-          </ul>
+          </table>
         </div>
       </div>
     </div>
@@ -56,7 +85,7 @@
 
   <div class="card border-0 shadow-sm">
     <div class="card-body">
-      <h5>Designation Summary</h5>
+      <h2 class="h6">Designation Summary</h2>
       <div class="table-responsive">
         <table class="table table-sm table-striped">
           <thead><tr><th>Designation</th><th>Count</th></tr></thead>

@@ -1,5 +1,8 @@
 {% extends 'website/index.html' %}
 {% load static %}
+{% block exstyle %}
+{% include 'mis_reports/_report_styles.html' %}
+{% endblock exstyle %}
 
 {% block page_title %}Finance MIS Report{% endblock page_title %}
 
@@ -7,7 +10,7 @@
 <div class="container-fluid py-4">
   <div class="d-flex align-items-center justify-content-between mb-3">
     <div>
-      <h1 class="h3 mb-1">Finance MIS Report</h1>
+      {% comment %} <h1 class="h3 mb-1">Finance MIS Report</h1> {% endcomment %}
       <p class="text-muted mb-0">Key finance metrics with profit, cash, receivables, payables, and account group summaries.</p>
     </div>
     <div>
@@ -20,31 +23,31 @@
 
   {% include 'mis_reports/_filters.html' %}
 
-  <div class="card border-0 shadow-sm mb-3">
+  <div class="card mis-report-card border-0 shadow-sm mb-3">
     <div class="card-body">
       <div class="row gy-3">
         <div class="col-md-3">
-          <div class="p-3 bg-light rounded">
-            <div class="text-muted small">Total Income</div>
-            <div class="h4">₹{{ report.total_income|floatformat:2 }}</div>
+          <div class="p-3 bg-light rounded mis-report-key-metric">
+            <div class="mis-report-label">Total Income</div>
+            <div class="mis-report-value">₹{{ report.total_income|floatformat:2 }}</div>
           </div>
         </div>
         <div class="col-md-3">
-          <div class="p-3 bg-light rounded">
-            <div class="text-muted small">Total Expenses</div>
-            <div class="h4">₹{{ report.total_expenses|floatformat:2 }}</div>
+          <div class="p-3 bg-light rounded mis-report-key-metric">
+            <div class="mis-report-label">Total Expenses</div>
+            <div class="mis-report-value">₹{{ report.total_expenses|floatformat:2 }}</div>
           </div>
         </div>
         <div class="col-md-3">
-          <div class="p-3 bg-light rounded">
-            <div class="text-muted small">Net Profit / Loss</div>
-            <div class="h4">₹{{ report.net_profit_loss|floatformat:2 }}</div>
+          <div class="p-3 bg-light rounded mis-report-key-metric">
+            <div class="mis-report-label">Net Profit / Loss</div>
+            <div class="mis-report-value">₹{{ report.net_profit_loss|floatformat:2 }}</div>
           </div>
         </div>
         <div class="col-md-3">
-          <div class="p-3 bg-light rounded">
-            <div class="text-muted small">Receivables</div>
-            <div class="h4">₹{{ report.receivables_balance|floatformat:2 }}</div>
+          <div class="p-3 bg-light rounded mis-report-key-metric">
+            <div class="mis-report-label">Receivables</div>
+            <div class="mis-report-value">₹{{ report.receivables_balance|floatformat:2 }}</div>
           </div>
         </div>
       </div>
