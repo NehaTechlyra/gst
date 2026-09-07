@@ -809,7 +809,7 @@ $(document).on('click', '#paymentTermsModal .btn-primary', function (e) {//byada
     // include CSRF token for JSON POST
     headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRFToken': getCookie('csrftoken') },
     success: function (response) {
-      alert("Payment terms saved successfully");
+      showToast("Payment terms saved successfully", "success");
       deletedTerms = [];
 
       //by adarsh Get the newly created payment term ID and name from response

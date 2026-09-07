@@ -202,7 +202,7 @@
             bootstrap.Modal.getOrCreateInstance(modalEl).hide();
           }
 
-          alert('Payment terms saved successfully');
+          showToast('Payment terms saved successfully', 'success');
         },
         error: function () {
           alert('Error saving payment terms');

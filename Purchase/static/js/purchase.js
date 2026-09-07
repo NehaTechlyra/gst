@@ -152,7 +152,7 @@ $('#paymentTermsModal .btn-primary[type="button"]').on('click', function (e) {
     contentType: 'application/json',
     data: JSON.stringify({ terms: terms, deleted: deletedTerms }),
     success: function (response) {
-      alert("Payment terms saved successfully");
+      showToast("Payment terms saved successfully", "success");
       deletedTerms = [];
     },
     error: function () {

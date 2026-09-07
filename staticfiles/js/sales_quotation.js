@@ -693,7 +693,7 @@ $(document).on('click', '#paymentTermsModal .btn-primary', function (e) {//by ad
       return headersObj;
     })(),
     success: function (response) {
-      alert("Payment terms saved successfully");
+      showToast("Payment terms saved successfully", "success");
       deletedTerms = [];
 
       // by adarshGet the newly created payment term ID and name from response
