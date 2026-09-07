@@ -1128,6 +1128,7 @@ def items(request):
         "can_create": (getattr(request.user, 'is_superuser', False) or can_create_items(request.user)),
         "can_edit": (getattr(request.user, 'is_superuser', False) or can_edit_items(request.user)),
         "can_delete": (getattr(request.user, 'is_superuser', False) or can_delete_items(request.user)),
+        "base_currency_code": _get_company_base_currency(request),
     }
     return render(request, "items.html", context)
 

@@ -1,5 +1,6 @@
 {% extends 'website/index.html' %}
 {% load static %}
+{% load currency_tags %}
 {% block exstyle %}
 <link href="{% static 'style/general.css' %}" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.9.1/font/bootstrap-icons.css" rel="stylesheet">
@@ -99,8 +100,8 @@
         <td class="si-no">{{ items.start_index|add:forloop.counter0 }}</td>
         <td>{{ item.name }}</td>
 
-        <td>{{ item.display_selling_price |default:"—"}}</td>
-        <td>{{ item.display_cost_price|default:"—" }}</td>
+        <td>{{ item.display_selling_price|currency_amount:base_currency_code|default:"—" }}</td>
+        <td>{{ item.display_cost_price|currency_amount:base_currency_code|default:"—" }}</td>
 
         <td>{% if item.stock_in_hand is not None %}{{ item.stock_in_hand }}{% else %}&mdash;{% endif %}</td>
        <td>
