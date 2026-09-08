@@ -1,6 +1,7 @@
 
 {% extends "website/index.html" %}
 {% load static %}
+{% load currency_tags %}
 {% load widget_tweaks %}
 {% block exstyle %}
 <link href="{% static 'style/general.css' %}" rel="stylesheet">
@@ -40,6 +41,33 @@
 const COMPANY_IS_INDIA = {{ company_is_india|lower }};
 const COMPANY_TAX_TYPE = String("{{ company_tax_type|default:'' }}").trim().toUpperCase();
 window.COMPANY_TAX_TYPE = COMPANY_TAX_TYPE;
+
+// Currency-aware decimal place helpers (see #document_currency select's
+// data-base-decimal-places / data-decimal-places attributes).
+function getBaseCurrencyDecimals() {
+  var sel = document.getElementById('document_currency');
+  if (sel) {
+    var raw = sel.getAttribute('data-base-decimal-places');
+    var n = parseInt(raw, 10);
+    if (!isNaN(n) && n >= 0) return n;
+  }
+  return 2;
+}
+function getDocumentCurrencyDecimals() {
+  var sel = document.getElementById('document_currency');
+  if (sel && sel.selectedIndex >= 0) {
+    var opt = sel.options[sel.selectedIndex];
+    if (opt) {
+      var raw = opt.getAttribute('data-decimal-places');
+      var n = parseInt(raw, 10);
+      if (!isNaN(n) && n >= 0) return n;
+    }
+  }
+  return getBaseCurrencyDecimals();
+}
+window.getBaseCurrencyDecimals = getBaseCurrencyDecimals;
+window.getDocumentCurrencyDecimals = getDocumentCurrencyDecimals;
+
 const salesCompanyPrefix = (function() {
   const parts = window.location.pathname.split('/');
   const first = parts[1] || '';
@@ -1010,11 +1038,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 class="form-control select2"
                 data-base-symbol="{{ company_base_currency_symbol|default:"₹"|escape }}"
                 data-base-code="{{ company_base_currency_code|default:""|escape }}"
+                data-base-decimal-places="{{ base_currency.decimal_places|default:2 }}"
               >
-                <option value="" data-symbol="{{ company_base_currency_symbol|default:"₹"|escape }}">Choose currency</option>
+                <option value="" data-symbol="{{ company_base_currency_symbol|default:"₹"|escape }}" data-decimal-places="{{ base_currency.decimal_places|default:2 }}">Choose currency</option>
                 {% for cur in company_currencies %}
                   {% with cur_symbol=cur.symbol|default:cur.code %}
-                    <option value="{{ cur.id }}" data-symbol="{{ cur_symbol|escape }}"
+                    <option value="{{ cur.id }}" data-symbol="{{ cur_symbol|escape }}" data-decimal-places="{{ cur.decimal_places|default:2 }}"
                       {% if invoice and invoice.document_currency_id == cur.id %}selected{% endif %}>
                       {{ cur.code }}
                     </option>
@@ -1124,7 +1153,7 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
           </td>          
           <td class="base-price">
-            <input type="text" class="form-control form-control-sm o_price_display" name="{{ form.prefix }}-o_price_display" value="{% if form.o_price.value %}{{ form.o_price.value|floatformat:2 }}{% endif %}" readonly>
+            <input type="text" class="form-control form-control-sm o_price_display" name="{{ form.prefix }}-o_price_display" value="{% if form.o_price.value %}{{ form.o_price.value|currency_amount:base_currency }}{% endif %}" readonly>
           </td>
           <td class="discount-item" ><div style="display:flex;align-items:center; gap:4px;">{{ form.prd_disvalue }}{{ form.prd_distype }}</div></td>
           <td>{{ form.prd_tax }}</td>
@@ -1247,7 +1276,7 @@ document.addEventListener('DOMContentLoaded', function() {
         <div style="display:flex; align-items:center; gap:0.5rem; white-space: nowrap;">
           <strong id="tds-tcs-amount" class="amount">₹0.00</strong>
         </div>
-        <input type="hidden" name="tds_tcs_amount" id="tds_tcs_amount" value="{{ tds_tcs_amount|default:0|floatformat:2 }}">
+        <input type="hidden" name="tds_tcs_amount" id="tds_tcs_amount" value="{{ tds_tcs_amount|default:0|currency_amount:base_currency }}">
         <input type="hidden" name="tds_tcs_rate" id="tds_tcs_rate" value="{{ tds_tcs_rate|default:0 }}">
         <input type="hidden" name="tds_tcs_definition_id" id="tds_tcs_definition_id" value="{{ tds_tcs_definition_id|default:'' }}">
       </div>
@@ -2013,7 +2042,7 @@ $(document).ready(function() {
                     if (currSelect && currSelect.options[currSelect.selectedIndex]) {
                         currSym = currSelect.options[currSelect.selectedIndex].getAttribute('data-symbol') || '₹';
                     }
-                    $('#invoiceAmount').text(currSym + ' ' + parseFloat(response.total_amount).toFixed(2));
+                    $('#invoiceAmount').text(currSym + ' ' + parseFloat(response.total_amount).toFixed(getDocumentCurrencyDecimals()));
                     
                     // Reset save button
                     $saveBtn.prop('disabled', false).html(originalBtnText);

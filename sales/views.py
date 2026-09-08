@@ -474,6 +474,7 @@ def quotation_add(request):
         'company_currencies': company_currencies,
         'company_base_currency_symbol': base_currency_symbol,
         'company_base_currency_code': base_currency_code,
+        'base_currency': base_currency,
         'tds_tax_master_items': tds_tax_master_items,
         'tcs_tax_master_items': tcs_tax_master_items,
         'show_base_transaction_summary': bool(getattr(resolved_company, 'show_base_transaction_summary', True)),
@@ -8183,6 +8184,7 @@ def order_edit(request, pk):
         company_currencies = []
         company_base_currency_symbol = '\u20b9'
         company_base_currency_code = ''
+        base_cur = None
 
     context = {
         'order_form': order_form,
@@ -8207,6 +8209,7 @@ def order_edit(request, pk):
         'company_currencies': company_currencies,
         'company_base_currency_symbol': company_base_currency_symbol,
         'company_base_currency_code': company_base_currency_code,
+        'base_currency': base_cur,
         'selected_currency_id': order.document_currency_id or '',
         'fx_rate_to_base': order.fx_rate_to_base,
         'fx_rate_date': order.fx_rate_date,
@@ -11944,6 +11947,7 @@ def invoice_edit(request, pk):
         company_currencies = []
         company_base_currency_symbol = '₹'
         company_base_currency_code = ''
+        base_currency = None
 
     context = {
         'invoice_form': invoice_form,
@@ -11969,6 +11973,7 @@ def invoice_edit(request, pk):
         'company_currencies': company_currencies,
         'company_base_currency_symbol': company_base_currency_symbol,
         'company_base_currency_code': company_base_currency_code,
+        'base_currency': base_currency,
         'selected_currency_id': invoice.document_currency_id or '',
         'fx_rate_to_base': invoice.fx_rate_to_base,
         'fx_rate_date': invoice.fx_rate_date,
@@ -18788,6 +18793,7 @@ def performa_inv_add(request):
         'company_currencies': company_currencies,
         'company_base_currency_symbol': base_currency_symbol,
         'company_base_currency_code': base_currency_code,
+        'base_currency': base_currency,
         'selected_currency_id': None,
         'fx_rate_to_base': None,
         'fx_rate_date': None,
@@ -18861,6 +18867,7 @@ def performa_invoice_edit(request, pk):
         'company_currencies': company_currencies,
         'company_base_currency_symbol': base_currency_symbol,
         'company_base_currency_code': base_currency_code,
+        'base_currency': base_currency,
         'selected_currency_id': invoice.document_currency_id,
         'fx_rate_to_base': invoice.fx_rate_to_base,
         'fx_rate_date': invoice.fx_rate_date,

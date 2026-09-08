@@ -1,5 +1,6 @@
 {% extends "website/index.html" %}
 {% load static %}
+{% load currency_tags %}
 {% load widget_tweaks %}
 {% block exstyle %}
 <link href="{% static 'style/general.css' %}" rel="stylesheet">
@@ -10,6 +11,33 @@
 {% endblock exstyle %}
 {% block page_title %}Edit Sales Order{% endblock page_title %}<!--add title-->
 {% block scripts %}
+<script>
+// Currency-aware decimal place helpers (see #document_currency select's
+// data-base-decimal-places / data-decimal-places attributes).
+function getBaseCurrencyDecimals() {
+  var sel = document.getElementById('document_currency');
+  if (sel) {
+    var raw = sel.getAttribute('data-base-decimal-places');
+    var n = parseInt(raw, 10);
+    if (!isNaN(n) && n >= 0) return n;
+  }
+  return 2;
+}
+function getDocumentCurrencyDecimals() {
+  var sel = document.getElementById('document_currency');
+  if (sel && sel.selectedIndex >= 0) {
+    var opt = sel.options[sel.selectedIndex];
+    if (opt) {
+      var raw = opt.getAttribute('data-decimal-places');
+      var n = parseInt(raw, 10);
+      if (!isNaN(n) && n >= 0) return n;
+    }
+  }
+  return getBaseCurrencyDecimals();
+}
+window.getBaseCurrencyDecimals = getBaseCurrencyDecimals;
+window.getDocumentCurrencyDecimals = getDocumentCurrencyDecimals;
+</script>
 <script>
   // ⚠️ THIS MUST RUN BEFORE ANY OTHER SCRIPTS
   (function () {
@@ -677,8 +705,8 @@
               
               const applyCreatedItemPrice = function() {
                 $targetRow.find('.gstinclude').val(completeItemData.gstinclude);
-                $targetRow.find('.o_price').val(completeItemData.o_price.toFixed(2));
-                $targetRow.find('.price').val(completeItemData.o_price.toFixed(2)).trigger('input');
+                $targetRow.find('.o_price').val(completeItemData.o_price.toFixed(getBaseCurrencyDecimals()));
+                $targetRow.find('.price').val(completeItemData.o_price.toFixed(getDocumentCurrencyDecimals())).trigger('input');
                 $targetRow.find('.qty').val(1);
               };
 
@@ -1154,11 +1182,12 @@
             class="form-control select2"
             data-base-symbol="{{ company_base_currency_symbol|default:'&#x20B9;'|escape }}"
             data-base-code="{{ company_base_currency_code|default:''|escape }}"
+            data-base-decimal-places="{{ base_currency.decimal_places|default:2 }}"
           >
-            <option value="" data-symbol="{{ company_base_currency_symbol|default:'&#x20B9;'|escape }}">Choose currency</option>
+            <option value="" data-symbol="{{ company_base_currency_symbol|default:'&#x20B9;'|escape }}" data-decimal-places="{{ base_currency.decimal_places|default:2 }}">Choose currency</option>
             {% for cur in company_currencies %}
               {% with cur_symbol=cur.symbol|default:cur.code %}
-                <option value="{{ cur.id }}" data-symbol="{{ cur_symbol|escape }}"
+                <option value="{{ cur.id }}" data-symbol="{{ cur_symbol|escape }}" data-decimal-places="{{ cur.decimal_places|default:2 }}"
                   {% if selected_currency_id and selected_currency_id == cur.id %}selected{% endif %}
                 >{{ cur.code }}</option>
               {% endwith %}
@@ -1285,7 +1314,7 @@
               </div>
             </td>
             <td class="base-price">
-              <input type="text" class="form-control form-control-sm o_price_display" name="{{ form.prefix }}-o_price_display" value="{% if form.initial.o_price %}{{ form.initial.o_price|floatformat:2 }}{% else %}{% endif %}" readonly>
+              <input type="text" class="form-control form-control-sm o_price_display" name="{{ form.prefix }}-o_price_display" value="{% if form.initial.o_price %}{{ form.initial.o_price|currency_amount:base_currency }}{% else %}{% endif %}" readonly>
             </td>
             <td class="discount-item">
               <div style="display:flex;align-items:center; gap:4px;">{{ form.prd_disvalue }}{{ form.prd_distype }}</div>
@@ -1386,7 +1415,7 @@
         <div style="display:flex; align-items:center; gap:0.5rem; white-space: nowrap;">
           <strong id="tds-tcs-amount" class="amount">₹0.00</strong>
         </div>
-        <input type="hidden" name="tds_tcs_amount" id="tds_tcs_amount" value="{{ tds_tcs_amount|default:0|floatformat:2 }}">
+        <input type="hidden" name="tds_tcs_amount" id="tds_tcs_amount" value="{{ tds_tcs_amount|default:0|currency_amount:base_currency }}">
         <input type="hidden" name="tds_tcs_rate" id="tds_tcs_rate" value="{{ tds_tcs_rate|default:0 }}">
         <input type="hidden" name="tds_tcs_definition_id" id="tds_tcs_definition_id" value="{{ tds_tcs_definition_id|default:'' }}">
       </div>
@@ -1936,7 +1965,8 @@
       }
 
       function formatAmt(sym, val) {
-        return sym + val.toFixed(2);
+        var dp = (typeof getBaseCurrencyDecimals === 'function') ? getBaseCurrencyDecimals() : 2;
+        return sym + val.toFixed(dp);
       }
 
       function updateDocSymbols(sym) {
@@ -2355,7 +2385,8 @@
       summary.style.display = 'block';
       summary.style.background = exceeded ? '#fdeaea' : '#fff8e6';
       summary.style.borderColor = exceeded ? '#e5a4a4' : '#e9ecef';
-      text.textContent = `Credit Limit: Rs. ${limit.toFixed(2)} | Outstanding: Rs. ${outstanding.toFixed(2)} | This Order: Rs. ${orderAmount.toFixed(2)} | Projected: Rs. ${projected.toFixed(2)}${exceeded ? ` | Exceeded By: Rs. ${(projected - limit).toFixed(2)}` : ''}`;
+      const bDp = (typeof getBaseCurrencyDecimals === 'function') ? getBaseCurrencyDecimals() : 2;
+      text.textContent = `Credit Limit: Rs. ${limit.toFixed(bDp)} | Outstanding: Rs. ${outstanding.toFixed(bDp)} | This Order: Rs. ${orderAmount.toFixed(bDp)} | Projected: Rs. ${projected.toFixed(bDp)}${exceeded ? ` | Exceeded By: Rs. ${(projected - limit).toFixed(bDp)}` : ''}`;
     };
     window.refreshCustomerCreditSummary = function () {
       window.renderCustomerCreditSummary(window.customerCreditData);
@@ -2426,7 +2457,7 @@
               if (currSelect && currSelect.options[currSelect.selectedIndex]) {
                   currSym = currSelect.options[currSelect.selectedIndex].getAttribute('data-symbol') || '₹';
               }
-              $('#orderAmount').text(currSym + ' ' + parseFloat(response.total_amount).toFixed(2));
+              $('#orderAmount').text(currSym + ' ' + parseFloat(response.total_amount).toFixed((typeof getDocumentCurrencyDecimals === 'function') ? getDocumentCurrencyDecimals() : 2));
 
               $saveBtn.prop('disabled', false).html(originalBtnText);
               $('#orderActionModal').modal('show');
