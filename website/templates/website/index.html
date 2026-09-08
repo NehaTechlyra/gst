@@ -829,7 +829,7 @@
             {% endif %}
 
             {% if request.user.is_superuser or can_view_mis_dashboard or can_view_mis_sales or can_view_mis_purchase or can_view_mis_inventory or can_view_mis_finance or can_view_mis_crm or can_view_mis_hr or can_view_mis_expense or can_export_mis_reports %}
-            {% with active_urls="mis_reports_dashboard mis_sales_report mis_purchase_report mis_inventory_report" %}
+            {% with active_urls="mis_reports_dashboard mis_sales_report mis_purchase_report mis_inventory_report mis_expense_report mis_hr_report mis_crm_report mis_finance_report" %}
             <li class="{% if request.resolver_match.url_name in active_urls.split %}showMenu{% endif %}">
                 <div class="icon-link">
                     <a class="{% if request.resolver_match.url_name in active_urls.split %}active-link{% endif %}">
@@ -864,9 +864,9 @@
                     {% if request.user.is_superuser or can_view_mis_expense %}
                     <li><a href="{% if company_code %}{% url 'mis_expense_report' company_code=company_code %}{% else %}{% url 'mis_expense_report' %}{% endif %}" class="{% if request.resolver_match.url_name == 'mis_expense_report' %}active-link{% endif %}">Expenses</a></li>
                     {% endif %}
-                    {% if request.user.is_superuser or can_export_mis_reports %}
+                    {% comment %} {% if request.user.is_superuser or can_export_mis_reports %}
                     <li><a href="#">Export</a></li> 
-                    {% endif %}
+                    {% endif %} {% endcomment %}
                 </ul>
             </li>
             {% endwith %}
@@ -1799,5 +1799,23 @@ iconLinks.forEach(iconLink => {
         
         {% endblock scripts  %}
 </body>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    function hideEmptyBrackets(node) {
+        if (node.nodeType === Node.TEXT_NODE) {
+            // Hide standalone [] text
+            if (node.textContent.trim() === "[]") {
+                node.textContent = "";
+            }
+        } else if (node.nodeType === Node.ELEMENT_NODE) {
+            node.childNodes.forEach(hideEmptyBrackets);
+        }
+    }
+
+    hideEmptyBrackets(document.body);
+});
+</script>
+
 
 </html>
