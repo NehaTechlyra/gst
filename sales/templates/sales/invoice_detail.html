@@ -818,11 +818,14 @@ document.addEventListener('DOMContentLoaded', function() {
               <td>Total Discount</td>
               <td style="text-align:right; color:var(--success);">–{% if document_currency_symbol %}{{ document_currency_symbol }}{{ total_discount_combined|currency_amount:document_currency }}{% else %}{{ company_base_currency_symbol }}{{ total_discount_combined|currency_amount:base_currency }}{% endif %}</td>
               <td style="text-align:right; color:var(--success);">{% if company_base_currency_symbol %}–{{ company_base_currency_symbol }}{{ total_discount_combined_base|currency_amount:base_currency }}{% else %}<span class="text-muted">—</span>{% endif %}</td>
+<<<<<<< HEAD
             </tr>
             <tr>
               <td>Round Off</td>
               <td style="text-align:right;">{% if document_currency_symbol %}{{ document_currency_symbol }}{{ invoice.round_off|currency_amount:document_currency }}{% else %}{{ company_base_currency_symbol }}{{ invoice.round_off|currency_amount:base_currency }}{% endif %}</td>
               <td style="text-align:right;">{% if company_base_currency_symbol %}{{ company_base_currency_symbol }}{{ invoice.round_off|currency_amount:base_currency }}{% else %}<span class="text-muted">—</span>{% endif %}</td>
+=======
+>>>>>>> a446d3c675ae257f17f0d18432042b44cfa5594c
             </tr>
             {% if company_tax_type|default:''|upper == 'TURNOVER' %}
             <tr>
