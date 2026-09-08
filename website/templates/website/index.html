@@ -874,7 +874,7 @@
 
             <!--Masters-->
             {% if request.user.is_superuser or 'Masters Dashboard' in visible_modules or can_view_users or can_view_user_roles or can_view_vendors or can_view_warehouse or can_view_taxes or can_view_stock or can_view_payterms or can_view_items or can_view_brands or can_view_units or can_view_customers or can_view_categories or can_view_types %}
-            {% with active_urls="masters_dashboard tax_list add_tax add_taxgrp tax_edit tax_add_modal edit_taxgrp tax_choices_partial add_user user_list user_edit roles_view roles_list roles_edit items add_item item_edit import_items_step3 import_items_step2 import_items_step1 category_list category_add edit_category subcategory_list subcategory_add edit_subcategory import_category_step1 import_category_step2 import_category_step3 type_list type_add edit_type import_type_step1 import_type_step2 import_type_step3 import_unit_step1 import_unit_step2 import_unit_step3 customer_list add_customers add_customer edit_customer vendor_list vendor_create vendor_edit brand_list edit_brand brand_add import_brand_step3 import_brand_step2 import_brand_step1 unit_list add_unit items_add_unit edit_unit warehouse_list warehouse_add edit_warehouse add_multiple_stock edit_stock stock_list payterm_view payterm_add edit_payterm" %}
+            {% with active_urls="masters_dashboard tax_list add_tax add_taxgrp tax_edit tax_add_modal edit_taxgrp tax_choices_partial add_user user_list user_edit roles_view roles_list roles_edit items add_item item_edit import_items_step3 import_items_step2 import_items_step1 category_list category_add edit_category subcategory_list subcategory_add edit_subcategory import_category_step1 import_category_step2 import_category_step3 type_list type_add edit_type import_type_step1 import_type_step2 import_type_step3 import_unit_step1 import_unit_step2 import_unit_step3 customer_list add_customers add_customer edit_customer vendor_list vendor_create vendor_edit brand_list edit_brand brand_add import_brand_step3 import_brand_step2 import_brand_step1 unit_list add_unit items_add_unit edit_unit warehouse_list warehouse_add edit_warehouse add_multiple_stock edit_stock stock_list stock_movement_list add_stock_adjustment add_stock_transfer payterm_view payterm_add edit_payterm" %}
             <li class="{% if request.resolver_match.url_name in active_urls.split %}showMenu{% endif %}">
                  <div class="icon-link">
                     {% comment %} <a href="{% url 'master_list' %}" class="{% if request.resolver_match.url_name in active_urls.split %}active-link{% endif %}"> {% endcomment %}
@@ -972,6 +972,9 @@
                     {% if request.user.is_superuser or can_view_stock %}
                     {% with active_urls="add_multiple_stock edit_stock stock_list" %}
                         <li><a  href="{% url 'stock_list' %}" class="{% if request.resolver_match.url_name in active_urls.split %}active-link{% endif %} ">Stock</a></li>
+                    {% endwith %}
+                    {% with active_urls="stock_movement_list add_stock_adjustment add_stock_transfer" %}
+                        <li><a  href="{% url 'stock_movement_list' %}" class="{% if request.resolver_match.url_name in active_urls.split %}active-link{% endif %} ">Stock Movements</a></li>
                     {% endwith %}
                     {% endif %}
                     {% if request.user.is_superuser or can_view_payterms %}

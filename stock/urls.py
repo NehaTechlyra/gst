@@ -13,6 +13,9 @@ urlpatterns = [
     path('stocks/<int:pk>/edit/', views.edit_stock, name='edit_stock'),
     path('stocks/delete/<int:pk>/', views.delete_stock, name='delete_stock'),
     path('item/<int:item_id>/detail/', views.stock_detail, name='stock_detail'),
+    path('movements/', views.stock_movement_list, name='stock_movement_list'),
+    path('movements/adjustment/add/', views.add_stock_adjustment, name='add_stock_adjustment'),
+    path('movements/transfer/add/', views.add_stock_transfer, name='add_stock_transfer'),
     # Other URLs ...
     path('import_stock/',        import_stock_step1,  name='import_stock_step1'),
     path('import_stock/step2/',  import_stock_step2,  name='import_stock_step2'),

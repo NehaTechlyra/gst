@@ -292,9 +292,15 @@
       <h1>Stock details</h1>
       <p class="subtitle">{{ item.name }}</p>
     </div> {% endcomment %}
-    <a href="{% url 'stock_list' %}" class="sd-back-btn">
-      <i class="bi bi-arrow-left"></i> Back to list
-    </a>
+    <div class="d-flex align-items-center gap-2">
+      {% if request.user.is_superuser or can_create_stock %}
+      <a href="{% url 'add_stock_adjustment' %}" class="sd-back-btn"><i class="bi bi-plus-slash-minus"></i> Adjust stock</a>
+      <a href="{% url 'add_stock_transfer' %}" class="sd-back-btn"><i class="bi bi-arrow-left-right"></i> Transfer stock</a>
+      {% endif %}
+      <a href="{% url 'stock_list' %}" class="sd-back-btn">
+        <i class="bi bi-arrow-left"></i> Back to list
+      </a>
+    </div>
   </div>
 
   <!-- ── Item information ── -->
@@ -409,6 +415,53 @@
     </div>
   </div>
   {% endif %}
+
+  <!-- ── Stock movement history ── -->
+  <div class="sd-card">
+    <div class="sd-card-title">
+      <i class="bi bi-arrow-left-right"></i> Stock movement history
+    </div>
+    {% if movement_history %}
+    <div class="table-responsive">
+      <table class="sd-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Warehouse</th>
+            <th>Type</th>
+            <th class="text-end">Quantity</th>
+            <th>Source</th>
+            <th>Reference</th>
+            <th>Notes</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for m in movement_history %}
+          <tr>
+            <td style="white-space:nowrap;">{{ m.date|date:"d-M-Y H:i" }}</td>
+            <td>{{ m.warehouse.warehouse_name }}</td>
+            <td>{{ m.movement_type }}</td>
+            <td class="text-end" style="{% if m.direction == 'in' %}color:#1a7f4b{% else %}color:#c0392b{% endif %}; font-weight:600;">
+              {% if m.direction == "in" %}+{% else %}-{% endif %}{{ m.quantity }}
+            </td>
+            <td>{{ m.source }}</td>
+            <td>{{ m.reference }}</td>
+            <td>{{ m.notes|default:"—" }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="mt-2">
+      <a href="{% url 'stock_movement_list' %}?item={{ item.id }}">View all movements for this item &rarr;</a>
+    </div>
+    {% else %}
+    <div class="empty-state">
+      <i class="bi bi-inbox" style="font-size:24px; display:block; margin-bottom:8px; color:#ddd;"></i>
+      No stock movements recorded for this item yet.
+    </div>
+    {% endif %}
+  </div>
 
   <!-- ── Financial impact summary ── -->
   <div class="sd-card">

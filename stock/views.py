@@ -2,13 +2,15 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from Lyraerp.utils.redirect_utils import redirect_with_company
 from django.contrib.auth.decorators import login_required
-from .models import Stock
-from .forms import StockFormSet, WarehouseSelectForm 
+from .models import Stock, StockMovement
+from .forms import StockFormSet, WarehouseSelectForm, StockAdjustmentForm, StockTransferForm
+from warehouse.models import Warehouse
 from django.core.paginator import Paginator
 from django.db.models import Q,Sum
 from django.views.decorators.http import require_POST
 from django.contrib import messages
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
+from django.db import transaction
 import csv
 from decimal import Decimal
 from datetime import datetime
@@ -219,6 +221,348 @@ def post_manual_stock_entry_journal(stock_record, user):
     except Exception as e:
         logger.error(f"Error posting manual stock entry: {e}", exc_info=True)
         return (False, None, f"Error: {str(e)}")
+
+
+def post_stock_adjustment_journal(item, signed_quantity, user):
+    """
+    Post accounting entry for a stock quantity adjustment made from the
+    Stock Movement screen. Mirrors post_manual_stock_entry_journal but is
+    keyed off the item + signed delta directly, rather than a Stock row.
+
+    Journal Entry:
+    - Positive delta (stock added): Dr Stock In Hand, Cr Stock Adjustment
+    - Negative delta (stock removed): Dr Stock Adjustment, Cr Stock In Hand
+    """
+    try:
+        quantity = Decimal(str(signed_quantity))
+        if quantity == 0:
+            return (True, None, "No quantity to post")
+
+        inventory_account, adjustment_account = ensure_stock_adjustment_accounts_exist()
+        if not inventory_account or not adjustment_account:
+            logger.warning("Could not ensure adjustment accounts")
+            return (False, None, "Required accounts not found")
+
+        cost_per_unit = Decimal('0.00')
+        if getattr(item, 'op_rate', None):
+            cost_per_unit = Decimal(str(item.op_rate))
+
+        if cost_per_unit <= 0:
+            logger.warning(f"No cost rate available for {item.name}")
+            return (False, None, "Item has no opening rate")
+
+        abs_quantity = abs(quantity)
+        entry_value = abs_quantity * cost_per_unit
+        is_reduction = quantity < 0
+
+        last_jv = JournalEntry.objects.order_by('-id').first()
+        if last_jv and last_jv.entry_number and last_jv.entry_number.startswith('JV-'):
+            try:
+                last_num = int(last_jv.entry_number.split('-')[1])
+            except Exception:
+                last_num = 0
+        else:
+            last_num = 0
+        entry_number = f'JV-{str(last_num + 1).zfill(5)}'
+
+        je = JournalEntry.objects.create(
+            entry_number=entry_number,
+            date=datetime.now().date(),
+            reference=f"STOCK_MOVEMENT_ADJUSTMENT_{item.id}_{entry_number}",
+            narration=f"{'Stock Reduction' if is_reduction else 'Stock Entry'} (Movement): {item.name} ({abs_quantity} units @ ₹{cost_per_unit}/unit)",
+            total_debit=entry_value,
+            total_credit=entry_value,
+            status='posted',
+            created_by=user,
+            updated_by=user
+        )
+
+        debit_account, credit_account = (
+            (adjustment_account, inventory_account) if is_reduction
+            else (inventory_account, adjustment_account)
+        )
+        JournalLine.objects.create(
+            journal=je, account=debit_account, description=f"Stock Movement: {item.name}",
+            debit=entry_value, credit=Decimal('0.00'), sequence=10, status=True
+        )
+        JournalLine.objects.create(
+            journal=je, account=credit_account, description=f"Stock Movement: {item.name}",
+            debit=Decimal('0.00'), credit=entry_value, sequence=20, status=True
+        )
+
+        action = "Stock reduction" if is_reduction else "Stock entry"
+        logger.info(f"✓ Posted {action}: {item.name} = ₹{entry_value}")
+        return (True, je, f"Posted ₹{float(entry_value):.2f} to accounts")
+
+    except Exception as e:
+        logger.error(f"Error posting stock movement journal: {e}", exc_info=True)
+        return (False, None, f"Error: {str(e)}")
+
+
+def get_combined_movements(item=None, warehouse=None, direction=None, date_from=None, date_to=None, limit=None):
+    """
+    Merge stock movement history from all three sources into a single,
+    date-descending list of normalized dicts:
+      - stock.StockMovement       (manual adjustments & warehouse transfers)
+      - Purchase.StockMovement    (goods received via delivery notes & purchase returns)
+      - sales.SalesStockMovement  (goods shipped via delivery notes & sales returns)
+    """
+    # Imported lazily to avoid any app-loading-order circular import issues.
+    from Purchase.models import StockMovement as PurchaseStockMovement
+    from sales.models import SalesStockMovement
+
+    combined = []
+
+    def _collect(queryset, direction_of, source_label, reference_label_fn):
+        qs = queryset.select_related('stock__item', 'stock__warehouse', 'created_by')
+        if item:
+            qs = qs.filter(stock__item=item)
+        if warehouse:
+            qs = qs.filter(stock__warehouse=warehouse)
+        for m in qs:
+            combined.append({
+                'date': m.created_at,
+                'item': m.stock.item,
+                'warehouse': m.stock.warehouse,
+                'direction': direction_of(m),
+                'movement_type': m.get_movement_type_display(),
+                'quantity': m.quantity,
+                'source': source_label,
+                'reference': reference_label_fn(m),
+                'notes': m.notes,
+                'created_by': m.created_by,
+            })
+
+    _collect(
+        StockMovement.objects.all(),
+        lambda m: 'in' if m.movement_type in ('adjustment_in', 'transfer_in') else 'out',
+        'Manual',
+        lambda m: m.get_reference_type_display(),
+    )
+    _collect(
+        PurchaseStockMovement.objects.all(),
+        lambda m: m.movement_type,
+        'Purchase',
+        lambda m: m.get_reference_type_display(),
+    )
+    _collect(
+        SalesStockMovement.objects.all(),
+        lambda m: m.movement_type,
+        'Sales',
+        lambda m: m.get_reference_type_display(),
+    )
+
+    if direction:
+        combined = [c for c in combined if c['direction'] == direction]
+    if date_from:
+        combined = [c for c in combined if c['date'].date() >= date_from]
+    if date_to:
+        combined = [c for c in combined if c['date'].date() <= date_to]
+
+    combined.sort(key=lambda c: c['date'], reverse=True)
+
+    if limit:
+        combined = combined[:limit]
+    return combined
+
+
+@login_required
+def stock_movement_list(request):
+    """Dedicated page listing every stock movement (manual + purchase + sales) with filters."""
+    item_id = request.GET.get('item') or ''
+    warehouse_id = request.GET.get('warehouse') or ''
+    direction = request.GET.get('direction') or ''
+    date_from_raw = request.GET.get('date_from') or ''
+    date_to_raw = request.GET.get('date_to') or ''
+
+    item = Item.objects.filter(pk=item_id).first() if item_id else None
+    warehouse = Warehouse.objects.filter(pk=warehouse_id).first() if warehouse_id else None
+
+    def _parse_date(value):
+        try:
+            return datetime.strptime(value, '%Y-%m-%d').date() if value else None
+        except ValueError:
+            return None
+
+    date_from = _parse_date(date_from_raw)
+    date_to = _parse_date(date_to_raw)
+
+    movements = get_combined_movements(
+        item=item,
+        warehouse=warehouse,
+        direction=direction or None,
+        date_from=date_from,
+        date_to=date_to,
+    )
+
+    paginator = Paginator(movements, 15)
+    page_obj = paginator.get_page(request.GET.get('page'))
+
+    context = {
+        'movements': page_obj,
+        'items': Item.objects.filter(status=True).order_by('name'),
+        'warehouses': Warehouse.objects.filter(status=True).order_by('warehouse_name'),
+        'selected_item': item_id,
+        'selected_warehouse': warehouse_id,
+        'selected_direction': direction,
+        'date_from': date_from_raw,
+        'date_to': date_to_raw,
+    }
+    return render(request, 'stock_movement_list.html', context)
+
+
+@login_required
+def add_stock_adjustment(request):
+    """Manually increase or decrease stock for an item in a warehouse."""
+    from django.utils import timezone
+    today = timezone.now().date()
+    db = getattr(request, 'company_db', 'default')
+    try:
+        PeriodLockEnforcer.check_can_edit(today, request.user, db=db, transaction_type='stock')
+    except PermissionDenied as e:
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({'success': False, 'error': f"❌ Cannot adjust stock: {str(e)}"}, status=403)
+        messages.error(request, str(e))
+        return redirect_with_company('stock_movement_list')
+
+    if request.method == 'POST':
+        form = StockAdjustmentForm(request.POST)
+        if form.is_valid():
+            item = form.cleaned_data['item']
+            warehouse = form.cleaned_data['warehouse']
+            direction = form.cleaned_data['direction']
+            quantity = form.cleaned_data['quantity']
+            notes = form.cleaned_data['notes']
+
+            with transaction.atomic():
+                stock, _ = Stock.objects.get_or_create(
+                    item=item, warehouse=warehouse, batch_number=None, serial_number=None,
+                    defaults={'quantity': Decimal('0.00'), 'status': True, 'created_by': request.user}
+                )
+
+                if direction == 'out' and stock.quantity < quantity:
+                    messages.error(
+                        request,
+                        f"Insufficient stock in {warehouse.warehouse_name}. "
+                        f"Available: {stock.quantity}, requested: {quantity}"
+                    )
+                    return render(request, 'add_stock_adjustment.html', {'form': form})
+
+                if direction == 'in':
+                    stock.quantity += quantity
+                    movement_type = 'adjustment_in'
+                else:
+                    stock.quantity -= quantity
+                    movement_type = 'adjustment_out'
+
+                stock.updated_by = request.user
+                stock.save()
+
+                StockMovement.objects.create(
+                    stock=stock,
+                    movement_type=movement_type,
+                    quantity=quantity,
+                    reference_type='manual_adjustment',
+                    notes=notes,
+                    created_by=request.user,
+                )
+
+                signed_qty = quantity if direction == 'in' else -quantity
+                success, je, msg = post_stock_adjustment_journal(item, signed_qty, request.user)
+                if success:
+                    messages.success(request, f"Stock adjusted successfully. {msg or ''}".strip())
+                else:
+                    messages.warning(request, f"Stock adjusted, but accounting entry could not be posted: {msg}")
+
+            return redirect_with_company('stock_movement_list')
+    else:
+        form = StockAdjustmentForm()
+
+    return render(request, 'add_stock_adjustment.html', {'form': form})
+
+
+@login_required
+def add_stock_transfer(request):
+    """Move a quantity of an item from one warehouse to another."""
+    from django.utils import timezone
+    today = timezone.now().date()
+    db = getattr(request, 'company_db', 'default')
+    try:
+        PeriodLockEnforcer.check_can_edit(today, request.user, db=db, transaction_type='stock')
+    except PermissionDenied as e:
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({'success': False, 'error': f"❌ Cannot transfer stock: {str(e)}"}, status=403)
+        messages.error(request, str(e))
+        return redirect_with_company('stock_movement_list')
+
+    if request.method == 'POST':
+        form = StockTransferForm(request.POST)
+        if form.is_valid():
+            item = form.cleaned_data['item']
+            from_warehouse = form.cleaned_data['from_warehouse']
+            to_warehouse = form.cleaned_data['to_warehouse']
+            quantity = form.cleaned_data['quantity']
+            notes = form.cleaned_data['notes']
+
+            with transaction.atomic():
+                source_stock = Stock.objects.filter(
+                    item=item, warehouse=from_warehouse, batch_number=None, serial_number=None
+                ).first()
+
+                available = source_stock.quantity if source_stock else Decimal('0.00')
+                if not source_stock or available < quantity:
+                    messages.error(
+                        request,
+                        f"Insufficient stock in {from_warehouse.warehouse_name}. "
+                        f"Available: {available}, requested: {quantity}"
+                    )
+                    return render(request, 'add_stock_transfer.html', {'form': form})
+
+                dest_stock, _ = Stock.objects.get_or_create(
+                    item=item, warehouse=to_warehouse, batch_number=None, serial_number=None,
+                    defaults={'quantity': Decimal('0.00'), 'status': True, 'created_by': request.user}
+                )
+
+                source_stock.quantity -= quantity
+                source_stock.updated_by = request.user
+                source_stock.save()
+
+                dest_stock.quantity += quantity
+                dest_stock.updated_by = request.user
+                dest_stock.save()
+
+                out_movement = StockMovement.objects.create(
+                    stock=source_stock,
+                    movement_type='transfer_out',
+                    quantity=quantity,
+                    reference_type='warehouse_transfer',
+                    notes=notes or f"Transferred to {to_warehouse.warehouse_name}",
+                    created_by=request.user,
+                )
+                in_movement = StockMovement.objects.create(
+                    stock=dest_stock,
+                    movement_type='transfer_in',
+                    quantity=quantity,
+                    reference_type='warehouse_transfer',
+                    reference_id=out_movement.id,
+                    notes=notes or f"Transferred from {from_warehouse.warehouse_name}",
+                    created_by=request.user,
+                    linked_movement=out_movement,
+                )
+                out_movement.reference_id = in_movement.id
+                out_movement.linked_movement = in_movement
+                out_movement.save(update_fields=['reference_id', 'linked_movement'])
+
+            messages.success(
+                request,
+                f"Transferred {quantity} {item.name} from {from_warehouse.warehouse_name} "
+                f"to {to_warehouse.warehouse_name}."
+            )
+            return redirect_with_company('stock_movement_list')
+    else:
+        form = StockTransferForm()
+
+    return render(request, 'add_stock_transfer.html', {'form': form})
 
 
 def stock_list(request):
@@ -460,6 +804,9 @@ def stock_detail(request, item_id):
                 if line.credit > 0:
                     total_gains += line.credit
     
+    # Real stock movement history (manual adjustments/transfers + purchase + sales), most recent first
+    movement_history = get_combined_movements(item=item, limit=50)
+
     context = {
         'item': item,
         'stocks': stocks,
@@ -472,6 +819,7 @@ def stock_detail(request, item_id):
         'total_gains': total_gains,
         'total_losses': total_losses,
         'net_impact': total_gains - total_losses,
+        'movement_history': movement_history,
     }
     
     return render(request, 'stock/stock_detail.html', context)

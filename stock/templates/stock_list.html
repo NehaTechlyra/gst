@@ -19,6 +19,9 @@
     {% if request.user.is_superuser or can_create_stock %}
     <a href="{% url 'add_multiple_stock' %}" class="btn btn-success">+ Add New Stock</a>
     {% endif %}
+    <a href="{% url 'stock_movement_list' %}" class="btn btn-outline-secondary">
+      <i class="bi bi-arrow-left-right"></i> Stock Movements
+    </a>
     </div>
       <div class="d-flex align-items-center gap-2">
     <!-- Search Box -->

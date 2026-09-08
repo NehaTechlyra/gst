@@ -1,0 +1,72 @@
+{% extends 'website/index.html' %}
+{% load widget_tweaks %}
+{% load static %}
+{% block exstyle %}
+<link href="{% static 'style/general.css' %}" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+{% endblock exstyle %}
+
+{% block page_title %}Stock Adjustment{% endblock page_title %}
+
+{% block content %}
+<div class="container mt-4">
+  <div class="card p-4 shadow-sm border-0" style="max-width:640px;">
+    <h5 class="mb-3">Adjust Stock</h5>
+
+    {% if messages %}
+      {% for message in messages %}
+        <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+      {% endfor %}
+    {% endif %}
+
+    <form method="post">
+      {% csrf_token %}
+
+      <div class="mb-3">
+        <label class="form-label">Item <span class="text-danger">*</span></label>
+        {{ form.item|add_class:"form-select select2" }}
+        {% for error in form.item.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">Warehouse <span class="text-danger">*</span></label>
+        {{ form.warehouse|add_class:"form-select select2" }}
+        {% for error in form.warehouse.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">Direction <span class="text-danger">*</span></label>
+        {{ form.direction|add_class:"form-select" }}
+        {% for error in form.direction.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">Quantity <span class="text-danger">*</span></label>
+        {{ form.quantity|add_class:"form-control" }}
+        {% for error in form.quantity.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">Notes</label>
+        {{ form.notes|add_class:"form-control" }}
+      </div>
+
+      {% for error in form.non_field_errors %}<div class="text-danger small mb-2">{{ error }}</div>{% endfor %}
+
+      <div class="mt-3">
+        <button type="submit" class="btn btn-primary">Save Adjustment</button>
+        <a href="{% url 'stock_movement_list' %}" class="btn btn-outline-secondary ms-2">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  document.querySelectorAll('select.select2').forEach(function (el) {
+    $(el).select2({ width: '100%', placeholder: '' });
+  });
+});
+</script>
+{% endblock content %}
