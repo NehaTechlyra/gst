@@ -1,3 +1,75 @@
+DEFAULT_DECIMAL_PLACES = 2
+
+
+def get_decimal_places(currency) -> int:
+    """
+    Resolve the number of decimal places to use for a given currency.
+
+    Accepts:
+      - a Currency model instance (uses .decimal_places)
+      - an ISO code string (looked up against the current company's Currency rows)
+      - None (returns the default of 2)
+
+    Always falls back to DEFAULT_DECIMAL_PLACES (2) if nothing usable is found,
+    so this is always safe to call even with incomplete data.
+    """
+    if currency is None:
+        return DEFAULT_DECIMAL_PLACES
+
+    # Already a Currency instance (or anything with a decimal_places attr)
+    places = getattr(currency, 'decimal_places', None)
+    if places is not None:
+        try:
+            return int(places)
+        except (TypeError, ValueError):
+            return DEFAULT_DECIMAL_PLACES
+
+    # Treat as an ISO code string and look it up
+    code = str(currency).strip().upper()[:3]
+    if not code:
+        return DEFAULT_DECIMAL_PLACES
+
+    try:
+        from currencies.models import Currency as CurrencyModel
+        row = CurrencyModel.objects.filter(code=code, is_active=True).order_by('id').first()
+        if row is not None:
+            return int(row.decimal_places)
+    except Exception:
+        pass
+
+    return DEFAULT_DECIMAL_PLACES
+
+
+def format_amount(value, currency=None) -> str:
+    """
+    Format a numeric amount using the decimal places of the given currency
+    (Currency instance, ISO code string, or None -> defaults to 2).
+
+    Rounds half-up like Django's floatformat, and always returns a fixed
+    number of decimal places (no trimming of trailing zeros), matching the
+    existing `floatformat:2` behaviour used throughout the templates.
+    """
+    from decimal import Decimal, ROUND_HALF_UP, InvalidOperation
+
+    places = get_decimal_places(currency)
+
+    if value is None or value == '':
+        value = 0
+
+    try:
+        dec_value = Decimal(str(value))
+    except (InvalidOperation, ValueError, TypeError):
+        return str(value)
+
+    quantizer = Decimal('1') if places == 0 else Decimal('1').scaleb(-places)
+    try:
+        quantized = dec_value.quantize(quantizer, rounding=ROUND_HALF_UP)
+    except InvalidOperation:
+        return str(value)
+
+    return f"{quantized:.{places}f}"
+
+
 def currency_queryset_for_request(request):
     from company.models import Company
     from currencies.models import Currency

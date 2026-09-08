@@ -9688,6 +9688,8 @@ def invoice_detail(request, pk):
         'company_base_currency_code': base_currency_code,
         'document_currency_symbol': doc_currency_symbol,
         'document_currency_code': doc_currency_code,
+        'document_currency': doc_currency,
+        'base_currency': base_currency,
         'show_base_currency_only': show_base_currency_only,
         'fx_rate': fx_rate,
         'tds_tcs_type': tds_tcs_type,
@@ -10416,6 +10418,8 @@ def build_invoice_context(pk, request=None):
         'company_base_currency_code': base_currency_code,
         'document_currency_symbol': doc_currency_symbol,
         'document_currency_code': doc_currency_code,
+        'document_currency': doc_currency,
+        'base_currency': base_currency,
         'show_base_currency_only': show_base_currency_only,
         'fx_rate': fx_rate,
         #added by neha on 20-1-26
@@ -12500,10 +12504,18 @@ def invoice_journal(request, pk):
                 'credit': credit
             })
     
+    from currencies.services import get_base_currency
+    company = _get_company_for_request(request)
+    try:
+        base_currency = get_base_currency(company)
+    except Exception:
+        base_currency = None
+
     return render(request, 'sales/invoice_journal.html', {
         'invoice': invoice,
         'display_rows': display_rows,
         'display_total': total_debit,
+        'base_currency': base_currency,
     })
 
 
@@ -17710,6 +17722,8 @@ def build_performa_context(pk, request=None):
         'company_base_currency_code': base_currency_code,
         'document_currency_symbol': doc_currency_symbol,
         'document_currency_code': doc_currency_code,
+        'document_currency': doc_currency,
+        'base_currency': base_currency,
         'fx_rate': fx_rate,
         'tds_tcs_type': tds_tcs_type,
         'tds_tcs_amount': tds_tcs_amount,

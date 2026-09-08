@@ -1,6 +1,7 @@
 {% extends 'website/index.html' %}
 {% block page_title %}Journal Entries{% endblock %}
 
+{% load currency_tags %}
 {% block content %}
 <div class="container-fluid">
     <div class="card">
@@ -28,16 +29,16 @@
                             {% for row in display_rows %}
                             <tr>
                                 <td>{{ row.account_name }}</td>
-                                <td class="text-end">{{ row.debit|floatformat:2 }}</td>
-                                <td class="text-end">{{ row.credit|floatformat:2 }}</td>
+                                <td class="text-end">{{ row.debit|currency_amount:base_currency }}</td>
+                                <td class="text-end">{{ row.credit|currency_amount:base_currency }}</td>
                             </tr>
                             {% endfor %}
                         </tbody>
                         <tfoot>
                             <tr class="table-light">
                                 <td><strong>Total</strong></td>
-                                <td class="text-end"><strong>{{ display_total|floatformat:2 }}</strong></td>
-                                <td class="text-end"><strong>{{ display_total|floatformat:2 }}</strong></td>
+                                <td class="text-end"><strong>{{ display_total|currency_amount:base_currency }}</strong></td>
+                                <td class="text-end"><strong>{{ display_total|currency_amount:base_currency }}</strong></td>
                             </tr>
                         </tfoot>
                     </table>

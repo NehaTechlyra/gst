@@ -11313,6 +11313,8 @@ def build_bill_context(pk, request=None):
         'document_currency_symbol': document_currency_symbol,
         'company_base_currency_symbol': company_base_currency_symbol,
         'document_currency_code': document_currency_code,
+        'document_currency': document_currency,
+        'base_currency': base_currency,
     }
     try:
         logger.info('build_bill_context: bill=%s, document_currency=%s, document_currency_symbol=%s, company_base_currency_symbol=%s',

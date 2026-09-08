@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Bill</title>
   {% load static %}
+  {% load currency_tags %}
     {% block exstyle %}
 
     <link href="{% static 'style/print.css' %}" rel="stylesheet">
@@ -147,20 +148,20 @@
           {% if item.hsn %}{{ item.hsn }}{% else %}-{% endif %}
         </td>
         <td class="text-right nowrap">{{ item.quantity }}</td>
-        <td class="text-right nowrap">{{ item.price|floatformat:2 }}</td>
+        <td class="text-right nowrap">{{ item.price|currency_amount:document_currency }}</td>
         {% if company_is_india %}
         <td class="text-right">
           {{ item.cgst_rate|floatformat:2 }}%<br>
-          <span class="muted">{{ item.cgst_amount|floatformat:2 }}</span>
+          <span class="muted">{{ item.cgst_amount|currency_amount:document_currency }}</span>
         </td>
         <td class="text-right">
           {{ item.sgst_rate|floatformat:2 }}%<br>
-          <span class="muted">{{ item.sgst_amount|floatformat:2 }}</span>
+          <span class="muted">{{ item.sgst_amount|currency_amount:document_currency }}</span>
         </td>
         {% else %}
         <td class="text-right">
           {{ item.vat_rate|floatformat:2 }}%<br>
-          <span class="muted">{{ item.vat_amount|floatformat:2 }}</span>
+          <span class="muted">{{ item.vat_amount|currency_amount:document_currency }}</span>
         </td>
         {% endif %}
       </tr>
@@ -171,35 +172,37 @@
   <!-- TOTALS (aligned to right but within same content width) -->
   <div class="summary-wrap">
     <table class="totals-table">
+      {% with cur=document_currency|default:base_currency %}
       <tr>
         <td class="totals-label">Sub Total</td>
-        <td class="totals-value">{% if document_currency_symbol %}{{ document_currency_symbol }} {{ subtotal_calc|floatformat:2 }}{% else %}{{ company_base_currency_symbol }} {{ subtotal_calc|floatformat:2 }}{% endif %}</td>
+        <td class="totals-value">{% if document_currency_symbol %}{{ document_currency_symbol }} {{ subtotal_calc|currency_amount:cur }}{% else %}{{ company_base_currency_symbol }} {{ subtotal_calc|currency_amount:cur }}{% endif %}</td>
       </tr>
       {% if company_is_india %}
       <tr>
         <td class="totals-label">CGST</td>
-        <td class="totals-value">{% if document_currency_symbol %}{{ document_currency_symbol }} {{ total_cgst|floatformat:2 }}{% else %}{{ company_base_currency_symbol }} {{ total_cgst|floatformat:2 }}{% endif %}</td>
+        <td class="totals-value">{% if document_currency_symbol %}{{ document_currency_symbol }} {{ total_cgst|currency_amount:cur }}{% else %}{{ company_base_currency_symbol }} {{ total_cgst|currency_amount:cur }}{% endif %}</td>
       </tr>
       <tr>
         <td class="totals-label">SGST</td>
-        <td class="totals-value">{% if document_currency_symbol %}{{ document_currency_symbol }} {{ total_sgst|floatformat:2 }}{% else %}{{ company_base_currency_symbol }} {{ total_sgst|floatformat:2 }}{% endif %}</td>
+        <td class="totals-value">{% if document_currency_symbol %}{{ document_currency_symbol }} {{ total_sgst|currency_amount:cur }}{% else %}{{ company_base_currency_symbol }} {{ total_sgst|currency_amount:cur }}{% endif %}</td>
       </tr>
       {% else %}
       <tr>
         <td class="totals-label">VAT</td>
-        <td class="totals-value">{% if document_currency_symbol %}{{ document_currency_symbol }} {{ total_vat|floatformat:2 }}{% else %}{{ company_base_currency_symbol }} {{ total_vat|floatformat:2 }}{% endif %}</td>
+        <td class="totals-value">{% if document_currency_symbol %}{{ document_currency_symbol }} {{ total_vat|currency_amount:cur }}{% else %}{{ company_base_currency_symbol }} {{ total_vat|currency_amount:cur }}{% endif %}</td>
       </tr>
       {% endif %}
       {% if bill.round_off %}
       <tr>
         <td class="totals-label">Round Off</td>
-        <td class="totals-value">{% if document_currency_symbol %}{{ document_currency_symbol }} {{ bill.round_off|floatformat:2 }}{% else %}{{ company_base_currency_symbol }} {{ bill.round_off|floatformat:2 }}{% endif %}</td>
+        <td class="totals-value">{% if document_currency_symbol %}{{ document_currency_symbol }} {{ bill.round_off|currency_amount:cur }}{% else %}{{ company_base_currency_symbol }} {{ bill.round_off|currency_amount:cur }}{% endif %}</td>
       </tr>
       {% endif %}
       <tr class="grand-row">
         <td class="totals-label">Grand Total</td>
-        <td class="totals-value">{% if document_currency_symbol %}{{ document_currency_symbol }} {{ final_total|floatformat:2 }}{% else %}{{ company_base_currency_symbol }} {{ final_total|floatformat:2 }}{% endif %}</td>
+        <td class="totals-value">{% if document_currency_symbol %}{{ document_currency_symbol }} {{ final_total|currency_amount:cur }}{% else %}{{ company_base_currency_symbol }} {{ final_total|currency_amount:cur }}{% endif %}</td>
       </tr>
+      {% endwith %}
     </table>
   </div>
 
