@@ -294,8 +294,8 @@
     </div> {% endcomment %}
     <div class="d-flex align-items-center gap-2">
       {% if request.user.is_superuser or can_create_stock %}
-      <a href="{% url 'add_stock_adjustment' %}" class="sd-back-btn"><i class="bi bi-plus-slash-minus"></i> Adjust stock</a>
-      <a href="{% url 'add_stock_transfer' %}" class="sd-back-btn"><i class="bi bi-arrow-left-right"></i> Transfer stock</a>
+      <a href="{% url 'add_stock_adjustment' %}?item={{ item.id }}" class="sd-back-btn"><i class="bi bi-plus-slash-minus"></i> Adjust stock</a>
+      <a href="{% url 'add_stock_transfer' %}?item={{ item.id }}" class="sd-back-btn"><i class="bi bi-arrow-left-right"></i> Transfer stock</a>
       {% endif %}
       <a href="{% url 'stock_list' %}" class="sd-back-btn">
         <i class="bi bi-arrow-left"></i> Back to list

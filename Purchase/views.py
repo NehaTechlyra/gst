@@ -9754,7 +9754,7 @@ def update_stock_from_bill(bill, user, request=None):
 
         for delivery_note in delivered_notes:
             try:
-                delivery_note.update_stock()
+                delivery_note.update_stock(user=user)
                 updated = True
             except Exception:
                 logger.exception(
@@ -11903,7 +11903,7 @@ class DeliveryNoteViewSet(viewsets.ModelViewSet):
                 delivery_note.status = 'delivered'
                 delivery_note.save()
                 if is_stock_management_on_delivery(request=request):
-                    delivery_note.update_stock()
+                    delivery_note.update_stock(user=request.user)
             
             serializer = self.get_serializer(delivery_note)
             return Response(serializer.data)
@@ -11931,7 +11931,7 @@ class DeliveryNoteViewSet(viewsets.ModelViewSet):
                 delivery_note.status = 'cancelled'
                 delivery_note.save()
                 if delivery_note.stock_updated:
-                    delivery_note.reverse_stock()
+                    delivery_note.reverse_stock(user=request.user)
             
             serializer = self.get_serializer(delivery_note)
             return Response(serializer.data)
@@ -12197,7 +12197,7 @@ class DeliveryNoteCreateView(CreateView):
             # Update stock if status is delivered and delivery-based stock management is enabled
             if self.object.status == 'delivered' and is_stock_management_on_delivery(request=self.request):
                 print(f"Calling update_stock() for {self.object.delivery_note_number}")
-                self.object.update_stock()
+                self.object.update_stock(user=self.request.user)
                 print(f"Stock updated: {self.object.stock_updated}")
             
             messages.success(
@@ -12358,7 +12358,7 @@ class DeliveryNoteUpdateView(UpdateView):
             
             # Update stock if status changed to delivered and delivery-based stock management is enabled
             if self.object.status == 'delivered' and old_status != 'delivered' and is_stock_management_on_delivery(request=self.request):
-                self.object.update_stock()
+                self.object.update_stock(user=self.request.user)
             
             messages.success(
                 self.request,
@@ -12464,7 +12464,7 @@ def delivery_note_mark_delivered(request, pk):
                     delivery_note.status = 'delivered'
                     delivery_note.save()
                     if is_stock_management_on_delivery(request=request):
-                        delivery_note.update_stock()
+                        delivery_note.update_stock(user=request.user)
                 
                 messages.success(
                     request,
@@ -12541,7 +12541,7 @@ def delivery_note_cancel(request, pk):
                     
                     # Reverse stock if it was updated
                     if delivery_note.stock_updated:
-                        delivery_note.reverse_stock()
+                        delivery_note.reverse_stock(user=request.user)
                 
                 messages.success(
                     request,

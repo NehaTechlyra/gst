@@ -878,7 +878,7 @@ class DeliveryNote(models.Model):
                 self.delivery_note_number = "DN-00001"
         super().save(*args, **kwargs)
     
-    def update_stock(self):
+    def update_stock(self, user=None):
         """
         Update stock when delivery is marked as delivered
         """
@@ -922,7 +922,8 @@ class DeliveryNote(models.Model):
                         reference_type='delivery_note',
                         reference_id=self.id,
                         delivery_note=self,
-                        notes=f"Stock in from Delivery Note {self.delivery_note_number}"
+                        notes=f"Stock in from Delivery Note {self.delivery_note_number}",
+                        created_by=user,
                     )
                 
                 # Mark stock as updated
@@ -930,7 +931,7 @@ class DeliveryNote(models.Model):
                 self.save(using=db, update_fields=['stock_updated'])
                 print(f"Delivery Note {self.delivery_note_number} - Stock updated successfully")
     
-    def reverse_stock(self):
+    def reverse_stock(self, user=None):
         """
         Reverse stock update if delivery is cancelled
         """
@@ -968,7 +969,8 @@ class DeliveryNote(models.Model):
                                 reference_type='delivery_note_reversal',
                                 reference_id=self.id,
                                 delivery_note=self,
-                                notes=f"Stock reversal for cancelled Delivery Note {self.delivery_note_number}"
+                                notes=f"Stock reversal for cancelled Delivery Note {self.delivery_note_number}",
+                                created_by=user,
                             )
                         else:
                             raise ValidationError(

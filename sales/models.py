@@ -873,7 +873,7 @@ class SalesDeliveryNote(models.Model):
                 self.delivery_note_number = "SDN-00001"
         super().save(*args, **kwargs)
     
-    def update_stock(self):
+    def update_stock(self, user=None):
         """
         Update stock when delivery is marked as delivered (REDUCE stock for sales)
         """
@@ -918,7 +918,8 @@ class SalesDeliveryNote(models.Model):
                         reference_type='sales_delivery_note',
                         reference_id=self.id,
                         delivery_note=self,
-                        notes=f"Stock out from Sales Delivery Note {self.delivery_note_number}"
+                        notes=f"Stock out from Sales Delivery Note {self.delivery_note_number}",
+                        created_by=user,
                     )
 
                 # Mark stock as updated
@@ -926,7 +927,7 @@ class SalesDeliveryNote(models.Model):
                 self.save(update_fields=['stock_updated'])
                 print(f"Sales Delivery Note {self.delivery_note_number} - Stock updated successfully")
     
-    def reverse_stock(self):
+    def reverse_stock(self, user=None):
         """
         Reverse stock update if delivery is cancelled (ADD stock back)
         """
@@ -960,7 +961,8 @@ class SalesDeliveryNote(models.Model):
                             reference_type='sales_delivery_note_reversal',
                             reference_id=self.id,
                             delivery_note=self,
-                            notes=f"Stock reversal for cancelled Sales Delivery Note {self.delivery_note_number}"
+                            notes=f"Stock reversal for cancelled Sales Delivery Note {self.delivery_note_number}",
+                            created_by=user,
                         )
                         
                     except Stock.DoesNotExist:

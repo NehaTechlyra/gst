@@ -302,7 +302,7 @@ def update_stock_from_paid_invoice(inv, user, request):
     delivered_notes = inv.delivery_notes.filter(status='delivered', stock_updated=False).select_related('warehouse')
     for delivery_note in delivered_notes:
         try:
-            delivery_note.update_stock()
+            delivery_note.update_stock(user=user)
             updated = True
         except Exception:
             logger.exception(
@@ -365,7 +365,8 @@ def update_stock_from_paid_invoice(inv, user, request):
                 reference_type='sales_invoice_payment',
                 reference_id=inv.id,
                 delivery_note=None,
-                notes=f"Stock out from Sales Invoice Payment {inv.inv_number}"
+                notes=f"Stock out from Sales Invoice Payment {inv.inv_number}",
+                created_by=user,
             )
             updated = True
 
@@ -15170,7 +15171,7 @@ class SalesDeliveryNoteCreateView(CreateView):
             try:
                 if self.object.status == 'delivered' and is_stock_management_on_delivery(request=self.request):
                     print(f"Calling update_stock() for {self.object.delivery_note_number}")
-                    self.object.update_stock()
+                    self.object.update_stock(user=self.request.user)
                     print(f"Stock updated: {self.object.stock_updated}")
                 update_invoice_payment_status(self.object.sales_invoice)
 
@@ -15336,7 +15337,7 @@ class SalesDeliveryNoteUpdateView(UpdateView):
             # Update stock if status changed to delivered and delivery-based stock management is enabled
             try:
                 if self.object.status == 'delivered' and old_status != 'delivered' and is_stock_management_on_delivery(request=self.request):
-                    self.object.update_stock()
+                    self.object.update_stock(user=self.request.user)
                 update_invoice_payment_status(self.object.sales_invoice)
                 messages.success(
                     self.request,
@@ -15450,7 +15451,7 @@ def sales_delivery_note_mark_delivered(request, pk):
                     delivery_note.status = 'delivered'
                     delivery_note.save()
                     if is_stock_management_on_delivery(request=request):
-                        delivery_note.update_stock()
+                        delivery_note.update_stock(user=request.user)
                     update_invoice_payment_status(delivery_note.sales_invoice)
                 messages.success(
                     request,
@@ -15534,7 +15535,7 @@ def sales_delivery_note_cancel(request, pk):
                     
                     # Reverse stock if it was updated
                     if delivery_note.stock_updated:
-                        delivery_note.reverse_stock()
+                        delivery_note.reverse_stock(user=request.user)
                     update_invoice_payment_status(delivery_note.sales_invoice)
                 
                 messages.success(

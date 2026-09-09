@@ -476,7 +476,11 @@ def add_stock_adjustment(request):
 
             return redirect_with_company('stock_movement_list')
     else:
-        form = StockAdjustmentForm()
+        initial = {}
+        item_id = request.GET.get('item')
+        if item_id:
+            initial['item'] = item_id
+        form = StockAdjustmentForm(initial=initial)
 
     return render(request, 'add_stock_adjustment.html', {'form': form})
 
@@ -560,7 +564,11 @@ def add_stock_transfer(request):
             )
             return redirect_with_company('stock_movement_list')
     else:
-        form = StockTransferForm()
+        initial = {}
+        item_id = request.GET.get('item')
+        if item_id:
+            initial['item'] = item_id
+        form = StockTransferForm(initial=initial)
 
     return render(request, 'add_stock_transfer.html', {'form': form})
 
