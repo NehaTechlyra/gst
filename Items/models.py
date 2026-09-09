@@ -208,6 +208,14 @@ class Item(models.Model):
     verbose_name='Category',
     related_name='items'
     )
+    subcategory = models.ForeignKey(
+    'category.Subcategory',
+    on_delete=models.SET_NULL,
+    null=True,
+    blank=True,
+    verbose_name='Subcategory',
+    related_name='items'
+    )
     item_type = models.ForeignKey(
     'type.Type',
     on_delete=models.SET_NULL,

@@ -33,6 +33,7 @@ urlpatterns = [
     path('add_warehouse/', views.add_warehouse, name='add_warehouse'),
     path('brand_createform/', views.create_brand_ajax, name='create_brand_ajax'),
     path('category_createform/', views.create_category_ajax, name='create_category_ajax'),
+    path('subcategory_createform/', views.create_subcategory_ajax, name='create_subcategory_ajax'),
     path('item_type_createform/', views.create_item_type_ajax, name='create_item_type_ajax'),
     path('warehouse_createform/', views.create_warehouse_ajax, name='create_warehouse_ajax'),
     path('vendor_createform/', views.create_vendor_ajax, name='create_vendor_ajax'),

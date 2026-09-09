@@ -388,6 +388,13 @@ $(document).ready(function() {
           let results = data.map(function(item) {
             return { id: item.id, text: item.name, category_id: item.category_id };
           });
+          if ($('#category_select').val()) {
+            results.push({
+              id: 'new',
+              text: '+ New',
+              isNew: true
+            });
+          }
           return { results: results };
         },
         cache: true
@@ -535,9 +542,18 @@ $(document).ready(function() {
     });
 
     $('#subcategory_select').on('select2:selecting', function(e) {
-      var data = e.params.args.data;
-      if (data.isNew) {
+      var data = (e.params && e.params.args && e.params.args.data) ? e.params.args.data : e.params.data;
+      if (data && data.isNew) {
         e.preventDefault();
+        var categoryId = $('#category_select').val();
+        if (categoryId) {
+          $.get("{% company_path '/Items/subcategory_createform/' %}", { category_id: categoryId }, function(formHtml) {
+            $('#subcategoryCreateModal .modal-body').html(formHtml);
+            $('#subcategoryCreateModal').modal('show');
+            $('#subcategoryCreateModal').find('input[name="subcategory_name"]').val(lastSubcategorySearchTerm);
+          });
+        }
+        $('#subcategory_select').val(null).trigger('change');
       }
     });
 
@@ -1102,6 +1118,35 @@ $(document).on('submit', '#categoryCreateForm', function(e) {
       var errorMsg = errors.category_name ? errors.category_name.join(', ') : 'Error creating category';
       $('#categoryCreateModal .modal-body').prepend(
         '<div class=\"alert alert-danger\">' + errorMsg + '</div>'
+      );
+    }
+  });
+});
+
+$(document).on('submit', '#subcategoryCreateForm', function(e) {
+  e.preventDefault();
+  var $form = $(this);
+
+  $.ajax({
+    method: 'POST',
+    url: "{% company_path '/Items/subcategory_createform/' %}",
+    data: $form.serialize(),
+    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+    success: function(response) {
+      if (response.success) {
+        var modalEl = document.getElementById('subcategoryCreateModal');
+        var modal = bootstrap.Modal.getInstance(modalEl);
+        if (modal) modal.hide();
+
+        var newOption = new Option(response.name, response.id, true, true);
+        $('#subcategory_select').append(newOption).trigger('change');
+      }
+    },
+    error: function(xhr) {
+      var errors = xhr.responseJSON?.errors || {};
+      var errorMessages = Object.values(errors).flat();
+      $('#subcategoryCreateModal .modal-body').prepend(
+        '<div class="alert alert-danger">' + (errorMessages.join(', ') || 'Error creating subcategory') + '</div>'
       );
     }
   });
@@ -1843,6 +1888,23 @@ $(document).on('submit', '#itemTypeCreateForm', function(e) {
         </div>
         <div class="modal-body">
         </div>
+        <div class="modal-footer border-0 pt-1 d-flex">
+          <button type="submit" class="btn btn-primary">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="subcategoryCreateModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content custom-modal-content">
+      <form id="subcategoryCreateForm" method="post" autocomplete="off">
+        <div class="modal-header border-0 pb-1">
+          <h5 class="modal-title fw-semibold">New Subcategory</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body"></div>
         <div class="modal-footer border-0 pt-1 d-flex">
           <button type="submit" class="btn btn-primary">Save</button>
         </div>

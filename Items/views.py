@@ -31,7 +31,7 @@ from Tax.models import Tax, TaxGroup
 from unit.models import Unit
 from brand.models import Brand
 from category.models import Category, Subcategory
-from category.forms import CategoryForm
+from category.forms import CategoryForm, SubcategoryForm
 from type.models import Type
 from type.forms import TypeForm
 from django.views.decorators.http import require_POST
@@ -1785,15 +1785,17 @@ def item_edit(request, pk):
                     if category_obj:
                         category_text = f"{category_obj.category_name}"
 
-                subcategory_id = None
+                subcategory_id = item.subcategory_id
                 subcategory_text = ''
+                if item.subcategory:
+                    subcategory_text = item.subcategory.subcategory_name
                 item_type_id = item.item_type_id
                 item_type_text = ''
                 if item_type_id:
                     item_type_obj = Type.objects.filter(id=item_type_id, status=True).select_related('subcategory').first()
                     if item_type_obj:
                         item_type_text = f"{item_type_obj.type_name}"
-                        if item_type_obj.subcategory:
+                        if not subcategory_id and item_type_obj.subcategory:
                             subcategory_id = item_type_obj.subcategory_id
                             subcategory_text = f"{item_type_obj.subcategory.subcategory_name}"
                 
@@ -2141,7 +2143,7 @@ def item_edit(request, pk):
     brand_text = ''
     category_id = item.category_id
     category_text = ''
-    subcategory_id = None
+    subcategory_id = item.subcategory_id
     subcategory_text = ''
     item_type_id = item.item_type_id
     item_type_text = ''
@@ -2177,11 +2179,13 @@ def item_edit(request, pk):
         category_obj = Category.objects.filter(id=category_id, status=True).first()
         if category_obj:
             category_text = f"{category_obj.category_name} "
+    if item.subcategory:
+        subcategory_text = f"{item.subcategory.subcategory_name} "
     if item_type_id:
         item_type_obj = Type.objects.filter(id=item_type_id, status=True).select_related('subcategory').first()
         if item_type_obj:
             item_type_text = f"{item_type_obj.type_name} "
-            if item_type_obj.subcategory:
+            if not subcategory_id and item_type_obj.subcategory:
                 subcategory_id = item_type_obj.subcategory_id
                 subcategory_text = f"{item_type_obj.subcategory.subcategory_name} "
     # if warehouse_id:
@@ -2617,6 +2621,28 @@ def add_brand(request):
             return JsonResponse({'success': True, 'id': brand.id, 'name': brand.brand_name})
         else:
             return JsonResponse({'success': False, 'errors': form.errors}, status=400)
+    return JsonResponse({'success': False, 'errors': {'__all__': ['Invalid method']}}, status=405)
+
+@login_required
+def create_subcategory_ajax(request):
+    if request.method == 'GET':
+        form = SubcategoryForm(initial={'category': request.GET.get('category_id') or None})
+        return render(request, 'Items/subcategory_create_form.html', {'form': form})
+
+    if request.method == 'POST':
+        form = SubcategoryForm(request.POST)
+        if form.is_valid():
+            subcategory = form.save(commit=False)
+            subcategory.created_by = request.user
+            subcategory.save()
+            return JsonResponse({
+                'success': True,
+                'id': subcategory.id,
+                'name': subcategory.subcategory_name,
+                'category_id': subcategory.category_id,
+            })
+        return JsonResponse({'success': False, 'errors': form.errors}, status=400)
+
     return JsonResponse({'success': False, 'errors': {'__all__': ['Invalid method']}}, status=405)
 
 def add_warehouse(request):
