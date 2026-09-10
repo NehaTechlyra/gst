@@ -4149,7 +4149,7 @@ function loadVendorPreferredItems(vendorId) {
                             <input type="hidden" name="form-${rowIdx}-hsn_code" class="hsn-input" value="${item.hsn_code || ''}">
                         </div>
                     </td>
-<td><input type="text" class="desc" name="form-${rowIdx}-description" value="${item.description || ''}"></td>                    <td><input type="number" class="qty" name="form-${rowIdx}-quantity" value="1" min="0"></td>
+                    <td><input type="text" class="desc" name="form-${rowIdx}-description" value="${item.description || ''}"></td>                    <td><input type="number" class="qty" name="form-${rowIdx}-quantity" value="1" min="0"></td>
                     <td><input type="number" class="price" name="form-${rowIdx}-price" min="0" step="0.0001" value="${documentPrice.toFixed(4)}"></td>
                     <td class="base-price">
                         <input type="text" class="form-control form-control-sm o_price_display" name="form-${rowIdx}-o_price_display" readonly>
