@@ -433,6 +433,7 @@ $(document).ready(function() {
     });
 
     $('#category_select').on('change', function() {
+      $('#subcategory-wrapper').toggle(!!$(this).val());
       $('#subcategory_select').val(null).trigger('change');
       $('#item_type_select').val(null).trigger('change');
     });
@@ -1335,7 +1336,7 @@ $(document).on('submit', '#itemTypeCreateForm', function(e) {
             {% endif %}
          </select>
       </div>
-      <div class="col-md-4">
+      <div class="col-md-4" id="subcategory-wrapper" {% if not category_id %}style="display: none;"{% endif %}>
         <label for="subcategory" class="form-label">Subcategory</label>
         <select class="form-select" name="subcategory" id="subcategory_select" style="width: 100%;">
             <option value="">Choose...</option>
@@ -1353,8 +1354,8 @@ $(document).on('submit', '#itemTypeCreateForm', function(e) {
             {% endif %}
          </select>
       </div>
-    </div>
-    <div class="row mb-2">
+    {% comment %} </div> {% endcomment %}
+    {% comment %} <div class="row mb-2"> {% endcomment %}
       <div class="col-md-4">
         <label for="brcd" class="form-label">Barcode<span class="text-danger">*</span></label>
          <input type="text" class="form-control" name="brcd" id="brcd" value="{% if brcd_value %}{{ brcd_value }}{% elif form.data.brcd %}{{ form.data.brcd }}{% elif item.barcode %}{{ item.barcode }}{% endif %}" required data-original-main-barcode="{% if brcd_value %}{{ brcd_value }}{% elif form.data.brcd %}{{ form.data.brcd }}{% elif item.barcode %}{{ item.barcode }}{% endif %}">
