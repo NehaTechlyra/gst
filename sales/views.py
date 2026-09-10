@@ -6476,7 +6476,7 @@ def update_invoice_status(request, invoice_id):
                 code_to_set = new_status
             allowed_transitions = {
                 'Draft': {'Open'},
-                'Open': {'Open'},
+                'Open': {'Open', 'Closed'},
                 'Sent': {'Open'},
                 'Closed': set(),
             }
@@ -6491,7 +6491,7 @@ def update_invoice_status(request, invoice_id):
             if code_to_set not in allowed_next:
                 return JsonResponse({
                     'success': False,
-                    'error': f"Invalid status transition: {current_status} -> {code_to_set}. Only 'Open' can be set manually; 'Closed' is payment-driven."
+                    'error': f"Invalid status transition: {current_status} -> {code_to_set}."
                 }, status=400)
             invoice.status = code_to_set
             invoice.save()
@@ -11326,6 +11326,12 @@ def invoice_edit(request, pk):
     except Exception:
         readonly = True
     invoice = get_object_or_404(SalesInvoice, pk=pk)
+    if invoice.status == 'Closed' and not readonly:
+        message = 'Closed invoices cannot be edited.'
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({'success': False, 'error': message}, status=400)
+        messages.error(request, message)
+        return redirect_with_company('sales_inv_list')
     SalesInvoiceItemFormSet = modelformset_factory(SalesInvoiceItem, form=SalesInvoiceItemForm, extra=0,can_delete=True)
 
     if request.method == "POST" and not readonly:
@@ -14763,7 +14769,8 @@ def update_invoice_payment_status(inv):
             is_fully_delivered = False
             break
 
-    inv.status = 'Closed' if (is_fully_paid and is_fully_delivered) else 'Open'
+    # if inv.status != 'Closed':
+    #     inv.status = 'Open'
     inv.save(update_fields=['status', 'payment_status'])
 
 
