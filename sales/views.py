@@ -14211,7 +14211,7 @@ def get_customer_unpaid_invoices(request):
         # Get unpaid invoices
         invs = SalesInvoice.objects.filter(
             customer=customer,
-            status__in=['OPEN']
+            payment_status_id__in=[1, 2]
         ).select_related('customer').order_by('-date')
         
         invs_data = []
