@@ -117,7 +117,11 @@
                         <a href="{% url 'bill_detail' po.pk %}" class="btn add-item-btn">View</a>
                     {% endif %}
                     {% if can_edit_purchase_bills %}
-                        <a href="{% url 'bill_edit' po.id %}" class="btn add-item-btn">Edit</a>
+                      {% if po.status == 'Closed' %}
+                        <button type="button" class="btn btn-secondary" disabled title="Closed bills cannot be edited">Edit</button>
+                      {% else %}
+                        <a href="{% if company_code %}{% url 'bill_edit' company_code po.id %}{% else %}{% url 'bill_edit' po.id %}{% endif %}" class="btn add-item-btn">Edit</a>
+                      {% endif %}
                     {% endif %}
                     {% if can_delete_purchase_bills %}
                     <button type="button" class="btn btn-sm delete-btn delete-bill-btn" data-bill-id="{{ po.pk }}" data-bill-number="{{ po.bill_number }}" onclick="if(!confirm('Are you sure you want to delete this bill?')) return false; deleteBill(event);">

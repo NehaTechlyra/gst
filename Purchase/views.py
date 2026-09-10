@@ -4954,6 +4954,12 @@ def bill_edit(request, pk):
     except Exception:
         readonly = True
     bill = get_object_or_404(Bill, pk=pk)
+    if bill.status == 'Closed' and not readonly:
+        message = 'Closed bills cannot be edited.'
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({'success': False, 'error': message}, status=400)
+        messages.error(request, message)
+        return redirect_with_company('bill_list')
     BillItemFormSet = modelformset_factory(BillItem, form=BillItemForm, extra=0,can_delete=True)
 
     def _resolve_bill_item_base_price(item_obj, bill_obj):
@@ -8051,7 +8057,7 @@ def save_payment(request, pk=None):
                 
                 old_status = bill.status
                 if new_total_paid >= bill.total_amount:
-                    bill.status = 'Closed'
+                    bill.status = 'Open'
                     bill.payment_status_id = 3
                 elif new_total_paid > 0:
                     # bill.status = 'Partial'
@@ -8844,7 +8850,7 @@ def update_payment(request, payment_id):
 def update_bill_status(bill):
     """
     Update bill status based on payment + delivery completion.
-    Close bill only when fully paid and fully delivered.
+    Keep the bill open even when fully paid and fully delivered.
     """
     total_paid = BillPaymentAllocation.objects.filter(
         bill=bill
@@ -8868,7 +8874,7 @@ def update_bill_status(bill):
             break
 
     if is_fully_paid and is_fully_delivered:
-        bill.status = 'Closed'
+        bill.status = 'Open'
         bill.payment_status_id = 3  # Paid
         # If this bill originated from a converted purchase order, mark it as billed.
         if bill.order_number_id and bill.order_number.status != 'Billed':
@@ -9551,51 +9557,13 @@ def update_purchase_bill_status(request, bill_id):
                 logger.warning(f"Invalid status '{new_status}' provided. Valid options: {valid_statuses}")
                 return JsonResponse({'success': False, 'error': f'Invalid status. Valid options: {", ".join(valid_statuses)}'}, status=400)
             
-             # Manual status guard: only allow setting Open. Closed is payment-driven.added by neha on 23-2-26
-            if new_status != 'Open':
+            # Manual status changes are allowed between Open and Closed.
+            if new_status not in {'Open', 'Closed'}:
                 return JsonResponse({
                     'success': False,
-                    'error': "Only 'Open' can be set manually. 'Closed' is set when the bill is fully paid."
+                    'error': "Only 'Open' or 'Closed' can be set manually."
                 }, status=400)
 
-            # Check if status is changing to 'Closed' from another status
-            if new_status == 'Closed' and old_status != 'Closed':
-                # Update stock for all items in this bill
-                try:
-                    stock_updated = update_stock_from_bill(bill, request.user, request)
-                    if not stock_updated:
-                        return JsonResponse({
-                            'success': False,
-                            'error': 'Failed to update stock. Please ensure all items have warehouses assigned.'
-                        }, status=400)
-                    
-                    logger.info(f"Stock updated successfully for bill {bill_id}")
-                except Exception as stock_error:
-                    logger.exception(f"Error updating stock for bill {bill_id}: {stock_error}")
-                    return JsonResponse({
-                        'success': False,
-                        'error': f'Error updating stock: {str(stock_error)}'
-                    }, status=500)
-            
-            # Check if status is changing FROM 'Closed' to another status (reversal)
-            elif old_status == 'Closed' and new_status != 'Closed':
-                # Reverse stock changes
-                try:
-                    stock_reversed = reverse_stock_from_bill(bill, request.user)
-                    if not stock_reversed:
-                        return JsonResponse({
-                            'success': False,
-                            'error': 'Failed to reverse stock changes.'
-                        }, status=400)
-                    
-                    logger.info(f"Stock reversed successfully for bill {bill_id}")
-                except Exception as stock_error:
-                    logger.exception(f"Error reversing stock for bill {bill_id}: {stock_error}")
-                    return JsonResponse({
-                        'success': False,
-                        'error': f'Error reversing stock: {str(stock_error)}'
-                    }, status=500)
-                
             bill.status = new_status
             bill.save()
             logger.info(f"Successfully updated bill {bill_id} status to: {new_status}")
