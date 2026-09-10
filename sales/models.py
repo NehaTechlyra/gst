@@ -74,6 +74,7 @@ class SalesQuotation(models.Model):
 
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Draft')
     total_amount = models.DecimalField(default=0, max_digits=12, decimal_places=2)
+    round_off = models.DecimalField(default=Decimal('0.00'), max_digits=12, decimal_places=2)
     
     # Currency fields (matching SalesInvoice)
     fx_rate_to_base = models.DecimalField(
@@ -205,6 +206,7 @@ class SalesOrder(models.Model):
     discount_type = models.CharField(max_length=10, choices=[('percent', 'Percentage'), ('flat', 'Flat Amount')], default='flat')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Draft')
     total_amount = models.DecimalField(default=0, max_digits=12, decimal_places=2)
+    round_off = models.DecimalField(default=Decimal('0.00'), max_digits=12, decimal_places=2)
     fx_rate_to_base = models.DecimalField(
         max_digits=18,
         decimal_places=6,
@@ -873,7 +875,7 @@ class SalesDeliveryNote(models.Model):
                 self.delivery_note_number = "SDN-00001"
         super().save(*args, **kwargs)
     
-    def update_stock(self, user=None):
+    def update_stock(self):
         """
         Update stock when delivery is marked as delivered (REDUCE stock for sales)
         """
@@ -918,8 +920,7 @@ class SalesDeliveryNote(models.Model):
                         reference_type='sales_delivery_note',
                         reference_id=self.id,
                         delivery_note=self,
-                        notes=f"Stock out from Sales Delivery Note {self.delivery_note_number}",
-                        created_by=user,
+                        notes=f"Stock out from Sales Delivery Note {self.delivery_note_number}"
                     )
 
                 # Mark stock as updated
@@ -927,7 +928,7 @@ class SalesDeliveryNote(models.Model):
                 self.save(update_fields=['stock_updated'])
                 print(f"Sales Delivery Note {self.delivery_note_number} - Stock updated successfully")
     
-    def reverse_stock(self, user=None):
+    def reverse_stock(self):
         """
         Reverse stock update if delivery is cancelled (ADD stock back)
         """
@@ -961,8 +962,7 @@ class SalesDeliveryNote(models.Model):
                             reference_type='sales_delivery_note_reversal',
                             reference_id=self.id,
                             delivery_note=self,
-                            notes=f"Stock reversal for cancelled Sales Delivery Note {self.delivery_note_number}",
-                            created_by=user,
+                            notes=f"Stock reversal for cancelled Sales Delivery Note {self.delivery_note_number}"
                         )
                         
                     except Stock.DoesNotExist:

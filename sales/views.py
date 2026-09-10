@@ -302,7 +302,7 @@ def update_stock_from_paid_invoice(inv, user, request):
     delivered_notes = inv.delivery_notes.filter(status='delivered', stock_updated=False).select_related('warehouse')
     for delivery_note in delivered_notes:
         try:
-            delivery_note.update_stock(user=user)
+            delivery_note.update_stock()
             updated = True
         except Exception:
             logger.exception(
@@ -365,8 +365,7 @@ def update_stock_from_paid_invoice(inv, user, request):
                 reference_type='sales_invoice_payment',
                 reference_id=inv.id,
                 delivery_note=None,
-                notes=f"Stock out from Sales Invoice Payment {inv.inv_number}",
-                created_by=user,
+                notes=f"Stock out from Sales Invoice Payment {inv.inv_number}"
             )
             updated = True
 
@@ -479,6 +478,8 @@ def quotation_add(request):
         'tds_tax_master_items': tds_tax_master_items,
         'tcs_tax_master_items': tcs_tax_master_items,
         'show_base_transaction_summary': bool(getattr(resolved_company, 'show_base_transaction_summary', True)),
+        'sales_rounding_method': getattr(resolved_company, 'sales_rounding_method', 'none'),
+        'sales_rounding_increment': getattr(resolved_company, 'sales_rounding_increment', 0),
     })
 
 #updt by neha on 6-02-26 for listing companies
@@ -1825,13 +1826,16 @@ def save_salesquote(request):
                 final_total = Decimal('0.00')
 
             try:
-                posted_grand_total = request.POST.get('grandTotal')
+                posted_grand_total = request.POST.get('unroundedGrandTotal') or request.POST.get('grandTotal')
                 if posted_grand_total not in (None, ''):
-                    quote.total_amount = Decimal(str(posted_grand_total)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+                    raw_total_amount = Decimal(str(posted_grand_total))
                 else:
-                    quote.total_amount = final_total.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+                    raw_total_amount = final_total
             except (InvalidOperation, ValueError, TypeError):
-                quote.total_amount = final_total.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+                raw_total_amount = final_total
+
+            rounding_company = _get_company_for_request(request)
+            quote.total_amount, quote.round_off = apply_sales_rounding(raw_total_amount, rounding_company)
 
             quote.total_amount_base = (
                 Decimal(str(quote.total_amount or 0)) * Decimal(str(quote.fx_rate_to_base or 1))
@@ -5420,9 +5424,45 @@ def quotation_edit(request, pk):
         except Exception:
             messages.error(request, 'You do not have permission to edit Quotations.')
             return redirect_with_company('sales_quote_list')
-        quotation_form = SalesQuotationForm(request.POST, instance=quote, company=company)
+
+        post_data = request.POST.copy()
+        grand_total_value = (post_data.get('unroundedGrandTotal') or post_data.get('grandTotal') or '').strip()
+        grand_discount_raw = (post_data.get('grand-discount-value') or '').strip()
+        posted_discount_type = (post_data.get('discount_type') or '').strip()
+
+        def _coerce_bound_value(field_name, value):
+            if value is None:
+                return ''
+            if hasattr(value, 'pk'):
+                return str(value.pk)
+            if hasattr(value, 'isoformat'):
+                return value.isoformat()
+            if field_name in ('total_amount', 'total_amount_base', 'round_off') and grand_total_value:
+                # Placeholder so the form validates; the real value is computed
+                # from apply_sales_rounding() further below and overwrites this.
+                return grand_total_value
+            return str(value)
+
+        preserved_fields = [
+            'quote_number',
+            'status',
+            'total_amount',
+            'total_amount_base',
+            'discount_value',
+            'discount_type',
+            'round_off',
+        ]
+        for field_name in preserved_fields:
+            if field_name not in post_data:
+                post_data[field_name] = _coerce_bound_value(field_name, getattr(quote, field_name, ''))
+        if grand_discount_raw:
+            post_data['discount_value'] = grand_discount_raw
+        if posted_discount_type:
+            post_data['discount_type'] = posted_discount_type
+
+        quotation_form = SalesQuotationForm(post_data, instance=quote, company=company)
         existing_items_qs = SalesQuotationItem.objects.filter(Sales_quotation=quote)
-        sales_formset = SalesQuotationItemFormSet(request.POST, queryset=existing_items_qs)
+        sales_formset = SalesQuotationItemFormSet(post_data, queryset=existing_items_qs)
 
         if quotation_form.is_valid() and sales_formset.is_valid():
             # Save form but also capture shipping fields from POST
@@ -5450,10 +5490,11 @@ def quotation_edit(request, pk):
                 quote_obj.turnover_tax = Tax.objects.filter(id=turnover_tax_id, tax_type__iexact='TURNOVER').first() if turnover_tax_id else None
             else:
                 quote_obj.turnover_tax = None
-            grand_total = (request.POST.get('grandTotal') or '').strip()
+            grand_total = (request.POST.get('unroundedGrandTotal') or request.POST.get('grandTotal') or '').strip()
             if grand_total:
                 try:
-                    quote_obj.total_amount = Decimal(str(grand_total)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+                    rounding_company = _get_company_for_request(request)
+                    quote_obj.total_amount, quote_obj.round_off = apply_sales_rounding(grand_total, rounding_company)
                     quote_obj.total_amount_base = (
                         quote_obj.total_amount * Decimal(str(quote_obj.fx_rate_to_base or 1))
                     ).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
@@ -5662,6 +5703,8 @@ def quotation_edit(request, pk):
         'tds_tax_master_items': TdsMaster.objects.filter(company=company, is_active=True),
         'tcs_tax_master_items': TcsMaster.objects.filter(company=company, is_active=True),
         'show_base_transaction_summary': bool(getattr(_get_company_for_request(request), 'show_base_transaction_summary', True)),
+        'sales_rounding_method': getattr(_get_company_for_request(request), 'sales_rounding_method', 'none'),
+        'sales_rounding_increment': getattr(_get_company_for_request(request), 'sales_rounding_increment', 0),
     }
     
     return render(request, 'sales/quotation_duplicate.html', context)
@@ -6001,7 +6044,17 @@ def quotation_duplicate(request, pk):
         company_is_india = _is_indian_company_country(company_country)
         post_data = _normalize_item_tax_tokens(post_data, company_is_india)
         
-        total_amount = request.POST.get('grandTotal')
+        raw_total = request.POST.get('unroundedGrandTotal') or request.POST.get('grandTotal')
+        try:
+            raw_total_amount = (
+                Decimal(str(raw_total).strip())
+                if raw_total not in (None, '')
+                else Decimal('0')
+            )
+        except Exception:
+            raw_total_amount = Decimal('0')
+        rounding_company = _get_company_for_request(request)
+        total_amount, rounding_adjustment = apply_sales_rounding(raw_total_amount, rounding_company)
         customer_id = request.POST.get('customer')
         date = request.POST.get('date')
         sales_person_id = request.POST.get('sales_person')
@@ -6051,6 +6104,7 @@ def quotation_duplicate(request, pk):
                 sales_person=sales_person,
                 quote_number=quote_number,
                 total_amount=total_amount,
+                round_off=rounding_adjustment,
                 notes=notes,
                 discount_value=discount_value,
                 discount_type=discount_type,
@@ -6589,6 +6643,8 @@ def order_add(request):
         'tds_tax_master_items': tds_tax_master_items,
         'tcs_tax_master_items': tcs_tax_master_items,
         'show_base_transaction_summary': bool(getattr(_get_company_for_request(request), 'show_base_transaction_summary', True)),
+        'sales_rounding_method': getattr(resolved_company, 'sales_rounding_method', 'none'),
+        'sales_rounding_increment': getattr(resolved_company, 'sales_rounding_increment', 0),
     })
 
 def _extract_line_items(post_data, prd_brcd_map):
@@ -6732,7 +6788,17 @@ def save_salesorder(request):
         company_is_india = _is_indian_company_country(company_country)
         post_data = _normalize_item_tax_tokens(post_data, company_is_india)
 
-        total_amount = request.POST.get('grandTotal')
+        raw_total = request.POST.get('unroundedGrandTotal') or request.POST.get('grandTotal')
+        try:
+            raw_total_amount = (
+                Decimal(str(raw_total).strip())
+                if raw_total not in (None, '')
+                else Decimal('0')
+            )
+        except Exception:
+            raw_total_amount = Decimal('0')
+        rounding_company = _get_company_for_request(request)
+        total_amount, rounding_adjustment = apply_sales_rounding(raw_total_amount, rounding_company)
         customer_id = request.POST.get('customer')
         date = request.POST.get('date')
         sales_person_id = request.POST.get('sales_person')
@@ -6819,6 +6885,7 @@ def save_salesorder(request):
                     sales_person=sales_person,
                     order_number=order_number,
                     total_amount=total_amount,
+                    round_off=rounding_adjustment,
                     notes=notes,
                     discount_value=discount_value,
                     discount_type=discount_type,
@@ -7907,6 +7974,7 @@ def order_edit(request, pk):
             'total_amount_base',
             'discount_value',
             'discount_type',
+            'round_off',
         ]
         for field_name in preserved_fields:
             if field_name not in post_data:
@@ -7962,15 +8030,16 @@ def order_edit(request, pk):
             order_obj.save()
 
             # Update total_amount from grandTotal (the JS-calculated value)
-            grand_total = request.POST.get('grandTotal', '')
+            grand_total = request.POST.get('unroundedGrandTotal') or request.POST.get('grandTotal', '')
             if grand_total:
                 try:
-                    order_obj.total_amount = Decimal(str(grand_total))
+                    rounding_company = _get_company_for_request(request)
+                    order_obj.total_amount, order_obj.round_off = apply_sales_rounding(grand_total, rounding_company)
                     if order_obj.fx_rate_to_base and order_obj.fx_rate_to_base != Decimal('1.000000'):
                         order_obj.total_amount_base = (order_obj.total_amount * order_obj.fx_rate_to_base).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
                     else:
                         order_obj.total_amount_base = order_obj.total_amount
-                    order_obj.save(update_fields=['total_amount', 'total_amount_base'])
+                    order_obj.save(update_fields=['total_amount', 'total_amount_base', 'round_off'])
                 except Exception:
                     pass
 
@@ -8222,6 +8291,8 @@ def order_edit(request, pk):
         'tds_tax_master_items': TdsMaster.objects.filter(company=_get_company_for_request(request), is_active=True),
         'tcs_tax_master_items': TcsMaster.objects.filter(company=_get_company_for_request(request), is_active=True),
         'show_base_transaction_summary': bool(getattr(_get_company_for_request(request), 'show_base_transaction_summary', True)),
+        'sales_rounding_method': getattr(_get_company_for_request(request), 'sales_rounding_method', 'none'),
+        'sales_rounding_increment': getattr(_get_company_for_request(request), 'sales_rounding_increment', 0),
     }
     if readonly:
         for form in sales_formset.forms:
@@ -15171,7 +15242,7 @@ class SalesDeliveryNoteCreateView(CreateView):
             try:
                 if self.object.status == 'delivered' and is_stock_management_on_delivery(request=self.request):
                     print(f"Calling update_stock() for {self.object.delivery_note_number}")
-                    self.object.update_stock(user=self.request.user)
+                    self.object.update_stock()
                     print(f"Stock updated: {self.object.stock_updated}")
                 update_invoice_payment_status(self.object.sales_invoice)
 
@@ -15337,7 +15408,7 @@ class SalesDeliveryNoteUpdateView(UpdateView):
             # Update stock if status changed to delivered and delivery-based stock management is enabled
             try:
                 if self.object.status == 'delivered' and old_status != 'delivered' and is_stock_management_on_delivery(request=self.request):
-                    self.object.update_stock(user=self.request.user)
+                    self.object.update_stock()
                 update_invoice_payment_status(self.object.sales_invoice)
                 messages.success(
                     self.request,
@@ -15451,7 +15522,7 @@ def sales_delivery_note_mark_delivered(request, pk):
                     delivery_note.status = 'delivered'
                     delivery_note.save()
                     if is_stock_management_on_delivery(request=request):
-                        delivery_note.update_stock(user=request.user)
+                        delivery_note.update_stock()
                     update_invoice_payment_status(delivery_note.sales_invoice)
                 messages.success(
                     request,
@@ -15535,7 +15606,7 @@ def sales_delivery_note_cancel(request, pk):
                     
                     # Reverse stock if it was updated
                     if delivery_note.stock_updated:
-                        delivery_note.reverse_stock(user=request.user)
+                        delivery_note.reverse_stock()
                     update_invoice_payment_status(delivery_note.sales_invoice)
                 
                 messages.success(
