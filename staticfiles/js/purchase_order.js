@@ -491,6 +491,13 @@ $(document).off('select2:opening.purchaseCurrencyLock', '#document_currency')
   });
 
 function updateExchangeRate(vendorId, currencyId, date, opts = {}) {
+  // ✅ FIX: return a promise that only resolves once the document currency,
+  // fx rate, table headers/symbols, and existing row prices have all been
+  // refreshed. Callers that need to build new rows (e.g. the vendor
+  // preferred-items loader) can then `await`/`.then()` this instead of
+  // racing it, which is what previously caused new rows to be built with a
+  // stale currency symbol/fx rate while the headers showed the new vendor
+  // currency.
   const company = getCompanyPrefix();
   const url = `/${company}/currencies/api/vendor_rate/`;
   const params = new URLSearchParams();
@@ -498,7 +505,7 @@ function updateExchangeRate(vendorId, currencyId, date, opts = {}) {
   if (currencyId) params.append('currency_id', currencyId);
   if (date) params.append('date', date);
 
-  fetch(`${url}?${params.toString()}`)
+  return fetch(`${url}?${params.toString()}`)
     .then(response => response.json())
     .then(data => {
       if (data.ok) {
@@ -530,9 +537,16 @@ function updateExchangeRate(vendorId, currencyId, date, opts = {}) {
         $('.doc-currency-code').text(data.currency_code);
         refreshCurrencyUi();
 
-        setTimeout(function () {
-          try { refreshPricesFromBase(); } catch (e) { calculateTotals(); }
-        }, 50);
+        // setDocumentCurrencyValue() (above) defers its own header refresh
+        // by one tick and refreshPricesFromBase() below runs after 50ms;
+        // wait for both so the returned promise truly reflects "currency
+        // fully settled" before any caller proceeds.
+        return new Promise(function (resolve) {
+          setTimeout(function () {
+            try { refreshPricesFromBase(); } catch (e) { calculateTotals(); }
+            resolve();
+          }, 50);
+        });
       }
     })
     .catch(error => console.error('Error fetching exchange rate:', error));
@@ -1283,7 +1297,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
   function loadVendorDetails(vendorId) {
     console.log('loadVendorDetails called with vendorId:', vendorId);
-    if (!vendorId) { clearVendor(); return; }
+    // ✅ FIX: return the promise chain so callers (e.g. the preferred-items
+    // loader) can wait until the vendor's currency/fx rate has actually been
+    // applied before they read #document_currency / #fx_rate_to_base.
+    if (!vendorId) { clearVendor(); return Promise.resolve(); }
     const docSel = document.getElementById('document_currency');
     if (docSel) {
       docSel.dataset.userSelected = '0';
@@ -1293,7 +1310,7 @@ document.addEventListener('DOMContentLoaded', function () {
       ? `/${companyPrefix}/purchase/vendor/${vendorId}/detail/`
       : `/purchase/vendor/${vendorId}/detail/`;
     console.log('Fetching vendor details from:', url);
-    fetch(url, {
+    return fetch(url, {
       headers: { 'X-Requested-With': 'XMLHttpRequest' }
     })
       .then(r => {
@@ -1308,8 +1325,10 @@ document.addEventListener('DOMContentLoaded', function () {
         const hasSavedShipping = window.hasSavedShippingData || false;
         console.log('Has saved shipping data:', hasSavedShipping);
 
-        // Pass the flag to fillVendor function
-        fillVendor(data, hasSavedShipping);
+        // Pass the flag to fillVendor function, and propagate its promise
+        // (fillVendor resolves once the currency/fx-rate fetch it triggers
+        // has finished) so the caller truly waits for currency to settle.
+        return fillVendor(data, hasSavedShipping);
       })
       .catch(err => {
         console.error('Error loading vendor details:', err);
@@ -1352,8 +1371,14 @@ document.addEventListener('DOMContentLoaded', function () {
         }); //by adarsh
         if (id) {
           window.applyVendorDefaultPaymentTerms = true;
-          loadVendorDetails(id);
-          loadVendorPreferredItems(id);//added by sree on 19-02-26 fro preferred items
+          // ✅ FIX: wait for the vendor's currency/fx rate to finish loading
+          // (loadVendorDetails now resolves only after that settles) before
+          // building preferred-item rows, so the rows pick up the correct
+          // document currency symbol and fx rate instead of stale ones —
+          // this is what was causing the header/row currency mismatch.
+          loadVendorDetails(id).then(function () {
+            loadVendorPreferredItems(id);//added by sree on 19-02-26 fro preferred items
+          });
         }
       });
 
@@ -3682,14 +3707,22 @@ document.addEventListener('DOMContentLoaded', function () {
       window.initialPurchaseVendorId &&
       currentVendorId === window.initialPurchaseVendorId.toString();
 
+    // ✅ FIX: fillVendor now returns a promise that resolves once the
+    // currency/fx-rate work below has actually finished, so callers (via
+    // loadVendorDetails) can safely wait before doing anything that depends
+    // on the document currency/fx rate, such as building preferred-item rows.
+    let currencyReady;
     if (shouldPreserveInitialFx) {
       applyInitialPurchaseFxState();
-      setTimeout(function () {
-        try { refreshPricesFromBase(); } catch (e) { calculateTotals(); }
-      }, 0);
+      currencyReady = new Promise(function (resolve) {
+        setTimeout(function () {
+          try { refreshPricesFromBase(); } catch (e) { calculateTotals(); }
+          resolve();
+        }, 0);
+      });
     } else {
       const date = $('#id_date').val() || $('input[name="date"]').val();
-      updateExchangeRate(data.id, null, date, { forceDocumentCurrency: true });
+      currencyReady = updateExchangeRate(data.id, null, date, { forceDocumentCurrency: true });
     }
 
     // GST treatment display removed; don't set gstTreatment here.
@@ -3717,6 +3750,8 @@ document.addEventListener('DOMContentLoaded', function () {
         hiddenField.value = properCasedState;
       }
     }
+
+    return currencyReady;
   }
 
   // Place of Supply is now auto-populated from vendor data

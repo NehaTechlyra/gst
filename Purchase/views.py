@@ -12829,6 +12829,7 @@ def get_vendor_preferred_items(request, vendor_id):
             'id': str(item.id) + '_' + (item.barcode or ''),
             'name': item.name,
             'unit': unit_name,
+            'price': o_price,  # base-currency, tax-exclusive price consumed by loadVendorPreferredItems()
             'cost_price': cost_price,
             'o_price': o_price,
             'current_stock': float(current_stock),  # send stock for tooltip
