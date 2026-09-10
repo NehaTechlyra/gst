@@ -261,7 +261,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
   const billStatusTransitionMap = {
     Draft:  ['Open'],
-    Open:   ['Open'],
+    Open:   ['Open', 'Closed'],
     Closed: []
   };
 
@@ -311,12 +311,22 @@ document.addEventListener('DOMContentLoaded', function() {
       formData.append('status', pendingStatus);
       formData.append('csrfmiddlewaretoken', getCookie('csrftoken'));
 
-      fetch("{% url 'update_purchase_bill_status' bill.pk %}", {
+      fetch("{% if company_code %}{% url 'update_purchase_bill_status' company_code bill.pk %}{% else %}{% url 'update_purchase_bill_status' bill.pk %}{% endif %}", {
         method: 'POST', body: formData
       })
       .then(response => {
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-        return response.json();
+        return response.text().then(function(text) {
+          let data;
+          try {
+            data = JSON.parse(text);
+          } catch (parseError) {
+            throw new Error(`HTTP ${response.status}: Server returned a non-JSON response.`);
+          }
+          if (!response.ok) {
+            throw new Error(data.error || `HTTP error! status: ${response.status}`);
+          }
+          return data;
+        });
       })
       .then(data => {
         if (data.success) {
@@ -589,9 +599,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
           <div class="d-flex gap-2">
             {% if can_edit_orders %}
-            <a href="{% url 'bill_edit' bill.pk %}" class="btn btn-primary w-100">
-              <i class="bi bi-pencil me-2"></i>Edit Bill
-            </a>
+              {% if bill.status == 'Closed' %}
+              <button type="button" class="btn btn-secondary w-100" disabled title="Closed bills cannot be edited">
+                <i class="bi bi-pencil me-2"></i>Edit Bill
+              </button>
+              {% else %}
+              <a href="{% if company_code %}{% url 'bill_edit' company_code bill.pk %}{% else %}{% url 'bill_edit' bill.pk %}{% endif %}" class="btn btn-primary w-100">
+                <i class="bi bi-pencil me-2"></i>Edit Bill
+              </a>
+              {% endif %}
             {% endif %}
             {% if can_delete_orders %}
             <form action="{% url 'delete_purchase_order' bill.pk %}" method="post"

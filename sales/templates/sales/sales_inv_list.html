@@ -97,7 +97,11 @@
                         <a href="{% url 'invoice_detail' inv.id %}" class="btn add-item-btn">View</a>
                     {% endif %}
                     {% if can_edit_invoices %}
+                      {% if inv.status == 'Closed' %}
+                        <button type="button" class="btn btn-secondary ms-2" disabled title="Closed invoices cannot be edited">Edit</button>
+                      {% else %}
                         <a href="{% url 'invoice_edit' inv.id %}" class="btn add-item-btn ms-2">Edit</a>
+                      {% endif %}
                     {% endif %}
                     {% if can_delete_invoices %}
                     <button type="button" class="btn btn-sm delete-btn delete-inv-btn" data-inv-id="{{ inv.pk }}" data-inv-number="{{ inv.inv_number }}" onclick="if(!confirm('Are you sure you want to delete this sale?')) return false; deleteInvoice(event);">

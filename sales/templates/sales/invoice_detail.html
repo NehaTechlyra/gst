@@ -300,7 +300,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
   const invoiceStatusTransitionMap = {
     Draft: ['Open'],
-    Open: ['Open'],
+    Open: ['Open', 'Closed'],
     Sent: ['Open'],
     Closed: []
   };
@@ -626,10 +626,16 @@ document.addEventListener('DOMContentLoaded', function() {
 
           <div class="d-flex gap-2">
             {% if can_edit_invoices %}
-            <a href="{% if company_code %}{% url 'invoice_edit' company_code invoice.pk %}{% else %}{% url 'invoice_edit' invoice.pk %}{% endif %}"
-               class="btn btn-primary w-100">
-              <i class="bi bi-pencil me-2"></i>Edit Invoice
-            </a>
+              {% if invoice.status == 'Closed' %}
+              <button type="button" class="btn btn-secondary w-100" disabled title="Closed invoices cannot be edited">
+                <i class="bi bi-pencil me-2"></i>Edit Invoice
+              </button>
+              {% else %}
+              <a href="{% if company_code %}{% url 'invoice_edit' company_code invoice.pk %}{% else %}{% url 'invoice_edit' invoice.pk %}{% endif %}"
+                 class="btn btn-primary w-100">
+                <i class="bi bi-pencil me-2"></i>Edit Invoice
+              </a>
+              {% endif %}
             {% endif %}
             {% if can_delete_invoices %}
             <form action="{% if company_code %}{% url 'delete_sales_inv' company_code invoice.pk %}{% else %}{% url 'delete_sales_inv' invoice.pk %}{% endif %}"
