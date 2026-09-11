@@ -4656,6 +4656,19 @@ def bill_detail(request, pk):
         fx_rate = Decimal('1.000000')
     if fx_rate <= 0:
         fx_rate = Decimal('1.000000')
+
+    # ✅ FIX: when the vendor's currency is the same as the company's base
+    # currency, the document-currency and base-currency figures are
+    # identical, so showing both "Price"/"Price (Base)" columns and both
+    # "Document"/"Base" total columns is pure, confusing duplication. Only
+    # show the base-currency columns when they'd actually differ, matching
+    # the same same-currency detection already used on the add/edit forms
+    # (see shouldHideBaseCurrencyUi() in purchase_order.js).
+    if document_currency_code and company_base_currency_code:
+        show_base_currency_columns = (document_currency_code != company_base_currency_code)
+    else:
+        show_base_currency_columns = abs(fx_rate - Decimal('1')) >= Decimal('0.000001')
+
     tds_tcs_type = (bill.tds_tcs_type or '').strip().lower()
     tds_tcs_amount = Decimal(str(bill.tds_tcs_amount or 0))
     tds_tcs_amount_base = tds_tcs_amount * fx_rate
@@ -4920,6 +4933,7 @@ def bill_detail(request, pk):
         'company_base_currency_symbol': company_base_currency_symbol,
         'company_base_currency_code': company_base_currency_code,
         'fx_rate_to_base': fx_rate,
+        'show_base_currency_columns': show_base_currency_columns,
         'is_fully_paid': is_fully_paid,
         'is_fully_returned': is_fully_returned,
         'bill_payment_allocations': bill_payment_allocations,
