@@ -1459,10 +1459,10 @@ document.addEventListener('DOMContentLoaded', function() {
         <span>Total Discount</span>
         <strong id="discount-amount" class="amount">₹0.00</strong>
       </div>
-      {% if sales_rounding_method|default:'none' != 'none' %}
+      {% if sales_rounding_method|default:'none' != 'none' or quote.round_off %}
       <div class="totals-row">
         <span>Round Off</span>
-        <strong id="round-off-amount" class="amount">{{ company_base_currency_symbol|default:"&#x20B9;" }}0.00</strong>
+        <strong id="round-off-amount" class="amount">{{ company_base_currency_symbol|default:"&#x20B9;" }}{{ quote.round_off|default:0|floatformat:2 }}</strong>
       </div>
       {% endif %}
       <div class="totals-row" style="align-items:center; gap:1rem;">
