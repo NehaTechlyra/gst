@@ -8213,7 +8213,6 @@ def get_vendor_unpaid_bills(request):
         # Get unpaid bills
         bills = Bill.objects.filter(
             vendor=vendor,
-            status__in=['Open', 'Partial'],
             payment_status_id__in=[1, 2]
         ).select_related('vendor', 'payment_term','payment_status').order_by('-date')
         
@@ -8377,7 +8376,7 @@ def get_vendor_info(request):
         # Get count of unpaid bills
         unpaid_bills_count = Bill.objects.filter(
             vendor=vendor,
-            status='Open'
+            payment_status_id__in=[1, 2]
         ).count()
         
         return JsonResponse({
