@@ -2314,6 +2314,8 @@ def quotation_detail(request, pk):
         'base_currency': base_currency,
         'fx_rate': fx_rate,
         'fx_rate_to_base': fx_rate,
+        'sales_rounding_method': getattr(company, 'sales_rounding_method', 'none'),
+        'sales_rounding_increment': getattr(company, 'sales_rounding_increment', 0),
 
     }
     return render(request, 'sales/quotation_detail.html', context)
@@ -2803,7 +2805,8 @@ def generate_quotation_pdf_bytes(pk, request=None):
     # Add round off if it exists
     quote_obj = context.get('quote')
     round_off_value = getattr(quote_obj, 'round_off', None) if quote_obj else None
-    if round_off_value:
+    rounding_method_active = context.get('sales_rounding_method', 'none') != 'none'
+    if round_off_value and rounding_method_active:
         totals_data.append([Paragraph("Round Off", totals_label_style), Paragraph(f"{currency}\u00A0{float(round_off_value):.2f}", amount_style)])
     # Show Turnover Tax row only for companies registered with TURNOVER tax type
     company_tax_type = context.get('company_tax_type', '')
@@ -3427,6 +3430,8 @@ def build_quotation_context(pk, request=None):
         'company_tax_type': company_tax_type,
         'turnover_tax_amount': turnover_tax_amount,
         'turnover_tax_amount_base': turnover_tax_amount_base,
+        'sales_rounding_method': getattr(company, 'sales_rounding_method', 'none'),
+        'sales_rounding_increment': getattr(company, 'sales_rounding_increment', 0),
     }
     return context
 
@@ -4156,7 +4161,8 @@ def generate_order_pdf_bytes(pk, request=None):
     # Add Round Off and Turnover Tax rows when applicable
     order_obj = context.get('order')
     round_off_value = getattr(order_obj, 'round_off', None) if order_obj else None
-    if round_off_value:
+    rounding_method_active = context.get('sales_rounding_method', 'none') != 'none'
+    if round_off_value and rounding_method_active:
         totals_data.append([Paragraph("Round Off", totals_label_style), Paragraph(f"{currency}\u00A0{float(round_off_value):.2f}", amount_style)])
     company_tax_type = context.get('company_tax_type', '')
     turnover_amt = context.get('turnover_tax_amount', Decimal('0.00'))
@@ -4961,7 +4967,8 @@ def generate_invoice_pdf_bytes(pk, request=None):
     # Add Round Off and Turnover Tax rows when applicable
     inv_obj = context.get('invoice')
     round_off_value = getattr(inv_obj, 'round_off', None) if inv_obj else None
-    if round_off_value:
+    rounding_method_active = context.get('sales_rounding_method', 'none') != 'none'
+    if round_off_value and rounding_method_active:
         totals_data.append([Paragraph("Round Off", totals_label_style), Paragraph(f"{currency}\u00A0{float(round_off_value):.2f}{''}", amount_style)])
     company_tax_type = context.get('company_tax_type', '')
     turnover_amt = context.get('turnover_tax_amount', Decimal('0.00'))
@@ -6476,7 +6483,7 @@ def update_invoice_status(request, invoice_id):
                 code_to_set = new_status
             allowed_transitions = {
                 'Draft': {'Open'},
-                'Open': {'Open', 'Closed'},
+                'Open': {'Open'},
                 'Sent': {'Open'},
                 'Closed': set(),
             }
@@ -6491,7 +6498,7 @@ def update_invoice_status(request, invoice_id):
             if code_to_set not in allowed_next:
                 return JsonResponse({
                     'success': False,
-                    'error': f"Invalid status transition: {current_status} -> {code_to_set}."
+                    'error': f"Invalid status transition: {current_status} -> {code_to_set}. Only 'Open' can be set manually; 'Closed' is payment-driven."
                 }, status=400)
             invoice.status = code_to_set
             invoice.save()
@@ -7212,6 +7219,8 @@ def order_detail(request, pk):
         'total_amount_base': order.total_amount_base,
         'company_base_currency_symbol': company_base_currency_symbol,
         'company_base_currency_code': company_base_currency_code,
+        'sales_rounding_method': getattr(company, 'sales_rounding_method', 'none'),
+        'sales_rounding_increment': getattr(company, 'sales_rounding_increment', 0),
     }
 
     return render(request, 'sales/order_detail.html', context)
@@ -7905,6 +7914,8 @@ def build_order_context(pk, request=None):
         'show_logo_in_print': bool(getattr(company, 'show_logo_in_print_pdf', False)) if company else False,
         'company_is_india': company_is_india,
         'company_tax_type': company_tax_type,
+        'sales_rounding_method': getattr(company, 'sales_rounding_method', 'none'),
+        'sales_rounding_increment': getattr(company, 'sales_rounding_increment', 0),
     }
     return context
 
@@ -9822,6 +9833,8 @@ def invoice_detail(request, pk):
         'tds_tcs_type': tds_tcs_type,
         'tds_tcs_amount': tds_tcs_amount,
         'tds_tcs_amount_base': tds_tcs_amount_base,
+        'sales_rounding_method': getattr(company, 'sales_rounding_method', 'none'),
+        'sales_rounding_increment': getattr(company, 'sales_rounding_increment', 0),
     }
 
     return render(request, 'sales/invoice_detail.html', context)
@@ -10306,7 +10319,8 @@ def invoice_pdf_view(request, pk):
         ]
     inv_obj = context.get('invoice')
     round_off_value = getattr(inv_obj, 'round_off', None) if inv_obj else None
-    if round_off_value:
+    rounding_method_active = context.get('sales_rounding_method', 'none') != 'none'
+    if round_off_value and rounding_method_active:
         totals_data.append([Paragraph("Round Off", totals_label_style), Paragraph(f"{currency}\u00A0{float(round_off_value):.2f}", amount_style)])
 
     company_tax_type = context.get('company_tax_type', '')
@@ -10554,6 +10568,8 @@ def build_invoice_context(pk, request=None):
         'show_logo_in_print': bool(getattr(company, 'show_logo_in_print_pdf', False)) if company else False,
         'company_is_india': company_is_india,
         'company_tax_type': company_tax_type,
+        'sales_rounding_method': getattr(company, 'sales_rounding_method', 'none'),
+        'sales_rounding_increment': getattr(company, 'sales_rounding_increment', 0),
     }
     print("items_info",items_info)
     return context
@@ -11326,12 +11342,6 @@ def invoice_edit(request, pk):
     except Exception:
         readonly = True
     invoice = get_object_or_404(SalesInvoice, pk=pk)
-    if invoice.status == 'Closed' and not readonly:
-        message = 'Closed invoices cannot be edited.'
-        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return JsonResponse({'success': False, 'error': message}, status=400)
-        messages.error(request, message)
-        return redirect_with_company('sales_inv_list')
     SalesInvoiceItemFormSet = modelformset_factory(SalesInvoiceItem, form=SalesInvoiceItemForm, extra=0,can_delete=True)
 
     if request.method == "POST" and not readonly:
@@ -14769,8 +14779,7 @@ def update_invoice_payment_status(inv):
             is_fully_delivered = False
             break
 
-    # if inv.status != 'Closed':
-    #     inv.status = 'Open'
+    inv.status = 'Closed' if (is_fully_paid and is_fully_delivered) else 'Open'
     inv.save(update_fields=['status', 'payment_status'])
 
 
@@ -17908,6 +17917,8 @@ def build_performa_context(pk, request=None):
         'tds_tcs_type': tds_tcs_type,
         'tds_tcs_amount': tds_tcs_amount,
         'tds_tcs_amount_base': tds_tcs_amount_base,
+        'sales_rounding_method': getattr(company, 'sales_rounding_method', 'none'),
+        'sales_rounding_increment': getattr(company, 'sales_rounding_increment', 0),
     }
 
 
@@ -18282,7 +18293,8 @@ def generate_performa_invoice_pdf_bytes(pk):
     inv_obj = context.get('invoice')
     # Performa may store round_off on inv object as well
     round_off_value = getattr(inv_obj, 'round_off', None) if inv_obj else None
-    if round_off_value:
+    rounding_method_active = context.get('sales_rounding_method', 'none') != 'none'
+    if round_off_value and rounding_method_active:
         totals_data.append([Paragraph("Round Off", totals_label_style), Paragraph(f"{currency}&nbsp;{Decimal(str(round_off_value)):.2f}", amount_style)])
     company_tax_type = context.get('company_tax_type', '')
     turnover_amt = context.get('turnover_tax_amount', Decimal('0.00'))
@@ -18879,6 +18891,8 @@ def performa_inv_add(request):
         'tds_tax_master_items': tds_tax_master_items,
         'tcs_tax_master_items': tcs_tax_master_items,
         'show_base_transaction_summary': bool(getattr(company, 'show_base_transaction_summary', True)),
+        'sales_rounding_method': getattr(company, 'sales_rounding_method', 'none'),
+        'sales_rounding_increment': getattr(company, 'sales_rounding_increment', 0),
     })
 
 
@@ -18957,6 +18971,8 @@ def performa_invoice_edit(request, pk):
         # — Fetch TDS and TCS for performa_invoice_edit template
         'tds_tax_master_items': TdsMaster.objects.filter(company=company, is_active=True),
         'tcs_tax_master_items': TcsMaster.objects.filter(company=company, is_active=True),
+        'sales_rounding_method': getattr(company, 'sales_rounding_method', 'none'),
+        'sales_rounding_increment': getattr(company, 'sales_rounding_increment', 0),
     })
 
 
@@ -19160,6 +19176,17 @@ def save_performa_invoice(request):
                     prd_brcd_map[prefix] = parts[1]
 
     total_amount = request.POST.get('grandTotal')
+    raw_total = request.POST.get('unroundedGrandTotal') or request.POST.get('grandTotal')
+    try:
+        raw_total_amount = (
+            Decimal(str(raw_total).strip())
+            if raw_total not in (None, '')
+            else Decimal('0')
+        )
+    except Exception:
+        raw_total_amount = Decimal('0')
+    rounding_company = _get_company_for_request(request)
+    total_amount, rounding_adjustment = apply_sales_rounding(raw_total_amount, rounding_company)
     customer_id = request.POST.get('customer')
     date = request.POST.get('date')
     sales_person_id = request.POST.get('sales_person')
@@ -19200,6 +19227,7 @@ def save_performa_invoice(request):
                 performa_invoice.date = date
                 performa_invoice.sales_person = sales_person
                 performa_invoice.total_amount = total_amount
+                performa_invoice.round_off = rounding_adjustment
                 performa_invoice.notes = notes
                 performa_invoice.discount_value = discount_value
                 performa_invoice.discount_type = discount_type
@@ -19227,6 +19255,7 @@ def save_performa_invoice(request):
                     inv_number=inv_number,
                     status='Draft',
                     total_amount=total_amount,
+                    round_off=rounding_adjustment,
                     notes=notes,
                     discount_value=discount_value,
                     discount_type=discount_type,

@@ -300,7 +300,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
   const invoiceStatusTransitionMap = {
     Draft: ['Open'],
-    Open: ['Open', 'Closed'],
+    Open: ['Open'],
     Sent: ['Open'],
     Closed: []
   };
@@ -626,16 +626,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
           <div class="d-flex gap-2">
             {% if can_edit_invoices %}
-              {% if invoice.status == 'Closed' %}
-              <button type="button" class="btn btn-secondary w-100" disabled title="Closed invoices cannot be edited">
-                <i class="bi bi-pencil me-2"></i>Edit Invoice
-              </button>
-              {% else %}
-              <a href="{% if company_code %}{% url 'invoice_edit' company_code invoice.pk %}{% else %}{% url 'invoice_edit' invoice.pk %}{% endif %}"
-                 class="btn btn-primary w-100">
-                <i class="bi bi-pencil me-2"></i>Edit Invoice
-              </a>
-              {% endif %}
+            <a href="{% if company_code %}{% url 'invoice_edit' company_code invoice.pk %}{% else %}{% url 'invoice_edit' invoice.pk %}{% endif %}"
+               class="btn btn-primary w-100">
+              <i class="bi bi-pencil me-2"></i>Edit Invoice
+            </a>
             {% endif %}
             {% if can_delete_invoices %}
             <form action="{% if company_code %}{% url 'delete_sales_inv' company_code invoice.pk %}{% else %}{% url 'delete_sales_inv' invoice.pk %}{% endif %}"
@@ -824,15 +818,12 @@ document.addEventListener('DOMContentLoaded', function() {
               <td>Total Discount</td>
               <td style="text-align:right; color:var(--success);">–{% if document_currency_symbol %}{{ document_currency_symbol }}{{ total_discount_combined|currency_amount:document_currency }}{% else %}{{ company_base_currency_symbol }}{{ total_discount_combined|currency_amount:base_currency }}{% endif %}</td>
               <td style="text-align:right; color:var(--success);">{% if company_base_currency_symbol %}–{{ company_base_currency_symbol }}{{ total_discount_combined_base|currency_amount:base_currency }}{% else %}<span class="text-muted">—</span>{% endif %}</td>
-<<<<<<< HEAD
             </tr>
-            {% if invoice.round_off %}
+            {% if invoice.round_off and sales_rounding_method|default:'none' != 'none' %}
             <tr>
               <td>Round Off</td>
               <td style="text-align:right;">{% if document_currency_symbol %}{{ document_currency_symbol }}{{ invoice.round_off|currency_amount:document_currency }}{% else %}{{ company_base_currency_symbol }}{{ invoice.round_off|currency_amount:base_currency }}{% endif %}</td>
               <td style="text-align:right;">{% if company_base_currency_symbol %}{{ company_base_currency_symbol }}{{ invoice.round_off|currency_amount:base_currency }}{% else %}<span class="text-muted">—</span>{% endif %}</td>
-=======
->>>>>>> a446d3c675ae257f17f0d18432042b44cfa5594c
             </tr>
             {% endif %}
             {% if company_tax_type|default:''|upper == 'TURNOVER' %}

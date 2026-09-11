@@ -1142,6 +1142,7 @@ class PerformaInvoice(models.Model):
     discount_type = models.CharField(max_length=10, choices=[('percent', 'Percentage'), ('flat', 'Flat Amount')], default='flat')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Draft')
     total_amount = models.DecimalField(default=0, max_digits=12, decimal_places=2)
+    round_off = models.DecimalField(default=Decimal('0.00'), max_digits=12, decimal_places=2)
     fx_rate_to_base = models.DecimalField(
         max_digits=18,
         decimal_places=6,

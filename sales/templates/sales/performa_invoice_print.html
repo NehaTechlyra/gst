@@ -176,15 +176,7 @@
         <tr><td class="totals-label">{% if company_tax_type|default:''|upper == 'VAT' or company_tax_type|default:''|upper == 'SALES' or company_tax_type|default:''|upper == 'TURNOVER' %}Tax{% else %}VAT{% endif %}</td><td class="totals-value">{{ document_currency_symbol|default:"Rs." }} {{ total_tax|currency_amount:document_currency }}</td></tr>
       {% endif %}
       {% endif %}
-<<<<<<< HEAD
-      {% if invoice.round_off %}
-=======
-<<<<<<< HEAD
-      {% if invoice.round_off != None %}
-=======
-      {% if invoice.round_off %}
->>>>>>> a446d3c675ae257f17f0d18432042b44cfa5594c
->>>>>>> ccd78cd0892e0a6964e95c787bc3373a2217dc50
+      {% if invoice.round_off and sales_rounding_method|default:'none' != 'none' %}
         <tr><td class="totals-label">Round Off</td><td class="totals-value">{{ document_currency_symbol|default:"Rs." }} {{ invoice.round_off|currency_amount:document_currency }}</td></tr>
       {% endif %}
       {% if company_tax_type|default:''|upper == 'TURNOVER' and turnover_tax_amount and turnover_tax_amount|floatformat:2 != '0.00' %}

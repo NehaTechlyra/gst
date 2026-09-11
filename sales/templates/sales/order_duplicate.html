@@ -1385,10 +1385,12 @@ window.getDocumentCurrencyDecimals = getDocumentCurrencyDecimals;
           <span>Total Discount</span>
           <strong id="discount-amount" class="amount">₹0.00</strong>
         </div>
+        {% if sales_rounding_method|default:'none' != 'none' %}
         <div class="totals-row">
           <span>Round Off</span>
           <strong id="round-off-amount" class="amount">{{ company_base_currency_symbol|default:"&#x20B9;" }}0.00</strong>
         </div>
+        {% endif %}
         <div class="totals-row" style="align-items:center; gap:1rem;">
           <label style="display:flex; align-items:center; gap:0.35rem; white-space: nowrap;">
             <input type="radio" name="tds_tcs_type" style="margin-bottom: 0px;" value="tds" {% if tds_tcs_type|default:'tds' == 'tds' %}checked{% endif %}>
