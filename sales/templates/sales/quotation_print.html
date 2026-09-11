@@ -228,7 +228,7 @@
         </tr>
       {% endif %}
       {% endif %}
-      {% if quote.round_off != None %}
+      {% if quote.round_off and sales_rounding_method|default:'none' != 'none' %}
         <tr>
         <td class="totals-label">Round Off</td>
         <td class="totals-value">{{ document_currency_symbol|default:"Rs." }} {{ quote.round_off|currency_amount:document_currency }}</td>
