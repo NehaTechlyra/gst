@@ -2805,8 +2805,7 @@ def generate_quotation_pdf_bytes(pk, request=None):
     # Add round off if it exists
     quote_obj = context.get('quote')
     round_off_value = getattr(quote_obj, 'round_off', None) if quote_obj else None
-    rounding_method_active = context.get('sales_rounding_method', 'none') != 'none'
-    if round_off_value and rounding_method_active:
+    if round_off_value:
         totals_data.append([Paragraph("Round Off", totals_label_style), Paragraph(f"{currency}\u00A0{float(round_off_value):.2f}", amount_style)])
     # Show Turnover Tax row only for companies registered with TURNOVER tax type
     company_tax_type = context.get('company_tax_type', '')
@@ -4161,8 +4160,7 @@ def generate_order_pdf_bytes(pk, request=None):
     # Add Round Off and Turnover Tax rows when applicable
     order_obj = context.get('order')
     round_off_value = getattr(order_obj, 'round_off', None) if order_obj else None
-    rounding_method_active = context.get('sales_rounding_method', 'none') != 'none'
-    if round_off_value and rounding_method_active:
+    if round_off_value:
         totals_data.append([Paragraph("Round Off", totals_label_style), Paragraph(f"{currency}\u00A0{float(round_off_value):.2f}", amount_style)])
     company_tax_type = context.get('company_tax_type', '')
     turnover_amt = context.get('turnover_tax_amount', Decimal('0.00'))
@@ -4967,8 +4965,7 @@ def generate_invoice_pdf_bytes(pk, request=None):
     # Add Round Off and Turnover Tax rows when applicable
     inv_obj = context.get('invoice')
     round_off_value = getattr(inv_obj, 'round_off', None) if inv_obj else None
-    rounding_method_active = context.get('sales_rounding_method', 'none') != 'none'
-    if round_off_value and rounding_method_active:
+    if round_off_value:
         totals_data.append([Paragraph("Round Off", totals_label_style), Paragraph(f"{currency}\u00A0{float(round_off_value):.2f}{''}", amount_style)])
     company_tax_type = context.get('company_tax_type', '')
     turnover_amt = context.get('turnover_tax_amount', Decimal('0.00'))
@@ -10319,8 +10316,7 @@ def invoice_pdf_view(request, pk):
         ]
     inv_obj = context.get('invoice')
     round_off_value = getattr(inv_obj, 'round_off', None) if inv_obj else None
-    rounding_method_active = context.get('sales_rounding_method', 'none') != 'none'
-    if round_off_value and rounding_method_active:
+    if round_off_value:
         totals_data.append([Paragraph("Round Off", totals_label_style), Paragraph(f"{currency}\u00A0{float(round_off_value):.2f}", amount_style)])
 
     company_tax_type = context.get('company_tax_type', '')
@@ -18293,8 +18289,7 @@ def generate_performa_invoice_pdf_bytes(pk):
     inv_obj = context.get('invoice')
     # Performa may store round_off on inv object as well
     round_off_value = getattr(inv_obj, 'round_off', None) if inv_obj else None
-    rounding_method_active = context.get('sales_rounding_method', 'none') != 'none'
-    if round_off_value and rounding_method_active:
+    if round_off_value:
         totals_data.append([Paragraph("Round Off", totals_label_style), Paragraph(f"{currency}&nbsp;{Decimal(str(round_off_value)):.2f}", amount_style)])
     company_tax_type = context.get('company_tax_type', '')
     turnover_amt = context.get('turnover_tax_amount', Decimal('0.00'))

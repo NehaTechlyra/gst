@@ -819,7 +819,7 @@ document.addEventListener('DOMContentLoaded', function() {
               <td style="text-align:right; color:var(--success);">–{% if document_currency_symbol %}{{ document_currency_symbol }}{{ total_discount_combined|currency_amount:document_currency }}{% else %}{{ company_base_currency_symbol }}{{ total_discount_combined|currency_amount:base_currency }}{% endif %}</td>
               <td style="text-align:right; color:var(--success);">{% if company_base_currency_symbol %}–{{ company_base_currency_symbol }}{{ total_discount_combined_base|currency_amount:base_currency }}{% else %}<span class="text-muted">—</span>{% endif %}</td>
             </tr>
-            {% if invoice.round_off and sales_rounding_method|default:'none' != 'none' %}
+            {% if invoice.round_off %}
             <tr>
               <td>Round Off</td>
               <td style="text-align:right;">{% if document_currency_symbol %}{{ document_currency_symbol }}{{ invoice.round_off|currency_amount:document_currency }}{% else %}{{ company_base_currency_symbol }}{{ invoice.round_off|currency_amount:base_currency }}{% endif %}</td>
