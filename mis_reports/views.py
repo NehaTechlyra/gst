@@ -4,7 +4,7 @@ import traceback
 from decimal import Decimal, InvalidOperation
 
 from django.contrib import messages
-from django.db.models import Count, F, Sum
+from django.db.models import Count, F, Q, Sum
 from django.db.models.functions import Coalesce, TruncMonth
 from django.http import HttpResponse
 from django.shortcuts import render
@@ -377,9 +377,10 @@ def _build_purchase_report(start_date=None, end_date=None, db_alias=None):
     return report
 
 
-def _build_inventory_report(start_date=None, end_date=None):
+def _build_inventory_report(start_date=None, end_date=None, filters=None):
     report = {
         'stock_value': Decimal('0.00'),
+        'item_stock_details': [],
         'low_stock_items': [],
         'out_of_stock_items': [],
         'fast_moving_items': [],
@@ -392,9 +393,42 @@ def _build_inventory_report(start_date=None, end_date=None):
         from stock.models import Stock
         from sales.models import SalesInvoiceItem
 
-        stocks = Stock.objects.filter(status=True, item__status=True).select_related('item', 'warehouse')
+        stocks = Stock.objects.filter(status=True, item__status=True).select_related(
+            'item',
+            'warehouse',
+            'item__category',
+            'item__subcategory',
+            'item__item_type',
+            'item__brand',
+        )
+        filters = filters or {}
+        detail_stocks = stocks
+        if start_date and end_date:
+            detail_stocks = detail_stocks.filter(
+                Q(created_at__date__range=(start_date, end_date))
+                | Q(updated_at__date__range=(start_date, end_date))
+            )
+        elif start_date:
+            detail_stocks = detail_stocks.filter(
+                Q(created_at__date__gte=start_date) | Q(updated_at__date__gte=start_date)
+            )
+        elif end_date:
+            detail_stocks = detail_stocks.filter(
+                Q(created_at__date__lte=end_date) | Q(updated_at__date__lte=end_date)
+            )
+        if filters.get('category'):
+            detail_stocks = detail_stocks.filter(item__category_id=filters['category'])
+        if filters.get('subcategory'):
+            detail_stocks = detail_stocks.filter(item__subcategory_id=filters['subcategory'])
+        if filters.get('item_type'):
+            detail_stocks = detail_stocks.filter(item__item_type_id=filters['item_type'])
+        if filters.get('brand'):
+            detail_stocks = detail_stocks.filter(item__brand_id=filters['brand'])
+        if filters.get('warehouse'):
+            detail_stocks = detail_stocks.filter(warehouse_id=filters['warehouse'])
         if not stocks.exists():
             return report
+        detail_stock_ids = set(detail_stocks.values_list('pk', flat=True))
 
         product_stats = {}
         warehouse_stats = {}
@@ -408,9 +442,20 @@ def _build_inventory_report(start_date=None, end_date=None):
             report['stock_value'] += stock_value
 
             product_id = item.id
-            category_name = item.category.name if item.category_id else 'Uncategorized'
+            category_name = item.category.category_name  if item.category_id else 'Uncategorized'
             warehouse_name = stock.warehouse.warehouse_name if stock.warehouse_id else 'Unknown'
-
+            if stock.pk in detail_stock_ids:
+                report['item_stock_details'].append({
+                    'item_name': item.name,
+                    'quantity': quantity,
+                    'warehouse_name': warehouse_name,
+                    'category_name': category_name,
+                    'subcategory_name': item.subcategory.subcategory_name if item.subcategory_id else 'Uncategorized',
+                    'type_name': item.item_type.type_name if item.item_type_id else 'Unspecified',
+                    'brand_name': item.brand.brand_name if item.brand_id else 'Unbranded',
+                    'stock_value': stock_value,
+                })
+            print(f"Processing stock for item: {item.name}, quantity: {quantity}, stock_value: {stock_value}, warehouse: {warehouse_name}, category: {category_name}", flush=True)
             if product_id not in product_stats:
                 product_stats[product_id] = {
                     'item_name': item.name,
@@ -474,10 +519,40 @@ def _build_inventory_report(start_date=None, end_date=None):
 
         report['warehouse_summary'] = sorted(warehouse_stats.values(), key=lambda x: x['warehouse_name'])
         report['category_summary'] = sorted(category_stats.values(), key=lambda x: x['category_name'])
-    except Exception:
-        pass
+        report['item_stock_details'].sort(key=lambda x: (x['item_name'].lower(), x['warehouse_name'].lower()))
+    except Exception as e:
+        import traceback
+        print(f"[inventory_report] ERROR: {e}", flush=True)
+        traceback.print_exc()
+
+    print(f"[inventory_report] FINAL warehouse_summary: {report['warehouse_summary']}", flush=True)
+    print(f"[inventory_report] FINAL category_summary: {report['category_summary']}", flush=True)
 
     return report
+
+
+def _inventory_filter_options():
+    from brand.models import Brand
+    from category.models import Category, Subcategory
+    from type.models import Type
+    from warehouse.models import Warehouse
+
+    return {
+        'categories': Category.objects.filter(status=True).order_by('category_name'),
+        'subcategories': Subcategory.objects.filter(status=True).order_by('subcategory_name'),
+        'item_types': Type.objects.filter(status=True).order_by('type_name'),
+        'brands': Brand.objects.filter(status=True).order_by('brand_name'),
+        'warehouses': Warehouse.objects.filter(status=True).order_by('warehouse_name'),
+    }
+
+
+def _inventory_filter_values(request):
+    values = {}
+    for name in ('category', 'subcategory', 'item_type', 'brand', 'warehouse'):
+        value = (request.GET.get(name) or '').strip()
+        if value.isdigit():
+            values[name] = int(value)
+    return values
 
 
 def _build_finance_report(start_date=None, end_date=None):
@@ -780,11 +855,13 @@ def inventory_report(request, company_code=None):
         return redirect_with_company(request, 'mis_reports_dashboard')
 
     start_date, end_date, period = parse_date_range_from_request(request)
-    report_data = _build_inventory_report(start_date, end_date)
+    inventory_filters = _inventory_filter_values(request)
+    report_data = _build_inventory_report(start_date, end_date, inventory_filters)
     export_query_string = build_export_query_string({
         'period': period,
         'start_date': start_date.strftime('%Y-%m-%d') if start_date else '',
         'end_date': end_date.strftime('%Y-%m-%d') if end_date else '',
+        **inventory_filters,
     })
 
     return render(request, 'mis_reports/inventory_report.html', {
@@ -793,6 +870,8 @@ def inventory_report(request, company_code=None):
         'start_date': start_date,
         'end_date': end_date,
         'report': report_data,
+        'inventory_filters': inventory_filters,
+        'inventory_filter_options': _inventory_filter_options(),
         'can_export': getattr(request.user, 'is_superuser', False) or can_export(request.user),
         'export_query_string': export_query_string,
     })
@@ -804,7 +883,8 @@ def inventory_report_export_csv(request, company_code=None):
         return redirect_with_company(request, 'mis_reports_dashboard')
 
     start_date, end_date, period = parse_date_range_from_request(request)
-    report_data = _build_inventory_report(start_date, end_date)
+    inventory_filters = _inventory_filter_values(request)
+    report_data = _build_inventory_report(start_date, end_date, inventory_filters)
 
     response = HttpResponse(content_type='text/csv; charset=utf-8')
     response['Content-Disposition'] = 'attachment; filename="mis_inventory_report.csv"'
