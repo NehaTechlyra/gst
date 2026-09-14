@@ -4656,6 +4656,19 @@ def bill_detail(request, pk):
         fx_rate = Decimal('1.000000')
     if fx_rate <= 0:
         fx_rate = Decimal('1.000000')
+
+    # ✅ FIX: when the vendor's currency is the same as the company's base
+    # currency, the document-currency and base-currency figures are
+    # identical, so showing both "Price"/"Price (Base)" columns and both
+    # "Document"/"Base" total columns is pure, confusing duplication. Only
+    # show the base-currency columns when they'd actually differ, matching
+    # the same same-currency detection already used on the add/edit forms
+    # (see shouldHideBaseCurrencyUi() in purchase_order.js).
+    if document_currency_code and company_base_currency_code:
+        show_base_currency_columns = (document_currency_code != company_base_currency_code)
+    else:
+        show_base_currency_columns = abs(fx_rate - Decimal('1')) >= Decimal('0.000001')
+
     tds_tcs_type = (bill.tds_tcs_type or '').strip().lower()
     tds_tcs_amount = Decimal(str(bill.tds_tcs_amount or 0))
     tds_tcs_amount_base = tds_tcs_amount * fx_rate
@@ -4670,15 +4683,19 @@ def bill_detail(request, pk):
         except Exception:
             saved_base_dec = Decimal('0.0000')
 
+        # ✅ FIX: trust a properly saved base price outright (see matching fix
+        # in bill_edit's copy of this helper) instead of discarding it in
+        # favor of the item's live master cost price whenever it happens to
+        # agree with price*fx — the common, correct case.
+        if saved_base_dec > 0:
+            return saved_base_dec
+
         try:
             doc_price_dec = Decimal(str(getattr(item_obj, 'price', 0) or 0))
         except Exception:
             doc_price_dec = Decimal('0.0000')
 
         derived_from_doc = (doc_price_dec * current_fx_rate).quantize(Decimal('0.01'))
-
-        if saved_base_dec > 0 and abs(saved_base_dec - derived_from_doc) > Decimal('0.01'):
-            return saved_base_dec
 
         if getattr(bill_obj, 'order_number_id', None):
             linked_order_item = (
@@ -4697,6 +4714,9 @@ def bill_detail(request, pk):
                 except Exception:
                     pass
 
+        if derived_from_doc > 0:
+            return derived_from_doc
+
         try:
             product_cost = Decimal(str(getattr(item_obj.product, 'cost_price', 0) or 0))
         except Exception:
@@ -4704,10 +4724,6 @@ def bill_detail(request, pk):
         if product_cost > 0:
             return product_cost
 
-        if saved_base_dec > 0:
-            return saved_base_dec
-        if derived_from_doc > 0:
-            return derived_from_doc
         return Decimal('0.0000')
 
     def _to_base(amount):
@@ -4917,6 +4933,7 @@ def bill_detail(request, pk):
         'company_base_currency_symbol': company_base_currency_symbol,
         'company_base_currency_code': company_base_currency_code,
         'fx_rate_to_base': fx_rate,
+        'show_base_currency_columns': show_base_currency_columns,
         'is_fully_paid': is_fully_paid,
         'is_fully_returned': is_fully_returned,
         'bill_payment_allocations': bill_payment_allocations,
@@ -4965,17 +4982,29 @@ def bill_edit(request, pk):
     def _resolve_bill_item_base_price(item_obj, bill_obj):
         zero_values = {None, '', 0, Decimal('0.00'), Decimal('0.0000')}
         try:
+            saved_base = getattr(item_obj, 'o_price', None)
+            saved_base_dec = Decimal(str(saved_base)) if saved_base not in zero_values else Decimal('0.0000')
+        except Exception:
+            saved_base_dec = Decimal('0.0000')
+
+        # ✅ FIX: a properly saved base price (o_price) is the accurate
+        # historical record of what was actually billed for this line, so it
+        # should always be trusted outright once it exists — never
+        # second-guessed against the item's *current* master cost price,
+        # which can legitimately drift (get repriced) long after this bill
+        # was created. The previous logic only trusted this value when it
+        # *disagreed* with price*fx, which meant the common, perfectly
+        # consistent case fell through to the live product cost price below
+        # and silently replaced the correct saved price on every reload.
+        if saved_base_dec > 0:
+            return saved_base_dec
+
+        try:
             current_fx_rate = Decimal(str(getattr(bill_obj, 'fx_rate_to_base', None) or '1.000000'))
         except Exception:
             current_fx_rate = Decimal('1.000000')
         if current_fx_rate <= 0:
             current_fx_rate = Decimal('1.000000')
-
-        try:
-            saved_base = getattr(item_obj, 'o_price', None)
-            saved_base_dec = Decimal(str(saved_base)) if saved_base not in zero_values else Decimal('0.0000')
-        except Exception:
-            saved_base_dec = Decimal('0.0000')
 
         try:
             doc_price_dec = Decimal(str(getattr(item_obj, 'price', 0) or 0))
@@ -4984,9 +5013,11 @@ def bill_edit(request, pk):
 
         derived_from_doc = (doc_price_dec * current_fx_rate).quantize(Decimal('0.01'))
 
-        if saved_base_dec > 0 and abs(saved_base_dec - derived_from_doc) > Decimal('0.01'):
-            return saved_base_dec
-
+        # Only reached when o_price was never saved (e.g. legacy bills from
+        # before this field existed). Try to recover the best approximation
+        # available, in order of accuracy: a linked PO's own saved price,
+        # then this bill's own price*fx, then finally the item's current
+        # master cost price as a last resort.
         if getattr(bill_obj, 'order_number_id', None):
             linked_order_item = (
                 PurchaseOrderItem.objects
@@ -5004,6 +5035,9 @@ def bill_edit(request, pk):
                 except Exception:
                     pass
 
+        if derived_from_doc > 0:
+            return derived_from_doc
+
         try:
             product_cost = Decimal(str(getattr(item_obj.product, 'cost_price', 0) or 0))
         except Exception:
@@ -5011,10 +5045,6 @@ def bill_edit(request, pk):
         if product_cost > 0:
             return product_cost
 
-        if saved_base_dec > 0:
-            return saved_base_dec
-        if derived_from_doc > 0:
-            return derived_from_doc
         return Decimal('0.0000')
 
     if request.method == "POST"and not readonly:
