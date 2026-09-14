@@ -4,7 +4,7 @@ import traceback
 from decimal import Decimal, InvalidOperation
 
 from django.contrib import messages
-from django.db.models import Count, F, Q, Sum
+from django.db.models import Count, F, Sum
 from django.db.models.functions import Coalesce, TruncMonth
 from django.http import HttpResponse
 from django.shortcuts import render
@@ -218,13 +218,15 @@ def dashboard(request, company_code=None):
     })
 
 
-def _build_sales_report(start_date=None, end_date=None, db_alias=None):
+def _build_sales_report(start_date=None, end_date=None, db_alias=None, filters=None):
     logger.info('Building sales MIS report: start_date=%s, end_date=%s', start_date, end_date)
     db_alias = db_alias or get_current_db() or 'default'
+    filters = filters or {}
     report = {
         'total_sales': Decimal('0.00'),
         'invoice_count': 0,
         'quotation_count': 0,
+        'sales_invoices': [],
         'top_customers': [],
         'top_items': [],
         'monthly_trend': [],
@@ -237,10 +239,39 @@ def _build_sales_report(start_date=None, end_date=None, db_alias=None):
         invoices = safe_date_filter(
             SalesInvoice.objects.using(db_alias), 'date', start_date, end_date
         )
+        if filters.get('customer'):
+            invoices = invoices.filter(customer_id=filters['customer'])
+        if filters.get('sales_person'):
+            invoices = invoices.filter(sales_person_id=filters['sales_person'])
+        if filters.get('payment_status'):
+            invoices = invoices.filter(payment_status_id=filters['payment_status'])
+        item_filters = {
+            'product_id': filters.get('item'),
+            'product__category_id': filters.get('category'),
+            'product__subcategory_id': filters.get('subcategory'),
+            'product__item_type_id': filters.get('item_type'),
+            'product__brand_id': filters.get('brand'),
+        }
+        item_filters = {key: value for key, value in item_filters.items() if value}
+        if item_filters:
+            matching_invoice_ids = SalesInvoiceItem.objects.using(db_alias).filter(
+                **item_filters
+            ).values('sales_inv_id')
+            invoices = invoices.filter(pk__in=matching_invoice_ids)
         report['invoice_count'] = invoices.count()
         report['total_sales'] = invoices.aggregate(
             total=Coalesce(Sum('total_amount'), Decimal('0.00'))
         )['total'] or Decimal('0.00')
+
+        for invoice in invoices.select_related('customer', 'payment_status', 'sales_person').order_by('-date', '-pk'):
+            report['sales_invoices'].append({
+                'invoice_number': invoice.inv_number,
+                'customer_name': _customer_display_name(invoice.customer),
+                'sales_person': invoice.sales_person.name if invoice.sales_person else 'Unassigned',
+                'date': invoice.date,
+                'amount': invoice.total_amount or Decimal('0.00'),
+                'payment_status': str(invoice.payment_status) if invoice.payment_status else 'Not Paid',
+            })
 
         report['quotation_count'] = safe_date_filter(
             SalesQuotation.objects.using(db_alias), 'date', start_date, end_date
@@ -304,11 +335,121 @@ def _build_sales_report(start_date=None, end_date=None, db_alias=None):
     return report
 
 
+def _sales_filter_options(db_alias=None):
+    from Items.models import Item
+    from Purchase.models import PaymentStatus
+    from brand.models import Brand
+    from category.models import Category, Subcategory
+    from customer.models import Customer
+    from sales.models import SalesPerson
+    from type.models import Type
+
+    db_alias = db_alias or get_current_db() or 'default'
+    return {
+        'items': Item.objects.using(db_alias).filter(status=True).order_by('name'),
+        'categories': Category.objects.using(db_alias).filter(status=True).order_by('category_name'),
+        'subcategories': Subcategory.objects.using(db_alias).filter(status=True).order_by('subcategory_name'),
+        'item_types': Type.objects.using(db_alias).filter(status=True).order_by('type_name'),
+        'brands': Brand.objects.using(db_alias).filter(status=True).order_by('brand_name'),
+        'customers': Customer.objects.using(db_alias).order_by('company_name', 'first_name', 'last_name'),
+        'sales_persons': SalesPerson.objects.using(db_alias).order_by('name'),
+        'payment_statuses': PaymentStatus.objects.using(db_alias).order_by('name'),
+    }
+
+
+def _sales_filter_values(request):
+    values = {}
+    for name in ('customer', 'sales_person', 'payment_status', 'item', 'category', 'subcategory', 'item_type', 'brand'):
+        value = (request.GET.get(name) or '').strip()
+        if value.isdigit():
+            values[name] = int(value)
+    return values
+
+
+def _build_sales_dimension_report(start_date=None, end_date=None, db_alias=None, dimension='customer', filters=None):
+    db_alias = db_alias or get_current_db() or 'default'
+    filters = filters or {}
+    report = {'invoice_count': 0, 'total_sales': Decimal('0.00'), 'sales_invoices': []}
+
+    try:
+        from sales.models import SalesInvoice, SalesInvoiceItem
+
+        invoices = safe_date_filter(
+            SalesInvoice.objects.using(db_alias), 'date', start_date, end_date
+        )
+        if dimension == 'customer' and filters.get('customer'):
+            invoices = invoices.filter(customer_id=filters['customer'])
+        if dimension == 'salesperson' and filters.get('sales_person'):
+            invoices = invoices.filter(sales_person_id=filters['sales_person'])
+
+        item_filters = {
+            'product_id': filters.get('item'),
+            'product__category_id': filters.get('category'),
+            'product__subcategory_id': filters.get('subcategory'),
+            'product__item_type_id': filters.get('item_type'),
+            'product__brand_id': filters.get('brand'),
+        }
+        item_filters = {key: value for key, value in item_filters.items() if value}
+        if dimension == 'item' and item_filters:
+            matching_invoice_ids = SalesInvoiceItem.objects.using(db_alias).filter(
+                **item_filters
+            ).values('sales_inv_id')
+            invoices = invoices.filter(pk__in=matching_invoice_ids)
+
+        report['invoice_count'] = invoices.count()
+        report['total_sales'] = invoices.aggregate(
+            total=Coalesce(Sum('total_amount'), Decimal('0.00'))
+        )['total'] or Decimal('0.00')
+
+        if dimension == 'item':
+            invoice_items = SalesInvoiceItem.objects.using(db_alias).filter(
+                sales_inv__in=invoices
+            ).select_related(
+                'sales_inv', 'sales_inv__payment_status', 'product',
+                'product__category', 'product__subcategory',
+                'product__item_type', 'product__brand',
+            ).order_by('-sales_inv__date', '-sales_inv_id', 'pk')
+            if item_filters:
+                invoice_items = invoice_items.filter(**item_filters)
+            for invoice_item in invoice_items:
+                invoice = invoice_item.sales_inv
+                product = invoice_item.product
+                report['sales_invoices'].append({
+                    'invoice_number': invoice.inv_number,
+                    'date': invoice.date,
+                    'amount': invoice.total_amount or Decimal('0.00'),
+                    'payment_status': str(invoice.payment_status) if invoice.payment_status else 'Not Paid',
+                    'item_name': product.name if product else 'Unknown',
+                    'category_name': product.category.category_name if product and product.category_id else 'Uncategorized',
+                    'subcategory_name': product.subcategory.subcategory_name if product and product.subcategory_id else 'Uncategorized',
+                    'type_name': product.item_type.type_name if product and product.item_type_id else 'Unspecified',
+                    'brand_name': product.brand.brand_name if product and product.brand_id else 'Unbranded',
+                })
+        else:
+            for invoice in invoices.select_related('payment_status').order_by('-date', '-pk'):
+                row = {
+                    'invoice_number': invoice.inv_number,
+                    'date': invoice.date,
+                    'amount': invoice.total_amount or Decimal('0.00'),
+                    'payment_status': str(invoice.payment_status) if invoice.payment_status else 'Not Paid',
+                }
+                if dimension == 'customer':
+                    row['customer_name'] = _customer_display_name(invoice.customer)
+                else:
+                    row['sales_person'] = invoice.sales_person.name if invoice.sales_person else 'Unassigned'
+                report['sales_invoices'].append(row)
+    except Exception:
+        logger.exception('Failed to build sales %s report', dimension)
+
+    return report
+
+
 def _build_purchase_report(start_date=None, end_date=None, db_alias=None):
     db_alias = db_alias or get_current_db() or 'default'
     report = {
         'total_purchases': Decimal('0.00'),
         'purchase_count': 0,
+        'bills': [],
         'top_vendors': [],
         'top_items': [],
         'monthly_trend': [],
@@ -323,6 +464,15 @@ def _build_purchase_report(start_date=None, end_date=None, db_alias=None):
         report['total_purchases'] = bills.aggregate(
             total=Coalesce(Sum('total_amount'), Decimal('0.00'))
         )['total'] or Decimal('0.00')
+
+        for bill in bills.select_related('vendor', 'payment_status').order_by('-date', '-pk'):
+            report['bills'].append({
+                'bill_number': bill.bill_number,
+                'vendor_name': str(bill.vendor) if bill.vendor else 'Unknown',
+                'date': bill.date,
+                'amount': bill.total_amount or Decimal('0.00'),
+                'payment_status': str(bill.payment_status) if bill.payment_status else 'Not Paid',
+            })
 
         vendor_rows = bills.filter(vendor__isnull=False).values(
             'vendor',
@@ -377,6 +527,103 @@ def _build_purchase_report(start_date=None, end_date=None, db_alias=None):
     return report
 
 
+def _purchase_filter_options(db_alias=None):
+    from Items.models import Item
+    from Purchase.models import Vendor
+    from brand.models import Brand
+    from category.models import Category, Subcategory
+    from type.models import Type
+
+    db_alias = db_alias or get_current_db() or 'default'
+    return {
+        'vendors': Vendor.objects.using(db_alias).order_by('company_name', 'first_name', 'last_name'),
+        'items': Item.objects.using(db_alias).filter(status=True).order_by('name'),
+        'categories': Category.objects.using(db_alias).filter(status=True).order_by('category_name'),
+        'subcategories': Subcategory.objects.using(db_alias).filter(status=True).order_by('subcategory_name'),
+        'item_types': Type.objects.using(db_alias).filter(status=True).order_by('type_name'),
+        'brands': Brand.objects.using(db_alias).filter(status=True).order_by('brand_name'),
+    }
+
+
+def _purchase_filter_values(request):
+    values = {}
+    for name in ('vendor', 'item', 'category', 'subcategory', 'item_type', 'brand'):
+        value = (request.GET.get(name) or '').strip()
+        if value.isdigit():
+            values[name] = int(value)
+    return values
+
+
+def _build_purchase_dimension_report(start_date=None, end_date=None, db_alias=None, dimension='vendor', filters=None):
+    db_alias = db_alias or get_current_db() or 'default'
+    filters = filters or {}
+    report = {'bill_count': 0, 'total_purchases': Decimal('0.00'), 'bills': []}
+
+    try:
+        from Purchase.models import Bill, BillItem
+
+        bills = safe_date_filter(Bill.objects.using(db_alias), 'date', start_date, end_date)
+        if dimension == 'vendor' and filters.get('vendor'):
+            bills = bills.filter(vendor_id=filters['vendor'])
+
+        item_filters = {
+            'product_id': filters.get('item'),
+            'product__category_id': filters.get('category'),
+            'product__subcategory_id': filters.get('subcategory'),
+            'product__item_type_id': filters.get('item_type'),
+            'product__brand_id': filters.get('brand'),
+        }
+        item_filters = {key: value for key, value in item_filters.items() if value}
+        if dimension == 'item' and item_filters:
+            matching_bill_ids = BillItem.objects.using(db_alias).filter(
+                **item_filters
+            ).values('bill_id')
+            bills = bills.filter(pk__in=matching_bill_ids)
+
+        report['bill_count'] = bills.count()
+        report['total_purchases'] = bills.aggregate(
+            total=Coalesce(Sum('total_amount'), Decimal('0.00'))
+        )['total'] or Decimal('0.00')
+
+        if dimension == 'item':
+            bill_items = BillItem.objects.using(db_alias).filter(
+                bill__in=bills
+            ).select_related(
+                'bill', 'bill__payment_status', 'bill__vendor', 'product',
+                'product__category', 'product__subcategory',
+                'product__item_type', 'product__brand',
+            ).order_by('-bill__date', '-bill_id', 'pk')
+            if item_filters:
+                bill_items = bill_items.filter(**item_filters)
+            for bill_item in bill_items:
+                bill = bill_item.bill
+                product = bill_item.product
+                report['bills'].append({
+                    'bill_number': bill.bill_number,
+                    'date': bill.date,
+                    'amount': bill.total_amount or Decimal('0.00'),
+                    'payment_status': str(bill.payment_status) if bill.payment_status else 'Not Paid',
+                    'item_name': product.name if product else 'Unknown',
+                    'category_name': product.category.category_name if product and product.category_id else 'Uncategorized',
+                    'subcategory_name': product.subcategory.subcategory_name if product and product.subcategory_id else 'Uncategorized',
+                    'type_name': product.item_type.type_name if product and product.item_type_id else 'Unspecified',
+                    'brand_name': product.brand.brand_name if product and product.brand_id else 'Unbranded',
+                })
+        else:
+            for bill in bills.select_related('vendor', 'payment_status').order_by('-date', '-pk'):
+                report['bills'].append({
+                    'bill_number': bill.bill_number,
+                    'vendor_name': str(bill.vendor) if bill.vendor else 'Unknown',
+                    'date': bill.date,
+                    'amount': bill.total_amount or Decimal('0.00'),
+                    'payment_status': str(bill.payment_status) if bill.payment_status else 'Not Paid',
+                })
+    except Exception:
+        logger.exception('Failed to build purchase %s report', dimension)
+
+    return report
+
+
 def _build_inventory_report(start_date=None, end_date=None, filters=None):
     report = {
         'stock_value': Decimal('0.00'),
@@ -390,7 +637,7 @@ def _build_inventory_report(start_date=None, end_date=None, filters=None):
     }
 
     try:
-        from stock.models import Stock
+        from stock.models import Stock, StockMovement
         from sales.models import SalesInvoiceItem
 
         stocks = Stock.objects.filter(status=True, item__status=True).select_related(
@@ -402,40 +649,93 @@ def _build_inventory_report(start_date=None, end_date=None, filters=None):
             'item__brand',
         )
         filters = filters or {}
-        detail_stocks = stocks
-        if start_date and end_date:
-            detail_stocks = detail_stocks.filter(
-                Q(created_at__date__range=(start_date, end_date))
-                | Q(updated_at__date__range=(start_date, end_date))
-            )
-        elif start_date:
-            detail_stocks = detail_stocks.filter(
-                Q(created_at__date__gte=start_date) | Q(updated_at__date__gte=start_date)
-            )
-        elif end_date:
-            detail_stocks = detail_stocks.filter(
-                Q(created_at__date__lte=end_date) | Q(updated_at__date__lte=end_date)
-            )
+        if end_date:
+            stocks = stocks.filter(created_at__date__lte=end_date)
+        if filters.get('item'):
+            stocks = stocks.filter(item_id=filters['item'])
         if filters.get('category'):
-            detail_stocks = detail_stocks.filter(item__category_id=filters['category'])
+            stocks = stocks.filter(item__category_id=filters['category'])
         if filters.get('subcategory'):
-            detail_stocks = detail_stocks.filter(item__subcategory_id=filters['subcategory'])
+            stocks = stocks.filter(item__subcategory_id=filters['subcategory'])
         if filters.get('item_type'):
-            detail_stocks = detail_stocks.filter(item__item_type_id=filters['item_type'])
+            stocks = stocks.filter(item__item_type_id=filters['item_type'])
         if filters.get('brand'):
-            detail_stocks = detail_stocks.filter(item__brand_id=filters['brand'])
+            stocks = stocks.filter(item__brand_id=filters['brand'])
         if filters.get('warehouse'):
-            detail_stocks = detail_stocks.filter(warehouse_id=filters['warehouse'])
+            stocks = stocks.filter(warehouse_id=filters['warehouse'])
         if not stocks.exists():
             return report
-        detail_stock_ids = set(detail_stocks.values_list('pk', flat=True))
+
+        stock_ids = list(stocks.values_list('pk', flat=True))
+        total_movement_delta_by_stock = {}
+        period_movement_delta_by_stock = {}
+
+        def add_movement_rows(model, in_types):
+            all_rows = model.objects.filter(stock_id__in=stock_ids).values(
+                'stock_id', 'movement_type'
+            ).annotate(quantity=Sum('quantity'))
+
+            for row in all_rows:
+                quantity = _to_decimal(row.get('quantity'))
+                movement_type = row.get('movement_type')
+                signed_quantity = quantity if movement_type in in_types else -quantity
+                stock_id = row.get('stock_id')
+                total_movement_delta_by_stock[stock_id] = (
+                    total_movement_delta_by_stock.get(stock_id, Decimal('0.00')) + signed_quantity
+                )
+
+            if end_date:
+                period_rows = model.objects.filter(
+                    stock_id__in=stock_ids,
+                    created_at__date__lte=end_date,
+                ).values('stock_id', 'movement_type').annotate(quantity=Sum('quantity'))
+
+                for row in period_rows:
+                    quantity = _to_decimal(row.get('quantity'))
+                    movement_type = row.get('movement_type')
+                    signed_quantity = quantity if movement_type in in_types else -quantity
+                    stock_id = row.get('stock_id')
+                    period_movement_delta_by_stock[stock_id] = (
+                        period_movement_delta_by_stock.get(stock_id, Decimal('0.00')) + signed_quantity
+                    )
+
+        add_movement_rows(StockMovement, {'adjustment_in', 'transfer_in'})
+
+        try:
+            from Purchase.models import StockMovement as PurchaseStockMovement
+            add_movement_rows(PurchaseStockMovement, {'in', 'adjustment', 'transfer'})
+        except Exception:
+            pass
+
+        try:
+            from sales.models import SalesStockMovement
+            add_movement_rows(SalesStockMovement, {'in'})
+        except Exception:
+            pass
+
+        # When a period is selected, derive stock from opening balance plus
+        # movements up to the period end. Without an end date, keep live stock.
+        if end_date:
+            stock_quantities = {}
+            for stock in stocks:
+                current_quantity = _to_decimal(stock.quantity)
+                opening_quantity = getattr(stock, 'opening_stock', None)
+                if opening_quantity is None:
+                    opening_quantity = current_quantity - total_movement_delta_by_stock.get(stock.pk, Decimal('0.00'))
+                else:
+                    opening_quantity = _to_decimal(opening_quantity)
+                stock_quantities[stock.pk] = (
+                    opening_quantity + period_movement_delta_by_stock.get(stock.pk, Decimal('0.00'))
+                )
+        else:
+            stock_quantities = {stock.pk: _to_decimal(stock.quantity) for stock in stocks}
 
         product_stats = {}
         warehouse_stats = {}
         category_stats = {}
 
         for stock in stocks:
-            quantity = _to_decimal(stock.quantity)
+            quantity = stock_quantities.get(stock.pk, Decimal('0.00'))
             item = stock.item
             cost_price = _to_decimal(item.cost_price or getattr(item, 'op_rate', 0))
             stock_value = quantity * cost_price
@@ -444,18 +744,16 @@ def _build_inventory_report(start_date=None, end_date=None, filters=None):
             product_id = item.id
             category_name = item.category.category_name  if item.category_id else 'Uncategorized'
             warehouse_name = stock.warehouse.warehouse_name if stock.warehouse_id else 'Unknown'
-            if stock.pk in detail_stock_ids:
-                report['item_stock_details'].append({
-                    'item_name': item.name,
-                    'quantity': quantity,
-                    'warehouse_name': warehouse_name,
-                    'category_name': category_name,
-                    'subcategory_name': item.subcategory.subcategory_name if item.subcategory_id else 'Uncategorized',
-                    'type_name': item.item_type.type_name if item.item_type_id else 'Unspecified',
-                    'brand_name': item.brand.brand_name if item.brand_id else 'Unbranded',
-                    'stock_value': stock_value,
-                })
-            print(f"Processing stock for item: {item.name}, quantity: {quantity}, stock_value: {stock_value}, warehouse: {warehouse_name}, category: {category_name}", flush=True)
+            report['item_stock_details'].append({
+                'item_name': item.name,
+                'quantity': quantity,
+                'warehouse_name': warehouse_name,
+                'category_name': category_name,
+                'subcategory_name': item.subcategory.subcategory_name if item.subcategory_id else 'Uncategorized',
+                'type_name': item.item_type.type_name if item.item_type_id else 'Unspecified',
+                'brand_name': item.brand.brand_name if item.brand_id else 'Unbranded',
+                'stock_value': stock_value,
+            })
             if product_id not in product_stats:
                 product_stats[product_id] = {
                     'item_name': item.name,
@@ -525,19 +823,18 @@ def _build_inventory_report(start_date=None, end_date=None, filters=None):
         print(f"[inventory_report] ERROR: {e}", flush=True)
         traceback.print_exc()
 
-    print(f"[inventory_report] FINAL warehouse_summary: {report['warehouse_summary']}", flush=True)
-    print(f"[inventory_report] FINAL category_summary: {report['category_summary']}", flush=True)
-
     return report
 
 
 def _inventory_filter_options():
+    from Items.models import Item
     from brand.models import Brand
     from category.models import Category, Subcategory
     from type.models import Type
     from warehouse.models import Warehouse
 
     return {
+        'items': Item.objects.filter(status=True).order_by('name'),
         'categories': Category.objects.filter(status=True).order_by('category_name'),
         'subcategories': Subcategory.objects.filter(status=True).order_by('subcategory_name'),
         'item_types': Type.objects.filter(status=True).order_by('type_name'),
@@ -548,7 +845,7 @@ def _inventory_filter_options():
 
 def _inventory_filter_values(request):
     values = {}
-    for name in ('category', 'subcategory', 'item_type', 'brand', 'warehouse'):
+    for name in ('item', 'category', 'subcategory', 'item_type', 'brand', 'warehouse'):
         value = (request.GET.get(name) or '').strip()
         if value.isdigit():
             values[name] = int(value)
@@ -712,13 +1009,15 @@ def sales_report(request, company_code=None):
         return redirect_with_company(request, 'mis_reports_dashboard')
 
     start_date, end_date, period = parse_date_range_from_request(request)
+    sales_filters = _sales_filter_values(request)
     report_data = _build_sales_report(
-        start_date, end_date, getattr(request, 'company_db', None)
+        start_date, end_date, getattr(request, 'company_db', None), sales_filters
     )
     export_query_string = build_export_query_string({
         'period': period,
         'start_date': start_date.strftime('%Y-%m-%d') if start_date else '',
         'end_date': end_date.strftime('%Y-%m-%d') if end_date else '',
+        **sales_filters,
     })
 
     return render(request, 'mis_reports/sales_report.html', {
@@ -727,6 +1026,8 @@ def sales_report(request, company_code=None):
         'start_date': start_date,
         'end_date': end_date,
         'report': report_data,
+        'sales_filters': sales_filters,
+        'sales_filter_options': _sales_filter_options(getattr(request, 'company_db', None)),
         'can_export': getattr(request.user, 'is_superuser', False) or can_export(request.user),
         'export_query_string': export_query_string,
     })
@@ -738,8 +1039,9 @@ def sales_report_export_csv(request, company_code=None):
         return redirect_with_company(request, 'mis_reports_dashboard')
 
     start_date, end_date, period = parse_date_range_from_request(request)
+    sales_filters = _sales_filter_values(request)
     report_data = _build_sales_report(
-        start_date, end_date, getattr(request, 'company_db', None)
+        start_date, end_date, getattr(request, 'company_db', None), sales_filters
     )
 
     response = HttpResponse(content_type='text/csv; charset=utf-8')
@@ -778,6 +1080,110 @@ def sales_report_export_csv(request, company_code=None):
     return response
 
 
+def _sales_dimension_report(request, company_code, dimension, template_name):
+    if not (getattr(request.user, 'is_superuser', False) or can_view_sales(request.user)):
+        messages.error(request, 'You do not have permission to view Sales MIS report.')
+        return redirect_with_company(request, 'mis_reports_dashboard')
+
+    start_date, end_date, period = parse_date_range_from_request(request)
+    sales_filters = _sales_filter_values(request)
+    report_data = _build_sales_dimension_report(
+        start_date, end_date, getattr(request, 'company_db', None), dimension, sales_filters
+    )
+    export_query_string = build_export_query_string({
+        'period': period,
+        'start_date': start_date.strftime('%Y-%m-%d') if start_date else '',
+        'end_date': end_date.strftime('%Y-%m-%d') if end_date else '',
+        **sales_filters,
+    })
+
+    return render(request, template_name, {
+        'company_code': company_code,
+        'period': period,
+        'start_date': start_date,
+        'end_date': end_date,
+        'report': report_data,
+        'sales_dimension': dimension,
+        'sales_filters': sales_filters,
+        'sales_filter_options': _sales_filter_options(getattr(request, 'company_db', None)),
+        'can_export': getattr(request.user, 'is_superuser', False) or can_export(request.user),
+        'export_query_string': export_query_string,
+    })
+
+
+def sales_by_customer_report(request, company_code=None):
+    return _sales_dimension_report(request, company_code, 'customer', 'mis_reports/sales_by_customer_report.html')
+
+
+def sales_by_salesperson_report(request, company_code=None):
+    return _sales_dimension_report(request, company_code, 'salesperson', 'mis_reports/sales_by_salesperson_report.html')
+
+
+def sales_by_item_report(request, company_code=None):
+    return _sales_dimension_report(request, company_code, 'item', 'mis_reports/sales_by_item_report.html')
+
+
+def _sales_dimension_report_export_csv(request, company_code, dimension, filename, title, columns):
+    if not (getattr(request.user, 'is_superuser', False) or can_export(request.user)):
+        messages.error(request, 'You do not have permission to export MIS reports.')
+        return redirect_with_company(request, 'mis_reports_dashboard')
+
+    start_date, end_date, period = parse_date_range_from_request(request)
+    sales_filters = _sales_filter_values(request)
+    report_data = _build_sales_dimension_report(
+        start_date, end_date, getattr(request, 'company_db', None), dimension, sales_filters
+    )
+
+    response = HttpResponse(content_type='text/csv; charset=utf-8')
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    writer = csv.writer(response)
+    writer.writerow([title])
+    writer.writerow(['Period', period])
+    writer.writerow(['Start Date', start_date.strftime('%Y-%m-%d') if start_date else ''])
+    writer.writerow(['End Date', end_date.strftime('%Y-%m-%d') if end_date else ''])
+    writer.writerow([])
+    writer.writerow(columns)
+
+    for invoice in report_data['sales_invoices']:
+        row = [invoice['invoice_number'], invoice['date'].strftime('%Y-%m-%d'), f'{invoice["amount"]:.2f}', invoice['payment_status']]
+        if dimension == 'customer':
+            row.insert(2, invoice['customer_name'])
+        elif dimension == 'salesperson':
+            row.insert(2, invoice['sales_person'])
+        else:
+            row.extend([
+                invoice['item_name'],
+                invoice['category_name'],
+                invoice['subcategory_name'],
+                invoice['type_name'],
+                invoice['brand_name'],
+            ])
+        writer.writerow(row)
+
+    return response
+
+
+def sales_by_customer_report_export_csv(request, company_code=None):
+    return _sales_dimension_report_export_csv(
+        request, company_code, 'customer', 'mis_sales_by_customer.csv',
+        'Sales by Customer', ['Invoice', 'Date', 'Customer', 'Amount', 'Payment Status']
+    )
+
+
+def sales_by_salesperson_report_export_csv(request, company_code=None):
+    return _sales_dimension_report_export_csv(
+        request, company_code, 'salesperson', 'mis_sales_by_salesperson.csv',
+        'Sales by Salesperson', ['Invoice', 'Date', 'Sales Person', 'Amount', 'Payment Status']
+    )
+
+
+def sales_by_item_report_export_csv(request, company_code=None):
+    return _sales_dimension_report_export_csv(
+        request, company_code, 'item', 'mis_sales_by_item.csv',
+        'Sales by Item', ['Invoice', 'Date', 'Amount', 'Payment Status', 'Item', 'Category', 'Subcategory', 'Type', 'Brand']
+    )
+
+
 def purchase_report(request, company_code=None):
     if not (getattr(request.user, 'is_superuser', False) or can_view_purchase(request.user)):
         messages.error(request, 'You do not have permission to view Purchase MIS report.')
@@ -802,6 +1208,101 @@ def purchase_report(request, company_code=None):
         'can_export': getattr(request.user, 'is_superuser', False) or can_export(request.user),
         'export_query_string': export_query_string,
     })
+
+
+def _purchase_dimension_report(request, company_code, dimension, template_name):
+    if not (getattr(request.user, 'is_superuser', False) or can_view_purchase(request.user)):
+        messages.error(request, 'You do not have permission to view Purchase MIS report.')
+        return redirect_with_company(request, 'mis_reports_dashboard')
+
+    start_date, end_date, period = parse_date_range_from_request(request)
+    purchase_filters = _purchase_filter_values(request)
+    report_data = _build_purchase_dimension_report(
+        start_date, end_date, getattr(request, 'company_db', None), dimension, purchase_filters
+    )
+    export_query_string = build_export_query_string({
+        'period': period,
+        'start_date': start_date.strftime('%Y-%m-%d') if start_date else '',
+        'end_date': end_date.strftime('%Y-%m-%d') if end_date else '',
+        **purchase_filters,
+    })
+
+    return render(request, template_name, {
+        'company_code': company_code,
+        'period': period,
+        'start_date': start_date,
+        'end_date': end_date,
+        'report': report_data,
+        'purchase_dimension': dimension,
+        'purchase_filters': purchase_filters,
+        'purchase_filter_options': _purchase_filter_options(getattr(request, 'company_db', None)),
+        'can_export': getattr(request.user, 'is_superuser', False) or can_export(request.user),
+        'export_query_string': export_query_string,
+    })
+
+
+def purchase_by_vendor_report(request, company_code=None):
+    return _purchase_dimension_report(
+        request, company_code, 'vendor', 'mis_reports/purchase_by_vendor_report.html'
+    )
+
+
+def purchase_by_item_report(request, company_code=None):
+    return _purchase_dimension_report(
+        request, company_code, 'item', 'mis_reports/purchase_by_item_report.html'
+    )
+
+
+def _purchase_dimension_report_export_csv(request, company_code, dimension, filename, title, columns):
+    if not (getattr(request.user, 'is_superuser', False) or can_export(request.user)):
+        messages.error(request, 'You do not have permission to export MIS reports.')
+        return redirect_with_company(request, 'mis_reports_dashboard')
+
+    start_date, end_date, period = parse_date_range_from_request(request)
+    purchase_filters = _purchase_filter_values(request)
+    report_data = _build_purchase_dimension_report(
+        start_date, end_date, getattr(request, 'company_db', None), dimension, purchase_filters
+    )
+
+    response = HttpResponse(content_type='text/csv; charset=utf-8')
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    writer = csv.writer(response)
+    writer.writerow([title])
+    writer.writerow(['Period', period])
+    writer.writerow(['Start Date', start_date.strftime('%Y-%m-%d') if start_date else ''])
+    writer.writerow(['End Date', end_date.strftime('%Y-%m-%d') if end_date else ''])
+    writer.writerow([])
+    writer.writerow(columns)
+
+    for bill in report_data['bills']:
+        row = [bill['bill_number'], bill['date'].strftime('%Y-%m-%d'), f'{bill["amount"]:.2f}', bill['payment_status']]
+        if dimension == 'vendor':
+            row.insert(2, bill['vendor_name'])
+        else:
+            row.extend([
+                bill['item_name'],
+                bill['category_name'],
+                bill['subcategory_name'],
+                bill['type_name'],
+                bill['brand_name'],
+            ])
+        writer.writerow(row)
+
+    return response
+
+
+def purchase_by_vendor_report_export_csv(request, company_code=None):
+    return _purchase_dimension_report_export_csv(
+        request, company_code, 'vendor', 'mis_purchase_by_vendor.csv',
+        'Purchase by Vendor', ['Bill', 'Date', 'Vendor', 'Amount', 'Payment Status']
+    )
+
+
+def purchase_by_item_report_export_csv(request, company_code=None):
+    return _purchase_dimension_report_export_csv(
+        request, company_code, 'item', 'mis_purchase_by_item.csv',
+        'Purchase by Item', ['Bill', 'Date', 'Amount', 'Payment Status', 'Item', 'Category', 'Subcategory', 'Type', 'Brand']
+    )
 
 
 def purchase_report_export_csv(request, company_code=None):
@@ -864,13 +1365,44 @@ def inventory_report(request, company_code=None):
         **inventory_filters,
     })
 
-    return render(request, 'mis_reports/inventory_report.html', {
+    return render(request, 'mis_reports/inventory_items_report.html', {
         'company_code': company_code,
         'period': period,
         'start_date': start_date,
         'end_date': end_date,
         'report': report_data,
         'inventory_filters': inventory_filters,
+        'inventory_filter_options': _inventory_filter_options(),
+        'can_export': getattr(request.user, 'is_superuser', False) or can_export(request.user),
+        'export_query_string': export_query_string,
+    })
+
+
+def inventory_warehouses_report(request, company_code=None):
+    if not (getattr(request.user, 'is_superuser', False) or can_view_inventory(request.user)):
+        messages.error(request, 'You do not have permission to view Inventory MIS report.')
+        return redirect_with_company(request, 'mis_reports_dashboard')
+
+    start_date, end_date, period = parse_date_range_from_request(request)
+    requested_filters = _inventory_filter_values(request)
+    warehouse_filters = {
+        'warehouse': requested_filters.get('warehouse'),
+    }
+    report_data = _build_inventory_report(start_date, end_date, warehouse_filters)
+    export_query_string = build_export_query_string({
+        'period': period,
+        'start_date': start_date.strftime('%Y-%m-%d') if start_date else '',
+        'end_date': end_date.strftime('%Y-%m-%d') if end_date else '',
+        **warehouse_filters,
+    })
+
+    return render(request, 'mis_reports/inventory_warehouses_report.html', {
+        'company_code': company_code,
+        'period': period,
+        'start_date': start_date,
+        'end_date': end_date,
+        'report': report_data,
+        'inventory_filters': warehouse_filters,
         'inventory_filter_options': _inventory_filter_options(),
         'can_export': getattr(request.user, 'is_superuser', False) or can_export(request.user),
         'export_query_string': export_query_string,
@@ -892,67 +1424,54 @@ def inventory_report_export_csv(request, company_code=None):
 
     writer.writerow(['Inventory MIS Report'])
     writer.writerow(['Period', period])
-    writer.writerow(['Stock Value', f'{report_data["stock_value"]:.2f}'])
-    writer.writerow(['Low Stock Items', len(report_data['low_stock_items'])])
-    writer.writerow(['Out of Stock Items', len(report_data['out_of_stock_items'])])
+    writer.writerow(['Start Date', start_date.strftime('%Y-%m-%d') if start_date else ''])
+    writer.writerow(['End Date', end_date.strftime('%Y-%m-%d') if end_date else ''])
     writer.writerow([])
 
-    writer.writerow(['Low Stock Items'])
-    writer.writerow(['Item', 'Quantity', 'Stock Value'])
-    for item in report_data['low_stock_items']:
+    writer.writerow(['Item Stock Details'])
+    writer.writerow(['Item', 'Stock Quantity', 'Warehouse', 'Category', 'Subcategory', 'Type', 'Brand', 'Stock Value'])
+    for item in report_data['item_stock_details']:
         writer.writerow([
             item['item_name'],
-            f'{item["total_quantity"]:.2f}',
+            f'{item["quantity"]:.2f}',
+            item['warehouse_name'],
+            item['category_name'],
+            item['subcategory_name'],
+            item['type_name'],
+            item['brand_name'],
             f'{item["stock_value"]:.2f}',
         ])
-    writer.writerow([])
 
-    writer.writerow(['Out of Stock Items'])
-    writer.writerow(['Item', 'Stock Value'])
-    for item in report_data['out_of_stock_items']:
+    return response
+
+
+def inventory_warehouses_report_export_csv(request, company_code=None):
+    if not (getattr(request.user, 'is_superuser', False) or can_export(request.user)):
+        messages.error(request, 'You do not have permission to export MIS reports.')
+        return redirect_with_company(request, 'mis_reports_dashboard')
+
+    start_date, end_date, period = parse_date_range_from_request(request)
+    requested_filters = _inventory_filter_values(request)
+    warehouse_filters = {'warehouse': requested_filters.get('warehouse')}
+    report_data = _build_inventory_report(start_date, end_date, warehouse_filters)
+
+    response = HttpResponse(content_type='text/csv; charset=utf-8')
+    response['Content-Disposition'] = 'attachment; filename="mis_inventory_warehouses_report.csv"'
+    writer = csv.writer(response)
+
+    writer.writerow(['Inventory by Warehouses'])
+    writer.writerow(['Period', period])
+    writer.writerow(['Start Date', start_date.strftime('%Y-%m-%d') if start_date else ''])
+    writer.writerow(['End Date', end_date.strftime('%Y-%m-%d') if end_date else ''])
+    writer.writerow([])
+    writer.writerow(['Item Stock by Warehouse'])
+    writer.writerow(['Item', 'Warehouse', 'Stock Quantity', 'Stock Value'])
+    for item in report_data['item_stock_details']:
         writer.writerow([
             item['item_name'],
+            item['warehouse_name'],
+            f'{item["quantity"]:.2f}',
             f'{item["stock_value"]:.2f}',
-        ])
-    writer.writerow([])
-
-    writer.writerow(['Fast Moving Items'])
-    writer.writerow(['Item', 'Quantity Sold', 'Stock Quantity'])
-    for item in report_data['fast_moving_items']:
-        writer.writerow([
-            item['item_name'],
-            f'{item["quantity_sold"]:.2f}',
-            f'{item["total_quantity"]:.2f}',
-        ])
-    writer.writerow([])
-
-    writer.writerow(['Slow Moving Items'])
-    writer.writerow(['Item', 'Quantity Sold', 'Stock Quantity'])
-    for item in report_data['slow_moving_items']:
-        writer.writerow([
-            item['item_name'],
-            f'{item["quantity_sold"]:.2f}',
-            f'{item["total_quantity"]:.2f}',
-        ])
-    writer.writerow([])
-
-    writer.writerow(['Warehouse Summary'])
-    writer.writerow(['Warehouse', 'Total Quantity', 'Stock Value'])
-    for warehouse in report_data['warehouse_summary']:
-        writer.writerow([
-            warehouse['warehouse_name'],
-            f'{warehouse["total_quantity"]:.2f}',
-            f'{warehouse["stock_value"]:.2f}',
-        ])
-    writer.writerow([])
-
-    writer.writerow(['Category Summary'])
-    writer.writerow(['Category', 'Total Quantity', 'Stock Value'])
-    for category in report_data['category_summary']:
-        writer.writerow([
-            category['category_name'],
-            f'{category["total_quantity"]:.2f}',
-            f'{category["stock_value"]:.2f}',
         ])
 
     return response

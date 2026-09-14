@@ -24,15 +24,9 @@
 
   {% include 'mis_reports/_filters.html' %}
 
-  {% comment %} <div class="card border-0 shadow-sm mb-3">
+  <div class="card border-0 shadow-sm mb-3">
     <div class="card-body">
-      
-    </div>
-  </div> {% endcomment %}
-
-  <div class="card mis-report-card border-0 shadow-sm mb-3">
-    <div class="card-body">
-      <form method="get" class="row g-2 align-items-end mb-3">
+      <form method="get" class="row g-2 align-items-end ">
         <input type="hidden" name="period" value="{{ period }}">
         <input type="hidden" name="start_date" value="{{ start_date|default_if_none:''|date:'Y-m-d' }}">
         <input type="hidden" name="end_date" value="{{ end_date|default_if_none:''|date:'Y-m-d' }}">
@@ -85,14 +79,20 @@
           <button type="submit" class="btn btn-sm btn-primary">Apply filters</button>
         </div>
       </form>
-      <h2 class="h6 mis-report-label">Item Stock Details</h2>
+    </div>
+  </div> 
+
+  <div class="card mis-report-card border-0 shadow-sm mb-3">
+    <div class="card-body">
+      
+      <h2 class="h6 mis-report-label">Item Stock Details{% if end_date %} as of {{ end_date|date:"d M Y" }}{% endif %}</h2>
 
       <div class="table-responsive mis-report-table">
         <table class="table table-sm align-middle">
           <thead>
             <tr>
               <th>Item</th>
-              <th>Stock Qty</th>
+              <th>Stock Qty{% if end_date %} as of Period End{% endif %}</th>
               <th>Warehouse</th>
               <th>Category</th>
               <th>Subcategory</th>
@@ -162,7 +162,7 @@
                 <tr>
                   <th>Item</th>
                   <th>Quantity Sold</th>
-                  <th>Stock Qty</th>
+                  <th>Stock Qty{% if end_date %} as of Period End{% endif %}</th>
                 </tr>
               </thead>
               <tbody>
@@ -182,7 +182,7 @@
       </div>
     </div>
 
-    <div class="col-lg-6">
+    {% comment %} <div class="col-lg-6">
       <div class="card mis-report-card border-0 shadow-sm h-100">
         <div class="card-body">
           <h2 class="h6 mis-report-label">Slow Moving Items</h2>
@@ -192,7 +192,7 @@
                 <tr>
                   <th>Item</th>
                   <th>Quantity Sold</th>
-                  <th>Stock Qty</th>
+                  <th>Stock Qty{% if end_date %} as of Period End{% endif %}</th>
                 </tr>
               </thead>
               <tbody>
@@ -210,10 +210,10 @@
           </div>
         </div>
       </div>
-    </div>
-  </div>
+    </div> {% endcomment %}
 
-  <div class="row g-3 mt-3">
+
+  
     <div class="col-lg-6">
       <div class="card mis-report-card border-0 shadow-sm h-100">
         <div class="card-body">
@@ -243,8 +243,9 @@
         </div>
       </div>
     </div>
+  </div>
 
-    <div class="col-lg-6">
+    {% comment %} <div class="col-lg-6">
       <div class="card mis-report-card border-0 shadow-sm h-100">
         <div class="card-body">
           <h2 class="h6 mis-report-label">Category Stock Summary</h2>
@@ -273,7 +274,7 @@
         </div>
       </div>
     </div>
-  </div>
+  </div> {% endcomment %}
 </div>
 {% endblock content %}
 

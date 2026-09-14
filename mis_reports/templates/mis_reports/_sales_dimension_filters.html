@@ -1,8 +1,8 @@
-{% comment %} Shared MIS filter and export partial {% endcomment %}
-<div class="card mis-report-filter-card border-0 shadow-sm mb-3">
+<div class="card mis-report-filter-card">
   <div class="card-body">
+    <div class="mis-report-filter-band"><p class="mis-report-filter-title">Date range</p></div>
     <form method="get" class="row g-2 align-items-end" data-mis-date-filter>
-      <div class="col-md-3">
+      <div class="col-md-4">
         <label class="form-label small">Period</label>
         <select name="period" class="form-select form-select-sm">
           <option value="today" {% if period == 'today' %}selected{% endif %}>Today</option>
@@ -13,27 +13,27 @@
           <option value="custom" {% if period == 'custom' %}selected{% endif %}>Custom</option>
         </select>
       </div>
-      <div class="col-md-3">
+      <div class="col-md-4">
         <label class="form-label small">Start date</label>
         <input type="date" name="start_date" class="form-control form-control-sm" value="{{ start_date|default_if_none:''|date:'Y-m-d' }}">
       </div>
-      <div class="col-md-3">
+      <div class="col-md-4">
         <label class="form-label small">End date</label>
         <input type="date" name="end_date" class="form-control form-control-sm" value="{{ end_date|default_if_none:''|date:'Y-m-d' }}">
       </div>
-      {% if sales_filter_options %}
-      <div class="col-md-3">
+      <div class="col-12"><div class="mis-report-filter-band px-0"><p class="mis-report-filter-title">Filter by</p></div></div>
+      {% if sales_dimension == 'customer' %}
+      <div class="col-md-4">
         <label class="form-label small">Customer</label>
         <select name="customer" class="form-select form-select-sm">
           <option value="">All customers</option>
           {% for customer in sales_filter_options.customers %}
-          <option value="{{ customer.pk }}" {% if sales_filters.customer == customer.pk %}selected{% endif %}>
-            {% if customer.customer_type == 'company' %}{{ customer.company_name }}{% else %}{{ customer.first_name }} {{ customer.last_name }}{% endif %}
-          </option>
+          <option value="{{ customer.pk }}" {% if sales_filters.customer == customer.pk %}selected{% endif %}>{% if customer.customer_type == 'company' %}{{ customer.company_name }}{% else %}{{ customer.first_name }} {{ customer.last_name }}{% endif %}</option>
           {% endfor %}
         </select>
       </div>
-      <div class="col-md-3">
+      {% elif sales_dimension == 'salesperson' %}
+      <div class="col-md-4">
         <label class="form-label small">Sales person</label>
         <select name="sales_person" class="form-select form-select-sm">
           <option value="">All sales persons</option>
@@ -42,66 +42,46 @@
           {% endfor %}
         </select>
       </div>
-      <div class="col-md-3">
-        <label class="form-label small">Payment status</label>
-        <select name="payment_status" class="form-select form-select-sm">
-          <option value="">All payment statuses</option>
-          {% for payment_status in sales_filter_options.payment_statuses %}
-          <option value="{{ payment_status.pk }}" {% if sales_filters.payment_status == payment_status.pk %}selected{% endif %}>{{ payment_status.name }}</option>
-          {% endfor %}
-        </select>
-      </div>
-      <div class="col-md-3">
+      {% else %}
+      <div class="col-md-2">
         <label class="form-label small">Item</label>
         <select name="item" class="form-select form-select-sm">
           <option value="">All items</option>
-          {% for item in sales_filter_options.items %}
-          <option value="{{ item.pk }}" {% if sales_filters.item == item.pk %}selected{% endif %}>{{ item.name }}</option>
-          {% endfor %}
+          {% for item in sales_filter_options.items %}<option value="{{ item.pk }}" {% if sales_filters.item == item.pk %}selected{% endif %}>{{ item.name }}</option>{% endfor %}
         </select>
       </div>
-      <div class="col-md-3">
+      <div class="col-md-2">
         <label class="form-label small">Category</label>
         <select name="category" class="form-select form-select-sm">
           <option value="">All categories</option>
-          {% for category in sales_filter_options.categories %}
-          <option value="{{ category.pk }}" {% if sales_filters.category == category.pk %}selected{% endif %}>{{ category.category_name }}</option>
-          {% endfor %}
+          {% for category in sales_filter_options.categories %}<option value="{{ category.pk }}" {% if sales_filters.category == category.pk %}selected{% endif %}>{{ category.category_name }}</option>{% endfor %}
         </select>
       </div>
-      <div class="col-md-3">
+      <div class="col-md-2">
         <label class="form-label small">Subcategory</label>
         <select name="subcategory" class="form-select form-select-sm">
           <option value="">All subcategories</option>
-          {% for subcategory in sales_filter_options.subcategories %}
-          <option value="{{ subcategory.pk }}" {% if sales_filters.subcategory == subcategory.pk %}selected{% endif %}>{{ subcategory.subcategory_name }}</option>
-          {% endfor %}
+          {% for subcategory in sales_filter_options.subcategories %}<option value="{{ subcategory.pk }}" {% if sales_filters.subcategory == subcategory.pk %}selected{% endif %}>{{ subcategory.subcategory_name }}</option>{% endfor %}
         </select>
       </div>
-      <div class="col-md-3">
+      <div class="col-md-2">
         <label class="form-label small">Type</label>
         <select name="item_type" class="form-select form-select-sm">
           <option value="">All types</option>
-          {% for item_type in sales_filter_options.item_types %}
-          <option value="{{ item_type.pk }}" {% if sales_filters.item_type == item_type.pk %}selected{% endif %}>{{ item_type.type_name }}</option>
-          {% endfor %}
+          {% for item_type in sales_filter_options.item_types %}<option value="{{ item_type.pk }}" {% if sales_filters.item_type == item_type.pk %}selected{% endif %}>{{ item_type.type_name }}</option>{% endfor %}
         </select>
       </div>
-      <div class="col-md-3">
+      <div class="col-md-2">
         <label class="form-label small">Brand</label>
         <select name="brand" class="form-select form-select-sm">
           <option value="">All brands</option>
-          {% for brand in sales_filter_options.brands %}
-          <option value="{{ brand.pk }}" {% if sales_filters.brand == brand.pk %}selected{% endif %}>{{ brand.brand_name }}</option>
-          {% endfor %}
+          {% for brand in sales_filter_options.brands %}<option value="{{ brand.pk }}" {% if sales_filters.brand == brand.pk %}selected{% endif %}>{{ brand.brand_name }}</option>{% endfor %}
         </select>
       </div>
       {% endif %}
-      <div class="col-md-3 text-end">
-        <button type="submit" class="btn btn-sm btn-primary">Apply</button>
-        {% if can_export %}
-          <a class="btn btn-sm btn-outline-secondary ms-2" href="?{{ export_query_string }}">Export</a>
-        {% endif %}
+      <div class="{% if sales_dimension == 'item' %}col-md-2{% else %}col-md-8{% endif %} mis-report-filter-actions">
+        <button type="reset" class="btn btn-sm btn-outline-secondary">Reset</button>
+        <button type="submit" class="btn btn-sm btn-primary">Apply filters</button>
       </div>
     </form>
   </div>

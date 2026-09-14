@@ -1,0 +1,13 @@
+{% extends 'website/index.html' %}
+{% load static %}
+{% block exstyle %}{% include 'mis_reports/_report_styles.html' %}{% endblock exstyle %}
+{% block page_title %}Purchase by Item{% endblock page_title %}
+{% block content %}
+<div class="container-fluid py-4 mis-report-page">
+  <div class="d-flex align-items-center justify-content-between mis-report-header"><div><p class="text-muted mb-0">Item-wise purchase bill analysis.</p></div>{% if can_export %}<a class="btn btn-sm btn-primary mis-report-action" href="{% if company_code %}{% url 'mis_purchase_by_item_report_export_csv' company_code=company_code %}{% else %}{% url 'mis_purchase_by_item_report_export_csv' %}{% endif %}?{{ export_query_string }}">Export CSV</a>{% endif %}</div>
+  {% include 'mis_reports/_purchase_dimension_filters.html' %}
+  <div class="card mis-report-card mt-3"><div class="card-body"><h2 class="mis-report-section-title">Purchase Bills</h2><div class="table-responsive mis-report-table"><table class="table table-sm align-middle"><thead><tr><th>Bill</th><th>Date</th><th>Amount</th><th>Payment Status</th><th>Item</th><th>Category</th><th>Subcategory</th><th>Type</th><th>Brand</th></tr></thead><tbody>
+  {% for bill in report.bills %}<tr><td>{{ bill.bill_number }}</td><td>{{ bill.date|date:"d-m-Y" }}</td><td>₹{{ bill.amount|floatformat:2 }}</td><td>{{ bill.payment_status }}</td><td>{{ bill.item_name }}</td><td>{{ bill.category_name }}</td><td>{{ bill.subcategory_name }}</td><td>{{ bill.type_name }}</td><td>{{ bill.brand_name }}</td></tr>{% empty %}<tr><td colspan="9" class="text-muted">No purchase bills found for this period.</td></tr>{% endfor %}
+  </tbody></table></div></div></div>
+</div>
+{% endblock content %}

@@ -7,10 +7,13 @@ from django.test import RequestFactory, TestCase
 from django.urls import resolve
 
 from company.models import Company
+from Items.models import Item
 from mis_reports.permissions import can_view_dashboard
 from Purchase.models import Bill
 from sales.models import SalesInvoice, SalesQuotation
+from stock.models import Stock, StockMovement
 from user.models import User as AppUser
+from warehouse.models import Warehouse
 from mis_reports.services import (
     build_export_query_string,
     financial_year_bounds,
@@ -93,6 +96,17 @@ class MisReportsDashboardTests(TestCase):
         self.assertEqual(match.view_name, 'mis_purchase_report_export_csv')
         self.assertEqual(match.kwargs['company_code'], 'demo')
 
+    def test_purchase_dimension_report_routes_resolve(self):
+        vendor_match = resolve('/demo/mis-reports/purchase/vendor/')
+        item_match = resolve('/demo/mis-reports/purchase/item/')
+        vendor_csv_match = resolve('/demo/mis-reports/purchase/vendor/export-csv/')
+        item_csv_match = resolve('/demo/mis-reports/purchase/item/export-csv/')
+
+        self.assertEqual(vendor_match.view_name, 'mis_purchase_by_vendor_report')
+        self.assertEqual(item_match.view_name, 'mis_purchase_by_item_report')
+        self.assertEqual(vendor_csv_match.view_name, 'mis_purchase_by_vendor_report_export_csv')
+        self.assertEqual(item_csv_match.view_name, 'mis_purchase_by_item_report_export_csv')
+
     def test_inventory_report_route_resolves(self):
         match = resolve('/demo/mis-reports/inventory/')
 
@@ -126,6 +140,9 @@ class MisReportsDashboardTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Purchase MIS Report')
         self.assertContains(response, 'Total Purchases')
+        self.assertContains(response, 'BILL-1002')
+        self.assertContains(response, '10-03-2024')
+        self.assertContains(response, '₹800.00')
         self.assertEqual(response.context['report']['purchase_count'], 1)
         self.assertEqual(response.context['report']['total_purchases'], Decimal('800.00'))
 
@@ -178,12 +195,143 @@ class MisReportsDashboardTests(TestCase):
         self.client.session['company_id'] = 1
         self.client.session.save()
 
-        response = self.client.get('/demo/mis-reports/inventory/export-csv/')
+        item = Item.objects.using('test_company').create(
+            name='CSV Detail Item',
+            unit='pcs',
+            cost_price=Decimal('7.50'),
+            status=True,
+        )
+        warehouse = Warehouse.objects.using('test_company').create(
+            warehouse_name='CSV Warehouse',
+            status=True,
+        )
+        stock = Stock.objects.using('test_company').create(
+            item=item,
+            warehouse=warehouse,
+            quantity=Decimal('3.00'),
+            opening_stock=Decimal('3.00'),
+            status=True,
+        )
+        Stock.objects.using('test_company').filter(pk=stock.pk).update(
+            created_at='2024-01-01 10:00:00',
+        )
+
+        response = self.client.get(
+            '/demo/mis-reports/inventory/export-csv/',
+            {'period': 'custom', 'start_date': '2024-01-01', 'end_date': '2024-01-31'},
+        )
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response['Content-Type'], 'text/csv; charset=utf-8')
         self.assertIn('mis_inventory_report.csv', response['Content-Disposition'])
-        self.assertIn('Inventory MIS Report', response.content.decode('utf-8'))
+        content = response.content.decode('utf-8')
+        self.assertIn('Inventory MIS Report', content)
+        self.assertIn('Start Date,2024-01-01', content)
+        self.assertIn('End Date,2024-01-31', content)
+        self.assertIn('Item Stock Details', content)
+        self.assertIn('Item,Stock Quantity,Warehouse,Category,Subcategory,Type,Brand,Stock Value', content)
+        self.assertIn('CSV Detail Item,3.00,CSV Warehouse', content)
+        self.assertIn('22.50', content)
+        self.assertNotIn('Low Stock Items', content)
+        self.assertNotIn('Out of Stock Items', content)
+        self.assertNotIn('Fast Moving Items', content)
+        self.assertNotIn('Slow Moving Items', content)
+        self.assertNotIn('Warehouse Summary', content)
+        self.assertNotIn('Category Summary', content)
+
+    def test_inventory_report_uses_stock_movements_for_historical_stock(self):
+        admin = get_user_model().objects.create_superuser(
+            username='misadmin_inventory_history',
+            email='misadmin_inventory_history@example.com',
+            password='testpass123',
+        )
+        self.client.force_login(admin)
+        self.client.session['company_id'] = 1
+        self.client.session.save()
+
+        item = Item.objects.using('test_company').create(
+            name='Historical Item',
+            unit='pcs',
+            cost_price=Decimal('5.00'),
+            min_stock=Decimal('12.00'),
+            status=True,
+        )
+        warehouse = Warehouse.objects.using('test_company').create(
+            warehouse_name='Main Warehouse',
+            status=True,
+        )
+        stock = Stock.objects.using('test_company').create(
+            item=item,
+            warehouse=warehouse,
+            quantity=Decimal('15.00'),
+            status=True,
+        )
+        Stock.objects.using('test_company').filter(pk=stock.pk).update(
+            created_at='2024-01-01 10:00:00',
+        )
+        movement = StockMovement.objects.using('test_company').create(
+            stock=stock,
+            movement_type='adjustment_in',
+            quantity=Decimal('5.00'),
+            reference_type='manual_adjustment',
+        )
+        StockMovement.objects.using('test_company').filter(pk=movement.pk).update(
+            created_at='2024-02-01 10:00:00',
+        )
+
+        response = self.client.get(
+            '/demo/mis-reports/inventory/',
+            {'period': 'custom', 'start_date': '2024-01-01', 'end_date': '2024-01-31'},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        report = response.context['report']
+        self.assertEqual(report['item_stock_details'][0]['quantity'], Decimal('10.00'))
+        self.assertEqual(report['stock_value'], Decimal('50.00000000'))
+        self.assertEqual(report['warehouse_summary'][0]['total_quantity'], Decimal('10.00'))
+        self.assertEqual(report['low_stock_items'][0]['item_name'], 'Historical Item')
+
+    def test_inventory_report_excludes_stock_created_after_period_end(self):
+        admin = get_user_model().objects.create_superuser(
+            username='misadmin_inventory_future_item',
+            email='misadmin_inventory_future_item@example.com',
+            password='testpass123',
+        )
+        self.client.force_login(admin)
+        self.client.session['company_id'] = 1
+        self.client.session.save()
+
+        item = Item.objects.using('test_company').create(
+            name='New Item After Period',
+            unit='pcs',
+            cost_price=Decimal('5.00'),
+            status=True,
+        )
+        warehouse = Warehouse.objects.using('test_company').create(
+            warehouse_name='Future Warehouse',
+            status=True,
+        )
+        stock = Stock.objects.using('test_company').create(
+            item=item,
+            warehouse=warehouse,
+            quantity=Decimal('10.00'),
+            opening_stock=Decimal('10.00'),
+            status=True,
+        )
+        Stock.objects.using('test_company').filter(pk=stock.pk).update(
+            created_at='2024-02-01 10:00:00',
+        )
+
+        response = self.client.get(
+            '/demo/mis-reports/inventory/',
+            {'period': 'custom', 'start_date': '2024-01-01', 'end_date': '2024-01-31'},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        report = response.context['report']
+        self.assertEqual(report['stock_value'], Decimal('0.00'))
+        self.assertEqual(report['item_stock_details'], [])
+        self.assertEqual(report['warehouse_summary'], [])
 
     def test_finance_report_route_resolves(self):
         match = resolve('/demo/mis-reports/finance/')

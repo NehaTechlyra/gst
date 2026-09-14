@@ -1,0 +1,78 @@
+<div class="card mis-report-filter-card">
+  <div class="card-body">
+    <div class="mis-report-filter-band"><p class="mis-report-filter-title">Date range</p></div>
+    <form method="get" class="row g-2 align-items-end" data-mis-date-filter>
+      <div class="col-md-4">
+        <label class="form-label small">Period</label>
+        <select name="period" class="form-select form-select-sm">
+          <option value="today" {% if period == 'today' %}selected{% endif %}>Today</option>
+          <option value="this_week" {% if period == 'this_week' %}selected{% endif %}>This week</option>
+          <option value="this_month" {% if period == 'this_month' %}selected{% endif %}>This month</option>
+          <option value="this_quarter" {% if period == 'this_quarter' %}selected{% endif %}>This quarter</option>
+          <option value="this_financial_year" {% if period == 'this_financial_year' %}selected{% endif %}>This financial year</option>
+          <option value="custom" {% if period == 'custom' %}selected{% endif %}>Custom</option>
+        </select>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label small">Start date</label>
+        <input type="date" name="start_date" class="form-control form-control-sm" value="{{ start_date|default_if_none:''|date:'Y-m-d' }}">
+      </div>
+      <div class="col-md-4">
+        <label class="form-label small">End date</label>
+        <input type="date" name="end_date" class="form-control form-control-sm" value="{{ end_date|default_if_none:''|date:'Y-m-d' }}">
+      </div>
+      <div class="col-12"><div class="mis-report-filter-band px-0"><p class="mis-report-filter-title">Filter by</p></div></div>
+      {% if purchase_dimension == 'vendor' %}
+      <div class="col-md-4">
+        <label class="form-label small">Vendor</label>
+        <select name="vendor" class="form-select form-select-sm">
+          <option value="">All vendors</option>
+          {% for vendor in purchase_filter_options.vendors %}
+          <option value="{{ vendor.pk }}" {% if purchase_filters.vendor == vendor.pk %}selected{% endif %}>{{ vendor }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      {% else %}
+      <div class="col-md-2">
+        <label class="form-label small">Item</label>
+        <select name="item" class="form-select form-select-sm">
+          <option value="">All items</option>
+          {% for item in purchase_filter_options.items %}<option value="{{ item.pk }}" {% if purchase_filters.item == item.pk %}selected{% endif %}>{{ item.name }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label small">Category</label>
+        <select name="category" class="form-select form-select-sm">
+          <option value="">All categories</option>
+          {% for category in purchase_filter_options.categories %}<option value="{{ category.pk }}" {% if purchase_filters.category == category.pk %}selected{% endif %}>{{ category.category_name }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label small">Subcategory</label>
+        <select name="subcategory" class="form-select form-select-sm">
+          <option value="">All subcategories</option>
+          {% for subcategory in purchase_filter_options.subcategories %}<option value="{{ subcategory.pk }}" {% if purchase_filters.subcategory == subcategory.pk %}selected{% endif %}>{{ subcategory.subcategory_name }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label small">Type</label>
+        <select name="item_type" class="form-select form-select-sm">
+          <option value="">All types</option>
+          {% for item_type in purchase_filter_options.item_types %}<option value="{{ item_type.pk }}" {% if purchase_filters.item_type == item_type.pk %}selected{% endif %}>{{ item_type.type_name }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label small">Brand</label>
+        <select name="brand" class="form-select form-select-sm">
+          <option value="">All brands</option>
+          {% for brand in purchase_filter_options.brands %}<option value="{{ brand.pk }}" {% if purchase_filters.brand == brand.pk %}selected{% endif %}>{{ brand.brand_name }}</option>{% endfor %}
+        </select>
+      </div>
+      {% endif %}
+      <div class="{% if purchase_dimension == 'item' %}col-md-2{% else %}col-md-8{% endif %} mis-report-filter-actions">
+        <button type="reset" class="btn btn-sm btn-outline-secondary">Reset</button>
+        <button type="submit" class="btn btn-sm btn-primary">Apply filters</button>
+      </div>
+    </form>
+  </div>
+</div>

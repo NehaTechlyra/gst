@@ -55,6 +55,40 @@
     </div>
   </div>
 
+  <div class="card border-0 shadow-sm mt-3">
+    <div class="card-body">
+      <h2 class="h6 mis-report-label">Sales Invoices</h2>
+      <div class="table-responsive mis-report-table">
+        <table class="table table-sm align-middle">
+          <thead>
+            <tr>
+              <th>Invoice Number</th>
+              <th>Customer</th>
+              <th>Sales Person</th>
+              <th>Date</th>
+              <th>Amount</th>
+              <th>Payment Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for invoice in report.sales_invoices %}
+            <tr>
+              <td>{{ invoice.invoice_number }}</td>
+              <td>{{ invoice.customer_name }}</td>
+              <td>{{ invoice.sales_person }}</td>
+              <td>{{ invoice.date|date:"d-m-Y" }}</td>
+              <td>₹{{ invoice.amount|floatformat:2 }}</td>
+              <td><span class="badge bg-secondary">{{ invoice.payment_status }}</span></td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="6" class="text-muted">No sales invoices found for this period.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
   <div class="row g-3">
     <div class="col-lg-6">
       <div class="card border-0 shadow-sm h-100">
@@ -115,7 +149,7 @@
     </div>
   </div>
 
-  <div class="card border-0 shadow-sm mt-3">
+  {% comment %} <div class="card border-0 shadow-sm mt-3">
     <div class="card-body">
       <h2 class="h6 mis-report-label">Monthly Sales Trend</h2>
       <div class="mb-3">
@@ -142,7 +176,7 @@
         </table>
       </div>
     </div>
-  </div>
+  </div> {% endcomment %}
 </div>
 {% endblock content %}
 
