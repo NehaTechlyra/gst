@@ -7,7 +7,7 @@
 {% block page_title %}HR MIS Report{% endblock page_title %}
 
 {% block content %}
-<div class="container-fluid py-4">
+<div class="container-fluid py-4 mis-report-page">
   <div class="d-flex align-items-center justify-content-between mb-3">
     <div>
       {% comment %} <h1 class="h3 mb-1">HR MIS Report</h1> {% endcomment %}
@@ -15,7 +15,7 @@
     </div>
     <div>
       {% if can_export %}
-        <a href="{% url 'mis_hr_report_export_csv' company_code %}?{{ export_query_string }}&export=1" class="btn btn-sm btn-outline-secondary">Export CSV</a>
+        <a href="{% url 'mis_hr_report_export_csv' company_code %}?{{ export_query_string }}&export=1" class="btn btn-sm btn-outline-secondary mis-report-action">Export CSV</a>
       {% endif %}
     </div>
   </div>
@@ -24,11 +24,11 @@
 
   <div class="row g-3 mb-3">
     <div class="col-md-6">
-      <div class="card border-0 shadow-sm">
+      <div class="card mis-report-card">
         <div class="card-body">
-          <h2 class="h6">Employees</h2>
-          <div class="table-responsive">
-            <table class="table table-sm">
+          <h2 class="mis-report-section-title">Employees</h2>
+          <div class="table-responsive mis-report-table">
+            <table class="table table-sm align-middle">
               <tbody>
                 <tr>
                   <td>Total employees:</td>
@@ -59,14 +59,14 @@
     </div>
 
     <div class="col-md-6">
-      <div class="card border-0 shadow-sm">
+      <div class="card mis-report-card">
         <div class="card-body">
-          <h2 class="h6">Department Summary</h2>
+          <h2 class="mis-report-section-title">Department Summary</h2>
           <div class="mb-3">
             <canvas id="hrDepartmentChart" height="120"></canvas>
           </div>
-         <div class="table-responsive">
-            <table class="table table-sm">
+        <div class="table-responsive mis-report-table">
+          <table class="table table-sm align-middle">
             {% for d in report.department_counts %}
               <tr>
                 <td>{{ d.department }}</td>
@@ -83,11 +83,11 @@
     </div>
   </div>
 
-  <div class="card border-0 shadow-sm">
+  <div class="card mis-report-card">
     <div class="card-body">
-      <h2 class="h6">Designation Summary</h2>
-      <div class="table-responsive">
-        <table class="table table-sm table-striped">
+      <h2 class="mis-report-section-title">Designation Summary</h2>
+      <div class="table-responsive mis-report-table">
+        <table class="table table-sm align-middle">
           <thead><tr><th>Designation</th><th>Count</th></tr></thead>
           <tbody>
             {% for d in report.designation_counts %}

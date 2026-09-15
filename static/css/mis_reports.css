@@ -151,7 +151,7 @@
 
 .mis-report-page .mis-report-table table {
   border-collapse: collapse;
-  min-width: 640px;
+  /* min-width: 640px; */
 }
 
 .mis-report-page .mis-report-table table thead th {

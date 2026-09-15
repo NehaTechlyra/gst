@@ -8,19 +8,8 @@
 {% block page_title %}Sales MIS Report{% endblock page_title %}
 
 {% block content %}
-<div class="container-fluid py-4">
-  <div class="d-flex align-items-center justify-content-between mb-3">
-    <div>
-      {% comment %} <h1 class="h3 mb-1">Sales MIS Report</h1> {% endcomment %}
-      <p class="text-muted mb-0">High-level sales reporting with customer, item, and trend analysis.</p>
-    </div>
-    <div>
-      {% if can_export %}
-      <a class="btn btn-sm btn-outline-secondary" href="?{{ export_query_string }}">Reload</a>
-      <a class="btn btn-sm btn-primary" href="{% if company_code %}{% url 'mis_sales_report_export_csv' company_code=company_code %}{% else %}{% url 'mis_sales_report_export_csv' %}{% endif %}?{{ export_query_string }}">Export CSV</a>
-      {% endif %}
-    </div>
-  </div>
+<div class="container-fluid py-4 mis-report-page">
+ 
 
   {% include 'mis_reports/_filters.html' %}
 
@@ -55,45 +44,13 @@
     </div>
   </div>
 
-  <div class="card border-0 shadow-sm mt-3">
-    <div class="card-body">
-      <h2 class="h6 mis-report-label">Sales Invoices</h2>
-      <div class="table-responsive mis-report-table">
-        <table class="table table-sm align-middle">
-          <thead>
-            <tr>
-              <th>Invoice Number</th>
-              <th>Customer</th>
-              <th>Sales Person</th>
-              <th>Date</th>
-              <th>Amount</th>
-              <th>Payment Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for invoice in report.sales_invoices %}
-            <tr>
-              <td>{{ invoice.invoice_number }}</td>
-              <td>{{ invoice.customer_name }}</td>
-              <td>{{ invoice.sales_person }}</td>
-              <td>{{ invoice.date|date:"d-m-Y" }}</td>
-              <td>₹{{ invoice.amount|floatformat:2 }}</td>
-              <td><span class="badge bg-secondary">{{ invoice.payment_status }}</span></td>
-            </tr>
-            {% empty %}
-            <tr><td colspan="6" class="text-muted">No sales invoices found for this period.</td></tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </div>
+  
 
   <div class="row g-3">
     <div class="col-lg-6">
-      <div class="card border-0 shadow-sm h-100">
+      <div class="card mis-report-card h-100">
         <div class="card-body">
-          <h2 class="h6 mis-report-label">Top Customers</h2>
+          <h2 class="mis-report-section-title">Top Customers</h2>
           <div class="table-responsive mis-report-table">
             <table class="table table-sm align-middle">
               <thead>
@@ -121,9 +78,9 @@
     </div>
 
     <div class="col-lg-6">
-      <div class="card border-0 shadow-sm h-100">
+      <div class="card mis-report-card h-100">
         <div class="card-body">
-          <h2 class="h6 mis-report-label">Top Selling Items</h2>
+          <h2 class="mis-report-section-title">Top Selling Items</h2>
           <div class="table-responsive mis-report-table">
             <table class="table table-sm align-middle">
               <thead>
@@ -149,9 +106,9 @@
     </div>
   </div>
 
-  {% comment %} <div class="card border-0 shadow-sm mt-3">
+  <div class="card mis-report-card mt-3">
     <div class="card-body">
-      <h2 class="h6 mis-report-label">Monthly Sales Trend</h2>
+      <h2 class="mis-report-section-title">Monthly Sales Trend</h2>
       <div class="mb-3">
         <canvas id="salesTrendChart" height="120"></canvas>
       </div>
@@ -176,7 +133,7 @@
         </table>
       </div>
     </div>
-  </div> {% endcomment %}
+  </div> 
 </div>
 {% endblock content %}
 

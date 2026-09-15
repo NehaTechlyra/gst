@@ -943,7 +943,7 @@
                         <ul class="sub-menu">
                             <li><a href="{% if company_code %}{% url 'mis_inventory_report_summary' company_code=company_code %}{% else %}{% url 'mis_inventory_report_summary' %}{% endif %}" class="{% if request.resolver_match.url_name == 'mis_inventory_report_summary' %}active-link{% endif %}">Inventory Summary</a></li>
                             <li><a href="{% if company_code %}{% url 'mis_inventory_report' company_code=company_code %}{% else %}{% url 'mis_inventory_report' %}{% endif %}" class="{% if request.resolver_match.url_name == 'mis_inventory_report' %}active-link{% endif %}">Inventory by Items</a></li>
-                            <li><a href="{% if company_code %}{% url 'mis_inventory_warehouses_report' company_code=company_code %}{% else %}{% url 'mis_inventory_warehouses_report' %}{% endif %}" class="{% if request.resolver_match.url_name == 'mis_inventory_warehouses_report' %}active-link{% endif %}">Inventory by Warehouses</a></li>
+                            <li><a href="{% if company_code %}{% url 'mis_inventory_warehouses_report' company_code=company_code %}{% else %}{% url 'mis_inventory_warehouses_report' %}{% endif %}" class="{% if request.resolver_match.url_name == 'mis_inventory_warehouses_report' %}active-link{% endif %}">Inventory by WH</a></li>
                         </ul>
                     </li>
                     {% endif %}
