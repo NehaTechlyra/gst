@@ -44,6 +44,14 @@ class StockAdjustmentForm(forms.Form):
         ('in', 'Add stock (increase)'),
         ('out', 'Remove stock (decrease)'),
     ]
+    REASON_CHOICES = [
+        ('', 'Select reason'),
+        ('stolen_stock', 'Stolen stock'),
+        ('damaged_stock', 'Damaged stock'),
+        ('expired_stock', 'Expired stock'),
+        ('shortage', 'Shortage'),
+        ('other', 'Other'),
+    ]
 
     item = forms.ModelChoiceField(
         queryset=Item.objects.filter(status=True),
@@ -63,9 +71,15 @@ class StockAdjustmentForm(forms.Form):
         decimal_places=2,
         widget=forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'min': '0.01'})
     )
+    reason = forms.ChoiceField(
+        choices=REASON_CHOICES,
+        required=True,
+        widget=forms.Select(attrs={'class': 'form-select'})
+    )
     notes = forms.CharField(
-        required=False,
-        widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 2, 'placeholder': 'Reason for this adjustment (optional)'})
+        required=True,
+        strip=True,
+        widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 2, 'placeholder': 'Reason for this adjustment'} )
     )
 
 
@@ -92,8 +106,9 @@ class StockTransferForm(forms.Form):
         widget=forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'min': '0.01'})
     )
     notes = forms.CharField(
-        required=False,
-        widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 2, 'placeholder': 'Notes (optional)'})
+        required=True,
+        strip=True,
+        widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 2, 'placeholder': 'Notes'} )
     )
 
     def clean(self):

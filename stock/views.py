@@ -432,7 +432,9 @@ def add_stock_adjustment(request):
             warehouse = form.cleaned_data['warehouse']
             direction = form.cleaned_data['direction']
             quantity = form.cleaned_data['quantity']
-            notes = form.cleaned_data['notes']
+            reason = form.cleaned_data['reason']
+            notes = form.cleaned_data['notes'].strip()
+            movement_notes = f"{reason}: {notes}" if reason and notes else (notes or reason or 'Stock adjustment')
 
             with transaction.atomic():
                 stock, _ = Stock.objects.get_or_create(
@@ -463,7 +465,7 @@ def add_stock_adjustment(request):
                     movement_type=movement_type,
                     quantity=quantity,
                     reference_type='manual_adjustment',
-                    notes=notes,
+                    notes=movement_notes,
                     created_by=request.user,
                 )
 
