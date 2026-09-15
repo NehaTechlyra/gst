@@ -5,13 +5,14 @@ from django.contrib.auth.decorators import login_required
 from .models import Warehouse
 from .forms import WarehouseForm  
 from django.core.paginator import Paginator
-from django.db.models import Q,Sum, DecimalField
+from django.db.models import Q,Sum, DecimalField, F
 from django.views.decorators.http import require_POST
 from django.contrib import messages
 from django.http import JsonResponse, HttpResponse
 from django.db.models.functions import Coalesce
 from stock.models import Stock
 import csv
+from decimal import Decimal, InvalidOperation
 
 
 
@@ -134,18 +135,45 @@ def warehouse_detail(request, pk):
     """Render a simple readonly detail page for a order."""
     warehouse = get_object_or_404(Warehouse, pk=pk)
 
+    # --- Stock table filters ---
+    search_query = (request.GET.get('q') or '').strip()
+    hide_zero_stock = request.GET.get('hide_zero') == '1'
+    low_stock_only = request.GET.get('low_stock') == '1'
+    threshold_raw = (request.GET.get('threshold') or '').strip()
+    threshold_value = None
+    if threshold_raw:
+        try:
+            threshold_value = Decimal(threshold_raw)
+        except (InvalidOperation, ValueError):
+            threshold_value = None
+
+    stocks_qs = Stock.objects.filter(warehouse=warehouse, status=True, item__status=True)
+    if search_query:
+        stocks_qs = stocks_qs.filter(item__name__icontains=search_query)
+
     stocks = (
-    Stock.objects
-    .filter(warehouse=warehouse, status=True, item__status=True)
-    .values(
-        'item__id',
-        'item__name'
+        stocks_qs
+        .values('item__id', 'item__name', 'item__min_stock')
+        .annotate(total_quantity=Sum('quantity'))
+        .order_by('item__name')
     )
-    .annotate(
-        total_quantity=Sum('quantity')
-    )
-    .order_by('item__name')
-)
+
+    if hide_zero_stock:
+        stocks = stocks.filter(total_quantity__gt=0)
+
+    if low_stock_only:
+        if threshold_value is not None:
+            # Explicit threshold provided — applies to every item uniformly.
+            stocks = stocks.filter(total_quantity__lte=threshold_value)
+        else:
+            # No explicit threshold — fall back to each item's own
+            # "Minimum Stock Level" (Item.min_stock). Items without a
+            # min_stock configured are excluded since there's nothing to
+            # compare against.
+            stocks = stocks.filter(
+                item__min_stock__isnull=False,
+                total_quantity__lte=F('item__min_stock'),
+            )
 
     context = {
         'warehouse_form': WarehouseForm(instance=warehouse),
@@ -155,6 +183,11 @@ def warehouse_detail(request, pk):
         # 'q_no': order.order_number,
         'warehouse': warehouse,
         'stocks': stocks,
+        'search_query': search_query,
+        'hide_zero_stock': hide_zero_stock,
+        'low_stock_only': low_stock_only,
+        'threshold_value': threshold_raw,
+        'has_active_filters': bool(search_query or hide_zero_stock or low_stock_only),
         # 'subtotal_calc': subtotal_calc,
         # 'total_tax': total_tax,
         # 'total_cgst': total_cgst,
