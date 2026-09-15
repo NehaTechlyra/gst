@@ -964,12 +964,20 @@ document.addEventListener('DOMContentLoaded', function() {
             <th>Description</th>
             <th>Qty</th>
             <th>Returned</th>
+            {% if same_currency %}
+            <th>Price {% if company_base_currency_symbol %}({{ company_base_currency_symbol }}){% endif %}</th>
+            {% else %}
             <th>Price {% if document_currency_symbol %}({{ document_currency_symbol }}){% endif %}</th>
             <th>Price (Base) {% if company_base_currency_symbol %}({{ company_base_currency_symbol }}){% endif %}</th>
+            {% endif %}
             <th>Tax</th>
             <th>Discount</th>
+            {% if same_currency %}
+            <th style="text-align:right;">Amount {% if company_base_currency_symbol %}({{ company_base_currency_symbol }}){% endif %}</th>
+            {% else %}
             <th style="text-align:right;">Amount {% if document_currency_symbol %}({{ document_currency_symbol }}){% endif %}</th>
             <th style="text-align:right;">Amount (Base) {% if company_base_currency_symbol %}({{ company_base_currency_symbol }}){% endif %}</th>
+            {% endif %}
           </tr>
         </thead>
         <tbody>
@@ -982,21 +990,29 @@ document.addEventListener('DOMContentLoaded', function() {
             <td>
               <span style="color:var(--text-muted);">—</span>
             </td>
+            {% if same_currency %}
+            <td style="font-family:var(--font-mono);">
+              {% if company_base_currency_symbol %}{{ company_base_currency_symbol }}{{ item.price_base|default:item.price|currency_amount:base_currency }}{% else %}{{ item.price|currency_amount:base_currency }}{% endif %}
+            </td>
+            {% else %}
             <td style="font-family:var(--font-mono);">
               {% if document_currency_symbol %}{{ document_currency_symbol }}{{ item.price|currency_amount:document_currency }}{% else %}{{ company_base_currency_symbol }}{{ item.price|currency_amount:base_currency }}{% endif %}
             </td>
             <td style="font-family:var(--font-mono); text-align:right;">
               {% if company_base_currency_symbol %}{{ company_base_currency_symbol }}{{ item.price_base|currency_amount:base_currency }}{% else %}<span class="text-muted">—</span>{% endif %}
             </td>
+            {% endif %}
             <td>{% if item.tax_rate %}<span style="background:var(--brand-muted);color:var(--brand);border-radius:4px;padding:2px 8px;font-size:.78rem;font-weight:600;">{{ item.tax_rate|floatformat:2 }}%</span>{% else %}—{% endif %}</td>
             <td>
               {% if item.discount_peritem and item.discount_peritem > 0 %}
                 {% if item.discount_type == 'percent' %}
                   {{ item.discount_peritem|floatformat:2 }}%
                 {% elif item.discount_type == 'flat' %}
-                  {% if document_currency_symbol %}{{ document_currency_symbol }}{{ item.discount_peritem|currency_amount:document_currency }}{% else %}{{ company_base_currency_symbol }}{{ item.discount_peritem|currency_amount:base_currency }}{% endif %}
-                  {% if document_currency_symbol and company_base_currency_symbol %}
-                    <div class="text-muted" style="font-size:.85rem">({{ company_base_currency_symbol }}{{ item.discount_amount_base|currency_amount:base_currency }})</div>
+                  {% if same_currency %}{{ company_base_currency_symbol }}{{ item.discount_peritem|currency_amount:base_currency }}{% else %}
+                    {% if document_currency_symbol %}{{ document_currency_symbol }}{{ item.discount_peritem|currency_amount:document_currency }}{% else %}{{ company_base_currency_symbol }}{{ item.discount_peritem|currency_amount:base_currency }}{% endif %}
+                    {% if document_currency_symbol and company_base_currency_symbol %}
+                      <div class="text-muted" style="font-size:.85rem">({{ company_base_currency_symbol }}{{ item.discount_amount_base|currency_amount:base_currency }})</div>
+                    {% endif %}
                   {% endif %}
                 {% else %}
                   {{ item.discount_peritem|floatformat:2 }}
@@ -1005,12 +1021,18 @@ document.addEventListener('DOMContentLoaded', function() {
                 —
               {% endif %}
             </td>
+            {% if same_currency %}
+            <td class="amount">
+              {% if company_base_currency_symbol %}{{ company_base_currency_symbol }}{{ item.line_total_base|default:item.line_total|currency_amount:base_currency }}{% else %}{{ item.line_total|currency_amount:base_currency }}{% endif %}
+            </td>
+            {% else %}
             <td class="amount">
               {% if document_currency_symbol %}{{ document_currency_symbol }}{{ item.line_total|currency_amount:document_currency }}{% else %}{{ company_base_currency_symbol }}{{ item.line_total|currency_amount:base_currency }}{% endif %}
             </td>
             <td class="amount">
               {% if company_base_currency_symbol %}{{ company_base_currency_symbol }}{{ item.line_total_base|currency_amount:base_currency }}{% else %}<span class="text-muted">—</span>{% endif %}
             </td>
+            {% endif %}
           </tr>
           {% endfor %}
         </tbody>
@@ -1022,64 +1044,105 @@ document.addEventListener('DOMContentLoaded', function() {
           <thead>
             <tr>
               <th></th>
+              {% if same_currency %}
+              <th style="text-align:right;">Amount {% if company_base_currency_symbol %}({{ company_base_currency_symbol }}){% endif %}</th>
+              {% else %}
               <th style="text-align:right;">Document {% if document_currency_symbol %}({{ document_currency_symbol }}){% else %}Amount{% endif %}</th>
               <th style="text-align:right;">Base {% if company_base_currency_symbol %}({{ company_base_currency_symbol }}){% else %}Base{% endif %}</th>
+              {% endif %}
             </tr>
           </thead>
           <tbody>
             <tr>
               <td>Subtotal</td>
+              {% if same_currency %}
+              <td style="text-align:right;">{% if company_base_currency_symbol %}{{ company_base_currency_symbol }}{{ subtotal_calc_base|default:subtotal_calc|currency_amount:base_currency }}{% else %}{{ subtotal_calc|currency_amount:base_currency }}{% endif %}</td>
+              {% else %}
               <td style="text-align:right;">{% if document_currency_symbol %}{{ document_currency_symbol }}{{ subtotal_calc|currency_amount:document_currency }}{% else %}{{ company_base_currency_symbol }}{{ subtotal_calc|currency_amount:base_currency }}{% endif %}</td>
               <td style="text-align:right;">{% if company_base_currency_symbol %}{{ company_base_currency_symbol }}{{ subtotal_calc_base|currency_amount:base_currency }}{% else %}<span class="text-muted">—</span>{% endif %}</td>
+              {% endif %}
             </tr>
             {% if company_tax_type|default:''|upper != 'NONE' %}
             {% if company_tax_type == 'GST' %}
               <tr>
                 <td>Total CGST</td>
+                {% if same_currency %}
+                <td style="text-align:right;">{% if company_base_currency_symbol %}{{ company_base_currency_symbol }}{{ total_cgst_base|default:total_cgst|currency_amount:base_currency }}{% else %}{{ total_cgst|currency_amount:base_currency }}{% endif %}</td>
+                {% else %}
                 <td style="text-align:right;">{% if document_currency_symbol %}{{ document_currency_symbol }}{{ total_cgst|currency_amount:document_currency }}{% else %}{{ company_base_currency_symbol }}{{ total_cgst|currency_amount:base_currency }}{% endif %}</td>
                 <td style="text-align:right;">{% if company_base_currency_symbol %}{{ company_base_currency_symbol }}{{ total_cgst_base|currency_amount:base_currency }}{% else %}<span class="text-muted">—</span>{% endif %}</td>
+                {% endif %}
               </tr>
               <tr>
                 <td>Total SGST</td>
+                {% if same_currency %}
+                <td style="text-align:right;">{% if company_base_currency_symbol %}{{ company_base_currency_symbol }}{{ total_sgst_base|default:total_sgst|currency_amount:base_currency }}{% else %}{{ total_sgst|currency_amount:base_currency }}{% endif %}</td>
+                {% else %}
                 <td style="text-align:right;">{% if document_currency_symbol %}{{ document_currency_symbol }}{{ total_sgst|currency_amount:document_currency }}{% else %}{{ company_base_currency_symbol }}{{ total_sgst|currency_amount:base_currency }}{% endif %}</td>
                 <td style="text-align:right;">{% if company_base_currency_symbol %}{{ company_base_currency_symbol }}{{ total_sgst_base|currency_amount:base_currency }}{% else %}<span class="text-muted">—</span>{% endif %}</td>
+                {% endif %}
               </tr>
             {% else %}
               <tr>
                 <td>{% if company_tax_type|default:''|upper == 'VAT' or company_tax_type|default:''|upper == 'SALES' or company_tax_type|default:''|upper == 'TURNOVER' %}Total Tax{% else %}Total VAT{% endif %}</td>
+                {% if same_currency %}
+                <td style="text-align:right;">{% if company_base_currency_symbol %}{{ company_base_currency_symbol }}{{ total_tax_base|default:total_tax|currency_amount:base_currency }}{% else %}{{ total_tax|currency_amount:base_currency }}{% endif %}</td>
+                {% else %}
                 <td style="text-align:right;">{% if document_currency_symbol %}{{ document_currency_symbol }}{{ total_tax|currency_amount:document_currency }}{% else %}{{ company_base_currency_symbol }}{{ total_tax|currency_amount:base_currency }}{% endif %}</td>
                 <td style="text-align:right;">{% if company_base_currency_symbol %}{{ company_base_currency_symbol }}{{ total_tax_base|currency_amount:base_currency }}{% else %}<span class="text-muted">—</span>{% endif %}</td>
+                {% endif %}
               </tr>
             {% endif %}
             {% endif %}
             <tr>
               <td>Total Discount</td>
+              {% if same_currency %}
+              <td style="text-align:right; color:var(--success);">–{% if company_base_currency_symbol %}{{ company_base_currency_symbol }}{{ total_discount_combined_base|default:total_discount_combined|currency_amount:base_currency }}{% else %}{{ total_discount_combined|currency_amount:base_currency }}{% endif %}</td>
+              {% else %}
               <td style="text-align:right; color:var(--success);">–{% if document_currency_symbol %}{{ document_currency_symbol }}{{ total_discount_combined|currency_amount:document_currency }}{% else %}{{ company_base_currency_symbol }}{{ total_discount_combined|currency_amount:base_currency }}{% endif %}</td>
               <td style="text-align:right; color:var(--success);">{% if company_base_currency_symbol %}–{{ company_base_currency_symbol }}{{ total_discount_combined_base|currency_amount:base_currency }}{% else %}<span class="text-muted">—</span>{% endif %}</td>
+              {% endif %}
             </tr>
             {% if quote.round_off %}
             <tr>
               <td>Round Off</td>
+              {% if same_currency %}
+              <td style="text-align:right;">{% if company_base_currency_symbol %}{{ company_base_currency_symbol }}{{ quote.round_off|currency_amount:base_currency }}{% else %}{{ quote.round_off|currency_amount:base_currency }}{% endif %}</td>
+              {% else %}
               <td style="text-align:right;">{% if document_currency_symbol %}{{ document_currency_symbol }}{{ quote.round_off|currency_amount:document_currency }}{% else %}{{ company_base_currency_symbol }}{{ quote.round_off|currency_amount:base_currency }}{% endif %}</td>
               <td style="text-align:right;">{% if company_base_currency_symbol %}{{ company_base_currency_symbol }}{{ quote.round_off|currency_amount:base_currency }}{% else %}<span class="text-muted">—</span>{% endif %}</td>
+              {% endif %}
             </tr>
             {% endif %}
             
             {% if company_tax_type|default:''|upper == 'TURNOVER' %}
             <tr>
               <td>Turnover Tax</td>
+              {% if same_currency %}
+              <td style="text-align:right;">{{ quote.turnover_tax.taxname|default:"-" }}</td>
+              {% else %}
               <td style="text-align:right;">{{ quote.turnover_tax.taxname|default:"-" }}</td>
               <td style="text-align:right;">{% if quote.turnover_tax.rate %}{{ quote.turnover_tax.rate|floatformat:2 }}%{% else %}<span class="text-muted">-</span>{% endif %}</td>
+              {% endif %}
             </tr>
             <tr>
               <td>Turnover Tax Amount</td>
+              {% if same_currency %}
+              <td style="text-align:right;">{% if company_base_currency_symbol %}{{ company_base_currency_symbol }}{{ turnover_tax_amount_base|default:turnover_tax_amount|currency_amount:base_currency }}{% else %}{{ turnover_tax_amount|currency_amount:base_currency }}{% endif %}</td>
+              {% else %}
               <td style="text-align:right;">{% if document_currency_symbol %}{{ document_currency_symbol }}{{ turnover_tax_amount|currency_amount:document_currency }}{% else %}{{ company_base_currency_symbol }}{{ turnover_tax_amount|currency_amount:base_currency }}{% endif %}</td>
-              <td style="text-align:right;">{% if company_base_currency_symbol %}{{ company_base_currency_symbol }}{{ turnover_tax_amount_base|currency_amount:base_currency }}{% else %}<span class="text-muted">â€”</span>{% endif %}</td>
+              <td style="text-align:right;">{% if company_base_currency_symbol %}{{ company_base_currency_symbol }}{{ turnover_tax_amount_base|currency_amount:base_currency }}{% else %}<span class="text-muted">—</span>{% endif %}</td>
+              {% endif %}
             </tr>
             {% endif %}
             {% if tds_tcs_type and tds_tcs_amount and tds_tcs_amount > 0 %}
             <tr>
               <td>{% if tds_tcs_type == 'tcs' %}TCS Amount{% else %}TDS Amount{% endif %}</td>
+              {% if same_currency %}
+              <td style="text-align:right;">
+                {% if tds_tcs_type == 'tcs' %}+{% else %}-{% endif %}{% if company_base_currency_symbol %}{{ company_base_currency_symbol }}{{ tds_tcs_amount_base|default:tds_tcs_amount|currency_amount:base_currency }}{% else %}{{ tds_tcs_amount|currency_amount:base_currency }}{% endif %}
+              </td>
+              {% else %}
               <td style="text-align:right;">
                 {% if tds_tcs_type == 'tcs' %}+{% else %}-{% endif %}{% if document_currency_symbol %}{{ document_currency_symbol }}{{ tds_tcs_amount|currency_amount:document_currency }}{% else %}{{ company_base_currency_symbol }}{{ tds_tcs_amount|currency_amount:base_currency }}{% endif %}
               </td>
@@ -1090,12 +1153,17 @@ document.addEventListener('DOMContentLoaded', function() {
                   <span class="text-muted">â€”</span>
                 {% endif %}
               </td>
+              {% endif %}
             </tr>
             {% endif %}
             <tr class="total-final">
               <td style="font-weight:700;">{% if company_tax_type|default:''|upper == 'TURNOVER' %}Final Total{% else %}Total{% endif %}</td>
+              {% if same_currency %}
+              <td style="text-align:right; font-weight:700;">{% if company_base_currency_symbol %}{{ company_base_currency_symbol }}{{ final_total_base|default:final_total|currency_amount:base_currency }}{% else %}{{ final_total|currency_amount:base_currency }}{% endif %}</td>
+              {% else %}
               <td style="text-align:right; font-weight:700;">{% if document_currency_symbol %}{{ document_currency_symbol }}{{ final_total|currency_amount:document_currency }}{% else %}{{ company_base_currency_symbol }}{{ final_total|currency_amount:base_currency }}{% endif %}</td>
               <td style="text-align:right; font-weight:700;">{% if company_base_currency_symbol %}{{ company_base_currency_symbol }}{{ final_total_base|currency_amount:base_currency }}{% else %}<span class="text-muted">—</span>{% endif %}</td>
+              {% endif %}
             </tr>
           </tbody>
         </table>
