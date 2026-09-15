@@ -47,8 +47,15 @@
       </div>
 
       <div class="mb-3">
-        <label class="form-label">Notes</label>
+        <label class="form-label">Reason <span class="text-danger">*</span></label>
+        {{ form.reason|add_class:"form-select" }}
+        {% for error in form.reason.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">Notes <span class="text-danger">*</span></label>
         {{ form.notes|add_class:"form-control" }}
+        {% for error in form.notes.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
       </div>
 
       {% for error in form.non_field_errors %}<div class="text-danger small mb-2">{{ error }}</div>{% endfor %}
