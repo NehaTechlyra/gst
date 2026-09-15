@@ -2329,6 +2329,23 @@ def purchaseorder_detail(request, pk):
         fx_rate = Decimal('1.000000')
     if fx_rate <= 0:
         fx_rate = Decimal('1.000000')
+
+    # ✅ same-currency detection as bill_detail: only show the base-currency
+    # columns when the vendor's currency actually differs from the
+    # company's base currency, to avoid two redundant, identical-looking
+    # sets of columns when they match. Compare the actual currency records
+    # first (most reliable — avoids any mismatch if duplicate/legacy
+    # currency rows share a code or symbol), then fall back to code, then
+    # symbol, then finally the fx rate itself.
+    if document_currency is not None and base_currency is not None and getattr(document_currency, 'pk', None) == getattr(base_currency, 'pk', None):
+        show_base_currency_columns = False
+    elif document_currency_code and company_base_currency_code:
+        show_base_currency_columns = (document_currency_code != company_base_currency_code)
+    elif document_currency_symbol and company_base_currency_symbol:
+        show_base_currency_columns = (document_currency_symbol != company_base_currency_symbol)
+    else:
+        show_base_currency_columns = abs(fx_rate - Decimal('1')) >= Decimal('0.000001')
+
     tds_tcs_type = (order.tds_tcs_type or '').strip().lower()
     tds_tcs_amount = Decimal(str(order.tds_tcs_amount or 0))
     tds_tcs_amount_base = tds_tcs_amount * fx_rate
@@ -2516,6 +2533,7 @@ def purchaseorder_detail(request, pk):
         'company_base_currency_code': company_base_currency_code,
         'fx_rate_to_base': fx_rate,
         'fx_rate': fx_rate,
+        'show_base_currency_columns': show_base_currency_columns,
         'bill_conversion_count': order.bills.count(),
         'tds_tcs_type': tds_tcs_type,
         'tds_tcs_amount': tds_tcs_amount,
@@ -4663,9 +4681,16 @@ def bill_detail(request, pk):
     # "Document"/"Base" total columns is pure, confusing duplication. Only
     # show the base-currency columns when they'd actually differ, matching
     # the same same-currency detection already used on the add/edit forms
-    # (see shouldHideBaseCurrencyUi() in purchase_order.js).
-    if document_currency_code and company_base_currency_code:
+    # (see shouldHideBaseCurrencyUi() in purchase_order.js). Compare the
+    # actual currency records first (most reliable — avoids any mismatch if
+    # duplicate/legacy currency rows share a code or symbol), then fall
+    # back to code, then symbol, then finally the fx rate itself.
+    if document_currency is not None and base_currency is not None and getattr(document_currency, 'pk', None) == getattr(base_currency, 'pk', None):
+        show_base_currency_columns = False
+    elif document_currency_code and company_base_currency_code:
         show_base_currency_columns = (document_currency_code != company_base_currency_code)
+    elif document_currency_symbol and company_base_currency_symbol:
+        show_base_currency_columns = (document_currency_symbol != company_base_currency_symbol)
     else:
         show_base_currency_columns = abs(fx_rate - Decimal('1')) >= Decimal('0.000001')
 

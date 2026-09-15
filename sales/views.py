@@ -2173,6 +2173,18 @@ def quotation_detail(request, pk):
         doc_currency_symbol = base_currency_symbol
         doc_currency_code = base_currency_code
 
+    # Whether the document currency and company base currency are the same.
+    # When true, the template shows a single (base) currency section instead
+    # of separate document/base columns for price and totals.
+    same_currency = True
+    if doc_currency and base_currency:
+        same_currency = (doc_currency.pk == base_currency.pk) or (
+            bool(doc_currency_code) and bool(base_currency_code)
+            and doc_currency_code.strip().upper() == base_currency_code.strip().upper()
+        )
+    elif doc_currency and not base_currency:
+        same_currency = False
+
     # FX rate from document currency to base (quotation.fx_rate_to_base)
     fx_rate = Decimal(quote.fx_rate_to_base or Decimal('1'))
     
@@ -2312,6 +2324,7 @@ def quotation_detail(request, pk):
         'document_currency_code': doc_currency_code,
         'document_currency': doc_currency,
         'base_currency': base_currency,
+        'same_currency': same_currency,
         'fx_rate': fx_rate,
         'fx_rate_to_base': fx_rate,
         'sales_rounding_method': getattr(company, 'sales_rounding_method', 'none'),
