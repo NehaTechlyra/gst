@@ -7,7 +7,7 @@
 {% block page_title %}Finance MIS Report{% endblock page_title %}
 
 {% block content %}
-<div class="container-fluid py-4">
+<div class="container-fluid py-4 mis-report-page">
   <div class="d-flex align-items-center justify-content-between mb-3">
     <div>
       {% comment %} <h1 class="h3 mb-1">Finance MIS Report</h1> {% endcomment %}
@@ -15,8 +15,8 @@
     </div>
     <div>
       {% if can_export %}
-      <a class="btn btn-sm btn-outline-secondary" href="?{{ export_query_string }}">Reload</a>
-      <a class="btn btn-sm btn-primary" href="{% if company_code %}{% url 'mis_finance_report_export_csv' company_code=company_code %}{% else %}{% url 'mis_finance_report_export_csv' %}{% endif %}?{{ export_query_string }}">Export CSV</a>
+      <a class="btn btn-sm btn-outline-secondary mis-report-action" href="?{{ export_query_string }}">Reload</a>
+      <a class="btn btn-sm btn-primary mis-report-action" href="{% if company_code %}{% url 'mis_finance_report_export_csv' company_code=company_code %}{% else %}{% url 'mis_finance_report_export_csv' %}{% endif %}?{{ export_query_string }}">Export CSV</a>
       {% endif %}
     </div>
   </div>
@@ -56,11 +56,11 @@
 
   <div class="row g-3">
     <div class="col-lg-6">
-      <div class="card border-0 shadow-sm h-100">
+      <div class="card mis-report-card h-100">
         <div class="card-body">
-          <h2 class="h6">Cash Summary</h2>
-          <div class="table-responsive">
-            <table class="table table-sm">
+          <h2 class="mis-report-section-title">Cash Summary</h2>
+          <div class="table-responsive mis-report-table">
+            <table class="table table-sm align-middle">
               <tbody>
                 <tr>
                   <td>Opening Cash</td>
@@ -86,11 +86,11 @@
     </div>
 
     <div class="col-lg-6">
-      <div class="card border-0 shadow-sm h-100">
+      <div class="card mis-report-card h-100">
         <div class="card-body">
-          <h2 class="h6">Stock & Inventory</h2>
-          <div class="table-responsive">
-            <table class="table table-sm">
+          <h2 class="mis-report-section-title">Stock & Inventory</h2>
+          <div class="table-responsive mis-report-table">
+            <table class="table table-sm align-middle">
               <tbody>
                 <tr>
                   <td>Opening Stock</td>
@@ -114,14 +114,14 @@
 
   <div class="row g-3 mt-3">
     <div class="col-lg-6">
-      <div class="card border-0 shadow-sm h-100">
+      <div class="card mis-report-card h-100">
         <div class="card-body">
-            <h2 class="h6">Monthly Profit Trend</h2>
+        <h2 class="mis-report-section-title">Monthly Profit Trend</h2>
             <div class="mb-3">
               <canvas id="financeProfitChart" height="120"></canvas>
             </div>
-          <div class="table-responsive">
-            <table class="table table-sm">
+          <div class="table-responsive mis-report-table">
+            <table class="table table-sm align-middle">
               <thead>
                 <tr>
                   <th>Month</th>
@@ -149,11 +149,11 @@
     </div>
 
     <div class="col-lg-6">
-      <div class="card border-0 shadow-sm h-100">
+      <div class="card mis-report-card h-100">
         <div class="card-body">
-          <h2 class="h6">Account Group Summaries</h2>
-          <div class="table-responsive mb-3">
-            <table class="table table-sm">
+          <h2 class="mis-report-section-title">Account Group Summaries</h2>
+          <div class="table-responsive mis-report-table mb-3">
+            <table class="table table-sm align-middle">
               <thead>
                 <tr>
                   <th>Income Group</th>
@@ -172,8 +172,8 @@
               </tbody>
             </table>
           </div>
-          <div class="table-responsive">
-            <table class="table table-sm">
+          <div class="table-responsive mis-report-table">
+            <table class="table table-sm align-middle">
               <thead>
                 <tr>
                   <th>Expense Group</th>

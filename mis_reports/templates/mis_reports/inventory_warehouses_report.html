@@ -94,7 +94,7 @@
     </div>
   </div>
 
-  <div class="card mis-report-card border-0 shadow-sm mb-3">
+  {% comment %} <div class="card mis-report-card border-0 shadow-sm mb-3">
     <div class="card-body">
       <h2 class="mis-report-section-title">Inventory Snapshot</h2>
       <div class="mb-3"><canvas id="warehouseStockChart" height="140"></canvas></div>
@@ -104,9 +104,9 @@
         <div class="col-md-4"><div class="p-3 bg-light rounded mis-report-key-metric"><div class="mis-report-label">Out of Stock Items</div><div class="mis-report-value">{{ report.out_of_stock_items|length }}</div></div></div>
       </div>
     </div>
-  </div>
+  </div> {% endcomment %}
 
-  <div class="card mis-report-card border-0 shadow-sm">
+  {% comment %} <div class="card mis-report-card border-0 shadow-sm">
     <div class="card-body">
       <h2 class="mis-report-section-title">Warehouse Summary</h2>
       <div class="table-responsive mis-report-table">
@@ -120,7 +120,7 @@
         </table>
       </div>
     </div>
-  </div>
+  </div> {% endcomment %}
 </div>
 {% endblock content %}
 

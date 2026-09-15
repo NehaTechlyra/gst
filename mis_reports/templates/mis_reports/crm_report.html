@@ -6,7 +6,7 @@
 {% block page_title %}CRM MIS Report{% endblock page_title %}
 
 {% block content %}
-<div class="container-fluid py-4">
+<div class="container-fluid py-4 mis-report-page">
     <div class="d-flex align-items-center justify-content-between mb-3">
         <div>
             {% comment %} <h1 class="h3 mb-1">CRM MIS Report</h1> {% endcomment %}
@@ -14,7 +14,7 @@
         </div>
         <div>
             {% if can_export %}
-                <a href="{% url 'mis_crm_report_export_csv' company_code %}?{{ export_query_string }}&export=1" class="btn btn-sm btn-outline-secondary">Export CSV</a>
+                <a href="{% url 'mis_crm_report_export_csv' company_code %}?{{ export_query_string }}&export=1" class="btn btn-sm btn-outline-secondary mis-report-action">Export CSV</a>
             {% endif %}
         </div>
     </div>
@@ -23,11 +23,11 @@
 
     <div class="row g-3 mb-3">
         <div class="col-md-6">
-            <div class="card border-0 shadow-sm">
+            <div class="card mis-report-card">
                 <div class="card-body">
-                    <h2 class="h6">Summary</h2>
-                    <div class="table-responsive">
-                        <table class="table table-sm">
+                    <h2 class="mis-report-section-title">Summary</h2>
+                    <div class="table-responsive mis-report-table">
+                        <table class="table table-sm align-middle">
                             <tbody>
                                 <tr>
                                     <td>Leads: {{ report.lead_count }}</td>
@@ -56,11 +56,11 @@
         </div>
 
         <div class="col-md-6">
-            <div class="card border-0 shadow-sm">
+            <div class="card mis-report-card">
                 <div class="card-body">
-                    <h2 class="h6">Follow-ups</h2>
-                    <div class="table-responsive">
-                        <table class="table table-sm">
+                    <h2 class="mis-report-section-title">Follow-ups</h2>
+                    <div class="table-responsive mis-report-table">
+                        <table class="table table-sm align-middle">
                             <tbody>
                                 <tr>
                                     <td>Pending: {{ report.followups.pending }}</td>
@@ -76,14 +76,14 @@
         </div>
     </div>
 
-    <div class="card border-0 shadow-sm">
+    <div class="card mis-report-card">
         <div class="card-body">
-            <h2 class="h6">Source-wise Leads</h2>
+            <h2 class="mis-report-section-title">Source-wise Leads</h2>
             <div class="mb-3">
                 <canvas id="crmPipelineChart" height="120"></canvas>
             </div>
-            <div class="table-responsive">
-                <table class="table table-sm table-striped">
+            <div class="table-responsive mis-report-table">
+                <table class="table table-sm align-middle">
                     <thead>
                         <tr><th>Source</th><th>Count</th></tr>
                     </thead>

@@ -42,7 +42,7 @@ def financial_year_bounds(for_date=None):
     return start, end
 
 
-def parse_date_range_from_request(request, default_period='this_month'):
+def parse_date_range_from_request(request, default_period='this_financial_year'):
     """Parse a date range from request query parameters."""
     params = getattr(request, 'GET', None) or {}
     period = (params.get('period') or default_period).strip().lower()
