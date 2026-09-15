@@ -3091,10 +3091,12 @@ def purchase_order_edit(request, pk):
         base_currency = company_currencies.filter(is_base=True).first() or company_currencies.first()
         context['company_base_currency_symbol'] = (base_currency.symbol or base_currency.code or '').strip() if base_currency else '₹'
         context['company_base_currency_code'] = base_currency.code if base_currency else ''
+        context['show_base_transaction_summary'] = bool(getattr(company, 'show_base_transaction_summary', True))
     except Exception:
         context['company_currencies'] = []
         context['company_base_currency_symbol'] = '₹'
         context['company_base_currency_code'] = ''
+        context['show_base_transaction_summary'] = True
     context['tds_tcs_type'] = order.tds_tcs_type or 'tds'
     context['tds_tcs_definition_id'] = order.tds_tcs_definition_id or ''
     context['tds_tcs_rate'] = order.tds_tcs_rate or 0
