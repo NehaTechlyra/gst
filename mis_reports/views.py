@@ -1377,6 +1377,32 @@ def inventory_report(request, company_code=None):
         'export_query_string': export_query_string,
     })
 
+def inventory_report_summary(request, company_code=None):
+    if not (getattr(request.user, 'is_superuser', False) or can_view_inventory(request.user)):
+        messages.error(request, 'You do not have permission to view Inventory MIS report.')
+        return redirect_with_company(request, 'mis_reports_dashboard')
+
+    start_date, end_date, period = parse_date_range_from_request(request)
+    inventory_filters = _inventory_filter_values(request)
+    report_data = _build_inventory_report(start_date, end_date, inventory_filters)
+    export_query_string = build_export_query_string({
+        'period': period,
+        'start_date': start_date.strftime('%Y-%m-%d') if start_date else '',
+        'end_date': end_date.strftime('%Y-%m-%d') if end_date else '',
+        **inventory_filters,
+    })
+
+    return render(request, 'mis_reports/inventory_report.html', {
+        'company_code': company_code,
+        'period': period,
+        'start_date': start_date,
+        'end_date': end_date,
+        'report': report_data,
+        'inventory_filters': inventory_filters,
+        'inventory_filter_options': _inventory_filter_options(),
+        'can_export': getattr(request.user, 'is_superuser', False) or can_export(request.user),
+        'export_query_string': export_query_string,
+    })
 
 def inventory_warehouses_report(request, company_code=None):
     if not (getattr(request.user, 'is_superuser', False) or can_view_inventory(request.user)):

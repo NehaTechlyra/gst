@@ -192,6 +192,30 @@
             transform: rotate(0deg) !important;
         }
 
+        .sales-reports-menu.showMenu .arrow {
+            transform: rotate(-180deg) !important;
+        }
+
+        .sales-reports-menu:not(.showMenu) .arrow {
+            transform: rotate(0deg) !important;
+        }
+
+        .purchase-reports-menu.showMenu .arrow {
+            transform: rotate(-180deg) !important;
+        }
+
+        .purchase-reports-menu:not(.showMenu) .arrow {
+            transform: rotate(0deg) !important;
+        }
+
+        .inventory-reports-menu.showMenu .arrow {
+            transform: rotate(-180deg) !important;
+        }
+
+        .inventory-reports-menu:not(.showMenu) .arrow {
+            transform: rotate(0deg) !important;
+        }
+
         .sidebar.close .nav-links i.arrow {
             display: none;
         }
@@ -232,6 +256,15 @@
         .item-properties-menu.showMenu .sub-menu {
             display: block !important;
         }
+        .sales-reports-menu.showMenu .sub-menu {
+            display: block !important;
+        }
+        .purchase-reports-menu.showMenu .sub-menu {
+            display: block !important;
+        }
+        .inventory-reports-menu.showMenu .sub-menu {
+            display: block !important;
+        }
         /* Nested Item Properties submenu should be hidden by default,
         even when the parent Masters menu is open */
         .sidebar .nav-links li .sub-menu .item-properties-menu .sub-menu {
@@ -240,6 +273,27 @@
 
         /* ...and only shown when Item Properties itself is toggled open */
         .sidebar .nav-links li .sub-menu .item-properties-menu.showMenu .sub-menu {
+            display: block !important;
+        }
+        .sidebar .nav-links li .sub-menu .sales-reports-menu .sub-menu {
+            display: none !important;
+        }
+
+        .sidebar .nav-links li .sub-menu .sales-reports-menu.showMenu .sub-menu {
+            display: block !important;
+        }
+        .sidebar .nav-links li .sub-menu .purchase-reports-menu .sub-menu {
+            display: none !important;
+        }
+
+        .sidebar .nav-links li .sub-menu .purchase-reports-menu.showMenu .sub-menu {
+            display: block !important;
+        }
+        .sidebar .nav-links li .sub-menu .inventory-reports-menu .sub-menu {
+            display: none !important;
+        }
+
+        .sidebar .nav-links li .sub-menu .inventory-reports-menu.showMenu .sub-menu {
             display: block !important;
         }
         
@@ -848,19 +902,50 @@
                     <li><a href="{% if company_code %}{% url 'mis_reports_dashboard' company_code=company_code %}{% else %}{% url 'mis_reports_dashboard' %}{% endif %}" class="{% if request.resolver_match.url_name == 'mis_reports_dashboard' %}active-link{% endif %}">Dashboard</a></li>
                     {% endif %}
                     {% if request.user.is_superuser or can_view_mis_sales %}
-                    <li><a href="{% if company_code %}{% url 'mis_sales_report' company_code=company_code %}{% else %}{% url 'mis_sales_report' %}{% endif %}" class="{% if request.resolver_match.url_name == 'mis_sales_report' %}active-link{% endif %}">Sales summary</a></li>
-                    <li><a href="{% if company_code %}{% url 'mis_sales_by_customer_report' company_code=company_code %}{% else %}{% url 'mis_sales_by_customer_report' %}{% endif %}" class="{% if request.resolver_match.url_name == 'mis_sales_by_customer_report' %}active-link{% endif %}">Sales by Customer</a></li>
-                    <li><a href="{% if company_code %}{% url 'mis_sales_by_salesperson_report' company_code=company_code %}{% else %}{% url 'mis_sales_by_salesperson_report' %}{% endif %}" class="{% if request.resolver_match.url_name == 'mis_sales_by_salesperson_report' %}active-link{% endif %}">Sales by Salesperson</a></li>
-                    <li><a href="{% if company_code %}{% url 'mis_sales_by_item_report' company_code=company_code %}{% else %}{% url 'mis_sales_by_item_report' %}{% endif %}" class="{% if request.resolver_match.url_name == 'mis_sales_by_item_report' %}active-link{% endif %}">Sales by Item</a></li>
+                    <li class="sales-reports-menu {% if request.resolver_match.url_name in 'mis_sales_report mis_sales_by_customer_report mis_sales_by_salesperson_report mis_sales_by_item_report' %}showMenu{% endif %}">
+                        <div class="icon-link nested-menu-toggle sales-reports-icon-link" style="margin: -5px 0px;align-items: unset;">
+                            <a class="{% if request.resolver_match.url_name in 'mis_sales_report mis_sales_by_customer_report mis_sales_by_salesperson_report mis_sales_by_item_report' %}active-link{% endif %}">
+                                <span class="link_name" style="display: block;">Sales</span>
+                            </a>
+                            <i class="bx bxs-chevron-down arrow"></i>
+                        </div>
+                        <ul class="sub-menu">
+                            <li><a href="{% if company_code %}{% url 'mis_sales_report' company_code=company_code %}{% else %}{% url 'mis_sales_report' %}{% endif %}" class="{% if request.resolver_match.url_name == 'mis_sales_report' %}active-link{% endif %}">Sales summary</a></li>
+                            <li><a href="{% if company_code %}{% url 'mis_sales_by_customer_report' company_code=company_code %}{% else %}{% url 'mis_sales_by_customer_report' %}{% endif %}" class="{% if request.resolver_match.url_name == 'mis_sales_by_customer_report' %}active-link{% endif %}">Sales by Customer</a></li>
+                            <li><a href="{% if company_code %}{% url 'mis_sales_by_salesperson_report' company_code=company_code %}{% else %}{% url 'mis_sales_by_salesperson_report' %}{% endif %}" class="{% if request.resolver_match.url_name == 'mis_sales_by_salesperson_report' %}active-link{% endif %}">Sales by Salesperson</a></li>
+                            <li><a href="{% if company_code %}{% url 'mis_sales_by_item_report' company_code=company_code %}{% else %}{% url 'mis_sales_by_item_report' %}{% endif %}" class="{% if request.resolver_match.url_name == 'mis_sales_by_item_report' %}active-link{% endif %}">Sales by Item</a></li>
+                        </ul>
+                    </li>
                     {% endif %}
                     {% if request.user.is_superuser or can_view_mis_purchase %}
-                    <li><a href="{% if company_code %}{% url 'mis_purchase_report' company_code=company_code %}{% else %}{% url 'mis_purchase_report' %}{% endif %}" class="{% if request.resolver_match.url_name == 'mis_purchase_report' %}active-link{% endif %}">Purchase summary</a></li>
-                    <li><a href="{% if company_code %}{% url 'mis_purchase_by_vendor_report' company_code=company_code %}{% else %}{% url 'mis_purchase_by_vendor_report' %}{% endif %}" class="{% if request.resolver_match.url_name == 'mis_purchase_by_vendor_report' %}active-link{% endif %}">Purchase by Vendor</a></li>
-                    <li><a href="{% if company_code %}{% url 'mis_purchase_by_item_report' company_code=company_code %}{% else %}{% url 'mis_purchase_by_item_report' %}{% endif %}" class="{% if request.resolver_match.url_name == 'mis_purchase_by_item_report' %}active-link{% endif %}">Purchase by Item</a></li>
+                    <li class="purchase-reports-menu {% if request.resolver_match.url_name in 'mis_purchase_report mis_purchase_by_vendor_report mis_purchase_by_item_report' %}showMenu{% endif %}">
+                        <div class="icon-link nested-menu-toggle purchase-reports-icon-link" style="margin: -15px 0px;align-items: unset;">
+                            <a class="{% if request.resolver_match.url_name in 'mis_purchase_report mis_purchase_by_vendor_report mis_purchase_by_item_report' %}active-link{% endif %}">
+                                <span class="link_name" style="display: block;">Purchase</span>
+                            </a>
+                            <i class="bx bxs-chevron-down arrow"></i>
+                        </div>
+                        <ul class="sub-menu" style="margin-top: 10px;">
+                            <li><a href="{% if company_code %}{% url 'mis_purchase_report' company_code=company_code %}{% else %}{% url 'mis_purchase_report' %}{% endif %}" class="{% if request.resolver_match.url_name == 'mis_purchase_report' %}active-link{% endif %}">Purchase summary</a></li>
+                            <li><a href="{% if company_code %}{% url 'mis_purchase_by_vendor_report' company_code=company_code %}{% else %}{% url 'mis_purchase_by_vendor_report' %}{% endif %}" class="{% if request.resolver_match.url_name == 'mis_purchase_by_vendor_report' %}active-link{% endif %}">Purchase by Vendor</a></li>
+                            <li><a href="{% if company_code %}{% url 'mis_purchase_by_item_report' company_code=company_code %}{% else %}{% url 'mis_purchase_by_item_report' %}{% endif %}" class="{% if request.resolver_match.url_name == 'mis_purchase_by_item_report' %}active-link{% endif %}">Purchase by Item</a></li>
+                        </ul>
+                    </li>
                     {% endif %}
                     {% if request.user.is_superuser or can_view_mis_inventory %}
-                    <li><a href="{% if company_code %}{% url 'mis_inventory_report' company_code=company_code %}{% else %}{% url 'mis_inventory_report' %}{% endif %}" class="{% if request.resolver_match.url_name == 'mis_inventory_report' %}active-link{% endif %}">Inventory by Items</a></li>
-                    <li><a href="{% if company_code %}{% url 'mis_inventory_warehouses_report' company_code=company_code %}{% else %}{% url 'mis_inventory_warehouses_report' %}{% endif %}" class="{% if request.resolver_match.url_name == 'mis_inventory_warehouses_report' %}active-link{% endif %}">Inventory by Warehouses</a></li>
+                    <li class="inventory-reports-menu {% if request.resolver_match.url_name in 'mis_inventory_report_summary mis_inventory_report mis_inventory_warehouses_report' %}showMenu{% endif %}">
+                        <div class="icon-link nested-menu-toggle inventory-reports-icon-link" style="margin: -5px 0px;align-items: unset;">
+                            <a class="{% if request.resolver_match.url_name in 'mis_inventory_report_summary mis_inventory_report mis_inventory_warehouses_report' %}active-link{% endif %}">
+                                <span class="link_name" style="display: block;">Inventory</span>
+                            </a>
+                            <i class="bx bxs-chevron-down arrow"></i>
+                        </div>
+                        <ul class="sub-menu">
+                            <li><a href="{% if company_code %}{% url 'mis_inventory_report_summary' company_code=company_code %}{% else %}{% url 'mis_inventory_report_summary' %}{% endif %}" class="{% if request.resolver_match.url_name == 'mis_inventory_report_summary' %}active-link{% endif %}">Inventory Summary</a></li>
+                            <li><a href="{% if company_code %}{% url 'mis_inventory_report' company_code=company_code %}{% else %}{% url 'mis_inventory_report' %}{% endif %}" class="{% if request.resolver_match.url_name == 'mis_inventory_report' %}active-link{% endif %}">Inventory by Items</a></li>
+                            <li><a href="{% if company_code %}{% url 'mis_inventory_warehouses_report' company_code=company_code %}{% else %}{% url 'mis_inventory_warehouses_report' %}{% endif %}" class="{% if request.resolver_match.url_name == 'mis_inventory_warehouses_report' %}active-link{% endif %}">Inventory by Warehouses</a></li>
+                        </ul>
+                    </li>
                     {% endif %}
                     {% if request.user.is_superuser or can_view_mis_finance %}
                     <li><a href="{% if company_code %}{% url 'mis_finance_report' company_code=company_code %}{% else %}{% url 'mis_finance_report' %}{% endif %}" class="{% if request.resolver_match.url_name == 'mis_finance_report' %}active-link{% endif %}">Finance</a></li>
@@ -1138,29 +1223,17 @@ iconLinks.forEach(iconLink => {
 
                   e.stopPropagation();
 
-                    // Check if this is Item Properties menu
-                    const isItemProperties = this.classList.contains("item-properties-icon-link");
-                    console.log("Icon-link clicked:", {
-                        isItemProperties,
-                        classList: this.classList,
-                        element: this
-                    });
+                    // Nested menus must keep their parent menu open.
+                    const isNestedMenu = this.classList.contains("nested-menu-toggle");
 
-                    if (isItemProperties) {
-                        // For Item Properties, only toggle its own submenu
+                    if (isNestedMenu) {
                         const liParent = this.closest("li");
-                        console.log("Item Properties - Parent LI:", liParent);
                         if (liParent) {
-                            console.log("Before toggle - classes:", liParent.className);
                             liParent.classList.toggle("showMenu");
-                            console.log("After toggle - classes:", liParent.className);
-                            console.log("Sub-menu element:", liParent.querySelector(".sub-menu"));
-                            console.log("Sub-menu display:", window.getComputedStyle(liParent.querySelector(".sub-menu")).display);
                         }
                     } else {
                         // For other menus, close all others and toggle this one
                         const liParent = this.closest("li");
-                        console.log("Other menu clicked:", liParent);
                         document.querySelectorAll(".nav-links li.showMenu").forEach(openItem => {
                             if (openItem !== liParent) {
                                 openItem.classList.remove("showMenu");
@@ -1308,7 +1381,7 @@ iconLinks.forEach(iconLink => {
 
                 function closeOtherGroups(exceptLi) {
                     sidebar.querySelectorAll(".nav-links li.showMenu").forEach((openLi) => {
-                        if (openLi !== exceptLi) {
+                        if (openLi !== exceptLi && !openLi.contains(exceptLi)) {
                             openLi.classList.remove("showMenu");
                             const toggle = getToggleButton(openLi);
                             const submenu = getSubMenu(openLi);

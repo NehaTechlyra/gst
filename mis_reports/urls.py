@@ -20,6 +20,7 @@ urlpatterns = [
     path('purchase/item/', views.purchase_by_item_report, name='mis_purchase_by_item_report'),
     path('purchase/item/export-csv/', views.purchase_by_item_report_export_csv, name='mis_purchase_by_item_report_export_csv'),
     path('inventory/', views.inventory_report, name='mis_inventory_report'),
+    path('inventory/summary/', views.inventory_report_summary, name='mis_inventory_report_summary'),
     path('inventory/warehouses/', views.inventory_warehouses_report, name='mis_inventory_warehouses_report'),
     path('inventory/warehouses/export-csv/', views.inventory_warehouses_report_export_csv, name='mis_inventory_warehouses_report_export_csv'),
     path('inventory/export-csv/', views.inventory_report_export_csv, name='mis_inventory_report_export_csv'),
