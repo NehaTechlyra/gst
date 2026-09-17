@@ -1643,6 +1643,7 @@ def _build_expense_report(start_date=None, end_date=None):
         'category_wise': [],
         'monthly_trend': [],
         'highest_expenses': [],
+        'expenses': [],
         'approved_count': 0,
         'pending_count': 0,
     }
@@ -1651,34 +1652,49 @@ def _build_expense_report(start_date=None, end_date=None):
         from expenses.models import Expense, ExpenseLine
 
         qs = safe_date_filter(Expense.objects.all(), 'date', start_date, end_date)
-        report['total_expenses'] = qs.aggregate(total=Coalesce(Sum('total_amount_base'), Decimal('0.00')))['total'] or Decimal('0.00')
+        expenses = list(qs.order_by('-date', '-id'))
+        report['total_expenses'] = sum((Decimal(str(getattr(expense, 'total_amount', Decimal('0.00')) or 0)) for expense in expenses), Decimal('0.00'))
 
-        # Category-wise using ExpenseLine.account.name
-        line_qs = ExpenseLine.objects.filter(expense__in=qs)
-        cat_rows = line_qs.values('account__name').annotate(total=Coalesce(Sum('amount'), Decimal('0.00'))).order_by('-total')[:10]
-        for row in cat_rows:
+        for expense in expenses:
+            report['expenses'].append({
+                'id': getattr(expense, 'id', None),
+                'date': getattr(expense, 'date', None),
+                'vendor': getattr(expense, 'vendor', None) and str(expense.vendor) or 'Unknown',
+                'invoice_number': getattr(expense, 'invoice_number', '') or 'N/A',
+                'amount': getattr(expense, 'total_amount', Decimal('0.00')),
+            })
+
+        # Category-wise totals using the actual expense line totals, including tax contributions.
+        line_qs = ExpenseLine.objects.filter(expense__in=qs).select_related('account')
+        category_totals = {}
+        for line in line_qs:
+            name = getattr(line.account, 'name', None) or 'Unspecified'
+            category_totals[name] = category_totals.get(name, Decimal('0.00')) + Decimal(str(line.total_amount or 0))
+        for category, total in sorted(category_totals.items(), key=lambda item: item[1], reverse=True)[:10]:
             report['category_wise'].append({
-                'category': row.get('account__name') or 'Unspecified',
-                'total': row.get('total') or Decimal('0.00'),
+                'category': category,
+                'total': total,
             })
 
-        # Monthly trend
-        trend_rows = qs.annotate(month=TruncMonth('date')).values('month').annotate(total=Coalesce(Sum('total_amount_base'), Decimal('0.00'))).order_by('month')
-        for row in trend_rows:
-            month = row.get('month')
+        # Monthly trend using actual expense totals, not base-converted totals.
+        monthly_totals = {}
+        for expense in expenses:
+            month = expense.date.strftime('%Y-%m') if expense.date else 'Unknown'
+            monthly_totals[month] = monthly_totals.get(month, Decimal('0.00')) + Decimal(str(getattr(expense, 'total_amount', Decimal('0.00')) or 0))
+        for month in sorted(monthly_totals):
             report['monthly_trend'].append({
-                'month': month.strftime('%Y-%m') if month else 'Unknown',
-                'total': row.get('total') or Decimal('0.00'),
+                'month': month,
+                'total': monthly_totals[month],
             })
 
-        # Highest expense entries
-        top_expenses = qs.order_by('-total_amount_base')[:10]
+        # Highest expense entries using actual totals.
+        top_expenses = sorted(expenses, key=lambda e: Decimal(str(getattr(e, 'total_amount', Decimal('0.00')) or 0)), reverse=True)[:10]
         for e in top_expenses:
             report['highest_expenses'].append({
                 'id': getattr(e, 'id', None),
                 'date': getattr(e, 'date', None),
                 'vendor': getattr(e, 'vendor', None) and str(e.vendor) or 'Unknown',
-                'amount': getattr(e, 'total_amount_base', Decimal('0.00')),
+                'amount': getattr(e, 'total_amount', Decimal('0.00')),
             })
 
         # Approved / pending counts if approval field exists
@@ -1744,13 +1760,13 @@ def expense_report_export_csv(request, company_code=None):
     writer.writerow(['Category-wise Expenses'])
     writer.writerow(['Category', 'Total'])
     for c in report_data['category_wise']:
-        writer.writerow([c['category'], f'{c['total']:.2f}'])
+        writer.writerow([c['category'], f"{c['total']:.2f}"])
     writer.writerow([])
 
     writer.writerow(['Monthly Trend'])
     writer.writerow(['Month', 'Total'])
     for m in report_data['monthly_trend']:
-        writer.writerow([m['month'], f'{m['total']:.2f}'])
+        writer.writerow([m['month'], f"{m['total']:.2f}"])
     writer.writerow([])
 
     writer.writerow(['Top Expenses'])

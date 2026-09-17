@@ -4,6 +4,7 @@ from django.utils import timezone
 from chart_of_accounts.models import ChartOfAccounts
 # Import the Tax model from the Tax app
 from Tax.models import Tax
+from expenses.utils import _get_tax_type_code   # adjust path to wherever it's actually defined
 
 
 class Currency(models.Model):
@@ -187,10 +188,11 @@ class ExpenseLine(models.Model):
         
         # Get effective tax rate (handle CGST/SGST pair)
         tax_rate = float(self.tax.rate)
-        if self.tax.taxtype in ('CGST', 'SGST'):
+        tax_type_code = _get_tax_type_code(self.tax)
+        if tax_type_code in ('CGST', 'SGST'):
             from Tax.models import Tax
-            counterpart_type = 'SGST' if self.tax.taxtype == 'CGST' else 'CGST'
-            counterpart = Tax.objects.filter(taxtype=counterpart_type, rate=self.tax.rate).first()
+            counterpart_type = 'SGST' if tax_type_code == 'CGST' else 'CGST'
+            counterpart = Tax.objects.filter(taxtype__name__iexact=counterpart_type, rate=self.tax.rate).first()
             if counterpart:
                 tax_rate = tax_rate * 2  # Combined rate for CGST+SGST
         
@@ -211,10 +213,11 @@ class ExpenseLine(models.Model):
             
         # Get effective tax rate (handle CGST/SGST pair)
         tax_rate = float(self.tax.rate)
-        if self.tax.taxtype in ('CGST', 'SGST'):
+        tax_type_code = _get_tax_type_code(self.tax)
+        if tax_type_code in ('CGST', 'SGST'):
             from Tax.models import Tax
-            counterpart_type = 'SGST' if self.tax.taxtype == 'CGST' else 'CGST'
-            counterpart = Tax.objects.filter(taxtype=counterpart_type, rate=self.tax.rate).first()
+            counterpart_type = 'SGST' if tax_type_code == 'CGST' else 'CGST'
+            counterpart = Tax.objects.filter(taxtype__name__iexact=counterpart_type, rate=self.tax.rate).first()
             if counterpart:
                 tax_rate = tax_rate * 2  # Combined rate for CGST+SGST
         

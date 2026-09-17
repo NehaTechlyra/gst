@@ -50,6 +50,14 @@ class MISReportsTests(SimpleTestCase):
         self.assertEqual(report.get('invoice_count'), 0)
         self.assertEqual(report.get('monthly_trend'), [])
 
+    def test_build_expense_report_defaults(self):
+        from mis_reports.views import _build_expense_report
+
+        report = _build_expense_report(None, None)
+        self.assertIsInstance(report, dict)
+        self.assertEqual(report.get('total_expenses'), Decimal('0.00'))
+        self.assertEqual(report.get('expenses'), [])
+
     def test_sales_export_csv_superuser(self):
         request = self.rf.get('/demo/mis-reports/sales/export-csv/')
         request.user = SimpleNamespace(is_superuser=True, is_authenticated=True)

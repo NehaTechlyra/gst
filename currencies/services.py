@@ -488,6 +488,7 @@ def refresh_document_total_base(obj) -> None:
     obj.total_amount_base = total_base
 
 
+
 def document_to_base_ratio(invoice_or_bill) -> Decimal:
     """Scale factor from document currency totals to base (for journal lines)."""
     doc = Decimal(str(getattr(invoice_or_bill, "total_amount", None) or 0))
