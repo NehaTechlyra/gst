@@ -2341,11 +2341,14 @@ def get_item_hsn(request):
 
 def sac_code_search(request):
     query = request.GET.get('q', '')
-    results = []
+    # Return matching results when a query is provided, otherwise return the
+    # first 50 so the dropdown has options to show as soon as it's opened.
     if query:
-        # Filter HSN codes where description contains the search term (case-insensitive)
+        # Filter SAC codes where description contains the search term (case-insensitive)
         sac_codes = SACCode.objects.filter(Q(description__icontains=query) | Q(code__icontains=query))[:50]  # limit results to 50
-        results = [{"id": s.id,"code":s.code,"description": s.description} for s in sac_codes]
+    else:
+        sac_codes = SACCode.objects.all()[:50]
+    results = [{"id": s.id,"code":s.code,"description": s.description} for s in sac_codes]
     return JsonResponse(results, safe=False)
 
 def unit_search(request):
@@ -2358,10 +2361,13 @@ def unit_search(request):
 
 def search_unit(request):
     query = request.GET.get('q', '')
-    results = []
+    # Return matching results when a query is provided, otherwise return the
+    # first 50 so the dropdown has options to show as soon as it's opened.
     if query:
         units = Unit.objects.filter(unit_name__icontains=query)[:50]  # Capital Uom here
-        results = [{"id": h.id, "name": h.unit_name} for h in units]
+    else:
+        units = Unit.objects.all()[:50]
+    results = [{"id": h.id, "name": h.unit_name} for h in units]
     return JsonResponse(results, safe=False)
 
 def vendor_search(request):
@@ -2769,10 +2775,13 @@ def add_unit(request):
 
 def brand_search(request):
     query = request.GET.get('q', '')
-    results = []
+    # Return matching results when a query is provided, otherwise return the
+    # first 50 so the dropdown has options to show as soon as it's opened.
     if query:
-        brand = Brand.objects.filter(brand_name__icontains=query,status=True)[:50]  # limit results to 50
-        results = [{"id": h.id,"name":h.brand_name} for h in brand]
+        brand = Brand.objects.filter(brand_name__icontains=query, status=True)[:50]  # limit results to 50
+    else:
+        brand = Brand.objects.filter(status=True)[:50]
+    results = [{"id": h.id,"name":h.brand_name} for h in brand]
     return JsonResponse(results, safe=False)
 
 
@@ -2856,10 +2865,13 @@ def create_warehouse_ajax(request):
 
 def warehouse_search(request):
     query = request.GET.get('q', '')
-    results = []
+    # Return matching results when a query is provided, otherwise return the
+    # first 50 so the dropdown has options to show as soon as it's opened.
     if query:
-        warehouse = Warehouse.objects.filter(warehouse_name__icontains=query,status=True)[:50]  # limit results to 50
-        results = [{"id": h.id,"name":h.warehouse_name} for h in warehouse]
+        warehouse = Warehouse.objects.filter(warehouse_name__icontains=query, status=True)[:50]  # limit results to 50
+    else:
+        warehouse = Warehouse.objects.filter(status=True)[:50]
+    results = [{"id": h.id,"name":h.warehouse_name} for h in warehouse]
     return JsonResponse(results, safe=False)
 
 
@@ -3006,10 +3018,13 @@ def check_barcode_unique(request):
 
 def uom_search(request):
     query = request.GET.get('q', '')
-    results = []
+    # Return matching results when a query is provided, otherwise return the
+    # first 50 so the dropdown has options to show as soon as it's opened.
     if query:
         uom_name = Uom_name.objects.filter(name__icontains=query)[:50]  # limit results to 50
-        results = [{"id": h.id,"name":h.name} for h in uom_name]
+    else:
+        uom_name = Uom_name.objects.all()[:50]
+    results = [{"id": h.id,"name":h.name} for h in uom_name]
     return JsonResponse(results, safe=False)
 
 # def get_uoms(request):

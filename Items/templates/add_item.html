@@ -207,7 +207,7 @@ $(document).ready(function() {
     $('#hsn_code_select').select2({
       placeholder: '',
       allowClear: true,
-      minimumInputLength: 1,
+      minimumInputLength: 0,
       ajax: {
         url: '/Items/hsn-codes/',
         dataType: 'json',
@@ -229,7 +229,7 @@ $(document).ready(function() {
     $('#sac_code_select').select2({
       placeholder: '',
       allowClear: true,
-      minimumInputLength: 1,
+      minimumInputLength: 0,
       ajax: {
         url: '/Items/sac-codes/',
         dataType: 'json',
@@ -254,7 +254,7 @@ $(document).ready(function() {
     $('#unit_select').select2({
       placeholder: '',
       allowClear: true,
-      minimumInputLength: 1,
+      minimumInputLength: 0,
       ajax: {
         url: '/Items/unit/',
         dataType: 'json',
@@ -308,7 +308,7 @@ $(document).ready(function() {
     $('#brand_select').select2({
       placeholder: '',
       allowClear: true,
-      minimumInputLength: 1,
+      minimumInputLength: 0,
       ajax: {
         url: '/Items/brand/',
         dataType: 'json',
@@ -447,7 +447,7 @@ $(document).ready(function() {
     $('#warehouse_select').select2({
       placeholder: '',
       allowClear: true,
-      minimumInputLength: 1,
+      minimumInputLength: 0,
       ajax: {
         url: '/Items/warehouse/',
         dataType: 'json',
@@ -588,7 +588,7 @@ $(document).ready(function() {
     $('#vendor_select').select2({
       placeholder: '',
       allowClear: true,
-      minimumInputLength: 1,
+      minimumInputLength: 0,
       ajax: {
         url: '/purchase/vendor/',
         dataType: 'json',
@@ -2228,7 +2228,7 @@ function addRowWithData(uomValue,uomName,conversionValue, barcodeValue) {
   $(selectUom).select2({
     placeholder: '',
     allowClear: true,
-    minimumInputLength: 1,
+    minimumInputLength: 0,
     ajax: {
       url: '/Items/uom_search/',
       dataType: 'json',
@@ -2423,7 +2423,7 @@ function addRow() {
 $(selectUom).select2({
   placeholder: '',
   allowClear: true,
-  minimumInputLength: 1,
+  minimumInputLength: 0,
   ajax: {
     url: '/Items/uom_search/',
     dataType: 'json',
