@@ -1739,7 +1739,17 @@ $('#items-table').on('select2:select', '.tax-select', function (e) {
 function getRowTaxRate($row) {
   const taxPref = $row.data('tax-pref') || '';
   if (taxPref === 'non_taxable') return 0;
-  return parseFloat($row.find('.tax-select').data('rate')) || 0;
+  const $taxSelect = $row.find('.tax-select');
+  // Existing rows (edit pages) get their tax pre-selected server-side, and the
+  // rate lives as a data-rate attribute on the <option>, not on the <select>
+  // itself — read that first, then fall back to the select-level data (set
+  // by the JS flows that populate tax on product selection / user choice).
+  const $selected = $taxSelect.find('option:selected');
+  let rate = $selected.length ? parseFloat($selected.attr('data-rate')) : NaN;
+  if (isNaN(rate)) {
+    rate = parseFloat($taxSelect.data('rate'));
+  }
+  return isNaN(rate) ? 0 : rate;
 }
 
 function updateMrpPreview($row) {
