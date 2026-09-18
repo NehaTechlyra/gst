@@ -2310,7 +2310,7 @@ def hsn_code_search(request):
     if query:
         hsn_codes = HSNCode.objects.filter(Q(description__icontains=query) | Q(code__icontains=query))[:50]
     else:
-        hsn_codes = HSNCode.objects.all()[:50]
+        hsn_codes = HSNCode.objects.all()[:5]
 
     results = [{"id": h.id, "code": h.code, "description": h.description} for h in hsn_codes]
     return JsonResponse(results, safe=False)
@@ -2347,7 +2347,7 @@ def sac_code_search(request):
         # Filter SAC codes where description contains the search term (case-insensitive)
         sac_codes = SACCode.objects.filter(Q(description__icontains=query) | Q(code__icontains=query))[:50]  # limit results to 50
     else:
-        sac_codes = SACCode.objects.all()[:50]
+        sac_codes = SACCode.objects.all()[:5]
     results = [{"id": s.id,"code":s.code,"description": s.description} for s in sac_codes]
     return JsonResponse(results, safe=False)
 
@@ -2366,7 +2366,7 @@ def search_unit(request):
     if query:
         units = Unit.objects.filter(unit_name__icontains=query)[:50]  # Capital Uom here
     else:
-        units = Unit.objects.all()[:50]
+        units = Unit.objects.all()[:5]
     results = [{"id": h.id, "name": h.unit_name} for h in units]
     return JsonResponse(results, safe=False)
 
@@ -2383,7 +2383,7 @@ def vendor_search(request):
             Q(email__icontains=query)
         )[:50]
     else:
-        vendors = vendors[:50]  # limit results to 50
+        vendors = vendors[:5]  # limit results to 50
     
     for v in vendors:
         if v.vendor_type == 'company':
@@ -2780,7 +2780,7 @@ def brand_search(request):
     if query:
         brand = Brand.objects.filter(brand_name__icontains=query, status=True)[:50]  # limit results to 50
     else:
-        brand = Brand.objects.filter(status=True)[:50]
+        brand = Brand.objects.filter(status=True)[:5]
     results = [{"id": h.id,"name":h.brand_name} for h in brand]
     return JsonResponse(results, safe=False)
 
@@ -2790,7 +2790,10 @@ def category_search(request):
     categories = Category.objects.filter(status=True)
     if query:
         categories = categories.filter(category_name__icontains=query)
-    results = [{"id": c.id, "name": c.category_name} for c in categories.order_by('category_name')[:50]]
+        limit = 50
+    else:
+        limit = 5
+    results = [{"id": c.id, "name": c.category_name} for c in categories.order_by('category_name')[:limit]]
     return JsonResponse(results, safe=False)
 
 
@@ -2803,6 +2806,9 @@ def subcategory_search(request):
     subcategories = subcategories.filter(category_id=category_id)
     if query:
         subcategories = subcategories.filter(subcategory_name__icontains=query)
+        limit = 50
+    else:
+        limit = 5
     results = [
         {
             "id": subcat.id,
@@ -2810,7 +2816,7 @@ def subcategory_search(request):
             "category_id": subcat.category_id,
             "category_name": subcat.category.category_name if subcat.category else "",
         }
-        for subcat in subcategories.order_by('subcategory_name')[:50]
+        for subcat in subcategories.order_by('subcategory_name')[:limit]
     ]
     return JsonResponse(results, safe=False)
 
@@ -2824,13 +2830,16 @@ def item_type_search(request):
     types = types.filter(subcategory_id=subcategory_id)
     if query:
         types = types.filter(type_name__icontains=query)
+        limit = 50
+    else:
+        limit = 5
     results = [
         {
             "id": t.id,
             "name": t.type_name,
             "subcategory_id": t.subcategory_id,
         }
-        for t in types.order_by('type_name')[:50]
+        for t in types.order_by('type_name')[:limit]
     ]
     return JsonResponse(results, safe=False)
 
@@ -2870,7 +2879,7 @@ def warehouse_search(request):
     if query:
         warehouse = Warehouse.objects.filter(warehouse_name__icontains=query, status=True)[:50]  # limit results to 50
     else:
-        warehouse = Warehouse.objects.filter(status=True)[:50]
+        warehouse = Warehouse.objects.filter(status=True)[:5]
     results = [{"id": h.id,"name":h.warehouse_name} for h in warehouse]
     return JsonResponse(results, safe=False)
 
@@ -2926,8 +2935,11 @@ def tax_group_search(request):
     tax_groups = TaxGroup.objects.filter(status=True).prefetch_related('taxes')
     if query:
         tax_groups = tax_groups.filter(group_name__icontains=query)
-    
-    for t in tax_groups[:50]:
+        limit = 50
+    else:
+        limit = 5
+
+    for t in tax_groups[:limit]:
         # consider only active taxes inside the group for display
         active_taxes = list(t.taxes.filter(is_active=True))
         first_tax = next((tx for tx in active_taxes if tx.country), None)
@@ -2944,7 +2956,7 @@ def tax_group_search(request):
                 Q(taxname__icontains=query) | Q(name__icontains=query)
             )
         
-        for t in individual_taxes[:50]:
+        for t in individual_taxes[:limit]:
             text = f"{t.taxname} ({t.country})" if t.country else t.taxname
             # Check if this tax is already in a result from TaxGroups
             if not any(r['text'] == text for r in results):
@@ -2972,13 +2984,16 @@ def inter_state_tax_list(request):
         taxes = taxes.filter(tax_type__iexact='TURNOVER')
     if query:
         taxes = taxes.filter(Q(taxname__icontains=query) | Q(name__icontains=query))
+        limit = 50
+    else:
+        limit = 5
     results = [
         {
             "id": t.id,
             "text": f"{t.taxname} ({t.country})" if t.country else t.taxname,
             "rate": float(t.rate or 0),
         }
-        for t in taxes[:50]
+        for t in taxes[:limit]
     ]
     return JsonResponse({"results": results})
 
@@ -3023,7 +3038,7 @@ def uom_search(request):
     if query:
         uom_name = Uom_name.objects.filter(name__icontains=query)[:50]  # limit results to 50
     else:
-        uom_name = Uom_name.objects.all()[:50]
+        uom_name = Uom_name.objects.all()[:5]
     results = [{"id": h.id,"name":h.name} for h in uom_name]
     return JsonResponse(results, safe=False)
 
