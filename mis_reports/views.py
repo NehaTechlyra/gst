@@ -1649,17 +1649,47 @@ def _build_expense_report(start_date=None, end_date=None):
     }
 
     try:
+        from customer.models import Customer
         from expenses.models import Expense, ExpenseLine
 
         qs = safe_date_filter(Expense.objects.all(), 'date', start_date, end_date)
-        expenses = list(qs.order_by('-date', '-id'))
+        expenses = list(
+            qs.select_related('vendor', 'paid_through')
+            .prefetch_related('lines__account')
+            .order_by('-date', '-id')
+        )
         report['total_expenses'] = sum((Decimal(str(getattr(expense, 'total_amount', Decimal('0.00')) or 0)) for expense in expenses), Decimal('0.00'))
 
+        customer_ids = {
+            int(str(expense.customer).strip())
+            for expense in expenses
+            if str(getattr(expense, 'customer', '') or '').strip().isdigit()
+        }
+        customer_names = {
+            customer.pk: _customer_display_name(customer)
+            for customer in Customer.objects.using(qs.db).filter(pk__in=customer_ids)
+        }
+
         for expense in expenses:
+            expense_accounts = []
+            for line in expense.lines.all():
+                account_name = getattr(getattr(line, 'account', None), 'name', None)
+                if account_name and account_name not in expense_accounts:
+                    expense_accounts.append(account_name)
+            customer_value = str(getattr(expense, 'customer', '') or '').strip()
+            customer_name = (
+                customer_names.get(int(customer_value), customer_value)
+                if customer_value.isdigit()
+                else customer_value
+            )
+
             report['expenses'].append({
                 'id': getattr(expense, 'id', None),
                 'date': getattr(expense, 'date', None),
                 'vendor': getattr(expense, 'vendor', None) and str(expense.vendor) or 'Unknown',
+                'customer': customer_name or 'N/A',
+                'paid_through': getattr(getattr(expense, 'paid_through', None), 'name', None) or 'N/A',
+                'expense_account': ', '.join(expense_accounts) or 'N/A',
                 'invoice_number': getattr(expense, 'invoice_number', '') or 'N/A',
                 'amount': getattr(expense, 'total_amount', Decimal('0.00')),
             })
@@ -1690,10 +1720,17 @@ def _build_expense_report(start_date=None, end_date=None):
         # Highest expense entries using actual totals.
         top_expenses = sorted(expenses, key=lambda e: Decimal(str(getattr(e, 'total_amount', Decimal('0.00')) or 0)), reverse=True)[:10]
         for e in top_expenses:
+            customer_value = str(getattr(e, 'customer', '') or '').strip()
+            customer_name = (
+                customer_names.get(int(customer_value), customer_value)
+                if customer_value.isdigit()
+                else customer_value
+            )
             report['highest_expenses'].append({
                 'id': getattr(e, 'id', None),
                 'date': getattr(e, 'date', None),
                 'vendor': getattr(e, 'vendor', None) and str(e.vendor) or 'Unknown',
+                'customer': customer_name or 'N/A',
                 'amount': getattr(e, 'total_amount', Decimal('0.00')),
             })
 
