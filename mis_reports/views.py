@@ -954,14 +954,18 @@ def _build_crm_report(start_date=None, end_date=None):
         },
         'pipeline_value': Decimal('0.00'),
         'source_wise': [],
+        'leads': [],
+        'opportunities': [],
+        'followup_list': [],
+        'presales': [],
     }
 
     try:
-        from crm.models import Lead, Opportunity, FollowUp
+        from crm.models import Lead, Opportunity, FollowUp, PreSalesInteraction
         from django.db.models import Count
 
-        leads = safe_date_filter(Lead.objects.all(), 'created_at', start_date, end_date)
-        opps = safe_date_filter(Opportunity.objects.all(), 'created_at', start_date, end_date)
+        leads = safe_date_filter(Lead.objects.all(), 'created_at__date', start_date, end_date)
+        opps = safe_date_filter(Opportunity.objects.all(), 'created_at__date', start_date, end_date)
 
         report['lead_count'] = leads.count()
         report['opportunity_count'] = opps.count()
@@ -974,22 +978,93 @@ def _build_crm_report(start_date=None, end_date=None):
         else:
             report['conversion_rate'] = 0.0
 
+        for lead in leads.select_related('assigned_to', 'assigned_employee').order_by('-created_at', '-pk'):
+            assigned_to = getattr(lead, 'assigned_employee', None) or getattr(lead, 'assigned_to', None)
+            report['leads'].append({
+                'lead_number': getattr(lead, 'lead_number', '') or 'N/A',
+                'customer_name': getattr(lead, 'customer_name', '') or 'N/A',
+                'phone': getattr(lead, 'phone', '') or 'N/A',
+                'email': getattr(lead, 'email', '') or 'N/A',
+                'product_interested': getattr(lead, 'product_interested', '') or 'N/A',
+                'source': getattr(lead, 'source', '') or 'N/A',
+                'priority': getattr(lead, 'priority', '') or 'N/A',
+                'status': getattr(lead, 'status', '') or 'N/A',
+                'assigned_to': str(assigned_to) if assigned_to else 'N/A',
+                'created_at': getattr(lead, 'created_at', None),
+            })
+
+        for opportunity in opps.select_related('lead', 'assigned_to', 'assigned_employee').order_by('-created_at', '-pk'):
+            assigned_to = getattr(opportunity, 'assigned_employee', None) or getattr(opportunity, 'assigned_to', None)
+            lead = getattr(opportunity, 'lead', None)
+            report['opportunities'].append({
+                'opportunity_number': getattr(opportunity, 'opportunity_number', '') or 'N/A',
+                'lead_number': getattr(lead, 'lead_number', '') if lead else 'N/A',
+                'customer_name': getattr(lead, 'customer_name', '') if lead else 'N/A',
+                'estimated_deal_value': getattr(opportunity, 'estimated_deal_value', Decimal('0.00')),
+                'expected_closing_date': getattr(opportunity, 'expected_closing_date', None),
+                'status': getattr(opportunity, 'status', '') or 'N/A',
+                'priority': getattr(opportunity, 'priority', '') or 'N/A',
+                'assigned_to': str(assigned_to) if assigned_to else 'N/A',
+                'created_at': getattr(opportunity, 'created_at', None),
+            })
+
         followups = FollowUp.objects.all()
         if start_date:
-            followups = followups.filter(followup_date__gte=start_date)
+            followups = followups.filter(followup_date__date__gte=start_date)
         if end_date:
-            followups = followups.filter(followup_date__lte=end_date)
+            followups = followups.filter(followup_date__date__lte=end_date)
 
         report['followups']['pending'] = followups.filter(status__iexact='Pending').count()
         report['followups']['completed'] = followups.filter(status__iexact='Completed').count()
 
+        for followup in followups.select_related(
+            'lead', 'opportunity', 'opportunity__lead', 'assigned_to', 'assigned_employee'
+        ).order_by('followup_date', '-pk'):
+            assigned_to = getattr(followup, 'assigned_employee', None) or getattr(followup, 'assigned_to', None)
+            lead = getattr(followup, 'lead', None) or getattr(getattr(followup, 'opportunity', None), 'lead', None)
+            opportunity = getattr(followup, 'opportunity', None)
+            report['followup_list'].append({
+                'date': getattr(followup, 'followup_date', None),
+                'customer_name': getattr(lead, 'customer_name', '') if lead else 'N/A',
+                'lead_number': getattr(lead, 'lead_number', '') if lead else 'N/A',
+                'opportunity_number': getattr(opportunity, 'opportunity_number', '') if opportunity else 'N/A',
+                'description': getattr(followup, 'description', '') or 'N/A',
+                'reminder_interval': getattr(followup, 'reminder_interval', '') or 'N/A',
+                'assigned_to': str(assigned_to) if assigned_to else 'N/A',
+                'status': getattr(followup, 'status', '') or 'N/A',
+            })
+
+        presales_qs = safe_date_filter(
+            PreSalesInteraction.objects.all(),
+            'created_at__date',
+            start_date,
+            end_date,
+        )
+        for presale in presales_qs.select_related(
+            'lead', 'opportunity', 'opportunity__lead', 'assigned_employee'
+        ).order_by('-created_at', '-pk'):
+            lead = getattr(presale, 'lead', None) or getattr(getattr(presale, 'opportunity', None), 'lead', None)
+            opportunity = getattr(presale, 'opportunity', None)
+            report['presales'].append({
+                'created_at': getattr(presale, 'created_at', None),
+                'customer_name': getattr(presale, 'customer_name', '') or getattr(lead, 'customer_name', '') or 'N/A',
+                'product': getattr(presale, 'product', '') or 'N/A',
+                'contact': getattr(presale, 'contact', '') or 'N/A',
+                'type': getattr(presale, 'type', '') or 'N/A',
+                'lead_number': getattr(lead, 'lead_number', '') if lead else 'N/A',
+                'opportunity_number': getattr(opportunity, 'opportunity_number', '') if opportunity else 'N/A',
+                'assigned_to': str(getattr(presale, 'assigned_employee', None)) if getattr(presale, 'assigned_employee', None) else 'N/A',
+                'description': getattr(presale, 'description', '') or 'N/A',
+            })
+
         # Pipeline value: sum of estimated_deal_value for open opportunities
         open_statuses = ['Open', 'Discussion', 'Quotation Created']
-        pipeline_qs = Opportunity.objects.filter(status__in=open_statuses)
-        if start_date:
-            pipeline_qs = pipeline_qs.filter(created_at__gte=start_date)
-        if end_date:
-            pipeline_qs = pipeline_qs.filter(created_at__lte=end_date)
+        pipeline_qs = safe_date_filter(
+            Opportunity.objects.filter(status__in=open_statuses),
+            'created_at__date',
+            start_date,
+            end_date,
+        )
         pipeline_sum = pipeline_qs.aggregate(total=Coalesce(Sum('estimated_deal_value'), Decimal('0.00')))['total'] or Decimal('0.00')
         report['pipeline_value'] = pipeline_sum
 
@@ -1122,6 +1197,103 @@ def sales_by_salesperson_report(request, company_code=None):
 def sales_by_item_report(request, company_code=None):
     return _sales_dimension_report(request, company_code, 'item', 'mis_reports/sales_by_item_report.html')
 
+def _resolve_filter_label(dimension, sales_filters, company_db):
+    """Return a human-readable 'Filter applied' string for the CSV header."""
+    if dimension == 'customer':
+        customer_id = sales_filters.get('customer')
+        if not customer_id:
+            return 'Customer Filter Applied', 'All customers'
+        from customer.models import Customer
+        customer = Customer.objects.using(company_db).filter(pk=customer_id).first()
+        return 'Customer Filter Applied', (_customer_display_name(customer) if customer else 'All customers')
+
+    if dimension == 'salesperson':
+        sp_id = sales_filters.get('sales_person')
+        if not sp_id:
+            return 'Sales Person Filter Applied', 'All sales persons'
+        from sales.models import SalesPerson  # adjust import to actual app
+        sp = SalesPerson.objects.using(company_db).filter(pk=sp_id).first()
+        return 'Sales Person Filter Applied', (sp.name if sp else 'All sales persons')
+    if dimension == 'item':
+        parts = []
+        item_id = sales_filters.get('item')
+        category_id = sales_filters.get('category')
+        subcategory_id = sales_filters.get('subcategory')
+        type_id = sales_filters.get('item_type')
+        brand_id = sales_filters.get('brand')
+
+        options = _sales_filter_options(company_db)
+
+        if item_id:
+            match = next((i for i in options['items'] if str(i.pk) == str(item_id)), None)
+            if match:
+                parts.append(f'Item: {match.name}')
+        if category_id:
+            match = next((c for c in options['categories'] if str(c.pk) == str(category_id)), None)
+            if match:
+                parts.append(f'Category: {match.category_name}')
+        if subcategory_id:
+            match = next((s for s in options['subcategories'] if str(s.pk) == str(subcategory_id)), None)
+            if match:
+                parts.append(f'Subcategory: {match.subcategory_name}')
+        if type_id:
+            match = next((t for t in options['item_types'] if str(t.pk) == str(type_id)), None)
+            if match:
+                parts.append(f'Type: {match.type_name}')
+        if brand_id:
+            match = next((b for b in options['brands'] if str(b.pk) == str(brand_id)), None)
+            if match:
+                parts.append(f'Brand: {match.brand_name}')
+
+        return 'Item Filter Applied', (', '.join(parts) if parts else 'All items')
+
+    return 'Filter Applied', 'N/A'
+
+def _resolve_filter_labels(dimension, sales_filters, company_db):
+    """Return a list of (row_label, value) tuples for the CSV header's filter rows."""
+    if dimension == 'customer':
+        customer_id = sales_filters.get('customer')
+        if not customer_id:
+            return [('Customer Filter Applied', 'All customers')]
+        from customer.models import Customer
+        customer = Customer.objects.using(company_db).filter(pk=customer_id).first()
+        return [('Customer Filter Applied', _customer_display_name(customer) if customer else 'All customers')]
+
+    if dimension == 'salesperson':
+        sp_id = sales_filters.get('sales_person')
+        if not sp_id:
+            return [('Sales Person Filter Applied', 'All sales persons')]
+        options = _sales_filter_options(company_db)
+        match = next((sp for sp in options['sales_persons'] if str(sp.pk) == str(sp_id)), None)
+        return [('Sales Person Filter Applied', match.name if match else 'All sales persons')]
+
+    if dimension == 'item':
+        options = _sales_filter_options(company_db)
+        rows = []
+
+        item_id = sales_filters.get('item')
+        match = next((i for i in options['items'] if str(i.pk) == str(item_id)), None) if item_id else None
+        rows.append(('Item Filter Applied', match.name if match else 'All items'))
+
+        category_id = sales_filters.get('category')
+        match = next((c for c in options['categories'] if str(c.pk) == str(category_id)), None) if category_id else None
+        rows.append(('Category Filter Applied', match.category_name if match else 'All categories'))
+
+        subcategory_id = sales_filters.get('subcategory')
+        match = next((s for s in options['subcategories'] if str(s.pk) == str(subcategory_id)), None) if subcategory_id else None
+        rows.append(('Subcategory Filter Applied', match.subcategory_name if match else 'All subcategories'))
+
+        type_id = sales_filters.get('item_type')
+        match = next((t for t in options['item_types'] if str(t.pk) == str(type_id)), None) if type_id else None
+        rows.append(('Type Filter Applied', match.type_name if match else 'All types'))
+
+        brand_id = sales_filters.get('brand')
+        match = next((b for b in options['brands'] if str(b.pk) == str(brand_id)), None) if brand_id else None
+        rows.append(('Brand Filter Applied', match.brand_name if match else 'All brands'))
+
+        return rows
+
+    return [('Filter Applied', 'N/A')]
 
 def _sales_dimension_report_export_csv(request, company_code, dimension, filename, title, columns):
     if not (getattr(request.user, 'is_superuser', False) or can_export(request.user)):
@@ -1130,8 +1302,9 @@ def _sales_dimension_report_export_csv(request, company_code, dimension, filenam
 
     start_date, end_date, period = parse_date_range_from_request(request)
     sales_filters = _sales_filter_values(request)
+    company_db = getattr(request, 'company_db', None)
     report_data = _build_sales_dimension_report(
-        start_date, end_date, getattr(request, 'company_db', None), dimension, sales_filters
+        start_date, end_date, company_db, dimension, sales_filters
     )
 
     response = HttpResponse(content_type='text/csv; charset=utf-8')
@@ -1141,6 +1314,9 @@ def _sales_dimension_report_export_csv(request, company_code, dimension, filenam
     writer.writerow(['Period', period])
     writer.writerow(['Start Date', start_date.strftime('%Y-%m-%d') if start_date else ''])
     writer.writerow(['End Date', end_date.strftime('%Y-%m-%d') if end_date else ''])
+    for label, value in _resolve_filter_labels(dimension, sales_filters, company_db):   # <-- loop now
+        writer.writerow([label, value])
+
     writer.writerow([])
     writer.writerow(columns)
 
@@ -1260,8 +1436,9 @@ def _purchase_dimension_report_export_csv(request, company_code, dimension, file
 
     start_date, end_date, period = parse_date_range_from_request(request)
     purchase_filters = _purchase_filter_values(request)
+    company_db = getattr(request, 'company_db', None)
     report_data = _build_purchase_dimension_report(
-        start_date, end_date, getattr(request, 'company_db', None), dimension, purchase_filters
+        start_date, end_date, company_db, dimension, purchase_filters
     )
 
     response = HttpResponse(content_type='text/csv; charset=utf-8')
@@ -1271,6 +1448,10 @@ def _purchase_dimension_report_export_csv(request, company_code, dimension, file
     writer.writerow(['Period', period])
     writer.writerow(['Start Date', start_date.strftime('%Y-%m-%d') if start_date else ''])
     writer.writerow(['End Date', end_date.strftime('%Y-%m-%d') if end_date else ''])
+
+    for label, value in _resolve_purchase_filter_labels(dimension, purchase_filters, company_db):   # <-- added
+        writer.writerow([label, value])
+
     writer.writerow([])
     writer.writerow(columns)
 
@@ -1349,6 +1530,43 @@ def purchase_report_export_csv(request, company_code=None):
 
     return response
 
+def _resolve_purchase_filter_labels(dimension, purchase_filters, company_db):
+    """Return a list of (row_label, value) tuples for the CSV header's filter rows."""
+    options = _purchase_filter_options(company_db)
+
+    if dimension == 'vendor':
+        vendor_id = purchase_filters.get('vendor')
+        if not vendor_id:
+            return [('Vendor Filter Applied', 'All vendors')]
+        match = next((v for v in options['vendors'] if str(v.pk) == str(vendor_id)), None)
+        return [('Vendor Filter Applied', str(match) if match else 'All vendors')]
+
+    if dimension == 'item':
+        rows = []
+
+        item_id = purchase_filters.get('item')
+        match = next((i for i in options['items'] if str(i.pk) == str(item_id)), None) if item_id else None
+        rows.append(('Item Filter Applied', match.name if match else 'All items'))
+
+        category_id = purchase_filters.get('category')
+        match = next((c for c in options['categories'] if str(c.pk) == str(category_id)), None) if category_id else None
+        rows.append(('Category Filter Applied', match.category_name if match else 'All categories'))
+
+        subcategory_id = purchase_filters.get('subcategory')
+        match = next((s for s in options['subcategories'] if str(s.pk) == str(subcategory_id)), None) if subcategory_id else None
+        rows.append(('Subcategory Filter Applied', match.subcategory_name if match else 'All subcategories'))
+
+        type_id = purchase_filters.get('item_type')
+        match = next((t for t in options['item_types'] if str(t.pk) == str(type_id)), None) if type_id else None
+        rows.append(('Type Filter Applied', match.type_name if match else 'All types'))
+
+        brand_id = purchase_filters.get('brand')
+        match = next((b for b in options['brands'] if str(b.pk) == str(brand_id)), None) if brand_id else None
+        rows.append(('Brand Filter Applied', match.brand_name if match else 'All brands'))
+
+        return rows
+
+    return [('Filter Applied', 'N/A')]
 
 def inventory_report(request, company_code=None):
     if not (getattr(request.user, 'is_superuser', False) or can_view_inventory(request.user)):
@@ -1434,6 +1652,14 @@ def inventory_warehouses_report(request, company_code=None):
         'export_query_string': export_query_string,
     })
 
+def _resolve_warehouse_filter_label(warehouse_filters):
+    """Return (row_label, value) for the CSV header's filter row."""
+    warehouse_id = warehouse_filters.get('warehouse')
+    if not warehouse_id:
+        return 'Warehouse Filter Applied', 'All warehouses'
+    options = _inventory_filter_options()
+    match = next((w for w in options['warehouses'] if str(w.pk) == str(warehouse_id)), None)
+    return 'Warehouse Filter Applied', (match.warehouse_name if match else 'All warehouses')
 
 def inventory_report_export_csv(request, company_code=None):
     if not (getattr(request.user, 'is_superuser', False) or can_export(request.user)):
@@ -1452,6 +1678,10 @@ def inventory_report_export_csv(request, company_code=None):
     writer.writerow(['Period', period])
     writer.writerow(['Start Date', start_date.strftime('%Y-%m-%d') if start_date else ''])
     writer.writerow(['End Date', end_date.strftime('%Y-%m-%d') if end_date else ''])
+
+    for label, value in _resolve_inventory_filter_labels(inventory_filters):   # <-- added
+        writer.writerow([label, value])
+
     writer.writerow([])
 
     writer.writerow(['Item Stock Details'])
@@ -1489,6 +1719,10 @@ def inventory_warehouses_report_export_csv(request, company_code=None):
     writer.writerow(['Period', period])
     writer.writerow(['Start Date', start_date.strftime('%Y-%m-%d') if start_date else ''])
     writer.writerow(['End Date', end_date.strftime('%Y-%m-%d') if end_date else ''])
+
+    label, value = _resolve_warehouse_filter_label(warehouse_filters)   # <-- added
+    writer.writerow([label, value])
+
     writer.writerow([])
     writer.writerow(['Item Stock by Warehouse'])
     writer.writerow(['Item', 'Warehouse', 'Stock Quantity', 'Stock Value'])
@@ -1502,6 +1736,33 @@ def inventory_warehouses_report_export_csv(request, company_code=None):
 
     return response
 
+
+def _resolve_inventory_filter_labels(inventory_filters):
+    """Return a list of (row_label, value) tuples for the CSV header's filter rows."""
+    options = _inventory_filter_options()
+    rows = []
+
+    item_id = inventory_filters.get('item')
+    match = next((i for i in options['items'] if str(i.pk) == str(item_id)), None) if item_id else None
+    rows.append(('Item Filter Applied', match.name if match else 'All items'))
+
+    category_id = inventory_filters.get('category')
+    match = next((c for c in options['categories'] if str(c.pk) == str(category_id)), None) if category_id else None
+    rows.append(('Category Filter Applied', match.category_name if match else 'All categories'))
+
+    subcategory_id = inventory_filters.get('subcategory')
+    match = next((s for s in options['subcategories'] if str(s.pk) == str(subcategory_id)), None) if subcategory_id else None
+    rows.append(('Subcategory Filter Applied', match.subcategory_name if match else 'All subcategories'))
+
+    type_id = inventory_filters.get('item_type')
+    match = next((t for t in options['item_types'] if str(t.pk) == str(type_id)), None) if type_id else None
+    rows.append(('Type Filter Applied', match.type_name if match else 'All types'))
+
+    brand_id = inventory_filters.get('brand')
+    match = next((b for b in options['brands'] if str(b.pk) == str(brand_id)), None) if brand_id else None
+    rows.append(('Brand Filter Applied', match.brand_name if match else 'All brands'))
+
+    return rows
 
 def finance_report(request, company_code=None):
     if not (getattr(request.user, 'is_superuser', False) or can_view_finance(request.user)):
@@ -1541,6 +1802,8 @@ def finance_report_export_csv(request, company_code=None):
 
     writer.writerow(['Finance MIS Report'])
     writer.writerow(['Period', period])
+    writer.writerow(['Start Date', start_date.strftime('%Y-%m-%d') if start_date else ''])
+    writer.writerow(['End Date', end_date.strftime('%Y-%m-%d') if end_date else ''])
     writer.writerow(['Total Income', f'{report_data["total_income"]:.2f}'])
     writer.writerow(['Total Expenses', f'{report_data["total_expenses"]:.2f}'])
     writer.writerow(['Net Profit/Loss', f'{report_data["net_profit_loss"]:.2f}'])
@@ -1616,6 +1879,8 @@ def crm_report_export_csv(request, company_code=None):
 
     writer.writerow(['CRM MIS Report'])
     writer.writerow(['Period', period])
+    writer.writerow(['Start Date', start_date.strftime('%Y-%m-%d') if start_date else ''])
+    writer.writerow(['End Date', end_date.strftime('%Y-%m-%d') if end_date else ''])
     writer.writerow(['Lead Count', report_data['lead_count']])
     writer.writerow(['Opportunity Count', report_data['opportunity_count']])
     writer.writerow(['Won Deals', report_data['won_deals']])
@@ -1624,9 +1889,73 @@ def crm_report_export_csv(request, company_code=None):
     writer.writerow(['Pipeline Value', f"{report_data['pipeline_value']:.2f}"])
     writer.writerow([])
 
+    writer.writerow(['Leads'])
+    writer.writerow(['Lead No.', 'Customer', 'Phone', 'Email', 'Product', 'Source', 'Priority', 'Status', 'Assigned To', 'Created'])
+    for lead in report_data['leads']:
+        writer.writerow([
+            lead['lead_number'],
+            lead['customer_name'],
+            lead['phone'],
+            lead['email'],
+            lead['product_interested'],
+            lead['source'],
+            lead['priority'],
+            lead['status'],
+            lead['assigned_to'],
+            lead['created_at'].date() if lead['created_at'] else '',
+        ])
+    writer.writerow([])
+
+    writer.writerow(['Opportunities'])
+    writer.writerow(['Opportunity No.', 'Lead No.', 'Customer', 'Deal Value', 'Expected Close', 'Status', 'Priority', 'Assigned To', 'Created'])
+    for opportunity in report_data['opportunities']:
+        writer.writerow([
+            opportunity['opportunity_number'],
+            opportunity['lead_number'],
+            opportunity['customer_name'],
+            f"{_to_decimal(opportunity['estimated_deal_value']):.2f}",
+            opportunity['expected_closing_date'] or '',
+            opportunity['status'],
+            opportunity['priority'],
+            opportunity['assigned_to'],
+            opportunity['created_at'].date() if opportunity['created_at'] else '',
+        ])
+    writer.writerow([])
+
     writer.writerow(['Follow-ups'])
     writer.writerow(['Pending', report_data['followups']['pending']])
     writer.writerow(['Completed', report_data['followups']['completed']])
+    writer.writerow([])
+
+    writer.writerow(['Follow-up List'])
+    writer.writerow(['Follow-up Date', 'Customer', 'Lead No.', 'Opportunity No.', 'Description', 'Reminder', 'Assigned To', 'Status'])
+    for followup in report_data['followup_list']:
+        writer.writerow([
+            followup['date'].date() if followup['date'] else '',
+            followup['customer_name'],
+            followup['lead_number'],
+            followup['opportunity_number'],
+            followup['description'],
+            followup['reminder_interval'],
+            followup['assigned_to'],
+            followup['status'],
+        ])
+    writer.writerow([])
+
+    writer.writerow(['Pre-sales List'])
+    writer.writerow(['Date', 'Customer', 'Product', 'Contact', 'Type', 'Lead No.', 'Opportunity No.', 'Assigned To', 'Description'])
+    for presale in report_data['presales']:
+        writer.writerow([
+            presale['created_at'].date() if presale['created_at'] else '',
+            presale['customer_name'],
+            presale['product'],
+            presale['contact'],
+            presale['type'],
+            presale['lead_number'],
+            presale['opportunity_number'],
+            presale['assigned_to'],
+            presale['description'],
+        ])
     writer.writerow([])
 
     writer.writerow(['Source-wise Leads'])
@@ -1789,31 +2118,66 @@ def expense_report_export_csv(request, company_code=None):
     response['Content-Disposition'] = 'attachment; filename="mis_expense_report.csv"'
     writer = csv.writer(response)
 
-    writer.writerow(['Expense MIS Report'])
-    writer.writerow(['Period', period])
-    writer.writerow(['Total Expenses', f'{report_data["total_expenses"]:.2f}'])
-    writer.writerow([])
+    NUM_COLS = 7  # widest section (Expense List) — pad every row to this width
 
-    writer.writerow(['Category-wise Expenses'])
-    writer.writerow(['Category', 'Total'])
+    def row(*cells):
+        cells = list(cells) + [''] * (NUM_COLS - len(cells))
+        writer.writerow(cells)
+
+    def section_title(title):
+        row()
+        row(title.upper())
+        row('-' * len(title))
+
+    # Header
+    row('EXPENSE MIS REPORT')
+    row('=' * 18)
+    row('Period', period)
+    row('Start Date', start_date.strftime('%d-%m-%Y') if start_date else 'N/A')
+    row('End Date', end_date.strftime('%d-%m-%Y') if end_date else 'N/A')
+    row('Total Expenses', f'{report_data["total_expenses"]:.2f}')
+
+    # Expense List
+    section_title('Expense List')
+    row('Date', 'Vendor', 'Customer', 'Paid Through', 'Expense Account', 'Invoice', 'Amount')
+    for e in report_data['expenses']:
+        row(
+            e['date'].strftime('%d-%m-%Y') if e['date'] else '',
+            e['vendor'],
+            e['customer'],
+            e['paid_through'],
+            e['expense_account'],
+            e['invoice_number'],
+            f"{_to_decimal(e['amount']):.2f}",
+        )
+
+    # Category-wise
+    section_title('Category-wise Expenses')
+    row('Category', 'Total')
     for c in report_data['category_wise']:
-        writer.writerow([c['category'], f"{c['total']:.2f}"])
-    writer.writerow([])
+        row(c['category'], f"{c['total']:.2f}")
 
-    writer.writerow(['Monthly Trend'])
-    writer.writerow(['Month', 'Total'])
+    # Monthly Trend
+    section_title('Monthly Trend')
+    row('Month', 'Total')
     for m in report_data['monthly_trend']:
-        writer.writerow([m['month'], f"{m['total']:.2f}"])
-    writer.writerow([])
+        row(m['month'], f"{m['total']:.2f}")
 
-    writer.writerow(['Top Expenses'])
-    writer.writerow(['ID', 'Date', 'Vendor', 'Amount'])
+    # Top Expenses
+    section_title('Top Expenses')
+    row('ID', 'Date', 'Vendor', 'Amount')
     for e in report_data['highest_expenses']:
-        writer.writerow([e['id'], e['date'], e['vendor'], f"{_to_decimal(e['amount']):.2f}"])
-    writer.writerow([])
+        row(
+            e['id'],
+            e['date'].strftime('%d-%m-%Y') if e['date'] else '',
+            e['vendor'],
+            f"{_to_decimal(e['amount']):.2f}",
+        )
 
-    writer.writerow(['Approved Count', report_data['approved_count']])
-    writer.writerow(['Pending Count', report_data['pending_count']])
+    # Approval Summary
+    # section_title('Approval Summary')
+    # row('Approved Count', report_data['approved_count'])
+    # row('Pending Count', report_data['pending_count'])
 
     return response
 
@@ -1825,6 +2189,7 @@ def _build_hr_report(start_date=None, end_date=None):
         'inactive_employees': 0,
         'department_counts': [],
         'designation_counts': [],
+        'employees': [],
         'leave_type_count': 0,
         'employees_with_leaves': 0,
     }
@@ -1835,15 +2200,23 @@ def _build_hr_report(start_date=None, end_date=None):
         # Department: department.department_name
         # Designations: designation.designation_name
 
-        qs = Employee.objects.all()
-        if start_date:
-            qs = qs.filter(created_at__gte=start_date)
-        if end_date:
-            qs = qs.filter(created_at__lte=end_date)
+        qs = safe_date_filter(Employee.objects.all(), 'created_at__date', start_date, end_date)
 
         report['total_employees'] = qs.count()
         report['active_employees'] = qs.filter(status=True).count()
         report['inactive_employees'] = qs.filter(status=False).count()
+
+        for employee in qs.select_related('department', 'designation').order_by('first_name', 'last_name', 'emp_code'):
+            report['employees'].append({
+                'emp_code': getattr(employee, 'emp_code', '') or 'N/A',
+                'name': str(employee) or 'N/A',
+                'email': getattr(employee, 'email', '') or 'N/A',
+                'phone': getattr(employee, 'phone', '') or 'N/A',
+                'department': getattr(getattr(employee, 'department', None), 'department_name', None) or 'N/A',
+                'designation': getattr(getattr(employee, 'designation', None), 'designation_name', None) or 'N/A',
+                'joining_date': getattr(employee, 'joining_date', None),
+                'status': 'Active' if getattr(employee, 'status', False) else 'Inactive',
+            })
 
         # Department-wise counts
         dept_rows = qs.values('department__department_name').annotate(count=Count('pk')).order_by('-count')
@@ -1914,9 +2287,26 @@ def hr_report_export_csv(request, company_code=None):
 
     writer.writerow(['HR MIS Report'])
     writer.writerow(['Period', period])
+    writer.writerow(['Start Date', start_date.strftime('%Y-%m-%d') if start_date else ''])
+    writer.writerow(['End Date', end_date.strftime('%Y-%m-%d') if end_date else ''])
     writer.writerow(['Total Employees', report_data['total_employees']])
     writer.writerow(['Active Employees', report_data['active_employees']])
     writer.writerow(['Inactive Employees', report_data['inactive_employees']])
+    writer.writerow([])
+
+    writer.writerow(['Employees'])
+    writer.writerow(['Employee Code', 'Name', 'Email', 'Phone', 'Department', 'Designation', 'Joining Date', 'Status'])
+    for employee in report_data['employees']:
+        writer.writerow([
+            employee['emp_code'],
+            employee['name'],
+            employee['email'],
+            employee['phone'],
+            employee['department'],
+            employee['designation'],
+            employee['joining_date'] or '',
+            employee['status'],
+        ])
     writer.writerow([])
 
     writer.writerow(['Department', 'Count'])
