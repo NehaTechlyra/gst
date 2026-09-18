@@ -21,6 +21,174 @@
 
     {% include 'mis_reports/_filters.html' %}
 
+    <div class="card mis-report-card mt-3 mb-3">
+        <div class="card-body">
+            <h2 class="mis-report-section-title">Lead List</h2>
+            <div class="table-responsive mis-report-table">
+                <table class="table table-sm align-middle">
+                    <thead>
+                        <tr>
+                            <th>Lead No.</th>
+                            <th>Customer</th>
+                            <th>Phone</th>
+                            <th>Email</th>
+                            <th>Product</th>
+                            <th>Source</th>
+                            <th>Priority</th>
+                            <th>Status</th>
+                            <th>Assigned To</th>
+                            <th>Created</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for lead in report.leads %}
+                            <tr>
+                                <td>{{ lead.lead_number }}</td>
+                                <td>{{ lead.customer_name }}</td>
+                                <td>{{ lead.phone }}</td>
+                                <td>{{ lead.email }}</td>
+                                <td>{{ lead.product_interested }}</td>
+                                <td>{{ lead.source }}</td>
+                                <td>{{ lead.priority }}</td>
+                                <td>{{ lead.status }}</td>
+                                <td>{{ lead.assigned_to }}</td>
+                                <td>{% if lead.created_at %}{{ lead.created_at|date:"d-m-Y" }}{% else %}N/A{% endif %}</td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="10" class="text-muted">No leads found for the selected period.</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mis-report-card mb-3">
+        <div class="card-body">
+            <h2 class="mis-report-section-title">Opportunity List</h2>
+            <div class="table-responsive mis-report-table">
+                <table class="table table-sm align-middle">
+                    <thead>
+                        <tr>
+                            <th>Opportunity No.</th>
+                            <th>Lead No.</th>
+                            <th>Customer</th>
+                            <th>Deal Value</th>
+                            <th>Expected Close</th>
+                            <th>Status</th>
+                            <th>Priority</th>
+                            <th>Assigned To</th>
+                            <th>Created</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for opportunity in report.opportunities %}
+                            <tr>
+                                <td>{{ opportunity.opportunity_number }}</td>
+                                <td>{{ opportunity.lead_number }}</td>
+                                <td>{{ opportunity.customer_name }}</td>
+                                <td>{{ opportunity.estimated_deal_value }}</td>
+                                <td>{% if opportunity.expected_closing_date %}{{ opportunity.expected_closing_date|date:"d-m-Y" }}{% else %}N/A{% endif %}</td>
+                                <td>{{ opportunity.status }}</td>
+                                <td>{{ opportunity.priority }}</td>
+                                <td>{{ opportunity.assigned_to }}</td>
+                                <td>{% if opportunity.created_at %}{{ opportunity.created_at|date:"d-m-Y" }}{% else %}N/A{% endif %}</td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="9" class="text-muted">No opportunities found for the selected period.</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mis-report-card mb-3">
+        <div class="card-body">
+            <h2 class="mis-report-section-title">Follow-up List</h2>
+            <div class="table-responsive mis-report-table">
+                <table class="table table-sm align-middle">
+                    <thead>
+                        <tr>
+                            <th>Follow-up Date</th>
+                            <th>Customer</th>
+                            <th>Lead No.</th>
+                            <th>Opportunity No.</th>
+                            <th>Description</th>
+                            <th>Reminder</th>
+                            <th>Assigned To</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for followup in report.followup_list %}
+                            <tr>
+                                <td>{% if followup.date %}{{ followup.date|date:"d-m-Y" }}{% else %}N/A{% endif %}</td>
+                                <td>{{ followup.customer_name }}</td>
+                                <td>{{ followup.lead_number }}</td>
+                                <td>{{ followup.opportunity_number }}</td>
+                                <td>{{ followup.description }}</td>
+                                <td>{{ followup.reminder_interval }}</td>
+                                <td>{{ followup.assigned_to }}</td>
+                                <td>{{ followup.status }}</td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="8" class="text-muted">No follow-ups found for the selected period.</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mis-report-card mb-3">
+        <div class="card-body">
+            <h2 class="mis-report-section-title">Pre-sales List</h2>
+            <div class="table-responsive mis-report-table">
+                <table class="table table-sm align-middle">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Customer</th>
+                            <th>Product</th>
+                            <th>Contact</th>
+                            <th>Type</th>
+                            <th>Lead No.</th>
+                            <th>Opportunity No.</th>
+                            <th>Assigned To</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for presale in report.presales %}
+                            <tr>
+                                <td>{% if presale.created_at %}{{ presale.created_at|date:"d-m-Y" }}{% else %}N/A{% endif %}</td>
+                                <td>{{ presale.customer_name }}</td>
+                                <td>{{ presale.product }}</td>
+                                <td>{{ presale.contact }}</td>
+                                <td>{{ presale.type }}</td>
+                                <td>{{ presale.lead_number }}</td>
+                                <td>{{ presale.opportunity_number }}</td>
+                                <td>{{ presale.assigned_to }}</td>
+                                <td>{{ presale.description }}</td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="9" class="text-muted">No pre-sales records found for the selected period.</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
     <div class="row g-3 mb-3">
         <div class="col-md-6">
             <div class="card mis-report-card">

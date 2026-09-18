@@ -22,6 +22,46 @@
 
   {% include 'mis_reports/_filters.html' %}
 
+  <div class="card mis-report-card mt-3 mb-3">
+    <div class="card-body">
+      <h2 class="mis-report-section-title">Employee List</h2>
+      <div class="table-responsive mis-report-table">
+        <table class="table table-sm align-middle">
+          <thead>
+            <tr>
+              <th>Employee Code</th>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Phone</th>
+              <th>Department</th>
+              <th>Designation</th>
+              <th>Joining Date</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for employee in report.employees %}
+              <tr>
+                <td>{{ employee.emp_code }}</td>
+                <td>{{ employee.name }}</td>
+                <td>{{ employee.email }}</td>
+                <td>{{ employee.phone }}</td>
+                <td>{{ employee.department }}</td>
+                <td>{{ employee.designation }}</td>
+                <td>{% if employee.joining_date %}{{ employee.joining_date|date:"d-m-Y" }}{% else %}N/A{% endif %}</td>
+                <td>{{ employee.status }}</td>
+              </tr>
+            {% empty %}
+              <tr>
+                <td colspan="8" class="text-muted">No employees found for the selected period.</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
   <div class="row g-3 mb-3">
     <div class="col-md-6">
       <div class="card mis-report-card">
