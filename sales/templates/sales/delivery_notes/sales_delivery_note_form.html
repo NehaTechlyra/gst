@@ -1308,12 +1308,41 @@
         $(document).ready(function() {
             let lastWarehouseSearchTerm = '';
 
+            function limitedSelect2Matcher(limit) {
+                let currentTerm = null;
+                let matchCount = 0;
+
+                $('select[name="sales_invoice"]').on('select2:open', function() {
+                    currentTerm = null;
+                    matchCount = 0;
+                });
+
+                return function(params, data) {
+                    const term = $.trim(params.term || '').toLowerCase();
+                    if (term !== currentTerm) {
+                        currentTerm = term;
+                        matchCount = 0;
+                    }
+
+                    if (term && !(data.text || '').toLowerCase().includes(term)) {
+                        return null;
+                    }
+
+                    if (!term && matchCount++ >= limit) {
+                        return null;
+                    }
+
+                    return data;
+                };
+            }
+
             // sales_invoice — bootstrap-5 theme (unchanged)
             $('select[name="sales_invoice"]').select2({
                 theme: 'bootstrap-5',
                 placeholder: 'Select an invoice',
                 allowClear: true,
-                width: '100%'
+                width: '100%',
+                matcher: limitedSelect2Matcher(5)
             });
 
             // warehouse — default select2 theme, exactly like items form
@@ -1329,7 +1358,7 @@
                     }
                     return data.text;
                 },
-                minimumInputLength: 1,
+                minimumInputLength: 0,
                 ajax: {
                     url: "{% company_path '/Items/warehouse/' %}",
                     dataType: 'json',
@@ -1338,8 +1367,9 @@
                         lastWarehouseSearchTerm = params.term || '';
                         return { q: params.term };
                     },
-                    processResults: function(data) {
-                        const results = data.map(function(item) {
+                    processResults: function(data, params) {
+                        const items = $.trim((params && params.term) || '') ? data : data.slice(0, 4);
+                        const results = items.map(function(item) {
                             return { id: item.id, text: item.name };
                         });
                         results.push({
