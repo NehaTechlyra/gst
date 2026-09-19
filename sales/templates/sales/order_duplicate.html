@@ -290,16 +290,21 @@ window.getDocumentCurrencyDecimals = getDocumentCurrencyDecimals;
         data: function (params) {
           return { q: params.term };
         },
-        processResults: function (data) {
+        processResults: function (data, params) {
+          const term = params && params.term ? params.term.trim() : '';
           let results = data.map(function (item) {
             return { id: item.id, text: item.name };
           });
           // Add "+New" option at the end
-          results.push({
-            id: 'new',
-            text: '+ New Unit',
-            isNew: true
-          });
+          if (term) {
+            results.push({
+              id: 'new',
+              text: '+ New Unit',
+              isNew: true
+            });
+          } else {
+            results = results.slice(0, 5);
+          }
           return { results: results };
         },
         cache: true
@@ -1090,7 +1095,7 @@ window.getDocumentCurrencyDecimals = getDocumentCurrencyDecimals;
                 $('#customer_select').select2({
                   placeholder: 'Choose customer',
                   allowClear: true,
-                  minimumInputLength: 1,
+                  minimumInputLength: 0,
                   ajax: {
                     url: '/sales/customer/',
                     dataType: 'json',
@@ -1099,11 +1104,16 @@ window.getDocumentCurrencyDecimals = getDocumentCurrencyDecimals;
                       window.lastCustomerSearchTerm = params.term || '';
                       return { q: params.term };
                     },
-                    processResults: function(data) {
+                    processResults: function(data, params) {
+                      const term = params && params.term ? params.term.trim() : '';
                       let results = data.map(function(item) {
                         return { id: item.id, text: item.name };
                       });
-                      results.push({ id: 'new', text: '+ New Customer', isNew: true });
+                      if (term) {
+                        results.push({ id: 'new', text: '+ New Customer', isNew: true });
+                      } else {
+                        results = results.slice(0, 5);
+                      }
                       return { results: results };
                     },
                     cache: true
@@ -1220,7 +1230,7 @@ window.getDocumentCurrencyDecimals = getDocumentCurrencyDecimals;
               $('#sales_person_select').select2({
                 placeholder: 'Choose sales person',
                 allowClear: true,
-                minimumInputLength: 1,
+                minimumInputLength: 0,
                 ajax: {
                   url: '/sales/sale_person/',
                   dataType: 'json',
@@ -1228,11 +1238,16 @@ window.getDocumentCurrencyDecimals = getDocumentCurrencyDecimals;
                   data: function(params) {
                     return { q: params.term };
                   },
-                  processResults: function(data) {
+                  processResults: function(data, params) {
+                    const term = params && params.term ? params.term.trim() : '';
                     let results = data.map(function(item) {
                       return { id: item.id, text: item.name };
                     });
-                    results.push({ id: 'new', text: '+ New Sales Person', isNew: true });
+                    if (term) {
+                      results.push({ id: 'new', text: '+ New Sales Person', isNew: true });
+                    } else {
+                      results = results.slice(0, 5);
+                    }
                     return { results: results };
                   },
                   cache: true
@@ -2117,7 +2132,16 @@ window.getDocumentCurrencyDecimals = getDocumentCurrencyDecimals;
                             dataType: 'json',
                             delay: 250,
                             data: function(params) { return { q: params.term }; },
-                            processResults: function(data) { var results = data.map(function(item){ return { id: item.id, text: item.name }; }); results.push({ id: 'new', text: '+ New Unit', isNew: true }); return { results: results }; },
+                            processResults: function(data, params) {
+                              var term = params && params.term ? params.term.trim() : '';
+                              var results = data.map(function(item){ return { id: item.id, text: item.name }; });
+                              if (term) {
+                                results.push({ id: 'new', text: '+ New Unit', isNew: true });
+                              } else {
+                                results = results.slice(0, 5);
+                              }
+                              return { results: results };
+                            },
                             cache: true
                           }
                         });

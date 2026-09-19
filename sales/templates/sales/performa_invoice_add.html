@@ -908,7 +908,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     $('#customer_select').select2({
                       placeholder: 'Choose customer',
                       allowClear: true,
-                      minimumInputLength: 1,
+                      minimumInputLength: 0,
                       ajax: {
                         url: '/sales/customer/',
                         dataType: 'json',
@@ -917,11 +917,16 @@ document.addEventListener('DOMContentLoaded', function() {
                           window.lastCustomerSearchTerm = params.term || '';
                           return { q: params.term };
                         },
-                        processResults: function(data) {
+                        processResults: function(data, params) {
+                          const term = params && params.term ? params.term.trim() : '';
                           let results = data.map(function(item) {
                             return { id: item.id, text: item.name };
                           });
-                          results.push({ id: 'new', text: '+ New Customer', isNew: true });
+                          if (term) {
+                            results.push({ id: 'new', text: '+ New Customer', isNew: true });
+                          } else {
+                            results = results.slice(0, 5);
+                          }
                           return { results: results };
                         },
                         cache: true
@@ -995,7 +1000,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     $('#sales_person_select').select2({
                       placeholder: 'Choose sales person',
                       allowClear: true,
-                      minimumInputLength: 1,
+                      minimumInputLength: 0,
                       ajax: {
                         url: '/sales/sale_person/',
                         dataType: 'json',
@@ -1003,15 +1008,20 @@ document.addEventListener('DOMContentLoaded', function() {
                         data: function(params) {
                           return { q: params.term };
                         },
-                        processResults: function(data) {
+                        processResults: function(data, params) {
+                          const term = params && params.term ? params.term.trim() : '';
                           let results = data.map(function(item) {
                             return { id: item.id, text: item.name };
                           });
-                          results.push({
-                            id: 'new',
-                            text: '+ New Sales Person',
-                            isNew: true
-                          });
+                          if (term) {
+                            results.push({
+                              id: 'new',
+                              text: '+ New Sales Person',
+                              isNew: true
+                            });
+                          } else {
+                            results = results.slice(0, 5);
+                          }
                           return { results: results };
                         },
                         cache: true
