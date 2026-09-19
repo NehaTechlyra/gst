@@ -742,6 +742,36 @@ function deleteFile(index) {
     updateFileInput();
 }
 
+function limitedSelect2Matcher(limit) {
+    let currentTerm = null;
+    let matchCount = 0;
+
+    $('#customer_id').on('select2:open', function() {
+        currentTerm = null;
+        matchCount = 0;
+    });
+
+    return function(params, data) {
+        const term = $.trim(params.term || '').toLowerCase();
+        if (term !== currentTerm) {
+            currentTerm = term;
+            matchCount = 0;
+        }
+
+        if (term && !(data.text || '').toLowerCase().includes(term)) {
+            return null;
+        }
+
+        if (!term && matchCount++ >= limit) {
+            return null;
+        }
+
+        return data;
+    };
+}
+
+const customerMatcher = limitedSelect2Matcher(5);
+
 // Store state for validation
 let initialAmount = 0;
 let customerExcessAmount = 0;
@@ -1324,10 +1354,14 @@ $(document).ready(function() {
     $(document).on('select2:open', function() {
         document.querySelector('.select2-container--open .select2-search__field')?.focus();
     });
-    $('.select2-search').select2({
-        placeholder: "Search...",
-        allowClear: true,
-        width: '100%'
+    $('.select2-search').each(function() {
+        const $select = $(this);
+        $select.select2({
+            placeholder: "Search...",
+            allowClear: true,
+            width: '100%',
+            matcher: $select.is('#customer_id') ? customerMatcher : undefined
+        });
     });
     // Custom rendering for payment account select added on 18-2-26 by neha
     $('#paid_through').select2({
@@ -1388,7 +1422,8 @@ document.addEventListener('DOMContentLoaded', function() {
     $('#customer_id').select2({
         placeholder: "Search...",
         allowClear: false,
-        width: '100%'
+        width: '100%',
+        matcher: customerMatcher
     });
     
     if (customerId) {
