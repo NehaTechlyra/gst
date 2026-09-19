@@ -475,18 +475,47 @@
         const billSelect = $('select[name="bill"]');
         let lastWarehouseSearchTerm = '';
 
+        function limitedSelect2Matcher(limit) {
+            let currentTerm = null;
+            let matchCount = 0;
+
+            billSelect.on('select2:open', function() {
+                currentTerm = null;
+                matchCount = 0;
+            });
+
+            return function(params, data) {
+                const term = $.trim(params.term || '').toLowerCase();
+                if (term !== currentTerm) {
+                    currentTerm = term;
+                    matchCount = 0;
+                }
+
+                if (term && !(data.text || '').toLowerCase().includes(term)) {
+                    return null;
+                }
+
+                if (!term && matchCount++ >= limit) {
+                    return null;
+                }
+
+                return data;
+            };
+        }
+
         // Initialize Select2
         billSelect.select2({
                     theme: 'bootstrap-5',
                     placeholder: 'Select a Bill',
                     allowClear: true,
-                    width: '100%'
+                    width: '100%',
+                    matcher: limitedSelect2Matcher(5)
         });
         $('select[name="warehouse"]').select2({
                     placeholder: 'Select a warehouse',
                     allowClear: true,
                     width: '100%',
-                    minimumInputLength: 1,
+                    minimumInputLength: 0,
                     templateResult: function(data) {
                         if (data.isNew) {
                             return $(
@@ -503,8 +532,9 @@
                             lastWarehouseSearchTerm = params.term || '';
                             return { q: params.term };
                         },
-                        processResults: function(data) {
-                            const results = data.map(function(item) {
+                        processResults: function(data, params) {
+                            const items = $.trim((params && params.term) || '') ? data : data.slice(0, 4);
+                            const results = items.map(function(item) {
                                 return { id: item.id, text: item.name };
                             });
                             results.push({
