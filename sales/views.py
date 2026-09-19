@@ -500,8 +500,9 @@ def customer_search(request):
             Q(fullname__icontains=query)
         )[:50]
     else:
-        # If no query, return recent/first active customers (limit 50)
-        customers = base_qs.order_by('customer_code')[:50]
+        # If no query, return only the first 5 so the dropdown isn't dumping
+        # a huge list as soon as it's opened; typing reveals up to 50 matches.
+        customers = base_qs.order_by('customer_code')[:5]
 
     def _clean_part(val):
         if not val:
@@ -1014,13 +1015,12 @@ def add_salesperson(request):
 
 def sale_person_search(request):
     query = request.GET.get('q', '')
-    results = []
     if query:
         salesPersons = SalesPerson.objects.filter(name__icontains=query)[:50]
     else:
-        # If no query, return all sales persons
-        salesPersons = SalesPerson.objects.all()[:50]
-    
+        # If no query, show only the first 5 on open; typing reveals up to 50 matches.
+        salesPersons = SalesPerson.objects.all()[:5]
+
     results = [{"id": h.id, "name": h.name} for h in salesPersons]
     return JsonResponse(results, safe=False)
 

@@ -1100,7 +1100,7 @@ document.addEventListener('DOMContentLoaded', function() {
                   $('#customer_select').select2({
                     placeholder: 'Choose customer',
                     allowClear: true,
-                    minimumInputLength: 1,
+                    minimumInputLength: 0,
                     ajax: {
                       url: '/sales/customer/',
                       dataType: 'json',
@@ -1219,7 +1219,7 @@ document.addEventListener('DOMContentLoaded', function() {
                   $('#sales_person_select').select2({
                     placeholder: 'Choose sales person',
                     allowClear: true,
-                    minimumInputLength: 1,
+                    minimumInputLength: 0,
                     ajax: {
                       url: '/sales/sale_person/',
                       dataType: 'json',
@@ -1496,6 +1496,16 @@ document.addEventListener('DOMContentLoaded', function() {
           } catch (e) {
             console.warn('Select2 init failed for TDS/TCS selects', e);
           }
+
+          // Autofocus the search box whenever any Select2 dropdown on this
+          // page is opened, so the user can start typing immediately.
+          $(document).on('select2:open', function () {
+            var $open = $('.select2-container--open');
+            var searchField = $open.find('.select2-search__field');
+            if (searchField.length) {
+              searchField[0].focus();
+            }
+          });
 
           // Add Manage footer inside Select2 dropdowns (mimic payment-terms behavior)
           $(document).on('select2:open', function (e) {

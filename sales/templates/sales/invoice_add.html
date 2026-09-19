@@ -1168,6 +1168,16 @@ document.addEventListener('DOMContentLoaded', function() {
             console.warn('Select2 init failed for TDS/TCS selects', e);
           }
 
+          // Autofocus the search box whenever any Select2 dropdown on this
+          // page is opened, so the user can start typing immediately.
+          $(document).on('select2:open', function () {
+            var $open = $('.select2-container--open');
+            var searchField = $open.find('.select2-search__field');
+            if (searchField.length) {
+              searchField[0].focus();
+            }
+          });
+
           // Add Manage footer inside Select2 dropdowns (mimic payment-terms behavior)
           $(document).on('select2:open', function (e) {
             try {
