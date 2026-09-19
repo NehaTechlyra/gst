@@ -1096,133 +1096,136 @@ def get_item_sales(request):
     company_is_india = _is_indian_company_country(company_country)
     company_db = getattr(request, "company_db", "default")
     company_tax_type = (get_company_tax_type(using=company_db) or "").strip().upper()
-    if query:
-        # Check if query is a barcode, get matching item ids
-        matching_item_ids = Barcode.objects.filter(barcode=query).values_list('item_id', flat=True)
+    # Check if query is a barcode, get matching item ids
+    matching_item_ids = Barcode.objects.filter(barcode=query).values_list('item_id', flat=True)
 
-        # Filter items by name or barcode match
-        items = Item.objects.filter(Q(name__icontains=query) | Q(id__in=matching_item_ids),sales_info=1,status=1).distinct()[:50]
+    # Filter items by name or barcode match. name__icontains('') matches
+    # everything, so this already covers the "dropdown just opened, no query
+    # yet" case — just show fewer results (5) until the user starts typing,
+    # then allow up to 50 matches.
+    limit = 50 if query else 5
+    items = Item.objects.filter(Q(name__icontains=query) | Q(id__in=matching_item_ids),sales_info=1,status=1).distinct()[:limit]
 
-        for h in items:
-            # price = Decimal(h.cost_price)
-            price = Decimal(h.selling_price) 
+    for h in items:
+        # price = Decimal(h.cost_price)
+        price = Decimal(h.selling_price) 
 
-            o_price = Decimal(h.selling_price) 
-            total_tax_rate = Decimal("0.00")
+        o_price = Decimal(h.selling_price) 
+        total_tax_rate = Decimal("0.00")
 
-            tax_name = ""
-            selected_tax_token = None
-            if company_tax_type == "SALES":
-                tax_obj = getattr(h, "sales_tax", None)
-                if tax_obj:
-                    total_tax_rate = Decimal(tax_obj.rate or 0)
-                    selected_tax_token = tax_obj.id
-                    tax_name = getattr(tax_obj, "display_name", None) or getattr(tax_obj, "taxname", "") or ""
-            else:
-                tax_group = h.intra_tax
-                if tax_group:
-                    total_tax_rate = tax_group.taxes.aggregate(total=Sum("rate"))["total"] or Decimal("0.00")
-                    selected_tax_token = _build_selected_tax_token(tax_group=tax_group)
-                    tax_name = tax_group.group_name or ""
-            unit_name = ""
-            if h.unit:
+        tax_name = ""
+        selected_tax_token = None
+        if company_tax_type == "SALES":
+            tax_obj = getattr(h, "sales_tax", None)
+            if tax_obj:
+                total_tax_rate = Decimal(tax_obj.rate or 0)
+                selected_tax_token = tax_obj.id
+                tax_name = getattr(tax_obj, "display_name", None) or getattr(tax_obj, "taxname", "") or ""
+        else:
+            tax_group = h.intra_tax
+            if tax_group:
+                total_tax_rate = tax_group.taxes.aggregate(total=Sum("rate"))["total"] or Decimal("0.00")
+                selected_tax_token = _build_selected_tax_token(tax_group=tax_group)
+                tax_name = tax_group.group_name or ""
+        unit_name = ""
+        if h.unit:
+            try:
+                unit_name = Unit.objects.get(id=h.unit).unit_name
+            except Unit.DoesNotExist:
+                unit_name = ""
+
+        barcode = ""
+        barcode_id = None
+        barcode_str = ""
+
+        # Try to get barcode object matching the query and the item (any barcode for that item)
+        barcode_obj = Barcode.objects.filter(barcode=query, item_id=h.id).first()
+        if barcode_obj:
+            barcode_id = barcode_obj.id
+            barcode = barcode_obj.barcode
+            barcode_str = barcode_obj.barcode
+        else:
+            # fallback to main barcode of the item
+            barcode_id = h.main_barcode_id
+            if h.main_barcode_id:
                 try:
-                    unit_name = Unit.objects.get(id=h.unit).unit_name
-                except Unit.DoesNotExist:
-                    unit_name = ""
+                    barcode = Barcode.objects.get(id=h.main_barcode_id).barcode
+                    barcode_id = h.main_barcode_id
+                except:
+                    barcode = ""
+        # barcode_obj = Barcode.objects.filter(barcode=query, item_id=h.id).first()
+        # # barcode_id = barcode_obj.id if barcode_obj else None
+        # #print(f"Item {h.id} main_barcode_id: {h.main_barcode_id}")
+        # #print(f"Searching Barcode for query: {query}, item_id: {h.id}")
+        # #print(f"Found barcode_obj: {barcode_obj}")
+        # If query matches a barcode, filter UOMs with that barcode only,
+        # else include all UOMs for the item
+        if Barcode.objects.filter(barcode=query).exists():
+            item_uoms = Uom.objects.filter(
+                item_id=h.id,
+                barcode__barcode=query
+            ).select_related('barcode')
+        else:
+            item_uoms = Uom.objects.filter(item_id=h.id).select_related('barcode')
 
-            barcode = ""
-            barcode_id = None
-            barcode_str = ""
+        # Add main item only if query is not an exact barcode match for UOM
+        # or if it's an exact barcode match but barcode is main barcode
+        if not Barcode.objects.filter(barcode=query).exists() or barcode == query:
+            # Adjust price if GST is included
+            adjusted_price = price
+            if h.taxincld_slprice:
+                # tax_amount = price * (total_tax_rate / Decimal("100"))
+                # adjusted_price = price - tax_amount
+                gst_multiplier = Decimal("1") + (total_tax_rate / Decimal("100"))
+                adjusted_price = (price / gst_multiplier).quantize(Decimal("0.000001"))
 
-            # Try to get barcode object matching the query and the item (any barcode for that item)
-            barcode_obj = Barcode.objects.filter(barcode=query, item_id=h.id).first()
-            if barcode_obj:
-                barcode_id = barcode_obj.id
-                barcode = barcode_obj.barcode
-                barcode_str = barcode_obj.barcode
-            else:
-                # fallback to main barcode of the item
-                barcode_id = h.main_barcode_id
-                if h.main_barcode_id:
-                    try:
-                        barcode = Barcode.objects.get(id=h.main_barcode_id).barcode
-                        barcode_id = h.main_barcode_id
-                    except:
-                        barcode = ""
-            # barcode_obj = Barcode.objects.filter(barcode=query, item_id=h.id).first()
-            # # barcode_id = barcode_obj.id if barcode_obj else None
-            # #print(f"Item {h.id} main_barcode_id: {h.main_barcode_id}")
-            # #print(f"Searching Barcode for query: {query}, item_id: {h.id}")
-            # #print(f"Found barcode_obj: {barcode_obj}")
-            # If query matches a barcode, filter UOMs with that barcode only,
-            # else include all UOMs for the item
-            if Barcode.objects.filter(barcode=query).exists():
-                item_uoms = Uom.objects.filter(
-                    item_id=h.id,
-                    barcode__barcode=query
-                ).select_related('barcode')
-            else:
-                item_uoms = Uom.objects.filter(item_id=h.id).select_related('barcode')
+            results.append({
+                "id": h.id,
+                "name": h.name,
+                "o_price": float(adjusted_price.quantize(Decimal("0.000001"))),
+                "sl_price": float(adjusted_price.quantize(Decimal("0.000001"))),
+                "unit": unit_name,
+                "barcode": barcode,
+                "b_id": barcode_id,
+                "sell_desc": h.sales_desc,
+                'gstinclude': h.taxincld_slprice,
+                "tax_id": selected_tax_token,
+                "tax_name": tax_name,
+                "tax_rate": float(total_tax_rate),
+                "tax_pref":h.tax_pref,
+            })
 
-            # Add main item only if query is not an exact barcode match for UOM
-            # or if it's an exact barcode match but barcode is main barcode
-            if not Barcode.objects.filter(barcode=query).exists() or barcode == query:
-                # Adjust price if GST is included
-                adjusted_price = price
-                if h.taxincld_slprice:
-                    # tax_amount = price * (total_tax_rate / Decimal("100"))
-                    # adjusted_price = price - tax_amount
-                    gst_multiplier = Decimal("1") + (total_tax_rate / Decimal("100"))
-                    adjusted_price = (price / gst_multiplier).quantize(Decimal("0.000001"))
+        # Add matched UOMs
+        for uom in item_uoms:
+            price_uom = price * Decimal(uom.conversion_factor)
+            # Adjust price for GST if needed
+            adjusted_price_uom = price_uom
+            if h.taxincld_slprice:
+                gst_multiplier = Decimal("1") + (total_tax_rate / Decimal("100"))
+                adjusted_price_uom = (price_uom / gst_multiplier).quantize(Decimal("0.000001"))
 
-                results.append({
-                    "id": h.id,
-                    "name": h.name,
-                    "o_price": float(adjusted_price.quantize(Decimal("0.000001"))),
-                    "sl_price": float(adjusted_price.quantize(Decimal("0.000001"))),
-                    "unit": unit_name,
-                    "barcode": barcode,
-                    "b_id": barcode_id,
-                    "sell_desc": h.sales_desc,
-                    'gstinclude': h.taxincld_slprice,
-                    "tax_id": selected_tax_token,
-                    "tax_name": tax_name,
-                    "tax_rate": float(total_tax_rate),
-                    "tax_pref":h.tax_pref,
-                })
+            results.append({
+                "id": f"{h.id}",
+                # "name": f"{h.name} ({uom.name_id})",
+                "name": f"{h.name}",
 
-            # Add matched UOMs
-            for uom in item_uoms:
-                price_uom = price * Decimal(uom.conversion_factor)
-                # Adjust price for GST if needed
-                adjusted_price_uom = price_uom
-                if h.taxincld_slprice:
-                    gst_multiplier = Decimal("1") + (total_tax_rate / Decimal("100"))
-                    adjusted_price_uom = (price_uom / gst_multiplier).quantize(Decimal("0.000001"))
+                "o_price": float(adjusted_price_uom.quantize(Decimal("0.000001"))),
 
-                results.append({
-                    "id": f"{h.id}",
-                    # "name": f"{h.name} ({uom.name_id})",
-                    "name": f"{h.name}",
-
-                    "o_price": float(adjusted_price_uom.quantize(Decimal("0.000001"))),
-
-                    "sl_price": float(adjusted_price_uom.quantize(Decimal('0.000001'))),
-                    "unit": uom.name.name,
-                    "barcode": uom.barcode.barcode if uom.barcode else '',
-                    "b_id": uom.barcode.id if uom.barcode else None,
-                    "sell_desc": h.sales_desc,
-                    'gstinclude': h.taxincld_slprice,
-                    "tax_id": selected_tax_token,
-                    "tax_name": tax_name,
-                    "tax_rate": float(total_tax_rate),
-                    "tax_pref":h.tax_pref,
+                "sl_price": float(adjusted_price_uom.quantize(Decimal('0.000001'))),
+                "unit": uom.name.name,
+                "barcode": uom.barcode.barcode if uom.barcode else '',
+                "b_id": uom.barcode.id if uom.barcode else None,
+                "sell_desc": h.sales_desc,
+                'gstinclude': h.taxincld_slprice,
+                "tax_id": selected_tax_token,
+                "tax_name": tax_name,
+                "tax_rate": float(total_tax_rate),
+                "tax_pref":h.tax_pref,
 
 
 
 
-                })
+            })
 
     # #print(results)
 
