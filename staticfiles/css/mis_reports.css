@@ -1,0 +1,201 @@
+:root {
+  --mis-ink: #14213d;
+  --mis-muted: #68738a;
+  --mis-line: #e3e7ef;
+  --mis-panel: #ffffff;
+  --mis-canvas: #f4f6fb;
+  --mis-blue: #315bea;
+  --mis-blue-soft: #eef2ff;
+  --mis-warm-soft: #fff5df;
+  --mis-shadow: 0 8px 24px rgba(20, 33, 61, 0.06);
+}
+
+.mis-report-page {
+  /* background: var(--mis-canvas); */
+  color: var(--mis-ink);
+  font-family: 'Poppins', sans-serif, cursive;
+  font-size: 13px;
+  min-height: calc(100vh - 120px);
+}
+
+.mis-report-page .mis-report-header {
+  align-items: flex-start;
+  margin-bottom: 1rem;
+}
+
+.mis-report-page .mis-report-header p {
+  color: var(--mis-muted) !important;
+  font-size: 13px !important;
+  margin-top: 0.35rem;
+}
+
+.mis-report-page .mis-report-action {
+  border-radius: 0.35rem;
+  font-size: 13px !important;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  padding: 0.45rem 0.75rem;
+}
+
+.mis-report-page .mis-report-filter-card,
+.mis-report-page .mis-report-card,
+.mis-report-page .card {
+  border: 1px solid var(--mis-line) !important;
+  border-radius: 0.4rem;
+  box-shadow: var(--mis-shadow);
+}
+
+.mis-report-page .mis-report-filter-card {
+  background: var(--mis-panel);
+  margin-bottom: 0.85rem;
+  overflow: hidden;
+}
+
+.mis-report-page .mis-report-filter-card .card-body {
+  padding: 0;
+}
+
+.mis-report-page .mis-report-filter-card form {
+  padding: 0.8rem;
+}
+
+.mis-report-page .mis-report-filter-band {
+  border-bottom: 1px solid var(--mis-line);
+  padding: 0.65rem 0.8rem 0.45rem;
+}
+
+.mis-report-page .mis-report-filter-band:last-child {
+  border-bottom: 0;
+}
+
+.mis-report-page .mis-report-filter-title {
+  color: #55588b;
+  font-size: 13px !important;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.mis-report-page .mis-report-filter-title::before {
+  color: #55588b;
+  content: "•";
+  margin-right: 0.35rem;
+}
+
+.mis-report-page .form-label,
+.mis-report-page .mis-report-label {
+  color: var(--mis-muted);
+  font-size: 13px !important;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  margin-bottom: 0.3rem;
+  text-transform: none;
+}
+
+.mis-report-page .form-select,
+.mis-report-page .form-control {
+  border: 1px solid #dce2ed;
+  border-radius: 0.28rem;
+  color: var(--mis-ink);
+  font-size: 13px !important;
+  min-height: 2rem;
+}
+
+.mis-report-page .form-select:focus,
+.mis-report-page .form-control:focus {
+  border-color: var(--mis-blue);
+  box-shadow: 0 0 0 0.16rem rgba(49, 91, 234, 0.12);
+}
+
+.mis-report-page .btn-primary {
+  background: var(--mis-blue);
+  border-color: var(--mis-blue);
+}
+
+.mis-report-page .mis-report-card {
+  background: var(--mis-panel);
+  overflow: hidden;
+}
+
+.mis-report-page .mis-report-card .card-body {
+  padding: 0.85rem;
+}
+
+.mis-report-page .mis-report-section-title {
+  border-bottom: 1px solid var(--mis-line);
+  color:#55588b;
+  font-size: 13px !important;
+  font-weight: 700;
+  margin: -0.85rem -0.85rem 0.6rem;
+  padding: 0.75rem 0.85rem;
+}
+
+.mis-report-page .mis-report-key-metric {
+  background: var(--mis-panel) !important;
+  border: 1px solid var(--mis-line);
+  border-radius: 0.4rem !important;
+  min-height: 82px;
+  padding: 0.75rem !important;
+}
+
+.mis-report-page .mis-report-value {
+  color: var(--mis-ink);
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.mis-report-page .mis-report-table {
+  overflow-x: auto;
+}
+
+.mis-report-page .mis-report-table table {
+  border-collapse: collapse;
+  /* min-width: 640px; */
+}
+
+.mis-report-page .mis-report-table table thead th {
+  background: #fafbfe;
+  border-bottom: 1px solid var(--mis-line);
+  color: var(--mis-muted);
+  font-size: 13px !important;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  padding: 0.62rem 0.7rem;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.mis-report-page .mis-report-table table tbody td {
+  border-bottom: 1px solid #edf0f5;
+  color: #35415a;
+  font-size: 13px !important;
+  padding: 0.65rem 0.7rem;
+  white-space: nowrap;
+}
+
+.mis-report-page .mis-report-table table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.mis-report-page .mis-report-table table tbody tr:hover {
+  background: var(--mis-blue-soft);
+}
+
+.mis-report-page .mis-report-filter-actions {
+  display: flex;
+  align-items: end;
+  justify-content: flex-end;
+  gap: 0.4rem;
+}
+
+@media (max-width: 767px) {
+  .mis-report-page .mis-report-header {
+    gap: 0.75rem;
+    flex-direction: column;
+  }
+
+  .mis-report-page .mis-report-filter-actions {
+    justify-content: flex-start;
+  }
+}
