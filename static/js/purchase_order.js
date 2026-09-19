@@ -9,6 +9,73 @@ let lastvendorSearchTerm = '';
 let lastpurchasepersonSearchTerm = '';
 let lastItemSearchTerm = '';
 
+// --- Select2 UX helpers -----------------------------------------------------
+// Shared by every Select2 dropdown on the Purchase Order / Bill add & edit pages
+// (vendor, item, unit, tax, HSN, warehouse, pay terms, TDS/TCS):
+//   1) Show at most N options as soon as the dropdown opens, before any typing.
+//   2) Let the user reveal more/other options simply by typing.
+//   3) Auto-focus the search box the instant a dropdown opens.
+var SELECT2_DEFAULT_VISIBLE_OPTIONS = 5;
+
+// For LOCAL (option-based) Select2 dropdowns: wrap Select2's own text matcher so
+// that, with an empty search box, only the first N options are allowed through;
+// typing anything switches back to normal (uncapped) text matching.
+function select2LimitedMatcher($el, limit) {
+  limit = limit || SELECT2_DEFAULT_VISIBLE_OPTIONS;
+  var defaultMatcher = (window.jQuery && $.fn.select2 && $.fn.select2.defaults &&
+    $.fn.select2.defaults.defaults && $.fn.select2.defaults.defaults.matcher) ||
+    function (params, data) {
+      var term = $.trim(params.term || '');
+      if (term === '') return data;
+      return (data.text || '').toString().toUpperCase().indexOf(term.toUpperCase()) > -1 ? data : null;
+    };
+
+  // Reset the per-open counter whenever this dropdown opens, so re-opening with an
+  // empty search always shows the first N options again (not whatever was left over
+  // from the previous time it was open).
+  $el.on('select2:open', function () { $el.removeData('_s2LimitState'); });
+
+  return function (params, data) {
+    var term = $.trim(params.term || '');
+    var state = $el.data('_s2LimitState');
+    if (!state || state.term !== term) {
+      state = { term: term, count: 0 };
+      $el.data('_s2LimitState', state);
+    }
+    var matched = defaultMatcher(params, data);
+    if (matched === null) return null;
+    if (term === '') {
+      state.count++;
+      if (state.count > limit) return null;
+    }
+    return matched;
+  };
+}
+window.select2LimitedMatcher = select2LimitedMatcher;
+
+// For AJAX-backed Select2 dropdowns whose endpoint always returns its full,
+// unfiltered list (payment terms, taxes, warehouses): trim to the first N when the
+// search box is empty, and filter by text once the user starts typing.
+function select2LimitAjaxResults(results, term, limit) {
+  limit = limit || SELECT2_DEFAULT_VISIBLE_OPTIONS;
+  term = $.trim(term || '');
+  if (term === '') return results.slice(0, limit);
+  var needle = term.toUpperCase();
+  return results.filter(function (item) {
+    return (item.text || '').toString().toUpperCase().indexOf(needle) > -1;
+  });
+}
+window.select2LimitAjaxResults = select2LimitAjaxResults;
+
+// Reliably focus the search input the instant any Select2 dropdown opens, so the
+// user can start typing right away without an extra click.
+$(document).on('select2:open', function () {
+  setTimeout(function () {
+    $('.select2-container--open .select2-search__field').trigger('focus');
+  }, 0);
+});
+// -----------------------------------------------------------------------------
+
 
 
 function initializeLocationSelectsIn(root) {
@@ -683,10 +750,11 @@ $('#pay-terms').select2({
     dataType: 'json',
     // delay: 250,
 
-    processResults: function (data) {
+    processResults: function (data, params) {
       let results = data.map(function (item) {
         return { id: item.id, text: item.name };
       });
+      results = select2LimitAjaxResults(results, params && params.term);
       results.push({
         id: 'new',
         text: '+ New',
@@ -856,7 +924,7 @@ $(document).on('click', '#paymentTermsModal .btn-primary', function (e) {//byada
 $('#vendor_select').select2({
   placeholder: '',
   allowClear: true,
-  minimumInputLength: 1,
+  minimumInputLength: 0,
   ajax: {
     url: '/purchase/vendor/',
     dataType: 'json',
@@ -1499,7 +1567,7 @@ function initItemSelect($el) {
   $el.select2({
     placeholder: 'Select Item',
     allowClear: true,
-    minimumInputLength: 1,
+    minimumInputLength: 0,
     // multiple: false,              // ✅ ensure single select
     // closeOnSelect: true,          // ✅ close dropdown when selected
     ajax: {
@@ -1708,12 +1776,12 @@ function initTaxSelect($el) {
       url: '/purchase/get_tax/',
       dataType: 'json',
       delay: 250,
-      processResults: function (data) {
-        return {
-          results: data.map(function (tax) {
-            return { id: tax.id, text: tax.name, rate: tax.rate };
-          })
-        };
+      processResults: function (data, params) {
+        let results = data.map(function (tax) {
+          return { id: tax.id, text: tax.name, rate: tax.rate };
+        });
+        results = select2LimitAjaxResults(results, params && params.term);
+        return { results: results };
       }
     }
   });
@@ -3382,10 +3450,11 @@ $('#warehouse').select2({
     url: '/warehouse/warehouses_list/',
     dataType: 'json',
     // delay: 250,
-    processResults: function (data) {
+    processResults: function (data, params) {
       let results = data.map(function (item) {
         return { id: item.id, text: item.name };
       });
+      results = select2LimitAjaxResults(results, params && params.term);
       results.push({
         id: 'new',
         text: '+ New',

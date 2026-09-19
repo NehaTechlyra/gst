@@ -1745,36 +1745,38 @@ def vendor_search(request):
     results = []
     company_db = getattr(request, 'company_db', 'default')
 
-    if query:
-        vendors = (
-            Vendor.objects.using(company_db)
-            .annotate(
-                fullname=Concat('first_name', Value(' '), 'last_name')
-            )
-            .filter(
-                Q(first_name__icontains=query) |
-                Q(last_name__icontains=query) |
-                Q(company_name__icontains=query) |
-                Q(fullname__icontains=query)
-            )
-            [:50]
+    vendors = (
+        Vendor.objects.using(company_db)
+        .annotate(
+            fullname=Concat('first_name', Value(' '), 'last_name')
         )
+    )
+    if query:
+        vendors = vendors.filter(
+            Q(first_name__icontains=query) |
+            Q(last_name__icontains=query) |
+            Q(company_name__icontains=query) |
+            Q(fullname__icontains=query)
+        )[:50]
+    else:
+        # No search term yet: show a default top-5 list so the dropdown isn't
+        # empty as soon as it's opened (mirrors Items.views.vendor_search).
+        vendors = vendors[:5]
 
-        results = []
-        for v in vendors:
-            # Display name based on vendor type
-            if v.vendor_type == 'company':
-                display_name = v.company_name or v.email or str(v.id)
-            else:  # individual
-                display_name = f"{v.first_name or ''} {v.last_name or ''}".strip() or v.email or str(v.id)
-            
-            results.append({
-                "id": v.id,
-                "name": display_name,
-                "payment_terms_id": v.payment_terms_id,
-                "payment_terms_name": v.payment_terms.name if v.payment_terms else "",
-                "payment_terms_days": v.payment_terms.days if v.payment_terms else None,
-            })
+    for v in vendors:
+        # Display name based on vendor type
+        if v.vendor_type == 'company':
+            display_name = v.company_name or v.email or str(v.id)
+        else:  # individual
+            display_name = f"{v.first_name or ''} {v.last_name or ''}".strip() or v.email or str(v.id)
+
+        results.append({
+            "id": v.id,
+            "name": display_name,
+            "payment_terms_id": v.payment_terms_id,
+            "payment_terms_name": v.payment_terms.name if v.payment_terms else "",
+            "payment_terms_days": v.payment_terms.days if v.payment_terms else None,
+        })
 
     return JsonResponse(results, safe=False)
     
@@ -2038,6 +2040,59 @@ def get_item_purchase(request):
                     "tax_rate": float(total_tax_rate),
                     "tax_pref":h.tax_pref,
                 })
+
+    else:
+        # No search term yet: show a default top-5 list so the dropdown isn't
+        # empty as soon as it's opened (mirrors search_unit / hsn_code_search).
+        default_items = Item.objects.filter(purchase_info=1, status=1)
+        if vendor_id:
+            default_items = default_items.filter(preferred_vendor_id=vendor_id)
+        default_items = default_items.distinct()[:5]
+
+        for h in default_items:
+            price = Decimal(h.cost_price)
+            total_tax_rate = Decimal("0.00")
+            selected_tax_id = None
+            selected_tax_name = ""
+            if company_tax_type == "SALES":
+                tax_obj = getattr(h, "purchase_tax", None)
+                if tax_obj:
+                    total_tax_rate = Decimal(tax_obj.rate or 0)
+                    selected_tax_id = tax_obj.id
+                    selected_tax_name = getattr(tax_obj, "display_name", None) or getattr(tax_obj, "taxname", "") or ""
+            else:
+                if h.intra_tax:
+                    total_tax_rate = h.intra_tax.taxes.aggregate(total=Sum("rate"))["total"] or Decimal("0.00")
+                    selected_tax_id = h.intra_tax.id
+                    selected_tax_name = h.intra_tax.group_name if h.intra_tax else ""
+
+            unit_name = ""
+            if h.unit:
+                try:
+                    unit_name = Unit.objects.get(id=h.unit).unit_name
+                except Unit.DoesNotExist:
+                    unit_name = ""
+
+            adjusted_price = price
+            if h.taxincld_costprice:
+                gst_multiplier = Decimal("1") + (total_tax_rate / Decimal("100"))
+                adjusted_price = (price / gst_multiplier).quantize(Decimal("0.01"))
+
+            results.append({
+                "id": h.id,
+                "name": h.name,
+                "o_price": float(adjusted_price.quantize(Decimal("0.01"))),
+                "sl_price": float(adjusted_price.quantize(Decimal("0.01"))),
+                "unit": unit_name,
+                "barcode": "",
+                "b_id": h.main_barcode_id,
+                "sell_desc": h.sales_desc,
+                'gstinclude': h.taxincld_costprice,
+                "tax_id": selected_tax_id,
+                "tax_name": selected_tax_name,
+                "tax_rate": float(total_tax_rate),
+                "tax_pref": h.tax_pref,
+            })
 
     # #print(results)
 
