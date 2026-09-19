@@ -514,13 +514,55 @@
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script>
         $(document).ready(function() {
+            function focusSelect2Search(selectId) {
+                setTimeout(function() {
+                    const searchField = document.querySelector(
+                        '.select2-container--open .select2-search__field[aria-controls="select2-' + selectId + '-results"]'
+                    );
+                    if (searchField) searchField.focus();
+                }, 50);
+            }
+
+            function limitedSelect2Matcher($select, limit) {
+                limit = limit || 5;
+                let currentTerm = null;
+                let matchCount = 0;
+
+                $select.on('select2:open', function() {
+                    currentTerm = null;
+                    matchCount = 0;
+                });
+
+                return function(params, data) {
+                    const term = $.trim(params.term || '').toLowerCase();
+                    if (term !== currentTerm) {
+                        currentTerm = term;
+                        matchCount = 0;
+                    }
+
+                    if (term && !(data.text || '').toLowerCase().includes(term)) {
+                        return null;
+                    }
+
+                    if (!term && matchCount++ >= limit) {
+                        return null;
+                    }
+
+                    return data;
+                };
+            }
+
             // Initialize Select2 for bill
             $('#id_bill').select2({
                 theme: 'bootstrap-5',
                 width: '100%',
                 allowClear: true,
                 placeholder: 'Select a bill...',
-                minimumInputLength: 0
+                minimumInputLength: 0,
+                matcher: limitedSelect2Matcher($('#id_bill'), 5),
+                open: function() {
+                    focusSelect2Search('id_bill');
+                }
             });
             
             // Initialize Select2 for status
@@ -530,14 +572,15 @@
                 allowClear: false,
                 minimumInputLength: 0
             });
-            
+
             // Initialize Select2 for warehouse when editable field is present
             if ($('#id_warehouse').length) {
                 $('#id_warehouse').select2({
                     width: '100%',
                     allowClear: true,
                     placeholder: 'Select a warehouse...',
-                    minimumInputLength: 0
+                    minimumInputLength: 0,
+                    matcher: limitedSelect2Matcher($('#id_warehouse'), 5)
                 });
             }
             
