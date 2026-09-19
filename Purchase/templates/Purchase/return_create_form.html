@@ -135,11 +135,53 @@ $(function() {
     const listUrl = "{% company_path '/purchase/purchase/returns/' %}";
     let currencySymbol = '₹';
 
+    function focusSelect2Search(selectId) {
+        setTimeout(function() {
+            const searchField = document.querySelector(
+                '.select2-container--open .select2-search__field[aria-controls="select2-' + selectId + '-results"]'
+            );
+            if (searchField) searchField.focus();
+        }, 50);
+    }
+
+    function limitedSelect2Matcher($select, limit) {
+        limit = limit || 5;
+        let currentTerm = null;
+        let matchCount = 0;
+
+        $select.on('select2:open', function() {
+            currentTerm = null;
+            matchCount = 0;
+        });
+
+        return function(params, data) {
+            const term = $.trim(params.term || '').toLowerCase();
+            if (term !== currentTerm) {
+                currentTerm = term;
+                matchCount = 0;
+            }
+
+            if (term && !(data.text || '').toLowerCase().includes(term)) {
+                return null;
+            }
+
+            if (!term && matchCount++ >= limit) {
+                return null;
+            }
+
+            return data;
+        };
+    }
+
     $('#billSelect').select2({
         theme: 'bootstrap-5',
         width: '100%',
         placeholder: 'Select a bill',
-        allowClear: true
+        allowClear: true,
+        matcher: limitedSelect2Matcher($('#billSelect'), 5),
+        open: function() {
+            focusSelect2Search('billSelect');
+        }
     });
 
     $('#returnStatus').select2({
