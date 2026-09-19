@@ -548,15 +548,26 @@ $('#pay-terms').select2({
     dataType: 'json',
     // delay: 250,
 
-    processResults: function (data) {
+    data: function (params) {
+      return { q: params.term };
+    },
+    processResults: function (data, params) {
+      var term = (params && params.term) ? params.term.trim().toLowerCase() : '';
       let results = data.map(function (item) {
         return { id: item.id, text: item.name };
       });
-      results.push({
-        id: 'new',
-        text: '+ New',
-        isNew: true // custom flag to identify this special option
-      });
+      if (term) {
+        results = results.filter(function (item) {
+          return String(item.text || '').toLowerCase().indexOf(term) !== -1;
+        });
+        results.push({
+          id: 'new',
+          text: '+ New',
+          isNew: true // custom flag to identify this special option
+        });
+      } else {
+        results = results.slice(0, 5);
+      }
       return { results: results };
     },
     cache: true
@@ -764,11 +775,16 @@ $(document).ready(function () {
           window.lastCustomerSearchTerm = params.term || '';
           return { q: params.term };
         },
-        processResults: function(data) {
+        processResults: function(data, params) {
+          var term = (params && params.term) ? params.term.trim() : '';
           let results = data.map(function(item) {
             return { id: item.id, text: item.name };
           });
-          results.push({ id: 'new', text: '+ New Customer', isNew: true });
+          if (!term) {
+            results = results.slice(0, 5);
+          } else {
+            results.push({ id: 'new', text: '+ New Customer', isNew: true });
+          }
           return { results: results };
         },
         cache: true
@@ -1180,7 +1196,11 @@ function initItemSelect($el) {
 
 
         // ✅ Only add "+ New Item" option if no results found
-        if (params.term && results.length === 0) {
+        if (!(params && params.term)) {
+          results = results.slice(0, 5);
+        }
+
+        if (params && params.term && results.length === 0) {
           results.push({
             id: 'new',
             text: '+ Create new item',
@@ -2460,11 +2480,39 @@ $(document).on('submit', '#salepersonCreateForm', function (e) {
 });
 
 
-$(document).on('select2:open', () => {
+function limitOpenSelect2Results() {
   const searchField = $('.select2-container--open .select2-search__field');
-  if (searchField.length) {
-    searchField[0].focus();
+  const term = searchField.length ? String(searchField.val() || '').trim() : '';
+  const $options = $('.select2-container--open .select2-results__option')
+    .filter(function () {
+      return !$(this).hasClass('loading-results') &&
+        !$(this).hasClass('select2-results__message') &&
+        !$(this).closest('.select2-footer-add').length;
+    });
+
+  if (term) {
+    $options.show();
+    return;
   }
+
+  $options.each(function (index) {
+    $(this).toggle(index < 5);
+  });
+}
+
+$(document).on('select2:open', () => {
+  window.setTimeout(function () {
+    const searchField = $('.select2-container--open .select2-search__field');
+    if (searchField.length) {
+      searchField[0].focus();
+      searchField[0].select();
+      searchField.off('input.salesSelect2Limit').on('input.salesSelect2Limit', function () {
+        window.setTimeout(limitOpenSelect2Results, 0);
+      });
+    }
+    limitOpenSelect2Results();
+    window.setTimeout(limitOpenSelect2Results, 250);
+  }, 0);
 });
 
 
