@@ -1625,12 +1625,14 @@ document.addEventListener('DOMContentLoaded', function () {
               $('#tds_definition_select').select2({
                 placeholder: 'Select TDS',
                 allowClear: true,
-                width: '100%'
+                width: '100%',
+                matcher: window.select2LimitedMatcher($('#tds_definition_select'))
               });
               $('#tcs_definition_select').select2({
                 placeholder: 'Select TCS',
                 allowClear: true,
-                width: '100%'
+                width: '100%',
+                matcher: window.select2LimitedMatcher($('#tcs_definition_select'))
               });
             }
           } catch (e) {
