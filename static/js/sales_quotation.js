@@ -752,7 +752,7 @@ $(document).ready(function () {
     $('#customer_select').select2({
       placeholder: 'Choose customer',
       allowClear: true,
-      minimumInputLength: 1,
+      minimumInputLength: 0,
       ajax: {
         url: (function() {
           var cp = getCompanyPrefix();
@@ -1144,7 +1144,7 @@ function initItemSelect($el) {
   $el.select2({
     placeholder: 'Select Item',
     allowClear: true,
-    minimumInputLength: 1,
+    minimumInputLength: 0,
     // multiple: false,              // ✅ ensure single select
     // closeOnSelect: true,          // ✅ close dropdown when selected
     ajax: {
