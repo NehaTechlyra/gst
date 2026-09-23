@@ -44,7 +44,7 @@ def send_trial_reminder_email(company):
             'contact_person': company.contact_person or 'Customer',
             'days_remaining': days_left,
             'trial_expires_at': company.trial_expires_at.strftime('%B %d, %Y'),
-            'contact_email': 'lyraerp@techlyra.com',
+            'contact_email': 'mailmaster@techlyra.com',
             'login_url': f"{settings.BASE_URL}/{company.company_code}/",
         }
         
@@ -98,7 +98,7 @@ def send_trial_expired_email(company):
         context = {
             'contact_person': company.contact_person or 'Customer',
             'trial_expired_date': company.trial_expires_at.strftime('%B %d, %Y'),
-            'contact_email': 'lyraerp@techlyra.com',
+            'contact_email': 'mailmaster@techlyra.com',
             'company_code': company.company_code,
         }
         
@@ -288,7 +288,7 @@ def send_deletion_warning_email(company, expiry_date=None):
             'contact_person': company.contact_person or 'Customer',
             'expiry_date': expiry_only.strftime('%B %d, %Y') if hasattr(expiry_only, 'strftime') else str(expiry_only),
             'days_remaining': max(0, days_remaining),
-            'contact_email': 'lyraerp@techlyra.com',
+            'contact_email': 'mailmaster@techlyra.com',
             'login_url': f"{settings.BASE_URL}/{company.company_code}/" if hasattr(settings, 'BASE_URL') else settings.SITE_URL,
             'current_year': timezone.now().year,
         }

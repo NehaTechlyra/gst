@@ -53,7 +53,7 @@ replace_str2 = """            <div class="right-section">
 
                 <p class="help-text">
                     Need help? Contact your system administrator or<br>
-                    <a href="mailto:{{ contact_email|default:'lyraerp@techlyra.com' }}">{{ contact_email|default:'lyraerp@techlyra.com' }}</a>
+                    <a href="mailto:{{ contact_email|default:'mailmaster@techlyra.com' }}">{{ contact_email|default:'mailmaster@techlyra.com' }}</a>
                 </p>
                 {% else %}
                 <div class="restriction-header">"""
@@ -63,12 +63,12 @@ html = html.replace(search_str2.replace('\n', '\r\n'), replace_str2.replace('\n'
 # Add endif at the bottom
 search_str3 = """                <p class="help-text">
                     Need help? Contact your system administrator or<br>
-                    <a href="mailto:lyraerp@techlyra.com">lyraerp@techlyra.com</a>
+                    <a href="mailto:mailmaster@techlyra.com">mailmaster@techlyra.com</a>
                 </p>
             </div>"""
 replace_str3 = """                <p class="help-text">
                     Need help? Contact your system administrator or<br>
-                    <a href="mailto:lyraerp@techlyra.com">lyraerp@techlyra.com</a>
+                    <a href="mailto:mailmaster@techlyra.com">mailmaster@techlyra.com</a>
                 </p>
                 {% endif %}
             </div>"""

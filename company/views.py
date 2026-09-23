@@ -1674,7 +1674,7 @@ def trial_expired_page(request):
         'license_info': license_info,
         'company_id': company_id,
         'company_code': company_code,
-        'contact_email': 'lyraerp@techlyra.com',
+        'contact_email': 'mailmaster@techlyra.com',
     }
     # Render as 200 to avoid "Forbidden" server logs while still showing
     # the trial-expired screen. Access blocking is enforced by middleware.
@@ -1695,7 +1695,7 @@ def site_blocked_view(request):
         'license_info': license_info,
         'company_id': company_id,
         'company_code': getattr(request, 'company_code', None),
-        'contact_email': 'lyraerp@techlyra.com',
+        'contact_email': 'mailmaster@techlyra.com',
     }
     
     # Render your existing template
