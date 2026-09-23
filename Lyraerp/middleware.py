@@ -362,7 +362,7 @@ class ModulePermissionMiddleware(MiddlewareMixin):
             {
                 'restriction_type': 'permission',
                 'blocked_module': module_name,
-                'contact_email': 'lyraerp@techlyra.com',
+                'contact_email': 'mailmaster@techlyra.com',
                 'company_code': getattr(request, 'company_code', None),
             },
             status=403,
