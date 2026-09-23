@@ -977,7 +977,7 @@ def _export_items_csv(items_qs):
                 val = it.name
             elif key == "type" and "goods/service" in label.lower():
                 val = it.type
-            elif key == "type" and label.strip().lower() == "type":
+            elif key == "item_type":
                 val = it.item_type.type_name if it.item_type else ""
             elif key == "unit":
                 val = unit_name
@@ -1045,70 +1045,7 @@ def items(request):
         items = items.filter(Q(name__icontains=search_query))
 
     if request.GET.get("export") == "csv":
-        response = HttpResponse(content_type="text/csv")
-        response["Content-Disposition"] = 'attachment; filename="items.csv"'
-        writer = csv.writer(response)
-        writer.writerow([
-            "Item Name",
-            "Type (goods/service)",
-            "Unit",
-            "HSN Code",
-            "Status (true/false)",
-            "Selling Price",
-            "Sales Account",
-            "Sales Description",
-            "Cost Price",
-            "Purchase Account",
-            "Purchase Description",
-            "Tax Preference (taxable/non_taxable)",
-            "Track Inventory (true/false)",
-            "Opening Stock",
-            "Opening Stock Rate",
-            "Valuation Method (FIFO/WAC)",
-        ])
-
-        unit_ids = set()
-        for it in items:
-            unit_val = str(it.unit or "").strip()
-            if unit_val.isdigit():
-                unit_ids.add(int(unit_val))
-        unit_map = {u.id: u.unit_name for u in Unit.objects.filter(id__in=unit_ids)}
-
-        def fmt(val):
-            return "" if val is None else str(val)
-
-        for it in items:
-            unit_val = str(it.unit or "").strip()
-            if unit_val.isdigit():
-                unit_name = unit_map.get(int(unit_val), unit_val)
-            else:
-                unit_name = unit_val
-
-            hsn_code = ""
-            if it.hsn_code_obj:
-                hsn_code = it.hsn_code_obj.code
-            elif it.hsn_code:
-                hsn_code = it.hsn_code
-
-            writer.writerow([
-                it.name,
-                it.type or "",
-                unit_name,
-                hsn_code,
-                "true" if it.status else "false",
-                fmt(it.selling_price),
-                it.sales_account or "",
-                it.sales_desc or "",
-                fmt(it.cost_price),
-                it.purchase_account or "",
-                it.purchase_desc or "",
-                it.tax_pref or "",
-                "true" if it.track_inventory else "false",
-                fmt(it.op_stock),
-                fmt(it.op_rate),
-                it.inv_method or "",
-            ])
-        return response
+        return _export_items_csv(items)
 
     paginator = Paginator(items, 10)
     page_number = request.GET.get('page')
