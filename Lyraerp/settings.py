@@ -367,7 +367,7 @@ SESSION_SAVE_EVERY_REQUEST = True
 # ============================================================================
 # LICENSE GENERATOR API
 # ============================================================================
-LICENSE_GENERATOR_API_URL = os.getenv('LICENSE_API_URL', 'http://puresam.ath.cx:8001')
+LICENSE_GENERATOR_API_URL = os.getenv('LICENSE_API_URL', 'https://erp.techlyra.com/license-api/')
 
 
 # ============================================================================
