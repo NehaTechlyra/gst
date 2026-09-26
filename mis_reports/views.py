@@ -8,8 +8,11 @@ from django.db.models import Count, F, Sum
 from django.db.models.functions import Coalesce, TruncMonth
 from django.http import HttpResponse
 from django.shortcuts import render
-
+from django.contrib.auth.decorators import login_required
+from django.urls import reverse
+from urllib.parse import urlencode
 from Lyraerp.utils.redirect_utils import redirect_with_company
+
 from Lyraerp.utils.thread_locals import get_current_db
 from .permissions import (
     can_export,
@@ -25,6 +28,133 @@ from .services import build_export_query_string, financial_year_bounds, parse_da
 
 
 logger = logging.getLogger(__name__)
+
+@login_required
+def account_ledgers(request, company_code=None):
+    if not (getattr(request.user, 'is_superuser', False) or can_view_finance(request.user)):
+        messages.error(request, 'You do not have permission to view MIS account ledgers.')
+        return redirect_with_company(request, 'mis_reports_dashboard')
+
+    from chart_of_accounts.models import ChartOfAccounts
+    from journal.models import JournalLine
+
+    start_date, end_date, period = parse_date_range_from_request(request)
+    company_db = getattr(request, 'company_db', 'default')
+    account_value = request.GET.get('account') or ''
+    account_filter = int(account_value) if account_value.isdigit() else None
+
+    lines = JournalLine.objects.using(company_db).filter(
+        journal__status='posted', status=True,
+        journal__date__gte=start_date, journal__date__lte=end_date,
+    )
+    if account_filter:
+        lines = lines.filter(account_id=account_filter)
+
+    ledger_entries = []
+    running_balance = Decimal('0.00')
+    for line in lines.select_related('journal', 'account').order_by('journal__date', 'id'):
+        debit = line.debit or Decimal('0.00')
+        credit = line.credit or Decimal('0.00')
+        if account_filter:
+            running_balance += debit - credit
+        query = urlencode({'date_from': start_date.isoformat(), 'date_to': end_date.isoformat()})
+        detail_url = reverse('mis_account_detail', kwargs={
+            'company_code': company_code, 'pk': line.account_id,
+        })
+        ledger_entries.append({
+            'date': line.journal.date,
+            'account_code': line.account.code,
+            'account_name': line.account.name,
+            'reference': line.journal.reference or line.journal.entry_number,
+            'journal_pk': line.journal_id,
+            'debit': debit,
+            'credit': credit,
+            'running_balance': running_balance,
+            'detail_url': f'{detail_url}?{query}',
+        })
+
+    account_options = ChartOfAccounts.objects.using(company_db).filter(
+        active=True, status=True,
+        journal_lines__journal__status='posted',
+        journal_lines__status=True,
+        journal_lines__journal__date__gte=start_date,
+        journal_lines__journal__date__lte=end_date,
+    ).distinct().order_by('code', 'name')
+
+    return render(request, 'mis_reports/account_ledgers.html', {
+        'company_code': company_code,
+        'ledger_entries': ledger_entries,
+        'account_options': account_options,
+        'account_filter': account_filter,
+        'period': period,
+        'start_date': start_date,
+        'end_date': end_date,
+        'can_export': getattr(request.user, 'is_superuser', False) or can_export(request.user),
+    })
+
+
+@login_required
+def account_ledgers_export_csv(request, company_code=None):
+    if not (getattr(request.user, 'is_superuser', False) or can_export(request.user)):
+        messages.error(request, 'You do not have permission to export MIS reports.')
+        return redirect_with_company(request, 'mis_reports_dashboard')
+
+    from chart_of_accounts.models import ChartOfAccounts
+    from journal.models import JournalLine
+
+    start_date, end_date, period = parse_date_range_from_request(request)
+    company_db = getattr(request, 'company_db', 'default')
+    account_value = request.GET.get('account') or ''
+    account_filter = int(account_value) if account_value.isdigit() else None
+    selected_account = (
+        ChartOfAccounts.objects.using(company_db).filter(pk=account_filter).first()
+        if account_filter else None
+    )
+    lines = JournalLine.objects.using(company_db).filter(
+        journal__status='posted', status=True,
+        journal__date__gte=start_date, journal__date__lte=end_date,
+    )
+    if account_filter:
+        lines = lines.filter(account_id=account_filter)
+
+    response = HttpResponse(content_type='text/csv; charset=utf-8')
+    response['Content-Disposition'] = 'attachment; filename="ledger_report.csv"'
+    writer = csv.writer(response)
+    writer.writerow(['Ledger Report'])
+    writer.writerow(['Period', period])
+    writer.writerow(['Start Date', start_date.strftime('%Y-%m-%d')])
+    writer.writerow(['End Date', end_date.strftime('%Y-%m-%d')])
+    writer.writerow([
+        'Account Filter',
+        f'{selected_account.code} - {selected_account.name}' if selected_account else 'All accounts',
+    ])
+    writer.writerow([])
+    writer.writerow(['Date', 'Account', 'Reference', 'Debit', 'Credit'])
+    for line in lines.select_related('journal', 'account').order_by('journal__date', 'id'):
+        writer.writerow([
+            line.journal.date.strftime('%d-%m-%Y'),
+            f'{line.account.code} - {line.account.name}',
+            line.journal.reference or line.journal.entry_number,
+            f'{line.debit or Decimal("0.00"):.2f}',
+            f'{line.credit or Decimal("0.00"):.2f}',
+        ])
+    return response
+
+@login_required
+def account_detail(request, pk, company_code=None):
+    """Render an account ledger inside MIS using the shared ledger implementation."""
+    if not (getattr(request.user, 'is_superuser', False) or can_view_finance(request.user)):
+        messages.error(request, 'You do not have permission to view MIS account details.')
+        return redirect_with_company(request, 'mis_reports_dashboard')
+
+    from chart_of_accounts.views import account_detail as chart_account_detail
+
+    return chart_account_detail(
+        request,
+        pk,
+        template_name='mis_reports/account_detail.html',
+        permission_override=True,
+    )
 
 
 def _to_decimal(value):

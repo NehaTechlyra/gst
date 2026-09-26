@@ -182,7 +182,13 @@ function handleJournalBackButton(event) {
   event.preventDefault();
   const backSource = sessionStorage.getItem('journalBackSource');
   
-  if (backSource === 'chart_of_accounts' || backSource === 'party_transactions') {
+  if (backSource === 'mis_account_ledgers') {
+    const backUrl = sessionStorage.getItem('journalBackUrl');
+    sessionStorage.removeItem('journalBackSource');
+    sessionStorage.removeItem('journalBackUrl');
+    window.location.href = backUrl || "{% url 'journal_list' %}";
+    return false;
+  } else if (backSource === 'chart_of_accounts' || backSource === 'party_transactions') {
     sessionStorage.removeItem('journalBackSource');
     window.history.back();
     return false;

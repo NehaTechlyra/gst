@@ -1,0 +1,111 @@
+{% extends 'website/index.html' %}
+{% load static %}
+
+{% block exstyle %}
+{% include 'mis_reports/_report_styles.html' %}
+<style>
+  .mis-ledger-toolbar { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+  .mis-ledger-title { margin:0; font-size:1.35rem; font-weight:600; }
+  .mis-ledger-subtitle { margin:.25rem 0 0; color:#6c757d; }
+  .mis-ledger-filter { background:#f8f9fa; border:1px solid #e9ecef; border-radius:.5rem; padding:1rem; }
+  .mis-ledger-filter .btn { white-space:nowrap; }
+  .mis-ledger-table th { white-space:nowrap; }
+  .mis-ledger-table td.num, .mis-ledger-table th.num { text-align:right; white-space:nowrap; }
+  .mis-ledger-table a { color:#55588b; text-decoration:none; }
+  .mis-ledger-table a:hover { text-decoration:underline; }
+  .mis-ledger-empty { padding:2rem 1rem !important; text-align:center; color:#6c757d; }
+  .mis-ledger-total { display:flex; justify-content:space-between; gap:1rem; flex-wrap:wrap; }
+</style>
+{% endblock exstyle %}
+
+{% block page_title %}Account Ledger — {{ account.name }}{% endblock page_title %}
+
+{% block content %}
+<div class="container-fluid py-4 mis-report-page">
+  <div class="mis-ledger-toolbar mb-3">
+    <div>
+      <h1 class="mis-ledger-title">Account Ledger — {{ account.name }}</h1>
+      <p class="mis-ledger-subtitle">
+        {% if date_from or date_to %}
+          {% if date_from %}From {{ date_from }}{% endif %}{% if date_to %} to {{ date_to }}{% endif %}
+        {% else %}All periods{% endif %}
+      </p>
+    </div>
+    <div class="d-flex gap-2">
+      <a class="btn btn-sm btn-outline-secondary" href="{% url 'mis_finance_report' company_code=company_code %}">Back to Finance MIS</a>
+      <a class="btn btn-sm btn-primary" href="{{ download_url }}" target="_blank" rel="noopener">Download PDF</a>
+    </div>
+  </div>
+
+  <div class="mis-ledger-filter mb-3">
+    <div class="d-flex flex-wrap gap-2 mb-3">
+      <span class="align-self-center text-muted small me-1">Quick:</span>
+      {% for preset, label in quick_presets %}
+        <a class="btn btn-sm btn-outline-secondary" href="?filter_preset={{ preset }}">{{ label }}</a>
+      {% endfor %}
+      <a class="btn btn-sm btn-light" href="{% url 'mis_account_detail' company_code=company_code pk=account.pk %}">Reset</a>
+    </div>
+    <form method="get" class="row g-2 align-items-end">
+      <div class="col-sm-4 col-md-3">
+        <label class="form-label small text-muted" for="date_from">From date</label>
+        <input class="form-control form-control-sm" type="date" id="date_from" name="date_from" value="{{ date_from }}">
+      </div>
+      <div class="col-sm-4 col-md-3">
+        <label class="form-label small text-muted" for="date_to">To date</label>
+        <input class="form-control form-control-sm" type="date" id="date_to" name="date_to" value="{{ date_to }}">
+      </div>
+      <div class="col-sm-4 col-md-auto">
+        <button class="btn btn-sm btn-primary" type="submit">Apply filter</button>
+        <a class="btn btn-sm btn-outline-secondary" href="{% url 'mis_account_detail' company_code=company_code pk=account.pk %}">Clear</a>
+      </div>
+    </form>
+  </div>
+
+  <div class="card mis-report-card mb-3">
+    <div class="card-body">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <h2 class="mis-report-section-title mb-0">Ledger Entries</h2>
+        <span class="text-muted small">{{ journal.paginator.count }} transaction{{ journal.paginator.count|pluralize }}</span>
+      </div>
+      <div class="table-responsive mis-report-table">
+        <table class="table table-sm align-middle mis-ledger-table">
+          <thead><tr><th>Date</th><th>Party</th><th>Reference</th><th>Account</th><th class="num">Debit</th><th class="num">Credit</th><th class="num">Running balance</th></tr></thead>
+          <tbody>
+            {% for row in journal %}
+            <tr>
+              <td>{{ row.date|date:'d M Y' }}</td>
+              <td>{% if row.party_url %}<a href="{{ row.party_url }}">{{ row.party_name }}</a>{% else %}{{ row.party_name|default:'—' }}{% endif %}</td>
+              <td>
+                <a href="{% url 'journal_detail' company_code=company_code pk=row.journal_pk %}">
+                  {% if row.expense_type == 'expense' %}Expense #{{ row.expense.pk }}
+                  {% elif row.expense_type == 'invoice' %}Invoice #{{ row.expense.inv_number }}
+                  {% elif row.expense_type == 'bill' %}Bill {{ row.expense.bill_number }}
+                  {% elif row.expense_type == 'bill_payment' or row.expense_type == 'inv_payment' %}Payment #{{ row.expense.payment_number }}
+                  {% else %}Journal {{ row.expense.reference|default:'' }} #{{ row.expense.pk }}{% endif %}
+                </a>
+              </td>
+              <td>{{ row.account }}</td>
+              <td class="num">{% if row.debit > 0 %}{{ row.debit|floatformat:2 }}{% else %}—{% endif %}</td>
+              <td class="num">{% if row.credit > 0 %}{{ row.credit|floatformat:2 }}{% else %}—{% endif %}</td>
+              <td class="num"><strong>{{ row.running_balance_display }}</strong></td>
+            </tr>
+            {% empty %}<tr><td colspan="7" class="mis-ledger-empty">No transactions found for this account.</td></tr>{% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  {% if journal.paginator.count %}
+  <div class="card mis-report-card mb-3"><div class="card-body mis-ledger-total"><strong>Closing balance</strong><span>{% with last=journal|last %}{% if last %}{{ last.running_balance_display }}{% else %}—{% endif %}{% endwith %}</span><span class="text-muted">Page {{ journal.number }} / {{ journal.paginator.num_pages }}</span></div></div>
+  {% endif %}
+
+  {% if journal.paginator.num_pages > 1 %}
+  <nav aria-label="Ledger pagination"><ul class="pagination pagination-sm justify-content-end">
+    {% if journal.has_previous %}<li class="page-item"><a class="page-link" href="?{{ filter_query_string }}&page={{ journal.previous_page_number }}">Previous</a></li>{% endif %}
+    {% for num in journal.paginator.page_range %}<li class="page-item {% if num == journal.number %}active{% endif %}"><a class="page-link" href="?{{ filter_query_string }}&page={{ num }}">{{ num }}</a></li>{% endfor %}
+    {% if journal.has_next %}<li class="page-item"><a class="page-link" href="?{{ filter_query_string }}&page={{ journal.next_page_number }}">Next</a></li>{% endif %}
+  </ul></nav>
+  {% endif %}
+</div>
+{% endblock content %}

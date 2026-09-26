@@ -949,6 +949,8 @@
                     {% endif %}
                     {% if request.user.is_superuser or can_view_mis_finance %}
                     <li><a href="{% if company_code %}{% url 'mis_finance_report' company_code=company_code %}{% else %}{% url 'mis_finance_report' %}{% endif %}" class="{% if request.resolver_match.url_name == 'mis_finance_report' %}active-link{% endif %}">Finance</a></li>
+                    <li><a href="{% if company_code %}{% url 'mis_account_ledgers' company_code=company_code %}{% else %}{% url 'mis_account_ledgers' %}{% endif %}" class="{% if request.resolver_match.url_name == 'mis_account_ledgers' or request.resolver_match.url_name == 'mis_account_detail' %}active-link{% endif %}">Ledger</a></li>
+    
                     {% endif %} 
                      {% if request.user.is_superuser or can_view_mis_crm %}
                     <li><a href="{% if company_code %}{% url 'mis_crm_report' company_code=company_code %}{% else %}{% url 'mis_crm_report' %}{% endif %}" class="{% if request.resolver_match.url_name == 'mis_crm_report' %}active-link{% endif %}">CRM</a></li>
