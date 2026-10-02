@@ -28,6 +28,14 @@
       <div class="dots-menu-wrap">
         <button class="dots-btn" id="dotsBtn" onclick="toggleDots(event)" title="More options">&#8942;</button>
         <div class="dots-dropdown" id="dotsDropdown">
+          <!-- Import -->
+          <a href="{% url 'import_subcategory_step1' company_code=company_code %}"
+             class="dots-dropdown-item">
+            <i class="bi bi-upload"></i>
+            Import Subcategory
+          </a>
+
+          <!-- Export -->
           <a href="?q={{ search_query }}&export=csv" class="dots-dropdown-item">
             <i class="bi bi-download"></i>
             Export to CSV

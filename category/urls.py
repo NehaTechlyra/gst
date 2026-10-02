@@ -6,6 +6,12 @@ from .import_category_views import (
     import_category_step3,
     import_category_sample,
 )
+from .import_subcategory_views import (
+    import_subcategory_step1,
+    import_subcategory_step2,
+    import_subcategory_step3,
+    import_subcategory_sample,
+)
 
 urlpatterns = [
     path('categories/', views.category_list, name='category_list'),
@@ -21,4 +27,9 @@ urlpatterns = [
     path('import_category/step2/', import_category_step2, name='import_category_step2'),
     path('import_category/step3/', import_category_step3, name='import_category_step3'),
     path('import_category/sample/', import_category_sample, name='import_category_sample'),
+
+    path('import_subcategory/step1/', import_subcategory_step1, name='import_subcategory_step1'),
+    path('import_subcategory/step2/', import_subcategory_step2, name='import_subcategory_step2'),
+    path('import_subcategory/step3/', import_subcategory_step3, name='import_subcategory_step3'),
+    path('import_subcategory/sample/', import_subcategory_sample, name='import_subcategory_sample'),
 ]
