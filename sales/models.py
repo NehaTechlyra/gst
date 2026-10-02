@@ -905,7 +905,7 @@ class SalesDeliveryNote(models.Model):
                             f"Available: {stock.quantity}, Required: {delivery_item.quantity_delivered}"
                         )
 
-                    # Decrease stock quantity (SALES = STOCK OUT)
+                    # Decrease stock quantity (SALES = Outward)
                     old_quantity = stock.quantity
                     stock.quantity -= delivery_item.quantity_delivered
                     stock.save()
@@ -920,7 +920,7 @@ class SalesDeliveryNote(models.Model):
                         reference_type='sales_delivery_note',
                         reference_id=self.id,
                         delivery_note=self,
-                        notes=f"Stock out from Sales Delivery Note {self.delivery_note_number}"
+                        notes=f"Outward from Sales Delivery Note {self.delivery_note_number}"
                     )
 
                 # Mark stock as updated
@@ -1013,7 +1013,7 @@ class SalesStockMovement(models.Model):
     """
     MOVEMENT_TYPE_CHOICES = [
         ('in', 'Stock In'),
-        ('out', 'Stock Out'),
+        ('out', 'Outward'),
     ]
     
     REFERENCE_TYPE_CHOICES = [

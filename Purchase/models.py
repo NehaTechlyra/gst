@@ -1025,7 +1025,7 @@ class StockMovement(models.Model):
     """
     MOVEMENT_TYPE_CHOICES = [
         ('in', 'Stock In'),
-        ('out', 'Stock Out'),
+        ('out', 'Outward'),
         ('adjustment', 'Adjustment'),
         ('transfer', 'Transfer'),
     ]

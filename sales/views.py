@@ -365,7 +365,7 @@ def update_stock_from_paid_invoice(inv, user, request):
                 reference_type='sales_invoice_payment',
                 reference_id=inv.id,
                 delivery_note=None,
-                notes=f"Stock out from Sales Invoice Payment {inv.inv_number}"
+                notes=f"Outward from Sales Invoice Payment {inv.inv_number}"
             )
             updated = True
 
@@ -16595,7 +16595,7 @@ def sales_return_cancel(request, pk):
                                         reference_type='sales_return_reversal',
                                         reference_id=sr.id,
                                         sales_return=sr,
-                                        notes=f"Stock out for cancelled Sales Return {sr.return_number}",
+                                        notes=f"Outward for cancelled Sales Return {sr.return_number}",
                                         created_by=request.user
                                     )
                                 except Exception:

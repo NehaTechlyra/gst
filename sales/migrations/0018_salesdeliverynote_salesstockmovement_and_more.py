@@ -43,7 +43,7 @@ class Migration(migrations.Migration):
             name='SalesStockMovement',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('movement_type', models.CharField(choices=[('in', 'Stock In'), ('out', 'Stock Out')], max_length=20)),
+                ('movement_type', models.CharField(choices=[('in', 'Stock In'), ('out', 'Outward')], max_length=20)),
                 ('quantity', models.DecimalField(decimal_places=2, max_digits=10)),
                 ('reference_type', models.CharField(choices=[('sales_delivery_note', 'Sales Delivery Note'), ('sales_delivery_note_reversal', 'Sales Delivery Note Reversal')], max_length=50)),
                 ('reference_id', models.PositiveIntegerField()),

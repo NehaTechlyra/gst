@@ -360,7 +360,7 @@
         {% if mv.quantity > 0 %}
         <div class="dd-movement-item {% if mv.movement_type == 'out' %}out{% else %}in{% endif %}" style="padding:12px;margin-bottom:8px;border-left:4px solid #e74c3c;background:#f8f9fa">
           <div class="dd-movement-header" style="display:flex;justify-content:space-between;margin-bottom:6px">
-            <div class="dd-movement-type">{% if mv.movement_type == 'out' %}Stock Out{% else %}Stock In{% endif %}</div>
+            <div class="dd-movement-type">{% if mv.movement_type == 'out' %}Outward{% else %}Stock In{% endif %}</div>
             <div class="dd-movement-date">{{ mv.created_at|date:"M d, Y H:i" }}</div>
           </div>
           <div class="dd-movement-details">{{ mv.stock.item.name }} - Qty: {{ mv.quantity }}{% if mv.purchase_return %} - Return: {{ mv.purchase_return.return_number }}{% endif %}</div>

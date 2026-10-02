@@ -755,7 +755,7 @@
             <div class="dd-movement-item {{ movement.movement_type }}">
                 <div class="dd-movement-header">
                     <span class="dd-movement-type">
-                        {% if movement.movement_type == 'in' %}📥 Stock In (Reversal){% else %}📤 Stock Out{% endif %}
+                        {% if movement.movement_type == 'in' %}📥 Stock In (Reversal){% else %}📤 Outward{% endif %}
                     </span>
                     <span class="dd-movement-date">{{ movement.created_at|date:"M d, Y H:i" }}</span>
                 </div>

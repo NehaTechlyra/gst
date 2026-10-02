@@ -13341,7 +13341,7 @@ def purchase_return_view(request, pk):
                                     reference_id=pr.id,
                                     delivery_note=None,
                                     purchase_return=pr,
-                                    notes=f"Stock out for Purchase Return {pr.return_number}",
+                                    notes=f"Outward for Purchase Return {pr.return_number}",
                                     created_by=request.user
                                 )
                             except Exception:
@@ -13767,7 +13767,7 @@ def purchase_return_mark_received(request, pk):
                                     reference_type='purchase_return',
                                     reference_id=pr.id,
                                     purchase_return=pr,
-                                    notes=f"Stock out for Purchase Return {pr.return_number}",
+                                    notes=f"Outward for Purchase Return {pr.return_number}",
                                     created_by=request.user
                                 )
                                 success_count += 1
@@ -14042,7 +14042,7 @@ class PurchaseReturnUpdateView(UpdateView):
 
                 # If status changed from cancelled/pending to received
                 # We need to handle stock movements
-                # If transitioning to 'received': Creates stock OUT movements (-qty)
+                # If transitioning to 'received': Creates Outward movements (-qty)
                 # Purchase return = stock reduction in warehouse
                 if self.object.status == 'received' and old_status != 'received':
                     success_count = 0
@@ -14087,7 +14087,7 @@ class PurchaseReturnUpdateView(UpdateView):
                                     reference_type='purchase_return',
                                     reference_id=self.object.id,
                                     purchase_return=self.object,
-                                    notes=f"Stock out for Purchase Return {self.object.return_number}",
+                                    notes=f"Outward for Purchase Return {self.object.return_number}",
                                     created_by=self.request.user
                                 )
                                 success_count += 1
