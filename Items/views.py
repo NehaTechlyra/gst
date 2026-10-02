@@ -15,6 +15,7 @@ from decimal import Decimal
 from datetime import datetime
 import logging
 import csv
+from urllib.parse import urlencode
 
 
 from Purchase.models import Vendor, BillItem
@@ -1044,6 +1045,35 @@ def items(request):
     if search_query:
         items = items.filter(Q(name__icontains=search_query))
 
+    # --- Category / Subcategory / Type filters ---
+    def _int_or_none(val):
+        try:
+            return int(val)
+        except (TypeError, ValueError):
+            return None
+
+    selected_category = _int_or_none(request.GET.get('category'))
+    selected_subcategory = _int_or_none(request.GET.get('subcategory'))
+    selected_type = _int_or_none(request.GET.get('type'))
+    if selected_category:
+        items = items.filter(category_id=selected_category)
+    if selected_subcategory:
+        items = items.filter(subcategory_id=selected_subcategory)
+    if selected_type:
+        items = items.filter(item_type_id=selected_type)
+
+    # Query string (without page) reused by pagination / export links
+    filter_params = {}
+    if search_query:
+        filter_params['q'] = search_query
+    if selected_category:
+        filter_params['category'] = selected_category
+    if selected_subcategory:
+        filter_params['subcategory'] = selected_subcategory
+    if selected_type:
+        filter_params['type'] = selected_type
+    filter_qs = urlencode(filter_params)
+
     if request.GET.get("export") == "csv":
         return _export_items_csv(items)
 
@@ -1062,6 +1092,13 @@ def items(request):
     context = {
         "items": items_page,
         "search_query": search_query,
+        "filter_qs": filter_qs,
+        "filter_categories": list(Category.objects.filter(status=True).order_by('category_name').values('id', 'category_name')),
+        "filter_subcategories": list(Subcategory.objects.filter(status=True).order_by('subcategory_name').values('id', 'subcategory_name', 'category_id')),
+        "filter_types": list(Type.objects.filter(status=True).order_by('type_name').values('id', 'type_name', 'subcategory_id')),
+        "selected_category": selected_category,
+        "selected_subcategory": selected_subcategory,
+        "selected_type": selected_type,
         "can_create": (getattr(request.user, 'is_superuser', False) or can_create_items(request.user)),
         "can_edit": (getattr(request.user, 'is_superuser', False) or can_edit_items(request.user)),
         "can_delete": (getattr(request.user, 'is_superuser', False) or can_delete_items(request.user)),

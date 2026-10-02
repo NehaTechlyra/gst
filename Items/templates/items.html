@@ -47,31 +47,41 @@
               </a>
 
               <!-- Export -->
-              <a href="?export=csv" class="dots-dropdown-item">
+              <a href="?export=csv{% if filter_qs %}&{{ filter_qs }}{% endif %}" class="dots-dropdown-item">
                 <i class="bi bi-download"></i>
                 Export Items
               </a>
 
-              <!-- Export -->
-              {% comment %} <a href="?export=csv" class="dots-dropdown-item">
-                <i class="bi bi-download"></i>
-                Export to CSV
-              </a>
+              
 
               
 
-              <div class="dots-divider"></div>
-
-              <!-- Settings -->
-              <a href="#" class="dots-dropdown-item">
-                <i class="bi bi-gear"></i>
-                Settings
-              </a> {% endcomment %}
+              
 
             </div>
         </div>
       </div>
     </div>
+
+    <!-- Category / Subcategory / Type filters (submit with the search form) -->
+    <div class="d-flex flex-wrap align-items-center gap-2 mb-3" id="itemFilterBar">
+      <select name="category" id="filterCategory" class="form-select" style="width:auto;min-width:180px;" form="itemSearchForm">
+        <option value="">All Categories</option>
+      </select>
+      <select name="subcategory" id="filterSubcategory" class="form-select" style="width:auto;min-width:180px;" form="itemSearchForm">
+        <option value="">All Subcategories</option>
+      </select>
+      <select name="type" id="filterType" class="form-select" style="width:auto;min-width:180px;" form="itemSearchForm">
+        <option value="">All Types</option>
+      </select>
+      {% if selected_category or selected_subcategory or selected_type %}
+      <a href="{% if search_query %}?q={{ search_query|urlencode }}{% else %}?{% endif %}" class="btn btn-outline-secondary">Clear filters</a>
+      {% endif %}
+    </div>
+    {{ filter_categories|json_script:"filterCategoriesData" }}
+    {{ filter_subcategories|json_script:"filterSubcategoriesData" }}
+    {{ filter_types|json_script:"filterTypesData" }}
+
 
 
 
@@ -148,7 +158,7 @@
   {% else %}
   <div class="alert alert-info text-center">
     No Items found.
-    {% if can_create %}
+    {% if can_create and not selected_category and not selected_subcategory and not selected_type and not search_query %}
       <a href="{% url 'add_item' %}" class="alert-link">Add your first Item</a>.
     {% endif %}
   </div>
@@ -159,7 +169,7 @@
     <ul class="pagination">
         {% if items.has_previous %}
             <li class="page-item">
-                <a class="page-link" href="?q={{ search_query }}&page={{ items.previous_page_number }}">&laquo;</a>
+                <a class="page-link" href="?{% if filter_qs %}{{ filter_qs }}&{% endif %}page={{ items.previous_page_number }}">&laquo;</a>
             </li>
         {% else %}
             <li class="page-item disabled"><span class="page-link">&laquo;</span></li>
@@ -172,7 +182,7 @@
                     <li class="page-item active"><span class="page-link">{{ num }}</span></li>
                 {% else %}
                     <li class="page-item">
-                        <a class="page-link" href="?q={{ search_query }}&page={{ num }}">{{ num }}</a>
+                        <a class="page-link" href="?{% if filter_qs %}{{ filter_qs }}&{% endif %}page={{ num }}">{{ num }}</a>
                     </li>
                 {% endif %}
 
@@ -181,7 +191,7 @@
                     <li class="page-item active"><span class="page-link">{{ num }}</span></li>
                 {% else %}
                     <li class="page-item">
-                        <a class="page-link" href="?q={{ search_query }}&page={{ num }}">{{ num }}</a>
+                        <a class="page-link" href="?{% if filter_qs %}{{ filter_qs }}&{% endif %}page={{ num }}">{{ num }}</a>
                     </li>
                 {% endif %}
 
@@ -190,7 +200,7 @@
                     <li class="page-item active"><span class="page-link">{{ num }}</span></li>
                 {% else %}
                     <li class="page-item">
-                        <a class="page-link" href="?q={{ search_query }}&page={{ num }}">{{ num }}</a>
+                        <a class="page-link" href="?{% if filter_qs %}{{ filter_qs }}&{% endif %}page={{ num }}">{{ num }}</a>
                     </li>
                 {% endif %}
 
@@ -206,7 +216,7 @@
 
         {% if items.has_next %}
             <li class="page-item">
-                <a class="page-link" href="?q={{ search_query }}&page={{ items.next_page_number }}">&raquo;</a>
+                <a class="page-link" href="?{% if filter_qs %}{{ filter_qs }}&{% endif %}page={{ items.next_page_number }}">&raquo;</a>
             </li>
         {% else %}
             <li class="page-item disabled"><span class="page-link">&raquo;</span></li>
@@ -341,7 +351,9 @@ document.addEventListener("DOMContentLoaded", function() {
         timeout = setTimeout(() => {
             const query = searchInput.value;
 
-            fetch(`?q=${encodeURIComponent(query)}`, {
+            const params = new URLSearchParams(new FormData(document.getElementById("itemSearchForm")));
+            params.set("q", query);
+            fetch(`?${params.toString()}`, {
                 headers: {
                     "X-Requested-With": "XMLHttpRequest"
                 }
@@ -411,6 +423,94 @@ function confirmDelete() {
     });
   }
 }
+
+/* ── Category / Subcategory / Type filters ───────────────── */
+document.addEventListener("DOMContentLoaded", function() {
+  const catSel = document.getElementById("filterCategory");
+  const subSel = document.getElementById("filterSubcategory");
+  const typeSel = document.getElementById("filterType");
+  if (!catSel || !subSel || !typeSel) return;
+
+  const cats = JSON.parse(document.getElementById("filterCategoriesData").textContent);
+  const subs = JSON.parse(document.getElementById("filterSubcategoriesData").textContent);
+  const types = JSON.parse(document.getElementById("filterTypesData").textContent);
+  const selCat = "{{ selected_category|default_if_none:'' }}";
+  const selSub = "{{ selected_subcategory|default_if_none:'' }}";
+  const selType = "{{ selected_type|default_if_none:'' }}";
+
+  function fill(sel, rows, labelKey, selected) {
+    const first = sel.options[0];
+    sel.innerHTML = "";
+    sel.appendChild(first);
+    rows.forEach(r => {
+      const o = document.createElement("option");
+      o.value = r.id;
+      o.textContent = r[labelKey] || "";
+      if (String(r.id) === String(selected)) o.selected = true;
+      sel.appendChild(o);
+    });
+  }
+
+  function refreshSubs(selected) {
+    const c = catSel.value;
+    fill(subSel, c ? subs.filter(s => String(s.category_id) === c) : subs, "subcategory_name", selected);
+  }
+  function refreshTypes(selected) {
+    const sc = subSel.value, c = catSel.value;
+    let rows = types;
+    if (sc) {
+      rows = types.filter(t => String(t.subcategory_id) === sc);
+    } else if (c) {
+      const ids = new Set(subs.filter(s => String(s.category_id) === c).map(s => String(s.id)));
+      rows = types.filter(t => ids.has(String(t.subcategory_id)));
+    }
+    fill(typeSel, rows, "type_name", selected);
+  }
+
+  fill(catSel, cats, "category_name", selCat);
+  refreshSubs(selSub);
+  refreshTypes(selType);
+
+  const form = document.getElementById("itemSearchForm");
+  const $ = window.jQuery;
+  const hasSelect2 = !!($ && $.fn && $.fn.select2);
+
+  if (hasSelect2) {
+    // Searchable dropdowns (Select2 is already loaded by the base layout)
+    [[catSel, "All Categories"], [subSel, "All Subcategories"], [typeSel, "All Types"]].forEach(function(pair) {
+      $(pair[0]).select2({ placeholder: pair[1], allowClear: false, width: "220px", minimumResultsForSearch: 0 });
+    });
+  }
+
+  if (hasSelect2) {
+    // Auto-focus the search box when a filter dropdown opens
+    // (Select2 4.1 rc doesn't reliably do this with newer jQuery)
+    $([catSel, subSel, typeSel]).on("select2:open", function() {
+      setTimeout(function() {
+        var field = document.querySelector(".select2-container--open .select2-search__field");
+        if (field) field.focus();
+      }, 0);
+    });
+  }
+
+  // After rebuilding <option>s, tell Select2 to redraw
+  function sync(sel) { if (hasSelect2) $(sel).trigger("change.select2"); }
+
+  function onCat() { refreshSubs(""); sync(subSel); refreshTypes(""); sync(typeSel); form.submit(); }
+  function onSub() { refreshTypes(""); sync(typeSel); form.submit(); }
+  function onType() { form.submit(); }
+
+  if (hasSelect2) {
+    // Select2 fires jQuery events, so use select2:select rather than addEventListener
+    $(catSel).on("select2:select", onCat);
+    $(subSel).on("select2:select", onSub);
+    $(typeSel).on("select2:select", onType);
+  } else {
+    catSel.addEventListener("change", onCat);
+    subSel.addEventListener("change", onSub);
+    typeSel.addEventListener("change", onType);
+  }
+});
 
 function showErrorModal(message) {
   const errorBodyElement = document.getElementById('errorModalBody');
