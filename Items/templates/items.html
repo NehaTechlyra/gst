@@ -474,13 +474,33 @@ document.addEventListener("DOMContentLoaded", function() {
   refreshTypes(selType);
 
   const form = document.getElementById("itemSearchForm");
-  catSel.addEventListener("change", function() {
-    refreshSubs(""); refreshTypes(""); form.submit();
-  });
-  subSel.addEventListener("change", function() {
-    refreshTypes(""); form.submit();
-  });
-  typeSel.addEventListener("change", function() { form.submit(); });
+  const $ = window.jQuery;
+  const hasSelect2 = !!($ && $.fn && $.fn.select2);
+
+  if (hasSelect2) {
+    // Searchable dropdowns (Select2 is already loaded by the base layout)
+    [[catSel, "All Categories"], [subSel, "All Subcategories"], [typeSel, "All Types"]].forEach(function(pair) {
+      $(pair[0]).select2({ placeholder: pair[1], allowClear: false, width: "220px", minimumResultsForSearch: 0 });
+    });
+  }
+
+  // After rebuilding <option>s, tell Select2 to redraw
+  function sync(sel) { if (hasSelect2) $(sel).trigger("change.select2"); }
+
+  function onCat() { refreshSubs(""); sync(subSel); refreshTypes(""); sync(typeSel); form.submit(); }
+  function onSub() { refreshTypes(""); sync(typeSel); form.submit(); }
+  function onType() { form.submit(); }
+
+  if (hasSelect2) {
+    // Select2 fires jQuery events, so use select2:select rather than addEventListener
+    $(catSel).on("select2:select", onCat);
+    $(subSel).on("select2:select", onSub);
+    $(typeSel).on("select2:select", onType);
+  } else {
+    catSel.addEventListener("change", onCat);
+    subSel.addEventListener("change", onSub);
+    typeSel.addEventListener("change", onType);
+  }
 });
 
 function showErrorModal(message) {
