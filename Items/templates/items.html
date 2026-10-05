@@ -84,8 +84,24 @@
 
 
 
-
-
+    <!-- Category / Subcategory / Type filters (submit with the search form) -->
+    <div class="d-flex flex-wrap align-items-center gap-2 mb-3" id="itemFilterBar">
+      <select name="category" id="filterCategory" class="form-select" style="width:auto;min-width:180px;" form="itemSearchForm">
+        <option value="">All Categories</option>
+      </select>
+      <select name="subcategory" id="filterSubcategory" class="form-select" style="width:auto;min-width:180px;" form="itemSearchForm">
+        <option value="">All Subcategories</option>
+      </select>
+      <select name="type" id="filterType" class="form-select" style="width:auto;min-width:180px;" form="itemSearchForm">
+        <option value="">All Types</option>
+      </select>
+      {% if selected_category or selected_subcategory or selected_type %}
+      <a href="{% if search_query %}?q={{ search_query|urlencode }}{% else %}?{% endif %}" class="btn btn-outline-secondary">Clear filters</a>
+      {% endif %}
+    </div>
+    {{ filter_categories|json_script:"filterCategoriesData" }}
+    {{ filter_subcategories|json_script:"filterSubcategoriesData" }}
+    {{ filter_types|json_script:"filterTypesData" }}
 
   {% if items %}
   <table class="items-table" id="itemTableContainer">
@@ -479,17 +495,6 @@ document.addEventListener("DOMContentLoaded", function() {
     // Searchable dropdowns (Select2 is already loaded by the base layout)
     [[catSel, "All Categories"], [subSel, "All Subcategories"], [typeSel, "All Types"]].forEach(function(pair) {
       $(pair[0]).select2({ placeholder: pair[1], allowClear: false, width: "220px", minimumResultsForSearch: 0 });
-    });
-  }
-
-  if (hasSelect2) {
-    // Auto-focus the search box when a filter dropdown opens
-    // (Select2 4.1 rc doesn't reliably do this with newer jQuery)
-    $([catSel, subSel, typeSel]).on("select2:open", function() {
-      setTimeout(function() {
-        var field = document.querySelector(".select2-container--open .select2-search__field");
-        if (field) field.focus();
-      }, 0);
     });
   }
 
