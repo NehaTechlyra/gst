@@ -3,6 +3,12 @@
 
 {% block exstyle %}
 {% include 'mis_reports/_report_styles.html' %}
+<style>
+  .mis-report-filter-card .select2-container { width: 100% !important; }
+  .mis-report-filter-card .select2-container .select2-selection--single { height: calc(1.5em + .5rem + 2px); border: 1px solid #dee2e6; }
+  .mis-report-filter-card .select2-container--default .select2-selection--single .select2-selection__rendered { line-height: calc(1.5em + .5rem); font-size: .875rem; padding-left: .5rem; }
+  .mis-report-filter-card .select2-container--default .select2-selection--single .select2-selection__arrow { height: calc(1.5em + .5rem); }
+</style>
 {% endblock exstyle %}
 
 {% block page_title %}Inventory by Items{% endblock page_title %}
@@ -50,7 +56,7 @@
         </div>
         <div class="col-md-2">
           <label class="form-label small">Item</label>
-          <select name="item" class="form-select form-select-sm">
+          <select name="item" id="misInvItem" class="form-select form-select-sm">
             <option value="">All items</option>
             {% for item in inventory_filter_options.items %}
             <option value="{{ item.pk }}" {% if inventory_filters.item == item.pk %}selected{% endif %}>{{ item.name }}</option>
@@ -125,8 +131,10 @@
 {{ inventory_cascade_data|json_script:"misInvCascadeData" }}
 <script>
 /* Category -> Subcategory -> Type -> Brand dependent filters.
-   Changing a parent clears its children. */
+   Changing a parent clears its children. Dropdowns are searchable (Select2)
+   and the search box is focused automatically when a dropdown opens. */
 document.addEventListener("DOMContentLoaded", function () {
+  var itemSel = document.getElementById("misInvItem");
   var catSel = document.getElementById("misInvCategory");
   var subSel = document.getElementById("misInvSubcategory");
   var typeSel = document.getElementById("misInvType");
@@ -134,14 +142,20 @@ document.addEventListener("DOMContentLoaded", function () {
   var dataEl = document.getElementById("misInvCascadeData");
   if (!catSel || !subSel || !typeSel || !brandSel || !dataEl) return;
 
+  var $ = window.jQuery;
+  var hasSelect2 = !!($ && $.fn && $.fn.select2);
   var data = JSON.parse(dataEl.textContent);
   var form = catSel.form;
 
   // Values applied by the server on page load (used again on Reset)
   var initial = {
+    item: itemSel ? itemSel.value : "",
     category: catSel.value, subcategory: subSel.value,
     type: typeSel.value, brand: brandSel.value
   };
+
+  // Tell Select2 to redraw after the <option>s or value changed
+  function sync(sel) { if (hasSelect2) $(sel).trigger("change.select2"); }
 
   function fill(sel, rows, labelKey, selected) {
     var first = sel.options[0];
@@ -156,6 +170,7 @@ document.addEventListener("DOMContentLoaded", function () {
       sel.appendChild(o);
     });
     sel.value = keep;
+    sync(sel);
   }
 
   function subRows() {
@@ -192,20 +207,41 @@ document.addEventListener("DOMContentLoaded", function () {
     fill(brandSel, brandRows(), "brand_name", sel.brand);
   }
 
-  catSel.addEventListener("change", function () {
+  // Select2 fires jQuery events (not native ones), so bind through jQuery when present
+  function onChange(el, fn) {
+    if (hasSelect2) { $(el).on("change", fn); } else { el.addEventListener("change", fn); }
+  }
+
+  var allSelects = [itemSel, catSel, subSel, typeSel, brandSel].filter(Boolean);
+  if (hasSelect2) {
+    allSelects.forEach(function (sel) {
+      $(sel).select2({ width: "100%", minimumResultsForSearch: 0 });
+    });
+    // Auto-focus the search box when a dropdown opens
+    // (Select2 4.1 rc doesn't reliably do this with newer jQuery)
+    $(allSelects).on("select2:open", function () {
+      setTimeout(function () {
+        var field = document.querySelector(".select2-container--open .select2-search__field");
+        if (field) field.focus();
+      }, 0);
+    });
+  }
+
+  onChange(catSel, function () {
     build({ subcategory: "", type: "", brand: "" });
   });
-  subSel.addEventListener("change", function () {
+  onChange(subSel, function () {
     fill(typeSel, typeRows(), "type_name", "");
     fill(brandSel, brandRows(), "brand_name", "");
   });
-  typeSel.addEventListener("change", function () {
+  onChange(typeSel, function () {
     fill(brandSel, brandRows(), "brand_name", "");
   });
 
   form.addEventListener("reset", function () {
     window.setTimeout(function () {
-      catSel.value = initial.category;
+      if (itemSel) { itemSel.value = initial.item; sync(itemSel); }
+      catSel.value = initial.category; sync(catSel);
       build(initial);
     }, 0);
   });
